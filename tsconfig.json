@@ -15,6 +15,7 @@
     { "path": "packages/practice" },
     { "path": "packages/api-contract" },
     { "path": "packages/projections" },
+    { "path": "packages/revision" },
     { "path": "packages/testing" }
   ]
 }

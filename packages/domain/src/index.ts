@@ -18,3 +18,4 @@ export * from './context.js';
 export * from './twin.js';
 export * from './prescription.js';
 export * from './planning.js';
+export * from './revision.js';

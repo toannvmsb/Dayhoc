@@ -6,7 +6,8 @@
     { "path": "../api-contract" },
     { "path": "../math-data" },
     { "path": "../gap-engine" },
-    { "path": "../planning" }
+    { "path": "../planning" },
+    { "path": "../revision" }
   ],
   "include": ["src/**/*.ts"],
   "exclude": ["**/*.test.ts"]

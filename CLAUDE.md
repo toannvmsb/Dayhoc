@@ -61,10 +61,11 @@ Direction **LOCKED = "Hướng 1A · Bình tĩnh & ấm"** (anh chọn từ 3 h�
 - **P4.5 Golden Gate** — `@copilot/testing`: harness + discrimination matrix (8 gap + K/T) + golden registry (10 case pass, 8 `it.todo` chờ data D-01) + `golden-gate.test.ts` (DAG/recompute/no-global-level) = cổng CI.
 - **P5 Planning & Practice** `398997c` — `@copilot/planning` (Learning Mix §24, NBLA ROI/phút §40, `buildDailyPlan` + "no plan needed" §17), `@copilot/practice` (authored question bank + 6-rung hint ladder §17, stretch-zone, assignment, `submissionToEvidence` đóng loop §29).
 - **P6 Parent Experience** `7094317` — `@copilot/api-contract` + `@copilot/projections` (parent full views + **child-safe projection** absent-by-construction + `assertChildSafe` guard). `apps/web` (Next.js): Parent Home / Progress / Gap Detail trên design-tokens Hướng 1A, data engine thật. Còn thiếu (không chặn): scan→AI confirm, teaching session, mobile — `PENDING_APPROVAL.md §C1`.
-- **P7 Child Experience** `2d4850d` — child projections (one-question view, result + reasoning prompt §35, challenge), `OfflineSubmissionQueue` (FIFO, idempotent, order-preserving §17). `apps/web/child/*`: Today (4-nav, larger type), do (revealed hints only), challenge, result. Verified.
+- **P7 Child Experience** `2d4850d` — child projections (one-question view, result + reasoning prompt §35, challenge), `OfflineSubmissionQueue` (FIFO, idempotent §17). `apps/web/child/*`. Verified.
+- **P8 Teacher Quick Update** `7cb8276` — `buildTeacherHome` + `buildTeacherUpdateForm` (grade-scoped, ≤12 topic, ~40s; teacher không thấy Twin/Gap). `apps/web/teacher/*` (T02/T03, neutral surface). Flow test: contribution (teacher HOẶC parent proxy) → parent context/home update; context vẫn build khi 0 contribution.
 
 ## Current phase
-**Phase 8 — Teacher Quick Update** (đang làm). Blockers → `docs/implementation/PENDING_APPROVAL.md` (autonomous, anh duyệt sau).
+**Phase 9 — Assessment & Revision** (đang làm). Blockers → `docs/implementation/PENDING_APPROVAL.md` (autonomous, anh duyệt sau).
 Web dev: `npm run dev --workspace @copilot/web` (port 3100). browser-preview `.claude/launch.json` đọc từ cwd (PhongThuy) — start web bằng Bash + navigate localhost.
 
 ## Approved decisions (anh duyệt 2026-08-30)

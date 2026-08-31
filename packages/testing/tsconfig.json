@@ -15,7 +15,8 @@
     { "path": "../planning" },
     { "path": "../practice" },
     { "path": "../api-contract" },
-    { "path": "../projections" }
+    { "path": "../projections" },
+    { "path": "../revision" }
   ],
   "include": ["src/**/*.ts"],
   "exclude": ["**/*.test.ts"]

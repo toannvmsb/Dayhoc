@@ -9,3 +9,4 @@ export * from './shared.js';
 export * from './parent.js';
 export * from './child.js';
 export * from './teacher.js';
+export * from './revision.js';

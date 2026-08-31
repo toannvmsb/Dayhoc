@@ -191,3 +191,28 @@ export interface TeacherUpdateResult {
   readonly contextHeadlineAfter: string;
   readonly parentsNotified: number;
 }
+
+// ---------- Exam / Revision + Weekly Report (Parent) ----------
+export interface ExamRevisionView {
+  readonly examDateLabel: string;
+  readonly dayCountdown: number;
+  readonly subject: string;
+  readonly scopeConfirmed: boolean;
+  readonly scopeItems: readonly { readonly name: string; readonly confirmed: boolean }[];
+  readonly dailyMinutes: number;
+  readonly priorityItems: readonly {
+    readonly name: string;
+    readonly bandLabel: 'Ưu tiên cao' | 'Nhắc lại' | 'Đã ổn';
+    readonly fillPercent: number;
+  }[];
+  readonly mockTest: { readonly label: string; readonly minutes: number } | null;
+}
+
+export interface WeeklyReportView {
+  readonly weekLabel: string;
+  readonly stats: readonly { readonly value: string; readonly label: string; readonly highlight?: boolean }[];
+  readonly progress: readonly string[];
+  readonly needsFollowUp: readonly string[];
+  readonly nextWeekMix: { readonly school: number; readonly gapRepair: number; readonly advanced: number; readonly thinking: number };
+  readonly nextWeekNote: string;
+}

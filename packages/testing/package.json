@@ -18,6 +18,7 @@
     "@copilot/planning": "0.1.0",
     "@copilot/practice": "0.1.0",
     "@copilot/api-contract": "0.1.0",
-    "@copilot/projections": "0.1.0"
+    "@copilot/projections": "0.1.0",
+    "@copilot/revision": "0.1.0"
   }
 }
