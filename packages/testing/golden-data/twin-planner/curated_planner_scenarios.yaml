@@ -1,0 +1,61 @@
+scenarios:
+- scenario_id: LP-S01
+  title: 10-minute gap day
+  input: Chỉ 10 phút + confirmed high-priority gap
+  expected: Ưu tiên diagnostic/micro-remediation, không filler.
+- scenario_id: LP-S02
+  title: 45-minute strong learner
+  input: K2/K3 mạnh, không active gap
+  expected: Giảm lặp lại; tăng advanced + thinking.
+- scenario_id: LP-S03
+  title: Exam tomorrow
+  input: Phạm vi thi biết + 1 critical gap
+  expected: Revision chiếm phần lớn; gap trong scope được ưu tiên.
+- scenario_id: LP-S04
+  title: Parent-only concern
+  input: Parent nói con yếu, chưa evidence
+  expected: Gap Hypothesis + diagnostic; không confirmed gap.
+- scenario_id: LP-S05
+  title: Verified conflict
+  input: Homework mạnh, verified school test yếu
+  expected: Verified nặng hơn nhưng history giữ nguyên; diagnostic.
+- scenario_id: LP-S06
+  title: Careless streak
+  input: Reasoning đúng, sai số học, tự sửa
+  expected: Minimal knowledge penalty; self-check routine.
+- scenario_id: LP-S07
+  title: Hint dependence
+  input: Repeated Hint 2 success
+  expected: Independent mastery confidence thấp; no-hint variants.
+- scenario_id: LP-S08
+  title: Retention relapse
+  input: Skill closed tuần trước, fail sau 7 ngày
+  expected: Reopen/retention gap; spaced retrieval.
+- scenario_id: LP-S09
+  title: G7 above-grade success
+  input: G7 làm tốt G8/G9/HSG algebra
+  expected: Algebra frontier tăng; school_grade vẫn 7; không global G9.
+- scenario_id: LP-S10
+  title: G7 above-grade failure
+  input: G7 standard mạnh, fail T5 identity
+  expected: Thinking/recognition/prerequisite diagnosis; giữ core mastery.
+- scenario_id: LP-S11
+  title: Parallel repair
+  input: Advanced readiness cao + prerequisite gap nhỏ
+  expected: Tiếp tục advanced và repair song song.
+- scenario_id: LP-S12
+  title: Uneven frontier
+  input: Algebra K5, Geometry K2, Ratio K4
+  expected: Lưu frontier theo domain; không collapse.
+- scenario_id: LP-S13
+  title: Gap closure
+  input: Treatment + multiple independent success
+  expected: Chỉ Closed khi đủ threshold; retention check.
+- scenario_id: LP-S14
+  title: Thinking challenge
+  input: No urgent gap + 20 phút
+  expected: Có thể dành 5–15 phút non-routine challenge.
+- scenario_id: LP-S15
+  title: Highest ROI/minute
+  input: Nhiều task, thời gian ít
+  expected: Chọn task tối đa expected learning progress/minute theo readiness/gap/exam/goal.

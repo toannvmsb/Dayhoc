@@ -1,0 +1,26 @@
+invariants:
+- Parent is customer; Child is beneficiary.
+- Standard Curriculum, Actual Taught Curriculum and Personalized Development Curriculum remain distinct.
+- Evidence is append-only; mastery/twin state is rebuildable projection.
+- School grade is context, not ceiling.
+- Actual Learning Frontier is skill/domain-specific; never one global grade level.
+- AI may extract/classify/generate/explain, but deterministic rules own IDs, permissions, lifecycle, thresholds and planner constraints.
+- AI output must validate against schema and known graph before entering production state.
+- Careless errors do not heavily reduce Knowledge Mastery.
+- Parent feedback alone creates a Gap Hypothesis, not a confirmed high-confidence gap.
+- Hinted success is not equivalent to independent success.
+- Parallel Gap Repair may continue advanced learning where readiness is sufficient.
+- Child API projection must not expose parent analytics, gap scores, school comparisons, billing or family controls.
+- Private uploads remain private.
+- Daily Plan must never exceed selected time budget.
+- Exam revision prioritizes exam relevance, active gaps, forgetting and prerequisite impact.
+acceptance_gates:
+  journey_schema_valid: 100%
+  referential_integrity: 100%
+  privacy_role_invariants: 100%
+  cross_grade_invariants: 100%
+  time_budget_invariants: 100%
+  idempotency_for_duplicate_processing: 100%
+  AI_schema_validation: 100%
+  golden_checkpoint_match: target >=95% before pilot; invariant failures = 0
+  failure_recovery_scenarios: 15/15 pass before pilot

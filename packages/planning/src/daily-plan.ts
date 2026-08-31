@@ -115,7 +115,9 @@ function fillBudget(
     let bestKey = -Infinity;
     for (let i = 0; i < pool.length; i++) {
       const a = pool[i]!;
-      if (totalSpent + a.estimatedMinutes > budget + 3) continue;
+      // hard rule (Math Core §27 / E2E invariant): the plan must NEVER exceed the
+      // selected time budget — no slack.
+      if (totalSpent + a.estimatedMinutes > budget) continue;
       const deficit = (targetMinutes[a.mixBucket] - spent[a.mixBucket]) / Math.max(1, targetMinutes[a.mixBucket]);
       const key = deficit * 2 + a.roiPerMinute;
       if (key > bestKey) {
@@ -128,6 +130,14 @@ function fillBudget(
     chosen.push(action!);
     spent[action!.mixBucket] += action!.estimatedMinutes;
     totalSpent += action!.estimatedMinutes;
+  }
+
+  // If nothing fit (every candidate is individually longer than the budget),
+  // still schedule the single highest-value action, shortened to the budget —
+  // a short dose beats an empty day, and the budget is never exceeded.
+  if (chosen.length === 0 && candidates.length > 0) {
+    const best = [...candidates].sort((a, b) => b.roiPerMinute - a.roiPerMinute)[0]!;
+    chosen.push({ ...best, estimatedMinutes: Math.min(best.estimatedMinutes, budget) });
   }
 
   // Order the chosen actions: school first (do the lesson), then gap repair, advanced, thinking last.

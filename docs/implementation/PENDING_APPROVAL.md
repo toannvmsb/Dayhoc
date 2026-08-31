@@ -27,6 +27,12 @@
 
 ✅ **D-01 ĐÃ NHẬN** — Math Dev Core v1.0 (52 M4 + 37 M7 skills, curriculum, prereq graphs). Đã ingest, KB có 94 skills. **Lưu ý: M7.\* IDs là `provisional_normalization`** — cần math-educator review trước khi freeze production (đây chính là P-01, giờ quan trọng hơn).
 ✅ **D-02 ĐÃ NHẬN** — 12 golden student profiles + 120 golden questions + 360 golden error cases + 15 curated scenarios. Đã wire vào test thật.
+✅ **D-06 ĐÃ NHẬN** — Golden **Learning Twin & Planner** Dataset v1.0 (48 hồ sơ, 912 evidence event, 48 expected state, 15 curated planner scenario) + Golden **End-to-End Family Journey** Dataset v1.0 (24 family/journey, 24 checkpoint, 15 failure-recovery scenario, 15 E2E invariant). Đã vendor vào `packages/testing/golden-data/twin-planner/` + `.../e2e/` và wire vào test:
+  - `golden/twin-planner.test.ts` — chạy full pipeline (Evidence→Twin→Gap→Readiness→Mix→DailyPlan) cho cả 48 hồ sơ; hard-assert 4 invariant cấu trúc (không vượt time budget · không có global grade/level · twin là projection order-independent · hinted ≤ unaided); check 13 `required_invariants` theo từng hồ sơ (0 fail); archetype fingerprint ≥ 80%; mastery direction vs expected ≥ 80%.
+  - `golden/e2e-journey.test.ts` — referential integrity 24 journey; 15 E2E invariant; ranh giới child-projection (FAIL-12) qua `createApi`; cả 15 failure-recovery scenario map vào assertion engine/ledger.
+  - `golden-gate.test.ts` — thêm 2 gate: 48/48 hồ sơ plan trong budget; 24 family ↔ journey ↔ twin-profile resolve.
+  - **Bug đã sửa khi test:** `buildDailyPlan` trước đây cho phép vượt time budget +3′ (slack cứng trong `fillBudget`) — vi phạm invariant "Daily Plan must never exceed selected time budget". Đã bỏ slack; nếu mọi action đều dài hơn budget thì lấy 1 action ROI cao nhất và cắt còn đúng budget.
+  - **Cần calibrate (không chặn):** 12/663 cặp (skill × hồ sơ) engine cho mastery thấp hơn hẳn expected (phần lớn expected ~75 nhưng evidence chỉ có 1 quan sát sai / parent-only). Là tín hiệu để tinh chỉnh hệ số ở pilot (P-02), không phải lỗi logic.
 
 | # | Nội dung | Trạng thái |
 |---|---|---|

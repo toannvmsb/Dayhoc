@@ -124,7 +124,7 @@ describe('Daily plan (Math Core §27)', () => {
     expect(plan.kind).toBe('plan');
     if (plan.kind !== 'plan') return;
     const total = plan.orderedActions.reduce((s, a) => s + a.estimatedMinutes, 0);
-    expect(total).toBeLessThanOrEqual(28);
+    expect(total).toBeLessThanOrEqual(25); // never exceeds the selected budget
     const buckets = plan.orderedActions.map((a) => a.mixBucket);
     if (buckets.includes('school') && buckets.includes('thinking')) {
       expect(buckets.indexOf('school')).toBeLessThan(buckets.lastIndexOf('thinking'));

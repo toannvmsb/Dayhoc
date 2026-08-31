@@ -1,0 +1,83 @@
+failures:
+- failure_id: FAIL-01
+  trigger: blurry_scan
+  expected_recovery:
+  - low extraction confidence
+  - request better image or escalate model
+  - do not silently commit uncertain skill mapping
+- failure_id: FAIL-02
+  trigger: unknown_skill_mapping
+  expected_recovery:
+  - return candidate mapping/review state
+  - LLM must not create production Skill ID
+- failure_id: FAIL-03
+  trigger: duplicate_upload
+  expected_recovery:
+  - deduplicate/idempotent processing
+  - do not double-count evidence
+- failure_id: FAIL-04
+  trigger: AI_timeout
+  expected_recovery:
+  - job retry with bounded policy
+  - parent sees pending/retry state
+  - no duplicate evidence
+- failure_id: FAIL-05
+  trigger: parent_only_weakness_claim
+  expected_recovery:
+  - Gap Hypothesis
+  - short diagnostic
+  - no confirmed gap yet
+- failure_id: FAIL-06
+  trigger: one_careless_error
+  expected_recovery:
+  - careless_error
+  - minimal knowledge penalty
+  - self-check suggestion
+- failure_id: FAIL-07
+  trigger: hint2_success
+  expected_recovery:
+  - record hint use
+  - lower independent confidence
+  - schedule no-hint variant
+- failure_id: FAIL-08
+  trigger: retention_failure_after_closed
+  expected_recovery:
+  - reopen or monitoring retention gap
+  - spaced retrieval
+- failure_id: FAIL-09
+  trigger: verified_test_conflicts_homework
+  expected_recovery:
+  - preserve both evidence
+  - weight verified higher
+  - diagnostic conflict
+- failure_id: FAIL-10
+  trigger: G7_fails_HSG
+  expected_recovery:
+  - do not downgrade G7 core automatically
+  - trace prerequisite/thinking gap
+- failure_id: FAIL-11
+  trigger: small_prerequisite_gap_while_advanced_ready
+  expected_recovery:
+  - Ready with parallel repair
+  - continue advanced where ready
+- failure_id: FAIL-12
+  trigger: child_requests_parent_dashboard_endpoint
+  expected_recovery:
+  - deny/omit parent-only fields
+  - return ChildTaskViewModel only
+- failure_id: FAIL-13
+  trigger: daily_plan_exceeds_budget
+  expected_recovery:
+  - planner validation failure
+  - re-optimize tasks
+  - never exceed selected minutes
+- failure_id: FAIL-14
+  trigger: exam_scope_unknown
+  expected_recovery:
+  - infer cautiously from recent Actual Taught Context
+  - mark scope inferred not official
+- failure_id: FAIL-15
+  trigger: delete_child_data_request
+  expected_recovery:
+  - delete/export workflow honors privacy policy
+  - audit action without retaining learning content unnecessarily

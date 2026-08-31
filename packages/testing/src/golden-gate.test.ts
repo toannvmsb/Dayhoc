@@ -5,6 +5,13 @@ import { buildLearningTwin } from '@copilot/learning-twin';
 import { runGapEngine } from '@copilot/gap-engine';
 import { KB, buildEvidence, runScenario } from './harness.js';
 import { asChildId } from '@copilot/domain';
+import {
+  loadE2EFamilies,
+  loadE2EJourneys,
+  loadLearningEvidenceEvents,
+  loadTwinPlannerProfiles,
+} from './golden/load.js';
+import { planMinutes, runTwinPlanner } from './golden/twin-planner-pipeline.js';
 
 /**
  * GOLDEN GATE (Phase 4.5) — the aggregate check CI enforces before any UI
@@ -59,6 +66,29 @@ describe('GOLDEN GATE', () => {
   it('the discrimination matrix covers all 8 core gap types', () => {
     // sanity: the matrix file exercises these; here we assert the target set is complete
     expect(new Set(CORE_DISCRIMINATION_TARGETS).size).toBe(8);
+  });
+
+  it('Twin & Planner golden dataset: every one of 48 profiles plans within its time budget', () => {
+    const profiles = loadTwinPlannerProfiles();
+    const events = loadLearningEvidenceEvents();
+    expect(profiles).toHaveLength(48);
+    expect(events).toHaveLength(912);
+    const over = profiles
+      .map((p) => runTwinPlanner(p, events))
+      .filter((r) => planMinutes(r.plan) > r.profile.daily_time_budget_min || planMinutes(r.planExam) > r.profile.daily_time_budget_min);
+    expect(over.map((r) => r.profile.profile_id)).toEqual([]);
+  });
+
+  it('E2E Family Journey golden dataset: family ↔ journey ↔ twin-profile references all resolve', () => {
+    const families = loadE2EFamilies();
+    const journeys = loadE2EJourneys();
+    const profileIds = new Set(loadTwinPlannerProfiles().map((p) => p.profile_id));
+    const journeyIds = new Set(journeys.map((j) => j.journey_id));
+    expect(families).toHaveLength(24);
+    for (const f of families) {
+      expect(journeyIds.has(f.journey_id)).toBe(true);
+      expect(profileIds.has(f.child_profile.source_twin_profile_id)).toBe(true);
+    }
   });
 
   it('no golden scenario produces a single global grade level', () => {
