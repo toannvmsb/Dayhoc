@@ -33,6 +33,14 @@ Platforms: Web + iOS + Android. Pilot: Toán **lớp 4** + **lớp 7**. Bảy ca
 - **Child**: login = **username + password do bố mẹ tạo** (con đổi được), scope child-safe projection. **PIN 4 số = shortcut vào bài được giao**, KHÔNG phải login. Child-safe từ SERVER — KHÔNG gap score/mastery/ranking/analytics/parent controls/consent/billing. Nav tối đa 4.
 - **Teacher**: chỉ context được mời; update < 60s; app đầy đủ khi không có teacher. KHÔNG thấy Twin/Gap.
 
+## AI cost invariants (Pricing + AI Cost Guardrails v1.0 — `docs/implementation/PRICING_AND_COST_GUARDRAILS.md`)
+- **Luna-first**: `resolveRoute()` — 85–95% call ở deterministic / question-bank / Luna. Escalate chỉ khi đo được (confidence thấp, mâu thuẫn, K4–K5/T4–T5…). Advanced (Sonnet 5 vs Terra) benchmark-gated.
+- **LLM không bao giờ sở hữu**: production skill IDs, prerequisite DAG, permissions, consent, gap-lifecycle thresholds, mastery formula, time-budget, billing/quota.
+- **Budget gate trước mỗi metered call** (`checkBudget`): per-plan target + hard ceiling; graceful fallback; `safetyCritical` (privacy/xoá/kiểm chứng) luôn bypass. Không retry-loop nào vượt ceiling.
+- **Margin floor 50%** doanh thu kể cả ở AI hard ceiling. Giá LOCKED (Free/169K/229K/329K) — không giảm vì COGS thực thấp.
+- **Public model prices = config effective-dated** (`ai_pricing_registry` / `PricingRegistry`), KHÔNG hard-code vào domain logic. FX VND cấu hình được.
+- Mọi call AI/OCR → `ai_usage_events` (pseudonymous, INSERT-only).
+
 ## Privacy invariants (anh duyệt P-05 — `docs/implementation/PRIVACY_ARCHITECTURE.md`)
 - Privacy-by-Design, theo NĐ 13/2023. **Consent versioned + auditable** (`consent_records` ⊕), không dùng boolean.
 - **Data minimization tới AI**: `minimizeForProvider()` bắt buộc — strip PII, thay childId bằng opaque ref, từ chối nếu vượt category cho phép hoặc `training_allowed=true`.
@@ -98,7 +106,7 @@ Web dev: `npm run dev --workspace @copilot/web` (port 3100). browser-preview `.c
 - **P-01** (2026-08-31) Em tự rà skill graph/DAG lớp 7 theo SGK → xuất bản đề xuất cho anh duyệt (chưa freeze `M7.*` ID).
 - **P-02** Giữ coefficients provisional tới khi có pilot data.
 - **P-03** Con login = username+password (bố mẹ tạo, con đổi được). PIN 4 số = shortcut vào bài được giao, không phải login.
-- **P-04** Chưa chốt LLM/OCR provider — dùng mock, quay lại sau.
+- **P-04** LLM/OCR provider: **architecture đã chốt** (Pricing + AI Cost Guardrails v1.0 — Luna-first routing, pricing registry, margin floor 50%, budget engine + hard ceilings, cost telemetry, provider adapter). **Advanced model (Claude Sonnet 5 vs GPT-5.6 Terra) + OCR fallback thresholds vẫn benchmark-gated** — cần anh cấp 30–50 ảnh thật đã ẩn PII. Xem `docs/implementation/PRICING_AND_COST_GUARDRAILS.md`. Runtime vẫn dùng `MockLlmProvider`.
 - **P-05** 17 nguyên tắc Privacy-by-Design → `docs/implementation/PRIVACY_ARCHITECTURE.md`. Architecture phải *capable*; consent UI làm sau.
 
 ## Working rule

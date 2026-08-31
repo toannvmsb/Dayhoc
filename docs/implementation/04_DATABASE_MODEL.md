@@ -59,6 +59,34 @@ rights_requests(id PK, child_id FK, requested_by FK→users, kind,          -- �
 `purged_at`. Every upload row is private — access is via signed expiring URLs
 scoped to family + role; there is no public URL column.
 
+### 1c. AI cost, pricing & budget (Pricing + AI Cost Guardrails v1.0 §2, §5, §7)
+
+```
+ai_pricing_registry(id PK, model, provider,                 -- external config, effective-dated
+   unit,                                                    -- per_million_tokens | per_1000_pages
+   input_per_million_usd, output_per_million_usd,
+   pages_per_thousand_usd, free_units,
+   effective_date, source, created_at)                      -- never a constant in domain logic
+
+ai_usage_events(id PK,                                       -- ⊕ INSERT-only (trigger)
+   user_ref, child_ref,                                      -- PSEUDONYMOUS, never raw ids
+   plan, operation_type, provider, model,
+   input_tokens, cached_input_tokens, output_tokens,
+   image_count, ocr_pages,
+   estimated_cost_usd, estimated_cost_vnd, latency_ms,
+   confidence, escalation_reason, schema_valid,
+   request_id, created_at)                                   -- idx (plan,created_at) (user_ref,created_at) (child_ref,created_at)
+
+plan_budget_ledger(id PK, user_ref, billing_month,           -- mutable rollup for fast budget checks
+   plan, ai_spent_vnd, scan_pages_used, worksheets_used,
+   updated_at, UNIQUE(user_ref, billing_month))              -- immutable history is ai_usage_events
+```
+
+Per-plan price / AI target / hard ceiling / quota limits live in code
+(`@copilot/ai` `PLAN_COMMERCIALS`, `PLAN_SCAN_LIMITS`) — LOCKED, changed only by
+approval. `plan_budget_ledger` is the enforcement cache; a rebuild from
+`ai_usage_events` must reproduce it. Migration `1756771200000_ai_cost_telemetry`.
+
 ---
 
 ## 2. Curriculum Core (versioned, mostly static)
@@ -204,9 +232,10 @@ notifications(id PK, target_user_id FK, type, payload jsonb, read_at, created_at
 ## 6. Migration & integrity rules
 
 1. **Mọi thay đổi schema qua migration** (versioned, forward-only + rollback script).
-2. `evidence`, `ai_inferences`, `teacher_contributions`, `gap_lifecycle_events`, `consent_records`, `deletion_jobs`, `rights_requests` chỉ INSERT (enforce ở app layer + DB trigger).
+2. `evidence`, `ai_inferences`, `teacher_contributions`, `gap_lifecycle_events`, `consent_records`, `deletion_jobs`, `rights_requests`, `ai_usage_events` chỉ INSERT (enforce ở app layer + DB trigger).
 3. Curriculum/skill/prerequisite thay đổi qua **version bump**, không mutate bản đang dùng (giữ reproducibility của mastery đã tính).
 4. Foreign keys explicit; prerequisite DAG được validate **không có chu trình** ở CI (golden test riêng).
 5. Derived tables có thể `TRUNCATE + rebuild` từ evidence bất kỳ lúc nào — đây là bài test bất biến "recompute = same result".
 6. **Append-only ≠ không xoá được.** Append-only là bất biến audit/compute *trong vòng đời hợp pháp của dữ liệu*. Quyền xoá dữ liệu trẻ em (Privacy Architecture §7–§8) chạy qua **deletion workflow có quyền đặc biệt** — tạm tắt trigger append-only cho transaction đó (`SET session_replication_role = replica`), xoá theo thứ tự, ghi `deletion_jobs` audit. SLA mục tiêu ≤ 72 giờ.
 7. **Child PII (Privacy Architecture):** consent versioned + auditable (`consent_records`), data minimization tới AI provider, raw upload retention 30 ngày (configurable), full-erasure workflow, mọi upload private. Xem `docs/implementation/PRIVACY_ARCHITECTURE.md`.
+8. **AI cost (Pricing Guardrails v1.0):** public model prices là config effective-dated (`ai_pricing_registry`), không hard-code vào domain logic. Mọi call AI/OCR ghi `ai_usage_events` (pseudonymous). `plan_budget_ledger` là cache enforcement — rebuild từ events phải khớp. Per-plan price/target/ceiling LOCKED trong code. Xem `docs/implementation/PRICING_AND_COST_GUARDRAILS.md`.

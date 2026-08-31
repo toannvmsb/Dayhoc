@@ -4,12 +4,12 @@
 > trong quá trình em làm autonomous các phase. **Không có mục nào trong đây chặn
 > phase kế tiếp** — em đã đi vòng hoặc để lại `todo` có đánh dấu.
 >
-> Cập nhật lần cuối: 2026-08-31 (sau khi hoàn thành vertical slice P0–P10).
+> Cập nhật lần cuối: 2026-09-01 (golden Twin/Planner + E2E datasets; AI cost/routing architecture).
 >
-> **Tình trạng:** Toàn bộ 11 phase (P0→P10) đã có vertical slice + 149 test xanh.
+> **Tình trạng:** Toàn bộ 11 phase (P0→P10) đã có vertical slice + **258 test xanh**.
 > Deterministic engine, projections, web app (Parent/Child/Teacher/Exam/Weekly),
-> API role-gated, AI adapter + audit trace đều chạy. Phần còn lại chủ yếu là
-> **dữ liệu** và **quyết định của anh** — liệt kê dưới đây.
+> API role-gated, AI adapter + audit trace, **AI cost/routing/budget + telemetry**
+> đều chạy. Phần còn lại chủ yếu là **dữ liệu** và **quyết định của anh** — liệt kê dưới đây.
 
 ---
 
@@ -20,7 +20,7 @@
 | P-01 | **Em tự rà skill graph/DAG lớp 7 theo SGK trước → xuất bản đề xuất, anh duyệt.** Chưa freeze `M7.*`. | ⏳ TODO: em rà 42 skill + DAG + 9 bridge + 5 family HSG theo SGK Toán 7 KNTT, xuất Google Sheet cho anh. |
 | P-02 | Giữ coefficients provisional tới khi có pilot data. | ✅ Đã đúng (config tách riêng, mọi output có `confidence`). |
 | P-03 | **Con login = username + password do bố mẹ tạo (con đổi được). PIN 4 số = shortcut vào bài được giao, KHÔNG phải login.** | ✅ `04_DATABASE_MODEL §1`: `child_credentials` + `child_quick_access` (scope='assigned_work'). Migration `1756684800000`. CLAUDE.md role restrictions cập nhật. |
-| P-04 | Chưa chốt LLM/OCR — dùng mock, quay lại sau. | ✅ Đã đúng (`@copilot/ai` MockProvider; `ai_provider_registry` seed 'internal'+'mock'). |
+| P-04 | Chưa chốt LLM/OCR — dùng mock, quay lại sau. **CẬP NHẬT 2026-09-01:** anh cấp Pricing + AI Cost Guardrails v1.0 + AI/OCR Benchmark Kit v1.0. | ✅ **Architecture đã chốt & code:** `@copilot/ai` `pricing.ts` (registry effective-dated) · `routing.ts` (Luna-first matrix) · `margin.ts` (bảng §6 tái lập trong test) · `budget.ts` (target/ceiling + guardrail chống retry-loop) · `usage-event.ts` (telemetry §7). Migration `1756771200000_ai_cost_telemetry` (`ai_pricing_registry`, `ai_usage_events` ⊕, `plan_budget_ledger`) — up/down/up + trigger verified. Benchmark harness `@copilot/testing/src/benchmark/*` + vendor kit. Docs: `PRICING_AND_COST_GUARDRAILS.md` + delta 03/04/06 + CLAUDE.md. **CÒN benchmark-gated:** Sonnet 5 vs Terra + OCR fallback thresholds + confidence thresholds — xem mục D-07. Runtime vẫn Mock. |
 | P-05 | **17 nguyên tắc Privacy-by-Design → bake vào architecture trước khi build module data trẻ em.** | ✅ `docs/implementation/PRIVACY_ARCHITECTURE.md` + delta vào docs 03/04/05/06. Migration `1756684800000_privacy_foundation`: `consent_records` (⊕ versioned), `ai_provider_registry` (`training_allowed` CHECK false), `data_processing_inventory`, `deletion_jobs`, `rights_requests` (⊕), upload retention 30d. `@copilot/ai` `minimizeForProvider()` + 5 test. Consent UI = deliverable sau. |
 
 ## B. Dữ liệu — CẬP NHẬT 2026-08-31
@@ -44,6 +44,7 @@
 | D-03 | **Ngân hàng câu hỏi authored** (100–200 câu, mỗi skill/problem-type) | ⏳ chưa có — `@copilot/practice` hiện có 7 câu mẫu. Dev Core README §"việc cần làm tiếp" #4 cũng ghi. |
 | D-04 | **Item-level curriculum G7 + full prereq DAG lớp 1–9** | ⏳ Dev Core mới có skill-level; prereq graph G7 provisional. |
 | D-05 | **8 golden question case** cần domain sâu (factorization, combinatorics HSG…) | Có trong 120 câu nhưng problem_type là free-form slug, engine map best-effort. |
+| **D-07** | **30–50 ảnh vở/bài kiểm tra THẬT đã ẩn PII** (Grade 4 + Grade 7, in + viết tay + phân số/hình học/số hữu tỉ/phương trình/HSG + ảnh xấu) + ground truth do người xác minh. | ⏳ **Cần anh** — benchmark AI/OCR không chạy được nếu thiếu. Kit 40 slot đã sẵn ở `packages/testing/benchmark-data/`, tất cả `IMAGE_REQUIRED`. Không gửi tên trẻ/trường/lớp/địa chỉ cho provider. Khi có ảnh → chạy 4 pipeline (Luna / Luna+Google OCR / Terra / Sonnet) → điền `FINAL_ROUTING_DECISION_TEMPLATE.json` + `BENCHMARK_REPORT.md` / `COST_REPORT.md` / `ROUTING_RECOMMENDATION.md`, dừng chờ anh duyệt. |
 
 ## C1. Màn hình còn thiếu (không chặn — engine + projection đã đủ)
 

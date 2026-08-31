@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "case_id",
+    "human_verified",
+    "transcription",
+    "education_mapping",
+    "student_work",
+    "privacy"
+  ],
+  "properties": {
+    "case_id": {
+      "type": "string"
+    },
+    "human_verified": {
+      "type": "boolean"
+    },
+    "transcription": {
+      "type": "object"
+    },
+    "education_mapping": {
+      "type": "object"
+    },
+    "student_work": {
+      "type": "object"
+    },
+    "privacy": {
+      "type": "object"
+    }
+  }
+}

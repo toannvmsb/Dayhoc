@@ -14,6 +14,7 @@ export * from './taxonomy.js';
 export * from './evidence.js';
 export * from './gap.js';
 export * from './roles.js';
+export * from './subscription.js';
 export * from './context.js';
 export * from './twin.js';
 export * from './prescription.js';

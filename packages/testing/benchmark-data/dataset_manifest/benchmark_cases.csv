@@ -1,0 +1,41 @@
+﻿case_id,category,description,grade_context,content_type,image_file,status,contains_pii,anonymization_required,expected_ground_truth_file,notes
+IMG-001,G4_PRINTED,Lớp 4 - đề in rõ,4,printed,images/IMG-001.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-001.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-002,G4_PRINTED,Lớp 4 - đề in rõ,4,printed,images/IMG-002.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-002.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-003,G4_PRINTED,Lớp 4 - đề in rõ,4,printed,images/IMG-003.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-003.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-004,G4_PRINTED,Lớp 4 - đề in rõ,4,printed,images/IMG-004.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-004.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-005,G4_PRINTED,Lớp 4 - đề in rõ,4,printed,images/IMG-005.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-005.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-006,G4_HANDWRITING,Lớp 4 - chữ viết tay,4,handwriting,images/IMG-006.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-006.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-007,G4_HANDWRITING,Lớp 4 - chữ viết tay,4,handwriting,images/IMG-007.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-007.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-008,G4_HANDWRITING,Lớp 4 - chữ viết tay,4,handwriting,images/IMG-008.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-008.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-009,G4_HANDWRITING,Lớp 4 - chữ viết tay,4,handwriting,images/IMG-009.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-009.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-010,G4_HANDWRITING,Lớp 4 - chữ viết tay,4,handwriting,images/IMG-010.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-010.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-011,G4_HANDWRITING,Lớp 4 - chữ viết tay,4,handwriting,images/IMG-011.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-011.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-012,G4_HANDWRITING,Lớp 4 - chữ viết tay,4,handwriting,images/IMG-012.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-012.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-013,G4_FRACTION,Lớp 4 - phân số/ký hiệu toán,4,mixed_math,images/IMG-013.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-013.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-014,G4_FRACTION,Lớp 4 - phân số/ký hiệu toán,4,mixed_math,images/IMG-014.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-014.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-015,G4_FRACTION,Lớp 4 - phân số/ký hiệu toán,4,mixed_math,images/IMG-015.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-015.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-016,G4_FRACTION,Lớp 4 - phân số/ký hiệu toán,4,mixed_math,images/IMG-016.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-016.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-017,G4_FRACTION,Lớp 4 - phân số/ký hiệu toán,4,mixed_math,images/IMG-017.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-017.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-018,G4_GEOMETRY,Lớp 4 - hình học/đo lường,4,geometry,images/IMG-018.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-018.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-019,G4_GEOMETRY,Lớp 4 - hình học/đo lường,4,geometry,images/IMG-019.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-019.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-020,G4_GEOMETRY,Lớp 4 - hình học/đo lường,4,geometry,images/IMG-020.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-020.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-021,G7_RATIONAL,Lớp 7 - số hữu tỉ/phân số,7,mixed_math,images/IMG-021.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-021.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-022,G7_RATIONAL,Lớp 7 - số hữu tỉ/phân số,7,mixed_math,images/IMG-022.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-022.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-023,G7_RATIONAL,Lớp 7 - số hữu tỉ/phân số,7,mixed_math,images/IMG-023.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-023.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-024,G7_RATIONAL,Lớp 7 - số hữu tỉ/phân số,7,mixed_math,images/IMG-024.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-024.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-025,G7_RATIONAL,Lớp 7 - số hữu tỉ/phân số,7,mixed_math,images/IMG-025.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-025.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-026,G7_EQUATION,Lớp 7 - phương trình/biến đổi,7,mixed_math,images/IMG-026.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-026.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-027,G7_EQUATION,Lớp 7 - phương trình/biến đổi,7,mixed_math,images/IMG-027.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-027.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-028,G7_EQUATION,Lớp 7 - phương trình/biến đổi,7,mixed_math,images/IMG-028.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-028.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-029,G7_EQUATION,Lớp 7 - phương trình/biến đổi,7,mixed_math,images/IMG-029.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-029.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-030,G7_EQUATION,Lớp 7 - phương trình/biến đổi,7,mixed_math,images/IMG-030.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-030.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-031,G7_GEOMETRY,Lớp 7 - hình học/chứng minh,7,geometry,images/IMG-031.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-031.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-032,G7_GEOMETRY,Lớp 7 - hình học/chứng minh,7,geometry,images/IMG-032.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-032.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-033,G7_GEOMETRY,Lớp 7 - hình học/chứng minh,7,geometry,images/IMG-033.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-033.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-034,G7_GEOMETRY,Lớp 7 - hình học/chứng minh,7,geometry,images/IMG-034.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-034.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-035,G7_ADVANCED,Lớp 7 - nâng cao/HSG/T4-T5,7,advanced_math,images/IMG-035.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-035.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-036,G7_ADVANCED,Lớp 7 - nâng cao/HSG/T4-T5,7,advanced_math,images/IMG-036.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-036.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-037,G7_ADVANCED,Lớp 7 - nâng cao/HSG/T4-T5,7,advanced_math,images/IMG-037.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-037.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-038,G7_ADVANCED,Lớp 7 - nâng cao/HSG/T4-T5,7,advanced_math,images/IMG-038.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-038.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-039,LOW_QUALITY,Ảnh khó: mờ/nghiêng/bóng/thiếu sáng,,degraded,images/IMG-039.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-039.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.
+IMG-040,LOW_QUALITY,Ảnh khó: mờ/nghiêng/bóng/thiếu sáng,,degraded,images/IMG-040.jpg,IMAGE_REQUIRED,False,True,ground_truth/IMG-040.json,Thay bằng ảnh thật đã ẩn tên/trường/lớp/địa chỉ trước benchmark.

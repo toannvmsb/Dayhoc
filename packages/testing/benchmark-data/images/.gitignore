@@ -1,0 +1,4 @@
+# Real (even anonymized) student work images MUST NOT be versioned.
+# Drop benchmark images here locally; the harness reads them by manifest.
+*
+!.gitignore

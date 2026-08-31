@@ -1,0 +1,22 @@
+{
+  "benchmark_status": "NOT_RUN",
+  "recommended_default_pipeline": null,
+  "recommended_ocr_fallback": null,
+  "recommended_advanced_pipeline": null,
+  "routing_thresholds": {
+    "vision_confidence_escalate_below": null,
+    "ocr_fallback_categories": [],
+    "advanced_categories": []
+  },
+  "measured_costs": {
+    "default_cost_vnd_per_page": null,
+    "ocr_fallback_cost_vnd_per_page": null,
+    "advanced_cost_vnd_per_case": null,
+    "estimated_monthly_ai_cogs_by_plan": {}
+  },
+  "financial_check": {
+    "pricing_guardrails_source": "Pricing_AI_Cost_Guardrails_Model_Routing_v1.0.md",
+    "rule": "Measured AI COGS must be tested against plan hard ceilings before production routing is approved.",
+    "status": "PENDING_BENCHMARK"
+  }
+}

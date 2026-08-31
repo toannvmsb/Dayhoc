@@ -1,0 +1,12 @@
+{
+  "valid": true,
+  "benchmark_slots": 40,
+  "grade4_slots": 20,
+  "grade7_slots": 18,
+  "degraded_slots": 2,
+  "pipeline_candidates": 4,
+  "hard_gates": 5,
+  "real_child_images_included": false,
+  "pii_policy": "PASS — manifest requires anonymization before provider processing",
+  "note": "Benchmark cannot be considered complete until real anonymized images are added and human ground truth is verified."
+}

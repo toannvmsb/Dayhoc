@@ -75,6 +75,46 @@ export interface ProviderCompliance {
   readonly dpaStatus: 'signed' | 'pending' | 'not_applicable';
 }
 
+/**
+ * Capability-oriented adapter contract (Pricing + AI Cost Guardrails v1.0 §9).
+ * Routing policy is configuration-driven; no business rule may depend on a
+ * concrete `openai` / `anthropic` / `google` SDK object. An adapter binds ONE
+ * capability to ONE provider+model and carries its compliance metadata.
+ */
+export const AI_CAPABILITIES = [
+  'vision_extract',
+  'classify',
+  'generate_problem',
+  'diagnose',
+  'explain',
+  'verify',
+] as const;
+export type AiCapability = (typeof AI_CAPABILITIES)[number];
+
+export interface AIProviderAdapter extends ProviderCompliance {
+  readonly capability: AiCapability;
+  readonly model: string;
+  /** Structured-in, structured-out; the orchestrator validates the output. */
+  call(input: StructuredAIInput): Promise<StructuredAIOutput>;
+}
+
+export interface StructuredAIInput {
+  readonly operation: string;
+  readonly schemaName: string;
+  readonly payload: unknown;
+  readonly imageRefs?: readonly string[];
+  readonly maxTokens?: number;
+  readonly temperature?: number;
+}
+
+export interface StructuredAIOutput {
+  readonly text: string;
+  readonly usage: { readonly inputTokens: number; readonly cachedInputTokens?: number; readonly outputTokens: number };
+  readonly imageCount?: number;
+  readonly ocrPages?: number;
+  readonly confidence?: number;
+}
+
 export function estimateCostUsd(
   usage: LlmResponse['usage'],
   pricing: ProviderPricing,

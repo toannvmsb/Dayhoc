@@ -100,15 +100,45 @@ Confidence tier khác với **evidence confidence tier (A/B/C/D)** ở tầng do
 
 ## 6. Cost, latency & safety governance
 
-- Track **token_in/out, cost, latency_ms** mỗi inference → dashboard + budget alert.
+- Track **token_in/out, cached_in, cost_usd/vnd, latency_ms, confidence, escalation_reason** mỗi inference → `ai_usage_events` (INSERT-only) → dashboard (`rollup`) + traffic light (`cogsPerUser`). Chi tiết: [PRICING_AND_COST_GUARDRAILS.md](PRICING_AND_COST_GUARDRAILS.md).
 - Batch/caching cho generation lặp; cache theo (skill, problem_type, K, T).
 - Safety: `minimizeForProvider` bắt buộc trước mọi call — không rò rỉ PII của child vào prompt provider. Provider cho child-data phải có `training_allowed = false` + DPA đã ký (`ai_provider_registry`).
 - Fail-open cho học tập (fallback về ngân hàng câu hỏi authored) nhưng **fail-closed cho ghi state**.
 
 ---
 
-## 7. Testing AI layer
+## 7. Model routing & budget (Pricing v1.0 §3–§5, §8)
+
+**Luna-first.** `resolveRoute(operation, ctx)` (`@copilot/ai` `routing.ts`) trả tier
+theo `ROUTING_MATRIX`; mục tiêu **85–95%** call ở Luna / deterministic / question-bank.
+Escalate chỉ khi đo được: confidence thấp, evidence mâu thuẫn, ứng viên nhập nhằng,
+chữ viết tay / layout toán, hoặc K4–K5 / T4–T5. Advanced tier = `advancedModelPending`
+cho tới khi benchmark chọn **Claude Sonnet 5 vs GPT-5.6 Terra** (§3.2).
+
+**Budget gate trước mỗi metered call:** `checkBudget({ plan, state, estimatedCostVnd,
+requestedTier, safetyCritical? })`:
+- deterministic / question_bank / cache: không xét budget;
+- trên target, dưới ceiling: tier rẻ vẫn chạy, `advanced` bị hạ xuống `luna`;
+- sẽ vượt hard ceiling: từ chối, hạ 1 tier (`cheaperThan`);
+- `safetyCritical` (privacy, xoá dữ liệu, kiểm chứng đúng/sai): luôn bypass budget (§8).
+
+**Guardrail:** không vòng lặp retry/escalation nào đẩy chi phí vượt hard ceiling
+(`simulateEscalationLoop`, test cho cả 4 gói).
+
+Pipeline (mở rộng §3):
+```
+build payload → minimizeForProvider → resolveRoute(op, ctx) → checkBudget(...)
+  → allow?  yes → provider.call  |  no → fallback tier / rescan / defer
+  → Zod parse (schema_version) → confidence gate → graph validation
+  → emit AiUsageEvent → persist ai_inference → CANDIDATE / feed engine
+```
+
+---
+
+## 8. Testing AI layer
 
 - **Contract tests:** mọi schema có fixture valid/invalid.
 - **Golden discrimination:** AI-assisted classification chạy trên golden cases (xem `08_GOLDEN_TEST_PLAN`) — nhưng phán quyết cuối do deterministic engine, nên golden tests **không phụ thuộc tính ngẫu nhiên của LLM**.
 - **Mock provider** trong CI (không gọi mạng); provider thật chỉ ở integration test có gate.
+- **Cost/routing tests:** `@copilot/ai` `{pricing,routing,margin,budget,usage-event}.test.ts` — bảng margin §6 tái lập chính xác; guardrail hard-ceiling; Luna-first share ≥ 85%.
+- **Benchmark harness:** `@copilot/testing` `src/benchmark/*` — validate scoring + hard gates + cost→margin; KHÔNG tự chọn provider (cần ảnh thật + ground truth người xác minh).

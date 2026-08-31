@@ -1,0 +1,1 @@
+﻿run_id,case_id,pipeline_id,model_version,schema_pass,transcription_score,math_expression_score,separation_score,mapping_score,error_localization_score,latency_ms,input_tokens,output_tokens,ocr_pages,cost_usd,cost_vnd,confidence,retry_count,escalated,notes

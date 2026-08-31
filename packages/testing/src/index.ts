@@ -10,3 +10,6 @@
 export * from './harness.js';
 export * from './golden/load.js';
 export * from './golden/twin-planner-pipeline.js';
+export * from './benchmark/load.js';
+export * from './benchmark/output-schema.js';
+export * from './benchmark/score.js';

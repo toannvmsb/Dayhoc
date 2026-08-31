@@ -1,0 +1,23 @@
+benchmark_candidates:
+- pipeline_id: P1_LUNA_VISION
+  vision: gpt-5.6-luna
+  ocr: null
+  reasoning: gpt-5.6-luna
+  role: Default baseline
+- pipeline_id: P2_LUNA_GOOGLE_OCR
+  vision: gpt-5.6-luna
+  ocr: Google Document AI OCR
+  reasoning: gpt-5.6-luna
+  role: OCR-assisted low-cost candidate
+- pipeline_id: P3_TERRA_VISION
+  vision: gpt-5.6-terra
+  ocr: null
+  reasoning: gpt-5.6-terra
+  role: Advanced OpenAI candidate
+- pipeline_id: P4_SONNET_VISION
+  vision: Claude Sonnet
+  ocr: null
+  reasoning: Claude Sonnet
+  role: Advanced cross-provider candidate
+important: Model aliases/versions and live prices must be injected from environment/config at benchmark time; do not hard-code billing prices
+  in test logic.

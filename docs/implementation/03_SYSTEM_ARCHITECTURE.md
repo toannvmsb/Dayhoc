@@ -54,8 +54,9 @@
   /api-contract   OpenAPI/tRPC types shared client↔server
   /api-client     Typed client (web+mobile share)
   /ai             Provider adapters (LLM, OCR/Vision) + orchestration
+                  + pricing registry · model routing · margin model · budget engine · usage telemetry
   /design-tokens  Color/spacing/type tokens (web+mobile)
-  /testing        Golden test harness + fixtures
+  /testing        Golden test harness + fixtures + AI/OCR benchmark harness
 /services
   /api            HTTP server wiring domain + AI + persistence
   /workers        Background jobs (scan pipeline, recompute, notifications)
@@ -108,6 +109,7 @@ Engine core là **pure/deterministic** → dễ test bằng golden tests, tách 
 - **Background jobs (Redis):** scan pipeline, recompute mastery, notification fan-out, **retention purge scheduling** (raw upload 30d), **deletion workflow** (drain AI jobs → xoá theo thứ tự, SLA ≤ 72h).
 - **Storage lifecycle:** object storage sau interface (S3-compatible). **Mọi upload private** — signed expiring URL theo family+role, không public URL. `retention_expires_at` mặc định +30d; sau OCR→evidence thành công thì raw eligible purge.
 - **AI provider registry:** mỗi provider có `ProviderCompliance` metadata (region, cross-border, `data_categories_allowed`, `training_allowed` **phải false** cho child data, DPA status). Orchestrator từ chối call vượt category cho phép.
+- **AI cost & routing (Pricing Guardrails v1.0):** `resolveRoute` (Luna-first, 85–95% call ở tier rẻ) + `checkBudget` (per-plan target/hard-ceiling, graceful fallback, safety-critical bypass) trước mỗi metered call. Mọi call ghi `ai_usage_events` (pseudonymous, INSERT-only) → dashboard + traffic light. Public model prices = `ai_pricing_registry` effective-dated, không hard-code. Advanced model (Sonnet 5 vs Terra) benchmark-gated. Chi tiết: `docs/implementation/PRICING_AND_COST_GUARDRAILS.md`.
 - **Config/secrets:** ngoài source control; env + secret manager. Encryption in transit + at rest.
 
 > Chi tiết đầy đủ: `docs/implementation/PRIVACY_ARCHITECTURE.md` (17 nguyên tắc, anh duyệt P-05).

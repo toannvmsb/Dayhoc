@@ -1,0 +1,18 @@
+weights_percent:
+  transcription_accuracy: 20
+  math_expression_accuracy: 20
+  question_student_work_separation: 10
+  skill_problem_type_mapping: 15
+  answer_error_localization: 10
+  structured_schema_pass: 5
+  latency: 5
+  cost_per_page: 10
+  privacy_data_minimization: 5
+hard_gates:
+- schema_pass_rate >= 99%
+- no invented production skill_id
+- PII minimization policy pass = 100%
+- math expression critical error rate <= 2% on standard cases
+- no silent commit when extraction confidence is below threshold
+selection_rule: Choose the cheapest pipeline that passes all hard gates and reaches >=95/100 weighted quality on standard cases. Use advanced pipeline only
+  for categories where default pipeline misses the gate.
