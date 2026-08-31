@@ -4,4 +4,5 @@
  */
 export * from './validate.js';
 export * from './evidence.schema.js';
+export * from './teacher-contribution.schema.js';
 export * from './ai-classification.schema.js';

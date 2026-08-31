@@ -42,7 +42,8 @@ Platforms: Web + iOS + Android. Pilot: Toán **lớp 4** + **lớp 7**. Bảy ca
 
 ## Folder structure
 `/apps/{web,mobile}` · `/packages/{domain,schemas,education-core,observability,math-data,api-contract,api-client,ai,design-tokens,testing}` · `/services/{api,workers}` · `/migrations` · `/docs`.
-Monorepo dùng **npm workspaces** (corepack/pnpm bị chặn quyền trên Windows — quyết định nhỏ). Packages đã có: `@copilot/domain`, `@copilot/schemas`, `@copilot/education-core`, `@copilot/observability`, `@copilot/math-data`, `@copilot/design-tokens`.
+Monorepo dùng **npm workspaces** (corepack/pnpm bị chặn quyền trên Windows — quyết định nhỏ). Packages đã có: `@copilot/{domain, schemas, education-core, observability, math-data, design-tokens, evidence, learning-context}`.
+Quyết định nhỏ: `evidence.skill_id`/`problem_type_id` là **TEXT, không FK** — skill graph là static versioned data của `@copilot/math-data`, validate ở app layer.
 
 ## Design system
 Direction **LOCKED = "Hướng 1A · Bình tĩnh & ấm"** (anh chọn từ 3 hướng): nền kem `#FFFBF5`, teal `#0E9384`, `Plus Jakarta Sans`, single-column card stack, Today Plan = thanh mix tỉ lệ. Nguồn: `docs/design/handoff/` (Claude Design export) + UI/UX Spec §5,§19,§20. Tokens ở `@copilot/design-tokens` (web dùng `/css`, RN dùng object). Inventory 20 màn mobile + 2 web map theo capability/role: `docs/implementation/DESIGN_SYSTEM.md`. **Screens dựng ở Phase 6→7→8**, không sớm hơn.
@@ -52,8 +53,13 @@ Direction **LOCKED = "Hướng 1A · Bình tĩnh & ấm"** (anh chọn từ 3 h�
 - DAG acyclic invariant; recompute-idempotent invariant; child-projection deny tests; AI schema contract tests (mock provider trong CI).
 
 ## Current phase
-**Phase 1 — Education Core: đang làm (vertical slice xong).** `@copilot/math-data`: JSON data lớp 4 (fraction chain + distributive + tổng-hiệu) & lớp 7 (ratio → dãy tỉ số → multivar → identity/symmetric), Zod schema, loader validate + build graph. Invariants pass: DAG acyclic, mọi skill có curriculum node, mọi problem type có (K,T), crossGrade flag khớp, cross-grade bridge `M4.FRAC.COMMON_DENOM → G7.RAT.OPS`. `typecheck/lint/test` xanh (**31 tests**). Postgres 16.4 portable ở `C:\Users\AD\pg-portable` (start thủ công bằng `pg_ctl` — xem `docs/implementation/LOCAL_DB.md`).
-**Còn lại Phase 1:** mở rộng data coverage (thêm domain lớp 4/7), chốt với chuyên gia Toán (D5). Rồi Phase 2 — Evidence & Learning Context.
+**Phase 2 — Evidence & Learning Context: xong (vertical slice).**
+- `@copilot/evidence`: `EvidenceService` (validate ở boundary, stamp id/time/provenance), `LedgerStore` port **không có update/delete**, `InMemoryLedgerStore` + `PgLedgerStore` (`@copilot/evidence/pg`). TeacherContribution = optional context source (teacher HOẶC parent nhập thay).
+- `@copilot/learning-context`: `buildLearningContext` **pure** — standard position + actual-taught + per-domain frontier + activeSkills + conflicts; **chạy được với 0 teacher contribution**.
+- Migration `1756598400000_evidence_ledger`: identity core (users/families/parents/teachers/child_profiles/teacher_invites) + `evidence`/`ai_inferences`/`teacher_contributions`/`uploads` với **trigger DB chặn UPDATE/DELETE** (đã verify: up/down/up sạch + trigger reject thật). Xoá child cho retention = privileged op tạm tắt trigger (`session_replication_role=replica`) — Phase 10.
+- `typecheck/lint/test` xanh: **43 pass + 2 integration** (chạy khi có `DATABASE_URL`). CI đã thêm service Postgres 16.
+- Phase 1 vẫn còn: mở rộng data coverage Toán (anh update sau) + review chuyên gia (D5).
+**Tiếp theo: Phase 3 — Child Learning Twin** (mastery/problem-type/thinking derived, recompute idempotent).
 
 ## Approved decisions (anh duyệt 2026-08-30)
 - **D1** Skill ID grade-opaque + metadata `grade_context`; giữ `M4.*`/`G7.*` làm alias. (đã encode ở `@copilot/domain`)

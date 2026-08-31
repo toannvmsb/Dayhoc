@@ -6,6 +6,8 @@
     { "path": "packages/education-core" },
     { "path": "packages/math-data" },
     { "path": "packages/design-tokens" },
-    { "path": "packages/observability" }
+    { "path": "packages/observability" },
+    { "path": "packages/evidence" },
+    { "path": "packages/learning-context" }
   ]
 }
