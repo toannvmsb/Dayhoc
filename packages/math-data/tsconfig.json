@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "resolveJsonModule": true
+  },
+  "references": [{ "path": "../domain" }, { "path": "../education-core" }],
+  "include": ["src/**/*.ts", "src/**/*.json"],
+  "exclude": ["**/*.test.ts"]
+}

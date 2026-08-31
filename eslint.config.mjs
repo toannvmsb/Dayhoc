@@ -6,7 +6,15 @@ import prettier from 'eslint-config-prettier';
 
 export default [
   {
-    ignores: ['**/dist/**', '**/build/**', '**/node_modules/**', '**/.next/**', 'apps/mobile/**'],
+    ignores: [
+      '**/dist/**',
+      '**/build/**',
+      '**/node_modules/**',
+      '**/.next/**',
+      'apps/mobile/**',
+      // Vendored Claude Design export — reference artifact, not our source.
+      'docs/design/handoff/**',
+    ],
   },
   js.configs.recommended,
   {

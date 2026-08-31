@@ -1,0 +1,49 @@
+{
+  "gradeContext": 7,
+  "curriculum": [
+    { "id": "C.G7.RAT", "gradeContext": 7, "textbook": "Toán 7 - Kết nối tri thức", "volume": 1, "strand": "Chương I — Số hữu tỉ", "lesson": "Số hữu tỉ và các phép tính với số hữu tỉ" },
+    { "id": "C.G7.ALG.EXPR", "gradeContext": 7, "textbook": "Toán 7 - Kết nối tri thức", "volume": 2, "strand": "Chương VII — Biểu thức đại số và đa thức một biến", "lesson": "Biểu thức đại số" },
+    { "id": "C.G7.RATIO.PROPORTION", "gradeContext": 7, "textbook": "Toán 7 - Kết nối tri thức", "volume": 1, "strand": "Chương VI — Tỉ lệ thức và đại lượng tỉ lệ", "lesson": "Tỉ lệ thức" },
+    { "id": "C.G7.RATIO.EQUAL_CHAIN", "gradeContext": 7, "textbook": "Toán 7 - Kết nối tri thức", "volume": 1, "strand": "Chương VI — Tỉ lệ thức và đại lượng tỉ lệ", "lesson": "Tính chất của dãy tỉ số bằng nhau" },
+    { "id": "C.G7.ADV.IDENTITY", "gradeContext": 7, "textbook": "Chuyên đề nâng cao — Biến đổi đồng nhất", "strand": "Nâng cao — Biến đổi đại số", "lesson": "Hằng đẳng thức và khai triển biểu thức" },
+    { "id": "C.G7.ADV.SYMMETRIC", "gradeContext": 7, "textbook": "Chuyên đề nâng cao — Biến đổi đồng nhất", "strand": "Nâng cao — Biểu thức đối xứng (HSG)", "lesson": "Biểu thức đối xứng từ a+b và ab" }
+  ],
+  "skills": [
+    { "id": "G7.RAT.OPS", "gradeContext": 7, "domain": "arithmetic", "topic": "Số hữu tỉ", "name": "Các phép tính với số hữu tỉ", "description": "Cộng, trừ, nhân, chia số hữu tỉ; quy tắc dấu; thứ tự thực hiện phép tính.", "curriculumNodeId": "C.G7.RAT", "curriculumOrigin": 7, "thinkingDimensions": ["number_sense", "strategic_choice"], "advancedExtensions": ["fast_calculation_by_structure", "nested_rational_expressions"] },
+    { "id": "G7.ALG.EXPRESSION", "gradeContext": 7, "domain": "algebraic_thinking", "topic": "Biểu thức đại số", "name": "Biểu thức đại số và giá trị của biểu thức", "description": "Lập, thu gọn và tính giá trị biểu thức đại số.", "curriculumNodeId": "C.G7.ALG.EXPR", "curriculumOrigin": 7, "thinkingDimensions": ["algebraic_thinking", "problem_representation"], "advancedExtensions": [] },
+    { "id": "G7.RATIO.PROPORTION", "gradeContext": 7, "domain": "algebraic_thinking", "topic": "Tỉ lệ thức", "name": "Tỉ lệ thức", "description": "Định nghĩa và tính chất tỉ lệ thức; tìm số hạng chưa biết.", "curriculumNodeId": "C.G7.RATIO.PROPORTION", "curriculumOrigin": 7, "thinkingDimensions": ["algebraic_thinking", "pattern_recognition"], "advancedExtensions": [] },
+    { "id": "G7.RATIO.EQUAL_RATIO", "gradeContext": 7, "domain": "algebraic_thinking", "topic": "Dãy tỉ số bằng nhau", "name": "Tính chất dãy tỉ số bằng nhau", "description": "a/b = c/d = (a+c)/(b+d); đặt hệ số k.", "curriculumNodeId": "C.G7.RATIO.EQUAL_CHAIN", "curriculumOrigin": 7, "thinkingDimensions": ["algebraic_thinking", "strategic_choice"], "advancedExtensions": [] },
+    { "id": "G7.RATIO.SUM_CONSTRAINT", "gradeContext": 7, "domain": "word_problems", "topic": "Dãy tỉ số bằng nhau", "name": "Tìm các số biết tỉ số và tổng", "description": "Bài toán chia theo tỉ lệ với điều kiện tổng.", "curriculumNodeId": "C.G7.RATIO.EQUAL_CHAIN", "curriculumOrigin": 7, "thinkingDimensions": ["problem_representation", "strategic_choice"], "advancedExtensions": [] },
+    { "id": "G7.RATIO.EQUAL_CHAIN", "gradeContext": 7, "domain": "algebraic_thinking", "topic": "Dãy tỉ số bằng nhau", "name": "Chuỗi nhiều tỉ số bằng nhau", "description": "x/a = y/b = z/c và các điều kiện đi kèm.", "curriculumNodeId": "C.G7.RATIO.EQUAL_CHAIN", "curriculumOrigin": 7, "thinkingDimensions": ["algebraic_thinking", "strategic_choice"], "advancedExtensions": [] },
+    { "id": "G7.MULTIVAR.XYZ", "gradeContext": 7, "domain": "algebraic_thinking", "topic": "Hệ tỉ số nhiều biến", "name": "Hệ x/a = y/b = z/c với điều kiện tuyến tính", "description": "Giải hệ ba biến từ dãy tỉ số bằng nhau và một điều kiện tuyến tính.", "curriculumNodeId": "C.G7.RATIO.EQUAL_CHAIN", "curriculumOrigin": 7, "thinkingDimensions": ["algebraic_thinking", "strategic_choice", "reverse_reasoning"], "advancedExtensions": ["shifted_variable_ratio"] },
+    { "id": "G7.MULTIVAR.PRODUCT", "gradeContext": 7, "domain": "algebraic_thinking", "topic": "Hệ tỉ số nhiều biến", "name": "Tỉ số với điều kiện tích", "description": "Dãy tỉ số bằng nhau kèm điều kiện dạng tích (xyz hoặc bậc hai).", "curriculumNodeId": "C.G7.ADV.IDENTITY", "curriculumOrigin": 8, "thinkingDimensions": ["algebraic_thinking", "strategic_choice", "proof_explanation"], "advancedExtensions": ["quadratic_constraint"] },
+    { "id": "G7.ALG.IDENTITY", "gradeContext": 7, "domain": "algebraic_thinking", "topic": "Biến đổi đồng nhất", "name": "Hằng đẳng thức và khai triển", "description": "Khai triển, nhóm, đặt nhân tử chung, dùng hằng đẳng thức đáng nhớ.", "curriculumNodeId": "C.G7.ADV.IDENTITY", "curriculumOrigin": 8, "thinkingDimensions": ["algebraic_thinking", "pattern_recognition"], "advancedExtensions": ["conditional_simplification"] },
+    { "id": "G7.SYM.BASIC", "gradeContext": 7, "domain": "algebraic_thinking", "topic": "Biểu thức đối xứng", "name": "Biểu thức đối xứng cơ bản", "description": "Từ a+b và ab suy ra a²+b², (a−b)², a³+b³.", "curriculumNodeId": "C.G7.ADV.SYMMETRIC", "curriculumOrigin": 9, "thinkingDimensions": ["algebraic_thinking", "proof_explanation", "pattern_recognition"], "advancedExtensions": ["x_plus_reciprocal_powers"] }
+  ],
+  "prerequisites": [
+    { "from": "M4.FRAC.COMMON_DENOM", "to": "G7.RAT.OPS", "importance": 0.8, "crossGrade": true },
+    { "from": "M4.FRAC.MUL", "to": "G7.RAT.OPS", "importance": 0.7, "crossGrade": true },
+    { "from": "M4.ALG.EXPR_VAR", "to": "G7.ALG.EXPRESSION", "importance": 0.7, "crossGrade": true },
+    { "from": "M4.ARITH.DISTRIBUTIVE", "to": "G7.ALG.IDENTITY", "importance": 0.75, "crossGrade": true },
+    { "from": "G7.RAT.OPS", "to": "G7.RATIO.PROPORTION", "importance": 0.85, "crossGrade": false },
+    { "from": "G7.RATIO.PROPORTION", "to": "G7.RATIO.EQUAL_RATIO", "importance": 0.9, "crossGrade": false },
+    { "from": "G7.RATIO.EQUAL_RATIO", "to": "G7.RATIO.SUM_CONSTRAINT", "importance": 0.85, "crossGrade": false },
+    { "from": "G7.RATIO.EQUAL_RATIO", "to": "G7.RATIO.EQUAL_CHAIN", "importance": 0.9, "crossGrade": false },
+    { "from": "G7.RATIO.EQUAL_CHAIN", "to": "G7.MULTIVAR.XYZ", "importance": 0.9, "crossGrade": false },
+    { "from": "G7.ALG.EXPRESSION", "to": "G7.ALG.IDENTITY", "importance": 0.8, "crossGrade": false },
+    { "from": "G7.MULTIVAR.XYZ", "to": "G7.MULTIVAR.PRODUCT", "importance": 0.7, "crossGrade": false },
+    { "from": "G7.ALG.IDENTITY", "to": "G7.MULTIVAR.PRODUCT", "importance": 0.8, "crossGrade": false },
+    { "from": "G7.ALG.IDENTITY", "to": "G7.SYM.BASIC", "importance": 0.85, "crossGrade": false }
+  ],
+  "problemTypes": [
+    { "id": "G7.RATIO.PROPORTION.PT1", "skillId": "G7.RATIO.PROPORTION", "name": "Tìm số hạng chưa biết của tỉ lệ thức", "knowledgeLevel": "K2", "thinkingLevel": "T1" },
+    { "id": "G7.RATIO.SUM_CONSTRAINT.PT1", "skillId": "G7.RATIO.SUM_CONSTRAINT", "name": "Tìm hai số biết tỉ số và tổng", "knowledgeLevel": "K2", "thinkingLevel": "T2" },
+    { "id": "G7.RATIO.EQUAL_CHAIN.PT1", "skillId": "G7.RATIO.EQUAL_CHAIN", "name": "Áp dụng tính chất dãy tỉ số bằng nhau", "knowledgeLevel": "K2", "thinkingLevel": "T2" },
+    { "id": "G7.RATIO.EQUAL_CHAIN.PT_HSG", "skillId": "G7.RATIO.EQUAL_CHAIN", "name": "So sánh b hơn a bao nhiêu phần trăm không tính từng số", "knowledgeLevel": "K3", "thinkingLevel": "T5" },
+    { "id": "G7.MULTIVAR.XYZ.PT1", "skillId": "G7.MULTIVAR.XYZ", "name": "Giải hệ x/a=y/b=z/c với tổng cho trước", "knowledgeLevel": "K3", "thinkingLevel": "T3" },
+    { "id": "G7.MULTIVAR.PRODUCT.PT1", "skillId": "G7.MULTIVAR.PRODUCT", "name": "Tỉ số kèm điều kiện tích xyz", "knowledgeLevel": "K4", "thinkingLevel": "T4" },
+    { "id": "G7.ALG.IDENTITY.PT1", "skillId": "G7.ALG.IDENTITY", "name": "Khai triển bằng hằng đẳng thức đáng nhớ", "knowledgeLevel": "K3", "thinkingLevel": "T2" },
+    { "id": "G7.SYM.BASIC.PT1", "skillId": "G7.SYM.BASIC", "name": "Tính a²+b² từ a+b và ab", "knowledgeLevel": "K4", "thinkingLevel": "T4" },
+    { "id": "G7.SYM.BASIC.PT_HSG", "skillId": "G7.SYM.BASIC", "name": "Tính lũy thừa cao của x+1/x", "knowledgeLevel": "K4", "thinkingLevel": "T5" }
+  ]
+}

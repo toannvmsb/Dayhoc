@@ -42,14 +42,18 @@ Platforms: Web + iOS + Android. Pilot: Toán **lớp 4** + **lớp 7**. Bảy ca
 
 ## Folder structure
 `/apps/{web,mobile}` · `/packages/{domain,schemas,education-core,observability,math-data,api-contract,api-client,ai,design-tokens,testing}` · `/services/{api,workers}` · `/migrations` · `/docs`.
-Monorepo dùng **npm workspaces** (corepack/pnpm bị chặn quyền trên Windows — quyết định nhỏ). Packages đã có: `@copilot/domain`, `@copilot/schemas`, `@copilot/education-core`, `@copilot/observability`.
+Monorepo dùng **npm workspaces** (corepack/pnpm bị chặn quyền trên Windows — quyết định nhỏ). Packages đã có: `@copilot/domain`, `@copilot/schemas`, `@copilot/education-core`, `@copilot/observability`, `@copilot/math-data`, `@copilot/design-tokens`.
+
+## Design system
+Direction **LOCKED = "Hướng 1A · Bình tĩnh & ấm"** (anh chọn từ 3 hướng): nền kem `#FFFBF5`, teal `#0E9384`, `Plus Jakarta Sans`, single-column card stack, Today Plan = thanh mix tỉ lệ. Nguồn: `docs/design/handoff/` (Claude Design export) + UI/UX Spec §5,§19,§20. Tokens ở `@copilot/design-tokens` (web dùng `/css`, RN dùng object). Inventory 20 màn mobile + 2 web map theo capability/role: `docs/implementation/DESIGN_SYSTEM.md`. **Screens dựng ở Phase 6→7→8**, không sớm hơn.
 
 ## Test requirements
 - Golden educational tests (registry `GT-G4-*`/`GT-G7-*`) + discrimination matrix (8 gap types + K/T separation) phải pass **trước khi mở rộng UI** (Golden Gate ở Phase 4.5).
 - DAG acyclic invariant; recompute-idempotent invariant; child-projection deny tests; AI schema contract tests (mock provider trong CI).
 
 ## Current phase
-**Phase 0 — Foundation: HOÀN THÀNH.** Monorepo + TS strict + eslint(ban `any`) + vitest + node-pg-migrate. `typecheck/lint/test` xanh (16 tests). **Migration up/down đã verify thật** trên Postgres 16.4 portable (không service, không admin, trust localhost) — DB `parent_copilot`, xem `docs/implementation/LOCAL_DB.md`. DB **không tự chạy sau reboot**; start bằng `pg_ctl`. Tiếp theo: **Phase 1 — Education Core** (`@copilot/math-data`: curriculum Grade 4/7 + skill graph + prerequisite DAG + problem types + K/T taxonomy). Xem `docs/implementation/10_IMPLEMENTATION_ROADMAP.md`.
+**Phase 1 — Education Core: đang làm (vertical slice xong).** `@copilot/math-data`: JSON data lớp 4 (fraction chain + distributive + tổng-hiệu) & lớp 7 (ratio → dãy tỉ số → multivar → identity/symmetric), Zod schema, loader validate + build graph. Invariants pass: DAG acyclic, mọi skill có curriculum node, mọi problem type có (K,T), crossGrade flag khớp, cross-grade bridge `M4.FRAC.COMMON_DENOM → G7.RAT.OPS`. `typecheck/lint/test` xanh (**31 tests**). Postgres 16.4 portable ở `C:\Users\AD\pg-portable` (start thủ công bằng `pg_ctl` — xem `docs/implementation/LOCAL_DB.md`).
+**Còn lại Phase 1:** mở rộng data coverage (thêm domain lớp 4/7), chốt với chuyên gia Toán (D5). Rồi Phase 2 — Evidence & Learning Context.
 
 ## Approved decisions (anh duyệt 2026-08-30)
 - **D1** Skill ID grade-opaque + metadata `grade_context`; giữ `M4.*`/`G7.*` làm alias. (đã encode ở `@copilot/domain`)

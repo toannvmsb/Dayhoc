@@ -1,0 +1,60 @@
+{
+  "gradeContext": 4,
+  "curriculum": [
+    { "id": "C.G4.EXPR_VAR", "gradeContext": 4, "textbook": "Toán 4 - Kết nối tri thức", "volume": 1, "strand": "Chủ đề 1 — Ôn tập và bổ sung", "lesson": "Biểu thức chữ" },
+    { "id": "C.G4.SUMDIFF", "gradeContext": 4, "textbook": "Toán 4 - Kết nối tri thức", "volume": 1, "strand": "Chủ đề 5 — Phép cộng và phép trừ", "lesson": "Tìm hai số biết tổng và hiệu của hai số đó" },
+    { "id": "C.G4.DISTRIB", "gradeContext": 4, "textbook": "Toán 4 - Kết nối tri thức", "volume": 2, "strand": "Chủ đề 8 — Phép nhân và phép chia", "lesson": "Tính chất phân phối của phép nhân đối với phép cộng" },
+    { "id": "C.G4.FRAC.CONCEPT", "gradeContext": 4, "textbook": "Toán 4 - Kết nối tri thức", "volume": 2, "strand": "Chủ đề 10 — Phân số", "lesson": "Khái niệm phân số" },
+    { "id": "C.G4.FRAC.AS_DIVISION", "gradeContext": 4, "textbook": "Toán 4 - Kết nối tri thức", "volume": 2, "strand": "Chủ đề 10 — Phân số", "lesson": "Phân số và phép chia số tự nhiên" },
+    { "id": "C.G4.FRAC.EQUIV", "gradeContext": 4, "textbook": "Toán 4 - Kết nối tri thức", "volume": 2, "strand": "Chủ đề 10 — Phân số", "lesson": "Tính chất cơ bản của phân số" },
+    { "id": "C.G4.FRAC.SIMPLIFY", "gradeContext": 4, "textbook": "Toán 4 - Kết nối tri thức", "volume": 2, "strand": "Chủ đề 10 — Phân số", "lesson": "Rút gọn phân số" },
+    { "id": "C.G4.FRAC.COMMON_DENOM", "gradeContext": 4, "textbook": "Toán 4 - Kết nối tri thức", "volume": 2, "strand": "Chủ đề 10 — Phân số", "lesson": "Quy đồng mẫu số các phân số" },
+    { "id": "C.G4.FRAC.COMPARE", "gradeContext": 4, "textbook": "Toán 4 - Kết nối tri thức", "volume": 2, "strand": "Chủ đề 10 — Phân số", "lesson": "So sánh phân số" },
+    { "id": "C.G4.FRAC.ADDSUB", "gradeContext": 4, "textbook": "Toán 4 - Kết nối tri thức", "volume": 2, "strand": "Chủ đề 11 — Phép cộng, phép trừ phân số", "lesson": "Phép cộng, phép trừ phân số" },
+    { "id": "C.G4.FRAC.MULDIV", "gradeContext": 4, "textbook": "Toán 4 - Kết nối tri thức", "volume": 2, "strand": "Chủ đề 12 — Phép nhân, phép chia phân số", "lesson": "Phép nhân, phép chia phân số; tìm phân số của một số" }
+  ],
+  "skills": [
+    { "id": "M4.ALG.EXPR_VAR", "gradeContext": 4, "domain": "algebraic_thinking", "topic": "Biểu thức chữ", "name": "Hiểu và tính giá trị biểu thức chữ", "description": "Hiểu chữ là chỗ thay số, thay giá trị và tính giá trị biểu thức.", "curriculumNodeId": "C.G4.EXPR_VAR", "curriculumOrigin": 4, "thinkingDimensions": ["algebraic_thinking", "problem_representation"], "advancedExtensions": ["compare_expressions"] },
+    { "id": "M4.WORD.SUM_DIFF", "gradeContext": 4, "domain": "word_problems", "topic": "Tổng - hiệu", "name": "Tìm hai số biết tổng và hiệu", "description": "Giải bài toán tổng - hiệu, kể cả khi tổng hoặc hiệu bị ẩn.", "curriculumNodeId": "C.G4.SUMDIFF", "curriculumOrigin": 4, "thinkingDimensions": ["problem_representation", "strategic_choice", "reverse_reasoning"], "advancedExtensions": ["hidden_sum", "hidden_difference", "before_after_change"] },
+    { "id": "M4.ARITH.DISTRIBUTIVE", "gradeContext": 4, "domain": "arithmetic", "topic": "Tính chất phân phối", "name": "Tính chất phân phối của phép nhân với phép cộng", "description": "Dùng a×(b+c)=a×b+a×c cả hai chiều; nhận ra nhân tử chung.", "curriculumNodeId": "C.G4.DISTRIB", "curriculumOrigin": 4, "thinkingDimensions": ["pattern_recognition", "strategic_choice", "algebraic_thinking"], "advancedExtensions": ["hidden_common_factor", "transform_before_calculating", "equation_simplification"] },
+    { "id": "M4.FRAC.CONCEPT", "gradeContext": 4, "domain": "fractions", "topic": "Phân số", "name": "Khái niệm phân số", "description": "Hiểu phân số là phần của một tổng thể; đọc, viết phân số.", "curriculumNodeId": "C.G4.FRAC.CONCEPT", "curriculumOrigin": 4, "thinkingDimensions": ["number_sense", "problem_representation"], "advancedExtensions": [] },
+    { "id": "M4.FRAC.AS_DIVISION", "gradeContext": 4, "domain": "fractions", "topic": "Phân số", "name": "Phân số và phép chia số tự nhiên", "description": "Hiểu a/b = a : b.", "curriculumNodeId": "C.G4.FRAC.AS_DIVISION", "curriculumOrigin": 4, "thinkingDimensions": ["number_sense"], "advancedExtensions": [] },
+    { "id": "M4.FRAC.EQUIVALENT", "gradeContext": 4, "domain": "fractions", "topic": "Phân số", "name": "Phân số bằng nhau", "description": "Nhân/chia cả tử và mẫu cho cùng một số khác 0 được phân số bằng nhau.", "curriculumNodeId": "C.G4.FRAC.EQUIV", "curriculumOrigin": 4, "thinkingDimensions": ["number_sense", "pattern_recognition"], "advancedExtensions": [] },
+    { "id": "M4.FRAC.SIMPLIFY", "gradeContext": 4, "domain": "fractions", "topic": "Phân số", "name": "Rút gọn phân số", "description": "Chia tử và mẫu cho ước chung để được phân số tối giản.", "curriculumNodeId": "C.G4.FRAC.SIMPLIFY", "curriculumOrigin": 4, "thinkingDimensions": ["number_sense", "strategic_choice"], "advancedExtensions": [] },
+    { "id": "M4.FRAC.COMMON_DENOM", "gradeContext": 4, "domain": "fractions", "topic": "Phân số", "name": "Quy đồng mẫu số các phân số", "description": "Đưa các phân số về cùng mẫu số bằng phân số bằng nhau.", "curriculumNodeId": "C.G4.FRAC.COMMON_DENOM", "curriculumOrigin": 4, "thinkingDimensions": ["strategic_choice", "number_sense"], "advancedExtensions": ["least_common_denominator", "one_denominator_is_multiple"] },
+    { "id": "M4.FRAC.COMPARE", "gradeContext": 4, "domain": "fractions", "topic": "Phân số", "name": "So sánh phân số", "description": "So sánh phân số cùng mẫu, khác mẫu, so với 1.", "curriculumNodeId": "C.G4.FRAC.COMPARE", "curriculumOrigin": 4, "thinkingDimensions": ["number_sense", "strategic_choice"], "advancedExtensions": [] },
+    { "id": "M4.FRAC.ADD", "gradeContext": 4, "domain": "fractions", "topic": "Phân số", "name": "Cộng phân số", "description": "Cộng hai phân số cùng mẫu và khác mẫu.", "curriculumNodeId": "C.G4.FRAC.ADDSUB", "curriculumOrigin": 4, "thinkingDimensions": ["number_sense"], "advancedExtensions": [] },
+    { "id": "M4.FRAC.SUB", "gradeContext": 4, "domain": "fractions", "topic": "Phân số", "name": "Trừ phân số", "description": "Trừ hai phân số cùng mẫu và khác mẫu.", "curriculumNodeId": "C.G4.FRAC.ADDSUB", "curriculumOrigin": 4, "thinkingDimensions": ["number_sense"], "advancedExtensions": [] },
+    { "id": "M4.FRAC.MUL", "gradeContext": 4, "domain": "fractions", "topic": "Phân số", "name": "Nhân phân số", "description": "Nhân hai phân số, rút gọn trước khi nhân.", "curriculumNodeId": "C.G4.FRAC.MULDIV", "curriculumOrigin": 4, "thinkingDimensions": ["number_sense", "strategic_choice"], "advancedExtensions": [] },
+    { "id": "M4.FRAC.DIV", "gradeContext": 4, "domain": "fractions", "topic": "Phân số", "name": "Chia phân số", "description": "Chia phân số bằng cách nhân với phân số nghịch đảo.", "curriculumNodeId": "C.G4.FRAC.MULDIV", "curriculumOrigin": 4, "thinkingDimensions": ["number_sense"], "advancedExtensions": [] },
+    { "id": "M4.FRAC.OF_QUANTITY", "gradeContext": 4, "domain": "fractions", "topic": "Phân số", "name": "Tìm phân số của một số", "description": "Tính m/n của một số lượng cho trước.", "curriculumNodeId": "C.G4.FRAC.MULDIV", "curriculumOrigin": 4, "thinkingDimensions": ["problem_representation", "number_sense"], "advancedExtensions": ["reverse_find_whole"] }
+  ],
+  "prerequisites": [
+    { "from": "M4.FRAC.CONCEPT", "to": "M4.FRAC.AS_DIVISION", "importance": 0.9, "crossGrade": false },
+    { "from": "M4.FRAC.AS_DIVISION", "to": "M4.FRAC.EQUIVALENT", "importance": 0.8, "crossGrade": false },
+    { "from": "M4.FRAC.EQUIVALENT", "to": "M4.FRAC.SIMPLIFY", "importance": 0.95, "crossGrade": false },
+    { "from": "M4.FRAC.EQUIVALENT", "to": "M4.FRAC.COMMON_DENOM", "importance": 0.95, "crossGrade": false },
+    { "from": "M4.FRAC.SIMPLIFY", "to": "M4.FRAC.COMMON_DENOM", "importance": 0.6, "crossGrade": false },
+    { "from": "M4.FRAC.COMMON_DENOM", "to": "M4.FRAC.COMPARE", "importance": 0.85, "crossGrade": false },
+    { "from": "M4.FRAC.COMMON_DENOM", "to": "M4.FRAC.ADD", "importance": 0.95, "crossGrade": false },
+    { "from": "M4.FRAC.COMMON_DENOM", "to": "M4.FRAC.SUB", "importance": 0.95, "crossGrade": false },
+    { "from": "M4.FRAC.ADD", "to": "M4.FRAC.SUB", "importance": 0.5, "crossGrade": false },
+    { "from": "M4.FRAC.SIMPLIFY", "to": "M4.FRAC.MUL", "importance": 0.7, "crossGrade": false },
+    { "from": "M4.FRAC.MUL", "to": "M4.FRAC.DIV", "importance": 0.9, "crossGrade": false },
+    { "from": "M4.FRAC.MUL", "to": "M4.FRAC.OF_QUANTITY", "importance": 0.8, "crossGrade": false },
+    { "from": "M4.ALG.EXPR_VAR", "to": "M4.ARITH.DISTRIBUTIVE", "importance": 0.55, "crossGrade": false }
+  ],
+  "problemTypes": [
+    { "id": "M4.FRAC.EQUIVALENT.PT1", "skillId": "M4.FRAC.EQUIVALENT", "name": "Điền số để hai phân số bằng nhau", "knowledgeLevel": "K2", "thinkingLevel": "T1" },
+    { "id": "M4.FRAC.COMMON_DENOM.PT1", "skillId": "M4.FRAC.COMMON_DENOM", "name": "Quy đồng hai phân số khác mẫu", "knowledgeLevel": "K2", "thinkingLevel": "T1" },
+    { "id": "M4.FRAC.COMMON_DENOM.PT2", "skillId": "M4.FRAC.COMMON_DENOM", "name": "Quy đồng khi một mẫu là bội của mẫu kia", "knowledgeLevel": "K2", "thinkingLevel": "T2" },
+    { "id": "M4.FRAC.COMMON_DENOM.PT3", "skillId": "M4.FRAC.COMMON_DENOM", "name": "Quy đồng ba phân số", "knowledgeLevel": "K3", "thinkingLevel": "T2" },
+    { "id": "M4.WORD.SUM_DIFF.PT1", "skillId": "M4.WORD.SUM_DIFF", "name": "Tổng - hiệu cho trực tiếp", "knowledgeLevel": "K2", "thinkingLevel": "T2" },
+    { "id": "M4.WORD.SUM_DIFF.PT2", "skillId": "M4.WORD.SUM_DIFF", "name": "Tổng - hiệu với hiệu bị ẩn", "knowledgeLevel": "K3", "thinkingLevel": "T3" },
+    { "id": "M4.ARITH.DISTRIBUTIVE.PT1", "skillId": "M4.ARITH.DISTRIBUTIVE", "name": "Dùng trực tiếp a×(b+c)", "knowledgeLevel": "K2", "thinkingLevel": "T1" },
+    { "id": "M4.ARITH.DISTRIBUTIVE.PT2", "skillId": "M4.ARITH.DISTRIBUTIVE", "name": "Nhận ra nhân tử chung", "knowledgeLevel": "K2", "thinkingLevel": "T2" },
+    { "id": "M4.ARITH.DISTRIBUTIVE.PT4", "skillId": "M4.ARITH.DISTRIBUTIVE", "name": "Nhân tử chung bị che", "knowledgeLevel": "K3", "thinkingLevel": "T3" },
+    { "id": "M4.ARITH.DISTRIBUTIVE.PT_THINK", "skillId": "M4.ARITH.DISTRIBUTIVE", "name": "Tính nhanh 2026×99+2026 bằng cấu trúc", "knowledgeLevel": "K2", "thinkingLevel": "T4" },
+    { "id": "M4.ARITH.DISTRIBUTIVE.PT_CHALLENGE", "skillId": "M4.ARITH.DISTRIBUTIVE", "name": "Tự tạo biểu thức tính nhanh và giải thích", "knowledgeLevel": "K2", "thinkingLevel": "T5" }
+  ]
+}
