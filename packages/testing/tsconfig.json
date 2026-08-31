@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist"
+  },
+  "references": [
+    { "path": "../domain" },
+    { "path": "../math-data" },
+    { "path": "../learning-twin" },
+    { "path": "../gap-engine" }
+  ],
+  "include": ["src/**/*.ts"],
+  "exclude": ["**/*.test.ts"]
+}

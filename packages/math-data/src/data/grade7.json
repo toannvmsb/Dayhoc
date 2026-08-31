@@ -43,6 +43,7 @@
     { "id": "G7.MULTIVAR.XYZ.PT1", "skillId": "G7.MULTIVAR.XYZ", "name": "Giải hệ x/a=y/b=z/c với tổng cho trước", "knowledgeLevel": "K3", "thinkingLevel": "T3" },
     { "id": "G7.MULTIVAR.PRODUCT.PT1", "skillId": "G7.MULTIVAR.PRODUCT", "name": "Tỉ số kèm điều kiện tích xyz", "knowledgeLevel": "K4", "thinkingLevel": "T4" },
     { "id": "G7.ALG.IDENTITY.PT1", "skillId": "G7.ALG.IDENTITY", "name": "Khai triển bằng hằng đẳng thức đáng nhớ", "knowledgeLevel": "K3", "thinkingLevel": "T2" },
+    { "id": "G7.SYM.BASIC.PT_RECALL", "skillId": "G7.SYM.BASIC", "name": "Viết đúng công thức (a±b)³, a³±b³", "knowledgeLevel": "K4", "thinkingLevel": "T1" },
     { "id": "G7.SYM.BASIC.PT1", "skillId": "G7.SYM.BASIC", "name": "Tính a²+b² từ a+b và ab", "knowledgeLevel": "K4", "thinkingLevel": "T4" },
     { "id": "G7.SYM.BASIC.PT_HSG", "skillId": "G7.SYM.BASIC", "name": "Tính lũy thừa cao của x+1/x", "knowledgeLevel": "K4", "thinkingLevel": "T5" }
   ]

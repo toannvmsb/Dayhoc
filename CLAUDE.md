@@ -42,7 +42,7 @@ Platforms: Web + iOS + Android. Pilot: Toán **lớp 4** + **lớp 7**. Bảy ca
 
 ## Folder structure
 `/apps/{web,mobile}` · `/packages/{domain,schemas,education-core,observability,math-data,api-contract,api-client,ai,design-tokens,testing}` · `/services/{api,workers}` · `/migrations` · `/docs`.
-Monorepo dùng **npm workspaces** (corepack/pnpm bị chặn quyền trên Windows — quyết định nhỏ). Packages đã có: `@copilot/{domain, schemas, education-core, observability, math-data, design-tokens, evidence, learning-context, learning-twin}`.
+Monorepo dùng **npm workspaces** (corepack/pnpm bị chặn quyền trên Windows — quyết định nhỏ). Packages đã có: `@copilot/{domain, schemas, education-core, observability, math-data, design-tokens, evidence, learning-context, learning-twin, gap-engine, testing}`.
 Quyết định nhỏ: `evidence.skill_id`/`problem_type_id` là **TEXT, không FK** — skill graph là static versioned data của `@copilot/math-data`, validate ở app layer.
 
 ## Design system
@@ -53,12 +53,14 @@ Direction **LOCKED = "Hướng 1A · Bình tĩnh & ấm"** (anh chọn từ 3 h�
 - DAG acyclic invariant; recompute-idempotent invariant; child-projection deny tests; AI schema contract tests (mock provider trong CI).
 
 ## Current phase
-**Phase 3 — Child Learning Twin: xong (vertical slice).**
-- `@copilot/learning-twin`: `buildLearningTwin` **pure/deterministic** từ evidence stream → skill mastery đa tín hiệu (correctness × hint dependency × reasoning × retention × recurrence × evidence confidence, KHÔNG raw accuracy), problem-type mastery (tách riêng), thinking profile (tách riêng, `demonstratedLevel` bị cap bởi thinkingLevel đã thử), per-domain frontier (KHÔNG global level). `recomputeTwin` job qua `EvidenceReader` port. Coefficients ở `DEFAULT_MASTERY_CONFIG` — **provisional/chưa calibrate (R3)**, mọi output có `confidence`.
-- Bất biến đã test: recompute idempotent (kể cả đảo thứ tự input), careless slip (wrong+strong reasoning) hạ mastery nhẹ hơn real gap nhiều, 3 trục tách biệt, hint dependency ăn mòn credit, retention decay, không claim thinking level cao hơn item đã thử.
-- `typecheck/lint/test` xanh: **52 pass + 2 integration**.
-- **Phase 1 & 2 còn nợ** (không chặn): data Toán mở rộng (anh update sau) + review chuyên gia (D5); child-delete retention op (Phase 10).
-**Tiếp theo: Phase 4 — Gap & Readiness Engine** (gap detection 8 loại, root-gap trace, gap_score, lifecycle state machine, readiness, prescription). Golden discrimination matrix bắt đầu ở đây.
+**Phase 4 — Gap & Readiness Engine: xong (vertical slice).**
+- `@copilot/gap-engine` (pure, no I/O, no AI): `detectGaps` phân loại lỗi thành 1 trong 8+ gap type theo priority order (retention→careless→prerequisite→reasoning→recognition/application→method→procedural→concept[fallback]) kèm `ruledOut`; `traceRootGap` đi ngược prereq DAG **chỉ vào prereq có evidence & yếu** (không bịa "yếu đại số" từ bài HSG); `scoreGap` (công thức §21, gap nhỏ vẫn ưu tiên cao nếu chặn học tiếp); `lifecycle` state machine — **không đóng gap sau 1 lần đúng** (CLOSED cần remediation + re-test lặp + retention check); `computeReadiness` → ready / parallel_repair / repair_first (giữ đường advanced khi an toàn); `generatePrescription` (§23, 4 lựa chọn parent: follow/lighter/intensify/later); `runGapEngine` orchestrate.
+- `@copilot/testing`: golden harness (evidence→twin→gap, AI decoupled) + **Golden Discrimination Matrix**: 8 gap type phân biệt đúng + K/T độc lập (K2/T5 fail → reasoning_gap KHÔNG "cần lớp cao hơn", frontier không aboveGrade).
+- `math-data`: thêm `G7.SYM.BASIC.PT_RECALL` (K4/T1) cho case K/T.
+- Coefficients `DEFAULT_GAP_CONFIG`/`DEFAULT_READINESS_CONFIG` — **provisional (R3, D5)**.
+- `typecheck/lint/test` xanh: **77 pass + 2 integration**.
+- Nợ (không chặn): data Toán mở rộng (anh update sau) + review chuyên gia DAG (D5); child-delete retention op (Phase 10).
+**Tiếp theo: Phase 4.5 — GOLDEN GATE** (hoàn thiện registry GT-G4-*/GT-G7-*, CI chặn merge nếu golden fail) rồi Phase 5 — Planning & Practice.
 
 ## Approved decisions (anh duyệt 2026-08-30)
 - **D1** Skill ID grade-opaque + metadata `grade_context`; giữ `M4.*`/`G7.*` làm alias. (đã encode ở `@copilot/domain`)

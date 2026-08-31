@@ -9,6 +9,8 @@
     { "path": "packages/observability" },
     { "path": "packages/evidence" },
     { "path": "packages/learning-context" },
-    { "path": "packages/learning-twin" }
+    { "path": "packages/learning-twin" },
+    { "path": "packages/gap-engine" },
+    { "path": "packages/testing" }
   ]
 }
