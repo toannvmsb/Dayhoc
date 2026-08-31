@@ -29,10 +29,10 @@ describe('Phase 8 — teacher quick update flows into the parent Learning Contex
       dateLabel: 'Buổi 30/8',
       gradeContext: 7,
       knowledgeBase: KB,
-      recentSkillIds: ['G7.RATIO.EQUAL_CHAIN'],
+      recentSkillIds: ['M7.RATIO.EQUAL_CHAIN'],
     });
     expect(form.topicChoices.length).toBeLessThanOrEqual(12);
-    expect(form.topicChoices[0]!.skillId).toBe('G7.RATIO.EQUAL_CHAIN'); // recent first
+    expect(form.topicChoices[0]!.skillId).toBe('M7.RATIO.EQUAL_CHAIN'); // recent first
     expect(form.estimatedSeconds).toBeLessThanOrEqual(60);
   });
 
@@ -55,14 +55,14 @@ describe('Phase 8 — teacher quick update flows into the parent Learning Contex
       contributedAs: 'teacher',
       actorUserId: 'teacher_hang',
       occurredOn: '2026-08-29',
-      taughtSkillIds: ['G7.RATIO.EQUAL_CHAIN'],
+      taughtSkillIds: ['M7.RATIO.EQUAL_CHAIN'],
       problemTypeIds: [],
       homeworkRefs: ['SGK tr.12 bài 1-4'],
     });
 
     const after = await context([contribution], evidence);
     expect(after.teacherParticipated).toBe(true);
-    expect(after.actualTaughtPosition.skillIds).toContain(asSkillId('G7.RATIO.EQUAL_CHAIN'));
+    expect(after.actualTaughtPosition.skillIds).toContain(asSkillId('M7.RATIO.EQUAL_CHAIN'));
 
     // and the parent's Home reflects it
     const twin = buildLearningTwin({ childId, gradeContext: 7, evidence, knowledgeBase: KB, asOf });
@@ -87,7 +87,7 @@ describe('Phase 8 — teacher quick update flows into the parent Learning Contex
       contributedAs: 'parent',
       actorUserId: 'parent_thu_ha',
       occurredOn: '2026-08-30',
-      taughtSkillIds: ['G7.RATIO.PROPORTION'],
+      taughtSkillIds: ['M7.RATIO.PROPORTION'],
       problemTypeIds: [],
       homeworkRefs: [],
     });

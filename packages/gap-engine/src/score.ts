@@ -35,7 +35,9 @@ export function scoreGap(
 
   // Future dependency = share of the graph transitively downstream of the root.
   const downstream = transitiveDependents(finding.rootSkillId, kb);
-  const futureDependency = clamp01(downstream.size / Math.max(8, kb.skills.size / 3));
+  // Normalised against a realistic "blocks a lot" threshold (~8 downstream skills),
+  // not the whole graph — the graph grows as more grades are added.
+  const futureDependency = clamp01(downstream.size / 8);
 
   const goalWeight = parentGoal ? (config.goalWeight[parentGoal] ?? 0.85) : 0.85;
 

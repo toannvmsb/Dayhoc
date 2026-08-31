@@ -14,6 +14,7 @@
 export * from './config.js';
 export * from './root-gap.js';
 export * from './detect.js';
+export * from './error-signature.js';
 export * from './score.js';
 export * from './lifecycle.js';
 export * from './readiness.js';

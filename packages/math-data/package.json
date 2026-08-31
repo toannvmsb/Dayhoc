@@ -12,11 +12,15 @@
     }
   },
   "scripts": {
-    "build": "tsc -b"
+    "build": "tsc -b",
+    "data": "node scripts/build-kb.mjs"
   },
   "dependencies": {
     "@copilot/domain": "0.1.0",
     "@copilot/education-core": "0.1.0",
     "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "yaml": "^2.9.0"
   }
 }

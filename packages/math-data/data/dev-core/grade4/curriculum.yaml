@@ -1,0 +1,328 @@
+grade: 4
+textbook: Kết nối tri thức với cuộc sống
+source_type: standard_curriculum
+themes:
+- volume: 1
+  theme_id: 1
+  theme_name: Ôn tập và bổ sung
+  items:
+  - title: Ôn tập các số đến 100 000
+    skill_ids:
+    - M4.NUM.001
+    mapping_status: source_backed
+  - title: Ôn tập các phép tính trong phạm vi 100 000
+    skill_ids:
+    - M4.ARITH.ADD_MULTI
+    - M4.ARITH.SUB_MULTI
+    mapping_status: source_backed
+  - title: Số chẵn, số lẻ
+    skill_ids:
+    - M4.NUM.070
+    mapping_status: source_backed
+  - title: Biểu thức chữ
+    skill_ids:
+    - M4.ALG.EXPR_VAR
+    mapping_status: source_backed
+  - title: Giải bài toán có ba bước tính
+    skill_ids:
+    - M4.WORD.3STEP
+    mapping_status: source_backed
+  - title: Luyện tập chung
+    skill_ids: []
+    mapping_status: review_or_practice_not_atomic
+- volume: 1
+  theme_id: 2
+  theme_name: Góc và đơn vị đo góc
+  items:
+  - title: Đo góc, đơn vị đo góc
+    skill_ids:
+    - M4.GEO.ANGLE_MEASURE
+    mapping_status: source_backed
+  - title: Góc nhọn, góc tù, góc bẹt
+    skill_ids:
+    - M4.GEO.ANGLE_TYPE
+    mapping_status: source_backed
+  - title: Luyện tập chung
+    skill_ids: []
+    mapping_status: review_or_practice_not_atomic
+- volume: 1
+  theme_id: 3
+  theme_name: Số có nhiều chữ số
+  items:
+  - title: Số có sáu chữ số, số 1 000 000
+    skill_ids:
+    - M4.NUM.010
+    mapping_status: source_backed
+  - title: Hàng và lớp
+    skill_ids:
+    - M4.NUM.020
+    mapping_status: source_backed
+  - title: Các số trong phạm vi lớp triệu
+    skill_ids:
+    - M4.NUM.030
+    mapping_status: source_backed
+  - title: Làm tròn số đến hàng trăm nghìn
+    skill_ids:
+    - M4.NUM.050
+    mapping_status: source_backed
+  - title: So sánh các số có nhiều chữ số
+    skill_ids:
+    - M4.NUM.040
+    mapping_status: source_backed
+  - title: Làm quen với dãy số tự nhiên
+    skill_ids:
+    - M4.NUM.060
+    mapping_status: source_backed
+  - title: Luyện tập chung
+    skill_ids: []
+    mapping_status: review_or_practice_not_atomic
+- volume: 1
+  theme_id: 4
+  theme_name: Một số đơn vị đo đại lượng
+  items:
+  - title: Yến, tạ, tấn
+    skill_ids:
+    - M4.MEAS.MASS
+    mapping_status: source_backed
+  - title: Đề-xi-mét vuông, mét vuông, mi-li-mét vuông
+    skill_ids:
+    - M4.MEAS.AREA
+    mapping_status: source_backed
+  - title: Giây, thế kỉ
+    skill_ids:
+    - M4.MEAS.TIME
+    mapping_status: source_backed
+  - title: Thực hành và trải nghiệm sử dụng một số đơn vị đo
+    skill_ids: []
+    mapping_status: review_or_practice_not_atomic
+  - title: Luyện tập chung
+    skill_ids: []
+    mapping_status: review_or_practice_not_atomic
+- volume: 1
+  theme_id: 5
+  theme_name: Phép cộng và phép trừ
+  items:
+  - title: Phép cộng các số có nhiều chữ số
+    skill_ids:
+    - M4.ARITH.ADD_MULTI
+    mapping_status: source_backed
+  - title: Phép trừ các số có nhiều chữ số
+    skill_ids:
+    - M4.ARITH.SUB_MULTI
+    mapping_status: source_backed
+  - title: Tính chất giao hoán và kết hợp của phép cộng
+    skill_ids:
+    - M4.ARITH.ADD_COMM
+    - M4.ARITH.ADD_ASSOC
+    mapping_status: source_backed
+  - title: Tìm hai số biết tổng và hiệu của hai số đó
+    skill_ids:
+    - M4.WORD.SUM_DIFF
+    mapping_status: source_backed
+  - title: Luyện tập chung
+    skill_ids: []
+    mapping_status: review_or_practice_not_atomic
+- volume: 1
+  theme_id: 6
+  theme_name: Đường thẳng vuông góc. Đường thẳng song song
+  items:
+  - title: Hai đường thẳng vuông góc
+    skill_ids:
+    - M4.GEO.PERPENDICULAR
+    mapping_status: source_backed
+  - title: Thực hành và trải nghiệm vẽ hai đường thẳng vuông góc
+    skill_ids:
+    - M4.GEO.PERPENDICULAR
+    mapping_status: source_backed
+  - title: Hai đường thẳng song song
+    skill_ids:
+    - M4.GEO.PARALLEL
+    mapping_status: source_backed
+  - title: Thực hành và trải nghiệm vẽ hai đường thẳng song song
+    skill_ids:
+    - M4.GEO.PARALLEL
+    mapping_status: source_backed
+  - title: Hình bình hành, hình thoi
+    skill_ids:
+    - M4.GEO.PARALLELOGRAM
+    - M4.GEO.RHOMBUS
+    mapping_status: source_backed
+  - title: Luyện tập chung
+    skill_ids: []
+    mapping_status: review_or_practice_not_atomic
+- volume: 1
+  theme_id: 7
+  theme_name: Ôn tập học kì I
+  items:
+  - title: Ôn tập các số đến lớp triệu
+    skill_ids: []
+    mapping_status: review_or_practice_not_atomic
+  - title: Ôn tập phép cộng, phép trừ
+    skill_ids: []
+    mapping_status: review_or_practice_not_atomic
+  - title: Ôn tập hình học
+    skill_ids: []
+    mapping_status: review_or_practice_not_atomic
+  - title: Ôn tập đo lường
+    skill_ids: []
+    mapping_status: review_or_practice_not_atomic
+  - title: Ôn tập chung
+    skill_ids: []
+    mapping_status: review_or_practice_not_atomic
+- volume: 2
+  theme_id: 8
+  theme_name: Phép nhân và phép chia
+  items:
+  - title: Nhân với số có một chữ số
+    skill_ids:
+    - M4.ARITH.MUL_1DIGIT
+    mapping_status: source_backed
+  - title: Chia cho số có một chữ số
+    skill_ids:
+    - M4.ARITH.DIV_1DIGIT
+    mapping_status: source_backed
+  - title: Tính chất giao hoán và kết hợp của phép nhân
+    skill_ids:
+    - M4.ARITH.MUL_COMM
+    - M4.ARITH.MUL_ASSOC
+    mapping_status: source_backed
+  - title: Nhân, chia với 10, 100, 1 000, ...
+    skill_ids:
+    - M4.ARITH.POW10
+    mapping_status: source_backed
+  - title: Tính chất phân phối của phép nhân đối với phép cộng
+    skill_ids:
+    - M4.ARITH.DISTRIBUTIVE
+    mapping_status: source_backed
+  - title: Nhân với số có hai chữ số
+    skill_ids:
+    - M4.ARITH.MUL_2DIGIT
+    mapping_status: source_backed
+  - title: Chia cho số có hai chữ số
+    skill_ids:
+    - M4.ARITH.DIV_2DIGIT
+    mapping_status: source_backed
+  - title: Thực hành và trải nghiệm ước lượng trong tính toán
+    skill_ids:
+    - M4.ARITH.ESTIMATE
+    mapping_status: source_backed
+  - title: Tìm số trung bình cộng
+    skill_ids:
+    - M4.ARITH.AVERAGE
+    mapping_status: source_backed
+  - title: Bài toán liên quan đến rút về đơn vị
+    skill_ids:
+    - M4.WORD.UNIT_RATE
+    mapping_status: source_backed
+  - title: Luyện tập chung
+    skill_ids: []
+    mapping_status: review_or_practice_not_atomic
+- volume: 2
+  theme_id: 9
+  theme_name: Làm quen với yếu tố thống kê, xác suất
+  items:
+  - title: Dãy số liệu thống kê
+    skill_ids:
+    - M4.STAT.DATA_SEQUENCE
+    mapping_status: source_backed
+  - title: Biểu đồ cột
+    skill_ids:
+    - M4.STAT.BAR_CHART
+    mapping_status: source_backed
+  - title: Số lần xuất hiện của một sự kiện
+    skill_ids:
+    - M4.PROB.EVENT_FREQUENCY
+    mapping_status: source_backed
+  - title: Luyện tập chung
+    skill_ids: []
+    mapping_status: review_or_practice_not_atomic
+- volume: 2
+  theme_id: 10
+  theme_name: Phân số
+  items:
+  - title: Khái niệm phân số
+    skill_ids:
+    - M4.FRAC.CONCEPT
+    mapping_status: source_backed
+  - title: Phân số và phép chia số tự nhiên
+    skill_ids:
+    - M4.FRAC.AS_DIVISION
+    mapping_status: source_backed
+  - title: Tính chất cơ bản của phân số
+    skill_ids:
+    - M4.FRAC.EQUIVALENT
+    mapping_status: source_backed
+  - title: Rút gọn phân số
+    skill_ids:
+    - M4.FRAC.SIMPLIFY
+    mapping_status: source_backed
+  - title: Quy đồng mẫu số các phân số
+    skill_ids:
+    - M4.FRAC.COMMON_DENOM
+    mapping_status: source_backed
+  - title: So sánh phân số
+    skill_ids:
+    - M4.FRAC.COMPARE
+    mapping_status: source_backed
+  - title: Luyện tập chung
+    skill_ids: []
+    mapping_status: review_or_practice_not_atomic
+- volume: 2
+  theme_id: 11
+  theme_name: Phép cộng, phép trừ phân số
+  items:
+  - title: Phép cộng phân số
+    skill_ids:
+    - M4.FRAC.ADD
+    mapping_status: source_backed
+  - title: Phép trừ phân số
+    skill_ids:
+    - M4.FRAC.SUB
+    mapping_status: source_backed
+  - title: Luyện tập chung
+    skill_ids: []
+    mapping_status: review_or_practice_not_atomic
+- volume: 2
+  theme_id: 12
+  theme_name: Phép nhân, phép chia phân số
+  items:
+  - title: Phép nhân phân số
+    skill_ids:
+    - M4.FRAC.MUL
+    mapping_status: source_backed
+  - title: Phép chia phân số
+    skill_ids:
+    - M4.FRAC.DIV
+    mapping_status: source_backed
+  - title: Tìm phân số của một số
+    skill_ids:
+    - M4.FRAC.OF_QUANTITY
+    mapping_status: source_backed
+  - title: Luyện tập chung
+    skill_ids: []
+    mapping_status: review_or_practice_not_atomic
+- volume: 2
+  theme_id: 13
+  theme_name: Ôn tập cuối năm
+  items:
+  - title: Ôn tập số tự nhiên
+    skill_ids: []
+    mapping_status: review_or_practice_not_atomic
+  - title: Ôn tập phép tính với số tự nhiên
+    skill_ids: []
+    mapping_status: review_or_practice_not_atomic
+  - title: Ôn tập phân số
+    skill_ids: []
+    mapping_status: review_or_practice_not_atomic
+  - title: Ôn tập phép tính với phân số
+    skill_ids: []
+    mapping_status: review_or_practice_not_atomic
+  - title: Ôn tập hình học và đo lường
+    skill_ids: []
+    mapping_status: review_or_practice_not_atomic
+  - title: Ôn tập một số yếu tố thống kê và xác suất
+    skill_ids: []
+    mapping_status: review_or_practice_not_atomic
+  - title: Ôn tập chung
+    skill_ids: []
+    mapping_status: review_or_practice_not_atomic

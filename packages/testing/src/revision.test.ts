@@ -31,7 +31,7 @@ function scene(specs: Parameters<typeof buildEvidence>[1]) {
         actorUserId: 't',
         occurredOn: '2026-08-25',
         recordedAt: '2026-08-25T00:00:00Z',
-        taughtSkillIds: [asSkillId('G7.RATIO.EQUAL_CHAIN')],
+        taughtSkillIds: [asSkillId('M7.RATIO.EQUAL_CHAIN')],
         problemTypeIds: [],
         homeworkRefs: [],
       },
@@ -44,15 +44,15 @@ function scene(specs: Parameters<typeof buildEvidence>[1]) {
 
 describe('Exam flow works with only a date + recent context', () => {
   const { twin, context } = scene([
-    { skillId: 'G7.RATIO.EQUAL_CHAIN', daysAgo: 6, correct: true },
-    { skillId: 'G7.RATIO.EQUAL_RATIO', daysAgo: 12, correct: true },
+    { skillId: 'M7.RATIO.EQUAL_CHAIN', daysAgo: 6, correct: true },
+    { skillId: 'M7.RATIO.PROPORTION', daysAgo: 12, correct: true },
     { skillId: 'M4.FRAC.COMMON_DENOM', daysAgo: 4, correct: false, reasoningQuality: 'weak' },
   ]);
 
   it('infers a scope from context and asks the parent to confirm', () => {
     const scope = inferExamScope(context, twin, KB);
     expect(scope.skillIds.length).toBeGreaterThan(0);
-    expect(scope.skillIds).toContain(asSkillId('G7.RATIO.EQUAL_CHAIN'));
+    expect(scope.skillIds).toContain(asSkillId('M7.RATIO.EQUAL_CHAIN'));
     expect(scope.confidence).toBeGreaterThan(0);
     expect(scope.confidence).toBeLessThanOrEqual(1);
     expect(typeof scope.needsParentConfirm).toBe('boolean');
@@ -81,8 +81,8 @@ describe('Revision priority golden (Math Core §28)', () => {
   it('a forgotten, gated scope skill outranks a solid one', () => {
     const { twin, gaps } = scene([
       // solid + recent
-      { skillId: 'G7.RATIO.EQUAL_CHAIN', daysAgo: 3, correct: true, confidenceTier: 'A' },
-      { skillId: 'G7.RATIO.EQUAL_CHAIN', daysAgo: 8, correct: true, confidenceTier: 'A' },
+      { skillId: 'M7.RATIO.EQUAL_CHAIN', daysAgo: 3, correct: true, confidenceTier: 'A' },
+      { skillId: 'M7.RATIO.EQUAL_CHAIN', daysAgo: 8, correct: true, confidenceTier: 'A' },
       // forgotten prerequisite-heavy skill: verified long ago, now weak
       { skillId: 'M4.FRAC.COMMON_DENOM', daysAgo: 120, correct: true, confidenceTier: 'A' },
       { skillId: 'M4.FRAC.COMMON_DENOM', daysAgo: 3, correct: false, reasoningQuality: 'weak' },
@@ -92,7 +92,7 @@ describe('Revision priority golden (Math Core §28)', () => {
       childId,
       examDate: '2026-09-10',
       subject: 'Toán',
-      scopeSkillIds: [asSkillId('G7.RATIO.EQUAL_CHAIN'), asSkillId('M4.FRAC.COMMON_DENOM')],
+      scopeSkillIds: [asSkillId('M7.RATIO.EQUAL_CHAIN'), asSkillId('M4.FRAC.COMMON_DENOM')],
     };
     const plan = buildRevisionPlan({ childId, exam, twin, gaps, knowledgeBase: KB, asOf });
     expect(plan.priorityItems[0]!.skillId).toBe('M4.FRAC.COMMON_DENOM');
@@ -103,8 +103,8 @@ describe('Revision priority golden (Math Core §28)', () => {
 describe('Post-exam diagnosis classifies lost points', () => {
   it('does not treat every dropped mark as the same weakness', () => {
     const { twin } = scene([
-      { skillId: 'G7.RATIO.EQUAL_CHAIN', daysAgo: 5, correct: true, confidenceTier: 'A' },
-      { skillId: 'G7.RATIO.EQUAL_CHAIN', daysAgo: 10, correct: true, confidenceTier: 'A' },
+      { skillId: 'M7.RATIO.EQUAL_CHAIN', daysAgo: 5, correct: true, confidenceTier: 'A' },
+      { skillId: 'M7.RATIO.EQUAL_CHAIN', daysAgo: 10, correct: true, confidenceTier: 'A' },
       { skillId: 'M4.FRAC.EQUIVALENT', daysAgo: 6, correct: false },
       { skillId: 'M4.FRAC.EQUIVALENT', daysAgo: 2, correct: false },
     ]);
@@ -114,10 +114,10 @@ describe('Post-exam diagnosis classifies lost points', () => {
       twin,
       knowledgeBase: KB,
       outcomes: [
-        { questionRef: 'C1', skillId: asSkillId('G7.RATIO.EQUAL_CHAIN'), awardedScore: 0.6, reasoningQuality: 'strong' },
+        { questionRef: 'C1', skillId: asSkillId('M7.RATIO.EQUAL_CHAIN'), awardedScore: 0.6, reasoningQuality: 'strong' },
         { questionRef: 'C2', skillId: asSkillId('M4.FRAC.COMMON_DENOM'), awardedScore: 0 },
         { questionRef: 'C3', skillId: asSkillId('M4.FRAC.SIMPLIFY'), awardedScore: 0.4, stepsObserved: ['a', 'b'] },
-        { questionRef: 'C4', skillId: asSkillId('G7.RATIO.EQUAL_CHAIN'), awardedScore: 1 },
+        { questionRef: 'C4', skillId: asSkillId('M7.RATIO.EQUAL_CHAIN'), awardedScore: 1 },
       ],
     });
     const kinds = new Set(diag.lostPoints.map((l) => l.classification));

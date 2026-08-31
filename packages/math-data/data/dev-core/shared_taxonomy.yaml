@@ -1,0 +1,25 @@
+package: AI Parent Learning Copilot Math Dev Core
+version: '1.0'
+status: dev_ready_initial
+core_invariants:
+- school_grade_is_context_not_ceiling
+- skill_mastery_is_skill_specific
+- problem_type_mastery_is_separate_from_skill_mastery
+- knowledge_level_is_separate_from_thinking_level
+- evidence_history_must_be_auditable
+- llm_must_not_create_or_mutate_production_skill_ids
+- actual_learning_frontier_is_domain_specific
+- above_grade_learning_requires_readiness_check
+knowledge_levels:
+  K0: prerequisite_gap
+  K1: concept_intro
+  K2: grade_standard
+  K3: strong_grade
+  K4: above_grade_or_HSG
+  K5: competition_nonroutine
+thinking_levels:
+  T1: execute
+  T2: recognize_apply
+  T3: transform_combine
+  T4: strategic_reasoning
+  T5: nonroutine_proof_or_structure

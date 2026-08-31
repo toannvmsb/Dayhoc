@@ -75,8 +75,19 @@ export function runGapEngine(input: GapEngineInput): GapEngineResult {
     );
     readiness.push(targetReadiness);
 
+    // A substantial concept/method/recognition/application gap in a skill impedes
+    // progress in that skill by definition — not only when a prerequisite is weak.
+    const IN_SKILL_BLOCKING = new Set([
+      'concept_gap',
+      'method_gap',
+      'recognition_gap',
+      'application_gap',
+      'procedural_gap',
+    ]);
     const blocksCurrentLearning =
-      targetReadiness.recommendation !== 'ready' || finding.type === 'prerequisite_gap';
+      targetReadiness.recommendation !== 'ready' ||
+      finding.type === 'prerequisite_gap' ||
+      (IN_SKILL_BLOCKING.has(finding.type) && finding.severity >= 0.4);
     const blocksAdvancedLearning = targetReadiness.recommendation === 'repair_first';
 
     gaps.push({

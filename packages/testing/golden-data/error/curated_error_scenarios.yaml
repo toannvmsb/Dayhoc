@@ -1,0 +1,105 @@
+scenarios:
+- scenario_id: ERR-S01
+  name: Careless ≠ knowledge gap
+  input: Student explains method correctly, makes one arithmetic slip, self-corrects on prompt.
+  expected:
+  - careless_error
+  - minimal mastery penalty
+  - no major remediation
+- scenario_id: ERR-S02
+  name: Repeated sign error
+  input: Same sign mistake appears in 3 verified rational/equation items.
+  expected:
+  - confirm sign_gap
+  - trace prerequisite
+  - targeted micro-remediation
+- scenario_id: ERR-S03
+  name: Parent observation only
+  input: Parent says child is weak at fractions; no corroborating evidence.
+  expected:
+  - Gap Hypothesis only
+  - short diagnostic
+  - do not materially lower mastery
+- scenario_id: ERR-S04
+  name: Reading vs math
+  input: Child solves equivalent numeric problem but misreads a word problem condition.
+  expected:
+  - reading_error/application mapping
+  - preserve arithmetic mastery
+- scenario_id: ERR-S05
+  name: G7 standard algebra strong, T5 fails
+  input: Student succeeds K2/K3 algebra but fails identity/proof T5.
+  expected:
+  - reasoning_gap/recognition_gap
+  - preserve standard algebra mastery
+  - thinking remediation
+- scenario_id: ERR-S06
+  name: Above-grade failure
+  input: Grade 7 student fails G8/G9/HSG symmetric algebra.
+  expected:
+  - do not label weak Grade 7 algebra
+  - check cross-grade prerequisite
+  - frontier remains skill-specific
+- scenario_id: ERR-S07
+  name: Parallel Gap Repair
+  input: Student can continue advanced ratio tasks but has a small factorization prerequisite gap.
+  expected:
+  - continue advanced path where ready
+  - parallel repair prerequisite
+  - no global rollback
+- scenario_id: ERR-S08
+  name: Hint dependence
+  input: Correct only after Hint 2 repeatedly.
+  expected:
+  - lower independent mastery confidence
+  - record hint_use
+  - do not count as fully independent success
+- scenario_id: ERR-S09
+  name: Retention failure
+  input: Skill closed last week, same conceptual error returns after 7 days.
+  expected:
+  - retention_gap
+  - reopen/monitor gap
+  - spaced retrieval prescription
+- scenario_id: ERR-S10
+  name: Presentation only
+  input: Reasoning and answer correct but units/conclusion formatting poor.
+  expected:
+  - presentation_error
+  - minimal knowledge penalty
+  - presentation practice
+- scenario_id: ERR-S11
+  name: Wrong theorem selection
+  input: Geometry facts known but student chooses an inapplicable congruence theorem.
+  expected:
+  - recognition/method gap
+  - diagnose theorem-selection problem
+  - not generic geometry weakness
+- scenario_id: ERR-S12
+  name: Combinatorics hidden in geometry
+  input: Student handles midpoint geometry but double-counts segments among many collinear points.
+  expected:
+  - combinatorial_thinking_gap
+  - preserve midpoint mastery
+  - map underlying counting skill separately
+- scenario_id: ERR-S13
+  name: Fast-calculation recognition
+  input: Student gets answer by long calculation but cannot see common factor.
+  expected:
+  - answer may be correct
+  - recognition mastery not fully demonstrated
+  - offer structural variant
+- scenario_id: ERR-S14
+  name: Multiple evidence sources conflict
+  input: Homework strong but verified school test weak on same skill.
+  expected:
+  - retain both evidence events
+  - verified evidence higher weight
+  - diagnostic before final gap state
+- scenario_id: ERR-S15
+  name: One global grade forbidden
+  input: 'G7 student: G9 algebra exposure, G7 geometry, advanced combinatorics.'
+  expected:
+  - domain-specific frontier
+  - no global Grade 9 label
+  - planner by skill readiness

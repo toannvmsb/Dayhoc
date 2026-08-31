@@ -1,0 +1,124 @@
+profiles:
+- profile_id: GOLDEN-P01
+  grade_context: 4
+  name: Standard G4
+  evidence:
+  - K2 mostly stable
+  - occasional arithmetic errors
+  expected:
+  - skill-specific mastery
+  - careless vs knowledge separation
+  - normal learning mix
+- profile_id: GOLDEN-P02
+  grade_context: 4
+  name: Strong arithmetic / weak word problems
+  evidence:
+  - M4.ARITH high
+  - M4.WORD low
+  - representation errors
+  expected:
+  - reduce repetitive arithmetic
+  - diagnose reading/representation
+  - preserve arithmetic mastery
+- profile_id: GOLDEN-P03
+  grade_context: 4
+  name: Careless error profile
+  evidence:
+  - explains concept correctly
+  - self-corrects after check
+  expected:
+  - careless_error
+  - no heavy knowledge penalty
+  - retain advanced path
+- profile_id: GOLDEN-P04
+  grade_context: 4
+  name: Advanced G4
+  evidence:
+  - K2 strong
+  - T3/T4 strong
+  - distributive/sequences strong
+  expected:
+  - more variation/thinking
+  - less repetition
+  - readiness checked K3/K4
+- profile_id: GOLDEN-P05
+  grade_context: 4
+  name: Parent reports weakness
+  evidence:
+  - parent says weak fractions
+  - insufficient objective evidence
+  expected:
+  - gap_hypothesis
+  - short diagnostic
+  - no automatic mastery decrease
+- profile_id: GOLDEN-P06
+  grade_context: 4
+  name: Exam revision
+  evidence:
+  - upcoming exam
+  - 2 active relevant gaps
+  expected:
+  - revision mode
+  - exam-relevant gap priority
+  - reduce unrelated advanced work
+- profile_id: GOLDEN-P07
+  grade_context: 7
+  name: Mixed G7 review
+  evidence:
+  - rational strong
+  - multi-step equation medium
+  - combinatorial weak
+  expected:
+  - separate domain states
+  - no global weak label
+  - targeted diagnostics
+- profile_id: GOLDEN-P08
+  grade_context: 7
+  name: Ratio chain advanced
+  evidence:
+  - direct/chained ratio strong
+  - ratio+product weak
+  expected:
+  - preserve direct/chained mastery
+  - gap only ratio_product_constraint
+- profile_id: GOLDEN-P09
+  grade_context: 7
+  name: Above-grade algebra exposure
+  evidence:
+  - G8/G9/HSG symmetric algebra exposure
+  - factorization prerequisite weak
+  expected:
+  - school_grade stays 7
+  - above-grade frontier by domain
+  - parallel gap repair
+- profile_id: GOLDEN-P10
+  grade_context: 7
+  name: Thinking gap not knowledge gap
+  evidence:
+  - K2/K3 algebra correct
+  - T5 proof/identity weak
+  expected:
+  - knowledge mastery remains high
+  - thinking/problem-type lowered
+  - not weak algebra
+- profile_id: GOLDEN-P11
+  grade_context: 7
+  name: Prerequisite root gap
+  evidence:
+  - equation failures caused by sign/fraction errors
+  expected:
+  - trace prerequisite first
+  - repair sign/fraction
+  - retest before advanced conclusion
+- profile_id: GOLDEN-P12
+  grade_context: 7
+  name: Uneven cross-domain frontier
+  evidence:
+  - ratio=G7 advanced
+  - algebra=G8/G9 exposure
+  - geometry=G7
+  - combinatorial=advanced
+  expected:
+  - domain-specific frontier
+  - no global grade level
+  - planner mixes by readiness

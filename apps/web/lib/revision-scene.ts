@@ -25,8 +25,8 @@ function base() {
     ...x,
   });
   const evidence = [
-    mk(1, 'G7.RATIO.EQUAL_CHAIN', 5, true, { confidenceTier: 'A' }),
-    mk(2, 'G7.RATIO.EQUAL_RATIO', 12, true, { confidenceTier: 'A' }),
+    mk(1, 'M7.RATIO.EQUAL_CHAIN', 5, true, { confidenceTier: 'A' }),
+    mk(2, 'M7.RATIO.PROPORTION', 12, true, { confidenceTier: 'A' }),
     mk(3, 'M4.FRAC.COMMON_DENOM', 120, true, { confidenceTier: 'A' }),
     mk(4, 'M4.FRAC.COMMON_DENOM', 4, false, { reasoningQuality: 'weak', timeSpentSeconds: 300 }),
     mk(5, 'M4.FRAC.COMMON_DENOM', 2, false, { reasoningQuality: 'weak', timeSpentSeconds: 240 }),
@@ -38,7 +38,7 @@ function base() {
     gradeContext: 7,
     evidence,
     teacherContributions: [
-      { id: 'tc', childId: CHILD, contributedAs: 'teacher', actorUserId: 't', occurredOn: '2026-08-25', recordedAt: '2026-08-25T00:00:00Z', taughtSkillIds: [asSkillId('G7.RATIO.EQUAL_CHAIN')], problemTypeIds: [], homeworkRefs: [] },
+      { id: 'tc', childId: CHILD, contributedAs: 'teacher', actorUserId: 't', occurredOn: '2026-08-25', recordedAt: '2026-08-25T00:00:00Z', taughtSkillIds: [asSkillId('M7.RATIO.EQUAL_CHAIN')], problemTypeIds: [], homeworkRefs: [] },
     ],
     knowledgeBase: kb,
     asOf: AS_OF,

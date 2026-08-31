@@ -23,6 +23,6 @@ export function teacherUpdateForm() {
     dateLabel: 'Buổi 30/8',
     gradeContext: 7,
     knowledgeBase: loadKnowledgeBase(),
-    recentSkillIds: ['G7.RATIO.EQUAL_CHAIN', 'G7.RATIO.PROPORTION'],
+    recentSkillIds: ['M7.RATIO.EQUAL_CHAIN', 'M7.RATIO.PROPORTION'],
   });
 }

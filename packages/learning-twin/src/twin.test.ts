@@ -47,7 +47,7 @@ describe('buildLearningTwin — Phase 3 acceptance', () => {
     const evidence = [
       ev({ skillId: 'M4.FRAC.EQUIVALENT', daysAgo: 10, correct: true }),
       ev({ skillId: 'M4.FRAC.COMMON_DENOM', daysAgo: 5, correct: false, reasoningQuality: 'weak', hintDependency: 0.8 }),
-      ev({ skillId: 'G7.RATIO.EQUAL_RATIO', daysAgo: 2, correct: true, problemTypeId: 'G7.RATIO.EQUAL_CHAIN.PT1' }),
+      ev({ skillId: 'M7.RATIO.PROPORTION', daysAgo: 2, correct: true, problemTypeId: 'M7.PT.RATIO.EQUAL_RATIO' }),
     ];
     const a = build(evidence);
     const b = build([...evidence].reverse()); // order of input must not matter
@@ -80,23 +80,23 @@ describe('buildLearningTwin — Phase 3 acceptance', () => {
 
   it('keeps the three axes separate', () => {
     const twin = build([
-      ev({ skillId: 'G7.SYM.BASIC', daysAgo: 3, correct: true, problemTypeId: 'G7.SYM.BASIC.PT1' }),
+      ev({ skillId: 'M7.ALG.IDENTITY', daysAgo: 3, correct: true, problemTypeId: 'M7.PT.ALG_IDENTITY.SYMMETRIC_EXPRESSION' }),
       ev({ skillId: 'M4.FRAC.MUL', daysAgo: 3, correct: true }), // no problemTypeId
     ]);
-    expect(twin.skillMastery.has(asSkillId('G7.SYM.BASIC'))).toBe(true);
+    expect(twin.skillMastery.has(asSkillId('M7.ALG.IDENTITY'))).toBe(true);
     expect(twin.skillMastery.has(asSkillId('M4.FRAC.MUL'))).toBe(true);
     // problem-type mastery only for the item that carried a problemTypeId
-    expect([...twin.problemTypeMastery.keys()]).toEqual([asProblemTypeId('G7.SYM.BASIC.PT1')]);
-    // thinking profile populated from G7.SYM.BASIC's dimensions, independent of skill map
+    expect([...twin.problemTypeMastery.keys()]).toEqual([asProblemTypeId('M7.PT.ALG_IDENTITY.SYMMETRIC_EXPRESSION')]);
+    // thinking profile populated from M7.ALG.IDENTITY's dimensions, independent of skill map
     expect(twin.thinkingProfile.size).toBeGreaterThan(0);
-    expect(twin.thinkingProfile.has('proof_explanation')).toBe(true);
+    expect(twin.thinkingProfile.has('algebraic_thinking')).toBe(true);
   });
 
   it('produces a per-domain frontier and never a single global level', () => {
     const twin = build([
-      ev({ skillId: 'G7.ALG.IDENTITY', daysAgo: 4, correct: true }), // origin 8 → above grade 7
-      ev({ skillId: 'G7.ALG.IDENTITY', daysAgo: 2, correct: true }),
-      ev({ skillId: 'G7.RAT.OPS', daysAgo: 3, correct: true }), // origin 7
+      ev({ skillId: 'M7.ALG.IDENTITY', daysAgo: 4, correct: true }), // origin 8 → above grade 7
+      ev({ skillId: 'M7.ALG.IDENTITY', daysAgo: 2, correct: true }),
+      ev({ skillId: 'M7.RAT.OPERATIONS', daysAgo: 3, correct: true }), // origin 7
     ]);
     expect(twin).not.toHaveProperty('level');
     const algebra = twin.frontier.find((f) => f.domain === 'algebraic_thinking')!;
@@ -130,10 +130,10 @@ describe('buildLearningTwin — Phase 3 acceptance', () => {
   });
 
   it('does not claim a thinking level higher than the items actually attempted', () => {
-    // G7.RATIO.EQUAL_CHAIN.PT1 is T2; perfect scores must not imply T5 thinking.
+    // M7.PT.RATIO.EQUAL_RATIO is T2; perfect scores must not imply T5 thinking.
     const twin = build([
-      ev({ skillId: 'G7.RATIO.EQUAL_CHAIN', daysAgo: 5, correct: true, problemTypeId: 'G7.RATIO.EQUAL_CHAIN.PT1' }),
-      ev({ skillId: 'G7.RATIO.EQUAL_CHAIN', daysAgo: 3, correct: true, problemTypeId: 'G7.RATIO.EQUAL_CHAIN.PT1' }),
+      ev({ skillId: 'M7.RATIO.EQUAL_CHAIN', daysAgo: 5, correct: true, problemTypeId: 'M7.PT.RATIO.EQUAL_RATIO' }),
+      ev({ skillId: 'M7.RATIO.EQUAL_CHAIN', daysAgo: 3, correct: true, problemTypeId: 'M7.PT.RATIO.EQUAL_RATIO' }),
     ]);
     for (const state of twin.thinkingProfile.values()) {
       expect(['T1', 'T2']).toContain(state.demonstratedLevel);

@@ -1,50 +1,1577 @@
 {
   "gradeContext": 7,
   "curriculum": [
-    { "id": "C.G7.RAT", "gradeContext": 7, "textbook": "Toán 7 - Kết nối tri thức", "volume": 1, "strand": "Chương I — Số hữu tỉ", "lesson": "Số hữu tỉ và các phép tính với số hữu tỉ" },
-    { "id": "C.G7.ALG.EXPR", "gradeContext": 7, "textbook": "Toán 7 - Kết nối tri thức", "volume": 2, "strand": "Chương VII — Biểu thức đại số và đa thức một biến", "lesson": "Biểu thức đại số" },
-    { "id": "C.G7.RATIO.PROPORTION", "gradeContext": 7, "textbook": "Toán 7 - Kết nối tri thức", "volume": 1, "strand": "Chương VI — Tỉ lệ thức và đại lượng tỉ lệ", "lesson": "Tỉ lệ thức" },
-    { "id": "C.G7.RATIO.EQUAL_CHAIN", "gradeContext": 7, "textbook": "Toán 7 - Kết nối tri thức", "volume": 1, "strand": "Chương VI — Tỉ lệ thức và đại lượng tỉ lệ", "lesson": "Tính chất của dãy tỉ số bằng nhau" },
-    { "id": "C.G7.ADV.IDENTITY", "gradeContext": 7, "textbook": "Chuyên đề nâng cao — Biến đổi đồng nhất", "strand": "Nâng cao — Biến đổi đại số", "lesson": "Hằng đẳng thức và khai triển biểu thức" },
-    { "id": "C.G7.ADV.SYMMETRIC", "gradeContext": 7, "textbook": "Chuyên đề nâng cao — Biến đổi đồng nhất", "strand": "Nâng cao — Biểu thức đối xứng (HSG)", "lesson": "Biểu thức đối xứng từ a+b và ab" }
+    {
+      "id": "C.G7.1.1",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Số hữu tỉ",
+      "lesson": "Tập hợp các số hữu tỉ"
+    },
+    {
+      "id": "C.G7.1.2",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Số hữu tỉ",
+      "lesson": "Cộng, trừ, nhân, chia số hữu tỉ"
+    },
+    {
+      "id": "C.G7.1.3",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Số hữu tỉ",
+      "lesson": "Lũy thừa với số mũ tự nhiên của một số hữu tỉ"
+    },
+    {
+      "id": "C.G7.1.4",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Số hữu tỉ",
+      "lesson": "Thứ tự thực hiện các phép tính. Quy tắc chuyển vế"
+    },
+    {
+      "id": "C.G7.2.5",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Số thực",
+      "lesson": "Làm quen với số thập phân vô hạn tuần hoàn"
+    },
+    {
+      "id": "C.G7.2.6",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Số thực",
+      "lesson": "Số vô tỉ. Căn bậc hai số học"
+    },
+    {
+      "id": "C.G7.2.7",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Số thực",
+      "lesson": "Tập hợp các số thực"
+    },
+    {
+      "id": "C.G7.3.8",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Góc và đường thẳng song song",
+      "lesson": "Góc ở vị trí đặc biệt. Tia phân giác của một góc"
+    },
+    {
+      "id": "C.G7.3.9",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Góc và đường thẳng song song",
+      "lesson": "Hai đường thẳng song song và dấu hiệu nhận biết"
+    },
+    {
+      "id": "C.G7.3.10",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Góc và đường thẳng song song",
+      "lesson": "Tiên đề Euclid. Tính chất của hai đường thẳng song song"
+    },
+    {
+      "id": "C.G7.3.11",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Góc và đường thẳng song song",
+      "lesson": "Định lí và chứng minh định lí"
+    },
+    {
+      "id": "C.G7.4.12",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Tam giác bằng nhau",
+      "lesson": "Tổng các góc trong một tam giác"
+    },
+    {
+      "id": "C.G7.4.13",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Tam giác bằng nhau",
+      "lesson": "Hai tam giác bằng nhau. Trường hợp bằng nhau thứ nhất của tam giác"
+    },
+    {
+      "id": "C.G7.4.14",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Tam giác bằng nhau",
+      "lesson": "Trường hợp bằng nhau thứ hai và thứ ba của tam giác"
+    },
+    {
+      "id": "C.G7.4.15",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Tam giác bằng nhau",
+      "lesson": "Trường hợp bằng nhau của tam giác vuông"
+    },
+    {
+      "id": "C.G7.4.16",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Tam giác bằng nhau",
+      "lesson": "Tam giác cân. Đường trung trực của đoạn thẳng"
+    },
+    {
+      "id": "C.G7.5.17",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Thu thập và biểu diễn dữ liệu",
+      "lesson": "Thu thập và phân loại dữ liệu"
+    },
+    {
+      "id": "C.G7.5.18",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Thu thập và biểu diễn dữ liệu",
+      "lesson": "Biểu đồ hình quạt tròn"
+    },
+    {
+      "id": "C.G7.5.19",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Thu thập và biểu diễn dữ liệu",
+      "lesson": "Biểu đồ đoạn thẳng"
+    },
+    {
+      "id": "C.G7.6.20",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Tỉ lệ thức và đại lượng tỉ lệ",
+      "lesson": "Tỉ lệ thức"
+    },
+    {
+      "id": "C.G7.6.21",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Tỉ lệ thức và đại lượng tỉ lệ",
+      "lesson": "Tính chất của dãy tỉ số bằng nhau"
+    },
+    {
+      "id": "C.G7.6.22",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Tỉ lệ thức và đại lượng tỉ lệ",
+      "lesson": "Đại lượng tỉ lệ thuận"
+    },
+    {
+      "id": "C.G7.6.23",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Tỉ lệ thức và đại lượng tỉ lệ",
+      "lesson": "Đại lượng tỉ lệ nghịch"
+    },
+    {
+      "id": "C.G7.7.24",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Biểu thức đại số và đa thức một biến",
+      "lesson": "Biểu thức đại số"
+    },
+    {
+      "id": "C.G7.7.25",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Biểu thức đại số và đa thức một biến",
+      "lesson": "Đa thức một biến"
+    },
+    {
+      "id": "C.G7.7.26",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Biểu thức đại số và đa thức một biến",
+      "lesson": "Phép cộng và phép trừ đa thức một biến"
+    },
+    {
+      "id": "C.G7.7.27",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Biểu thức đại số và đa thức một biến",
+      "lesson": "Phép nhân đa thức một biến"
+    },
+    {
+      "id": "C.G7.7.28",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Biểu thức đại số và đa thức một biến",
+      "lesson": "Phép chia đa thức một biến"
+    },
+    {
+      "id": "C.G7.8.29",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Làm quen với biến cố và xác suất của biến cố",
+      "lesson": "Làm quen với biến cố"
+    },
+    {
+      "id": "C.G7.8.30",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Làm quen với biến cố và xác suất của biến cố",
+      "lesson": "Làm quen với xác suất của biến cố"
+    },
+    {
+      "id": "C.G7.9.31",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Quan hệ giữa các yếu tố trong một tam giác",
+      "lesson": "Quan hệ giữa góc và cạnh đối diện trong một tam giác"
+    },
+    {
+      "id": "C.G7.9.32",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Quan hệ giữa các yếu tố trong một tam giác",
+      "lesson": "Quan hệ giữa đường vuông góc và đường xiên"
+    },
+    {
+      "id": "C.G7.9.33",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Quan hệ giữa các yếu tố trong một tam giác",
+      "lesson": "Quan hệ giữa ba cạnh của một tam giác"
+    },
+    {
+      "id": "C.G7.9.34",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Quan hệ giữa các yếu tố trong một tam giác",
+      "lesson": "Sự đồng quy của ba đường trung tuyến, ba đường phân giác trong một tam giác"
+    },
+    {
+      "id": "C.G7.9.35",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Quan hệ giữa các yếu tố trong một tam giác",
+      "lesson": "Sự đồng quy của ba đường trung trực, ba đường cao trong một tam giác"
+    },
+    {
+      "id": "C.G7.10.36",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Một số hình khối trong thực tiễn",
+      "lesson": "Hình hộp chữ nhật và hình lập phương"
+    },
+    {
+      "id": "C.G7.10.37",
+      "gradeContext": 7,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Một số hình khối trong thực tiễn",
+      "lesson": "Hình lăng trụ đứng tam giác và hình lăng trụ đứng tứ giác"
+    },
+    {
+      "id": "C.G7.EXT.0",
+      "gradeContext": 7,
+      "textbook": "Math Core (skill family)",
+      "strand": "Nội dung theo skill family / nâng cao",
+      "lesson": "Không ứng với một bài SGK đơn lẻ"
+    }
   ],
   "skills": [
-    { "id": "G7.RAT.OPS", "gradeContext": 7, "domain": "arithmetic", "topic": "Số hữu tỉ", "name": "Các phép tính với số hữu tỉ", "description": "Cộng, trừ, nhân, chia số hữu tỉ; quy tắc dấu; thứ tự thực hiện phép tính.", "curriculumNodeId": "C.G7.RAT", "curriculumOrigin": 7, "thinkingDimensions": ["number_sense", "strategic_choice"], "advancedExtensions": ["fast_calculation_by_structure", "nested_rational_expressions"] },
-    { "id": "G7.ALG.EXPRESSION", "gradeContext": 7, "domain": "algebraic_thinking", "topic": "Biểu thức đại số", "name": "Biểu thức đại số và giá trị của biểu thức", "description": "Lập, thu gọn và tính giá trị biểu thức đại số.", "curriculumNodeId": "C.G7.ALG.EXPR", "curriculumOrigin": 7, "thinkingDimensions": ["algebraic_thinking", "problem_representation"], "advancedExtensions": [] },
-    { "id": "G7.RATIO.PROPORTION", "gradeContext": 7, "domain": "algebraic_thinking", "topic": "Tỉ lệ thức", "name": "Tỉ lệ thức", "description": "Định nghĩa và tính chất tỉ lệ thức; tìm số hạng chưa biết.", "curriculumNodeId": "C.G7.RATIO.PROPORTION", "curriculumOrigin": 7, "thinkingDimensions": ["algebraic_thinking", "pattern_recognition"], "advancedExtensions": [] },
-    { "id": "G7.RATIO.EQUAL_RATIO", "gradeContext": 7, "domain": "algebraic_thinking", "topic": "Dãy tỉ số bằng nhau", "name": "Tính chất dãy tỉ số bằng nhau", "description": "a/b = c/d = (a+c)/(b+d); đặt hệ số k.", "curriculumNodeId": "C.G7.RATIO.EQUAL_CHAIN", "curriculumOrigin": 7, "thinkingDimensions": ["algebraic_thinking", "strategic_choice"], "advancedExtensions": [] },
-    { "id": "G7.RATIO.SUM_CONSTRAINT", "gradeContext": 7, "domain": "word_problems", "topic": "Dãy tỉ số bằng nhau", "name": "Tìm các số biết tỉ số và tổng", "description": "Bài toán chia theo tỉ lệ với điều kiện tổng.", "curriculumNodeId": "C.G7.RATIO.EQUAL_CHAIN", "curriculumOrigin": 7, "thinkingDimensions": ["problem_representation", "strategic_choice"], "advancedExtensions": [] },
-    { "id": "G7.RATIO.EQUAL_CHAIN", "gradeContext": 7, "domain": "algebraic_thinking", "topic": "Dãy tỉ số bằng nhau", "name": "Chuỗi nhiều tỉ số bằng nhau", "description": "x/a = y/b = z/c và các điều kiện đi kèm.", "curriculumNodeId": "C.G7.RATIO.EQUAL_CHAIN", "curriculumOrigin": 7, "thinkingDimensions": ["algebraic_thinking", "strategic_choice"], "advancedExtensions": [] },
-    { "id": "G7.MULTIVAR.XYZ", "gradeContext": 7, "domain": "algebraic_thinking", "topic": "Hệ tỉ số nhiều biến", "name": "Hệ x/a = y/b = z/c với điều kiện tuyến tính", "description": "Giải hệ ba biến từ dãy tỉ số bằng nhau và một điều kiện tuyến tính.", "curriculumNodeId": "C.G7.RATIO.EQUAL_CHAIN", "curriculumOrigin": 7, "thinkingDimensions": ["algebraic_thinking", "strategic_choice", "reverse_reasoning"], "advancedExtensions": ["shifted_variable_ratio"] },
-    { "id": "G7.MULTIVAR.PRODUCT", "gradeContext": 7, "domain": "algebraic_thinking", "topic": "Hệ tỉ số nhiều biến", "name": "Tỉ số với điều kiện tích", "description": "Dãy tỉ số bằng nhau kèm điều kiện dạng tích (xyz hoặc bậc hai).", "curriculumNodeId": "C.G7.ADV.IDENTITY", "curriculumOrigin": 8, "thinkingDimensions": ["algebraic_thinking", "strategic_choice", "proof_explanation"], "advancedExtensions": ["quadratic_constraint"] },
-    { "id": "G7.ALG.IDENTITY", "gradeContext": 7, "domain": "algebraic_thinking", "topic": "Biến đổi đồng nhất", "name": "Hằng đẳng thức và khai triển", "description": "Khai triển, nhóm, đặt nhân tử chung, dùng hằng đẳng thức đáng nhớ.", "curriculumNodeId": "C.G7.ADV.IDENTITY", "curriculumOrigin": 8, "thinkingDimensions": ["algebraic_thinking", "pattern_recognition"], "advancedExtensions": ["conditional_simplification"] },
-    { "id": "G7.SYM.BASIC", "gradeContext": 7, "domain": "algebraic_thinking", "topic": "Biểu thức đối xứng", "name": "Biểu thức đối xứng cơ bản", "description": "Từ a+b và ab suy ra a²+b², (a−b)², a³+b³.", "curriculumNodeId": "C.G7.ADV.SYMMETRIC", "curriculumOrigin": 9, "thinkingDimensions": ["algebraic_thinking", "proof_explanation", "pattern_recognition"], "advancedExtensions": ["x_plus_reciprocal_powers"] }
+    {
+      "id": "M7.RAT.SET",
+      "gradeContext": 7,
+      "domain": "arithmetic",
+      "topic": "Tập hợp số hữu tỉ",
+      "name": "Tập hợp số hữu tỉ",
+      "description": "",
+      "curriculumNodeId": "C.G7.1.1",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.RAT.OPERATIONS",
+      "gradeContext": 7,
+      "domain": "arithmetic",
+      "topic": "Cộng, trừ, nhân, chia số hữu tỉ",
+      "name": "Cộng, trừ, nhân, chia số hữu tỉ",
+      "description": "",
+      "curriculumNodeId": "C.G7.1.2",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.RAT.POWER",
+      "gradeContext": 7,
+      "domain": "arithmetic",
+      "topic": "Lũy thừa số hữu tỉ với số mũ tự nhiên",
+      "name": "Lũy thừa số hữu tỉ với số mũ tự nhiên",
+      "description": "",
+      "curriculumNodeId": "C.G7.1.3",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.RAT.ORDER_TRANSPOSE",
+      "gradeContext": 7,
+      "domain": "arithmetic",
+      "topic": "Thứ tự phép tính và quy tắc chuyển vế",
+      "name": "Thứ tự phép tính và quy tắc chuyển vế",
+      "description": "",
+      "curriculumNodeId": "C.G7.1.4",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.REAL.REPEATING_DECIMAL",
+      "gradeContext": 7,
+      "domain": "number_sense",
+      "topic": "Số thập phân vô hạn tuần hoàn",
+      "name": "Số thập phân vô hạn tuần hoàn",
+      "description": "",
+      "curriculumNodeId": "C.G7.2.5",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "number_sense",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.REAL.IRR_SQRT",
+      "gradeContext": 7,
+      "domain": "number_sense",
+      "topic": "Số vô tỉ và căn bậc hai số học",
+      "name": "Số vô tỉ và căn bậc hai số học",
+      "description": "",
+      "curriculumNodeId": "C.G7.2.6",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "number_sense",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.REAL.SET",
+      "gradeContext": 7,
+      "domain": "number_sense",
+      "topic": "Tập hợp số thực",
+      "name": "Tập hợp số thực",
+      "description": "",
+      "curriculumNodeId": "C.G7.2.7",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "number_sense",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.GEO.ANGLE_SPECIAL_BISECTOR",
+      "gradeContext": 7,
+      "domain": "geometry",
+      "topic": "Góc ở vị trí đặc biệt và tia phân giác",
+      "name": "Góc ở vị trí đặc biệt và tia phân giác",
+      "description": "",
+      "curriculumNodeId": "C.G7.3.8",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "spatial_reasoning",
+        "proof_explanation",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.GEO.PARALLEL_CRITERIA",
+      "gradeContext": 7,
+      "domain": "geometry",
+      "topic": "Dấu hiệu nhận biết hai đường thẳng song song",
+      "name": "Dấu hiệu nhận biết hai đường thẳng song song",
+      "description": "",
+      "curriculumNodeId": "C.G7.3.9",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "spatial_reasoning",
+        "proof_explanation",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.GEO.EUCLID_PARALLEL",
+      "gradeContext": 7,
+      "domain": "geometry",
+      "topic": "Tiên đề Euclid và tính chất hai đường thẳng song song",
+      "name": "Tiên đề Euclid và tính chất hai đường thẳng song song",
+      "description": "",
+      "curriculumNodeId": "C.G7.3.10",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "spatial_reasoning",
+        "proof_explanation",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.GEO.THEOREM_PROOF",
+      "gradeContext": 7,
+      "domain": "logical_reasoning",
+      "topic": "Định lí và chứng minh định lí",
+      "name": "Định lí và chứng minh định lí",
+      "description": "",
+      "curriculumNodeId": "C.G7.3.11",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "logical_reasoning",
+        "proof_explanation",
+        "reverse_reasoning"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.TRI.ANGLE_SUM",
+      "gradeContext": 7,
+      "domain": "geometry",
+      "topic": "Tổng các góc trong tam giác",
+      "name": "Tổng các góc trong tam giác",
+      "description": "",
+      "curriculumNodeId": "C.G7.4.12",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "spatial_reasoning",
+        "proof_explanation",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.TRI.CONGRUENCE_1",
+      "gradeContext": 7,
+      "domain": "geometry",
+      "topic": "Tam giác bằng nhau và trường hợp thứ nhất",
+      "name": "Tam giác bằng nhau và trường hợp thứ nhất",
+      "description": "",
+      "curriculumNodeId": "C.G7.4.13",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "spatial_reasoning",
+        "proof_explanation",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.TRI.CONGRUENCE_2_3",
+      "gradeContext": 7,
+      "domain": "geometry",
+      "topic": "Trường hợp bằng nhau thứ hai và thứ ba",
+      "name": "Trường hợp bằng nhau thứ hai và thứ ba",
+      "description": "",
+      "curriculumNodeId": "C.G7.4.14",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "spatial_reasoning",
+        "proof_explanation",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.TRI.RIGHT_CONGRUENCE",
+      "gradeContext": 7,
+      "domain": "geometry",
+      "topic": "Trường hợp bằng nhau của tam giác vuông",
+      "name": "Trường hợp bằng nhau của tam giác vuông",
+      "description": "",
+      "curriculumNodeId": "C.G7.4.15",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "spatial_reasoning",
+        "proof_explanation",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.TRI.ISOSCELES_PERP_BISECTOR",
+      "gradeContext": 7,
+      "domain": "geometry",
+      "topic": "Tam giác cân và đường trung trực",
+      "name": "Tam giác cân và đường trung trực",
+      "description": "",
+      "curriculumNodeId": "C.G7.4.16",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "spatial_reasoning",
+        "proof_explanation",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.DATA.COLLECT_CLASSIFY",
+      "gradeContext": 7,
+      "domain": "statistics_probability",
+      "topic": "Thu thập và phân loại dữ liệu",
+      "name": "Thu thập và phân loại dữ liệu",
+      "description": "",
+      "curriculumNodeId": "C.G7.5.17",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "problem_representation",
+        "logical_reasoning"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.DATA.PIE_CHART",
+      "gradeContext": 7,
+      "domain": "statistics_probability",
+      "topic": "Biểu đồ hình quạt tròn",
+      "name": "Biểu đồ hình quạt tròn",
+      "description": "",
+      "curriculumNodeId": "C.G7.5.18",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "problem_representation",
+        "logical_reasoning"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.DATA.LINE_CHART",
+      "gradeContext": 7,
+      "domain": "statistics_probability",
+      "topic": "Biểu đồ đoạn thẳng",
+      "name": "Biểu đồ đoạn thẳng",
+      "description": "",
+      "curriculumNodeId": "C.G7.5.19",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "problem_representation",
+        "logical_reasoning"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.RATIO.PROPORTION",
+      "gradeContext": 7,
+      "domain": "algebraic_thinking",
+      "topic": "Tỉ lệ thức",
+      "name": "Tỉ lệ thức",
+      "description": "",
+      "curriculumNodeId": "C.G7.6.20",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "algebraic_thinking",
+        "problem_representation",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.RATIO.EQUAL_CHAIN",
+      "gradeContext": 7,
+      "domain": "algebraic_thinking",
+      "topic": "Tính chất dãy tỉ số bằng nhau",
+      "name": "Tính chất dãy tỉ số bằng nhau",
+      "description": "",
+      "curriculumNodeId": "C.G7.6.21",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "algebraic_thinking",
+        "problem_representation",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.RATIO.DIRECT",
+      "gradeContext": 7,
+      "domain": "algebraic_thinking",
+      "topic": "Đại lượng tỉ lệ thuận",
+      "name": "Đại lượng tỉ lệ thuận",
+      "description": "",
+      "curriculumNodeId": "C.G7.6.22",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "algebraic_thinking",
+        "problem_representation",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.RATIO.INVERSE",
+      "gradeContext": 7,
+      "domain": "algebraic_thinking",
+      "topic": "Đại lượng tỉ lệ nghịch",
+      "name": "Đại lượng tỉ lệ nghịch",
+      "description": "",
+      "curriculumNodeId": "C.G7.6.23",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "algebraic_thinking",
+        "problem_representation",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.ALG.EXPRESSION",
+      "gradeContext": 7,
+      "domain": "algebraic_thinking",
+      "topic": "Biểu thức đại số",
+      "name": "Biểu thức đại số",
+      "description": "",
+      "curriculumNodeId": "C.G7.7.24",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "algebraic_thinking",
+        "problem_representation",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.ALG.POLY_1VAR",
+      "gradeContext": 7,
+      "domain": "algebraic_thinking",
+      "topic": "Đa thức một biến",
+      "name": "Đa thức một biến",
+      "description": "",
+      "curriculumNodeId": "C.G7.7.25",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "algebraic_thinking",
+        "problem_representation",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.ALG.POLY_ADD_SUB",
+      "gradeContext": 7,
+      "domain": "algebraic_thinking",
+      "topic": "Cộng và trừ đa thức một biến",
+      "name": "Cộng và trừ đa thức một biến",
+      "description": "",
+      "curriculumNodeId": "C.G7.7.26",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "algebraic_thinking",
+        "problem_representation",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.ALG.POLY_MUL",
+      "gradeContext": 7,
+      "domain": "algebraic_thinking",
+      "topic": "Nhân đa thức một biến",
+      "name": "Nhân đa thức một biến",
+      "description": "",
+      "curriculumNodeId": "C.G7.7.27",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "algebraic_thinking",
+        "problem_representation",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.ALG.POLY_DIV",
+      "gradeContext": 7,
+      "domain": "algebraic_thinking",
+      "topic": "Chia đa thức một biến",
+      "name": "Chia đa thức một biến",
+      "description": "",
+      "curriculumNodeId": "C.G7.7.28",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "algebraic_thinking",
+        "problem_representation",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.PROB.EVENT",
+      "gradeContext": 7,
+      "domain": "statistics_probability",
+      "topic": "Làm quen với biến cố",
+      "name": "Làm quen với biến cố",
+      "description": "",
+      "curriculumNodeId": "C.G7.8.29",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "problem_representation",
+        "logical_reasoning"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.PROB.EVENT_PROB",
+      "gradeContext": 7,
+      "domain": "statistics_probability",
+      "topic": "Làm quen với xác suất của biến cố",
+      "name": "Làm quen với xác suất của biến cố",
+      "description": "",
+      "curriculumNodeId": "C.G7.8.30",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "problem_representation",
+        "logical_reasoning"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.TRI.ANGLE_OPPOSITE_SIDE",
+      "gradeContext": 7,
+      "domain": "geometry",
+      "topic": "Quan hệ góc và cạnh đối diện trong tam giác",
+      "name": "Quan hệ góc và cạnh đối diện trong tam giác",
+      "description": "",
+      "curriculumNodeId": "C.G7.9.31",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "spatial_reasoning",
+        "proof_explanation",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.TRI.PERP_OBLIQUE",
+      "gradeContext": 7,
+      "domain": "geometry",
+      "topic": "Quan hệ đường vuông góc và đường xiên",
+      "name": "Quan hệ đường vuông góc và đường xiên",
+      "description": "",
+      "curriculumNodeId": "C.G7.9.32",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "spatial_reasoning",
+        "proof_explanation",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.TRI.INEQUALITY",
+      "gradeContext": 7,
+      "domain": "geometry",
+      "topic": "Quan hệ giữa ba cạnh của tam giác",
+      "name": "Quan hệ giữa ba cạnh của tam giác",
+      "description": "",
+      "curriculumNodeId": "C.G7.9.33",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "spatial_reasoning",
+        "proof_explanation",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.TRI.CONC_MEDIAN_BISECTOR",
+      "gradeContext": 7,
+      "domain": "geometry",
+      "topic": "Đồng quy trung tuyến và phân giác",
+      "name": "Đồng quy trung tuyến và phân giác",
+      "description": "",
+      "curriculumNodeId": "C.G7.9.34",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "spatial_reasoning",
+        "proof_explanation",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.TRI.CONC_PERP_ALTITUDE",
+      "gradeContext": 7,
+      "domain": "geometry",
+      "topic": "Đồng quy trung trực và đường cao",
+      "name": "Đồng quy trung trực và đường cao",
+      "description": "",
+      "curriculumNodeId": "C.G7.9.35",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "spatial_reasoning",
+        "proof_explanation",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.SOLID.BOX_CUBE",
+      "gradeContext": 7,
+      "domain": "geometry",
+      "topic": "Hình hộp chữ nhật và hình lập phương",
+      "name": "Hình hộp chữ nhật và hình lập phương",
+      "description": "",
+      "curriculumNodeId": "C.G7.10.36",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "spatial_reasoning",
+        "proof_explanation",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.SOLID.PRISM",
+      "gradeContext": 7,
+      "domain": "geometry",
+      "topic": "Lăng trụ đứng tam giác và tứ giác",
+      "name": "Lăng trụ đứng tam giác và tứ giác",
+      "description": "",
+      "curriculumNodeId": "C.G7.10.37",
+      "curriculumOrigin": 7,
+      "thinkingDimensions": [
+        "spatial_reasoning",
+        "proof_explanation",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.RATIO.MULTIVAR",
+      "gradeContext": 7,
+      "domain": "algebraic_thinking",
+      "topic": "Hệ tỉ số nhiều biến (x/a=y/b=z/c, điều kiện tích/bậc hai)",
+      "name": "Hệ tỉ số nhiều biến (x/a=y/b=z/c, điều kiện tích/bậc hai)",
+      "description": "Above-grade / HSG exposure family (provisional, needs educator review).",
+      "curriculumNodeId": "C.G7.EXT.0",
+      "curriculumOrigin": 8,
+      "thinkingDimensions": [
+        "algebraic_thinking",
+        "problem_representation",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.ALG.IDENTITY",
+      "gradeContext": 7,
+      "domain": "algebraic_thinking",
+      "topic": "Biến đổi đồng nhất và hằng đẳng thức",
+      "name": "Biến đổi đồng nhất và hằng đẳng thức",
+      "description": "Above-grade / HSG exposure family (provisional, needs educator review).",
+      "curriculumNodeId": "C.G7.EXT.0",
+      "curriculumOrigin": 8,
+      "thinkingDimensions": [
+        "algebraic_thinking",
+        "problem_representation",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.ALG.SYMMETRIC",
+      "gradeContext": 7,
+      "domain": "algebraic_thinking",
+      "topic": "Biểu thức đối xứng từ a+b và ab (HSG)",
+      "name": "Biểu thức đối xứng từ a+b và ab (HSG)",
+      "description": "Above-grade / HSG exposure family (provisional, needs educator review).",
+      "curriculumNodeId": "C.G7.EXT.0",
+      "curriculumOrigin": 9,
+      "thinkingDimensions": [
+        "algebraic_thinking",
+        "problem_representation",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.ALG.FACTOR",
+      "gradeContext": 7,
+      "domain": "algebraic_thinking",
+      "topic": "Phân tích thành nhân tử nâng cao",
+      "name": "Phân tích thành nhân tử nâng cao",
+      "description": "Above-grade / HSG exposure family (provisional, needs educator review).",
+      "curriculumNodeId": "C.G7.EXT.0",
+      "curriculumOrigin": 8,
+      "thinkingDimensions": [
+        "algebraic_thinking",
+        "problem_representation",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M7.PROOF.ALGEBRA",
+      "gradeContext": 7,
+      "domain": "logical_reasoning",
+      "topic": "Chứng minh đại số / bất đẳng thức (HSG)",
+      "name": "Chứng minh đại số / bất đẳng thức (HSG)",
+      "description": "Above-grade / HSG exposure family (provisional, needs educator review).",
+      "curriculumNodeId": "C.G7.EXT.0",
+      "curriculumOrigin": 9,
+      "thinkingDimensions": [
+        "logical_reasoning",
+        "proof_explanation",
+        "reverse_reasoning"
+      ],
+      "advancedExtensions": []
+    }
   ],
   "prerequisites": [
-    { "from": "M4.FRAC.COMMON_DENOM", "to": "G7.RAT.OPS", "importance": 0.8, "crossGrade": true },
-    { "from": "M4.FRAC.MUL", "to": "G7.RAT.OPS", "importance": 0.7, "crossGrade": true },
-    { "from": "M4.ALG.EXPR_VAR", "to": "G7.ALG.EXPRESSION", "importance": 0.7, "crossGrade": true },
-    { "from": "M4.ARITH.DISTRIBUTIVE", "to": "G7.ALG.IDENTITY", "importance": 0.75, "crossGrade": true },
-    { "from": "G7.RAT.OPS", "to": "G7.RATIO.PROPORTION", "importance": 0.85, "crossGrade": false },
-    { "from": "G7.RATIO.PROPORTION", "to": "G7.RATIO.EQUAL_RATIO", "importance": 0.9, "crossGrade": false },
-    { "from": "G7.RATIO.EQUAL_RATIO", "to": "G7.RATIO.SUM_CONSTRAINT", "importance": 0.85, "crossGrade": false },
-    { "from": "G7.RATIO.EQUAL_RATIO", "to": "G7.RATIO.EQUAL_CHAIN", "importance": 0.9, "crossGrade": false },
-    { "from": "G7.RATIO.EQUAL_CHAIN", "to": "G7.MULTIVAR.XYZ", "importance": 0.9, "crossGrade": false },
-    { "from": "G7.ALG.EXPRESSION", "to": "G7.ALG.IDENTITY", "importance": 0.8, "crossGrade": false },
-    { "from": "G7.MULTIVAR.XYZ", "to": "G7.MULTIVAR.PRODUCT", "importance": 0.7, "crossGrade": false },
-    { "from": "G7.ALG.IDENTITY", "to": "G7.MULTIVAR.PRODUCT", "importance": 0.8, "crossGrade": false },
-    { "from": "G7.ALG.IDENTITY", "to": "G7.SYM.BASIC", "importance": 0.85, "crossGrade": false }
+    {
+      "from": "M7.RAT.SET",
+      "to": "M7.RAT.OPERATIONS",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.RAT.OPERATIONS",
+      "to": "M7.RAT.POWER",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.RAT.OPERATIONS",
+      "to": "M7.RAT.ORDER_TRANSPOSE",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.RAT.SET",
+      "to": "M7.REAL.REPEATING_DECIMAL",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.RAT.SET",
+      "to": "M7.REAL.SET",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.REAL.IRR_SQRT",
+      "to": "M7.REAL.SET",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.GEO.ANGLE_SPECIAL_BISECTOR",
+      "to": "M7.GEO.PARALLEL_CRITERIA",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.GEO.PARALLEL_CRITERIA",
+      "to": "M7.GEO.EUCLID_PARALLEL",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.TRI.CONGRUENCE_1",
+      "to": "M7.TRI.CONGRUENCE_2_3",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.TRI.CONGRUENCE_1",
+      "to": "M7.TRI.RIGHT_CONGRUENCE",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.DATA.COLLECT_CLASSIFY",
+      "to": "M7.DATA.PIE_CHART",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.DATA.COLLECT_CLASSIFY",
+      "to": "M7.DATA.LINE_CHART",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.RATIO.PROPORTION",
+      "to": "M7.RATIO.EQUAL_CHAIN",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.RATIO.PROPORTION",
+      "to": "M7.RATIO.DIRECT",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.RATIO.PROPORTION",
+      "to": "M7.RATIO.INVERSE",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.ALG.EXPRESSION",
+      "to": "M7.ALG.POLY_1VAR",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.ALG.POLY_1VAR",
+      "to": "M7.ALG.POLY_ADD_SUB",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.ALG.POLY_1VAR",
+      "to": "M7.ALG.POLY_MUL",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.ALG.POLY_MUL",
+      "to": "M7.ALG.POLY_DIV",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.PROB.EVENT",
+      "to": "M7.PROB.EVENT_PROB",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M4.FRAC.COMMON_DENOM",
+      "to": "M7.RAT.OPERATIONS",
+      "importance": 0.8,
+      "crossGrade": true
+    },
+    {
+      "from": "M4.FRAC.EQUIVALENT",
+      "to": "M7.RATIO.PROPORTION",
+      "importance": 0.8,
+      "crossGrade": true
+    },
+    {
+      "from": "M4.FRAC.MUL",
+      "to": "M7.RAT.OPERATIONS",
+      "importance": 0.65,
+      "crossGrade": true
+    },
+    {
+      "from": "M4.ARITH.DISTRIBUTIVE",
+      "to": "M7.ALG.POLY_MUL",
+      "importance": 0.75,
+      "crossGrade": true
+    },
+    {
+      "from": "M4.ALG.EXPR_VAR",
+      "to": "M7.ALG.EXPRESSION",
+      "importance": 0.7,
+      "crossGrade": true
+    },
+    {
+      "from": "M4.ALG.FIND_X",
+      "to": "M7.RAT.ORDER_TRANSPOSE",
+      "importance": 0.6,
+      "crossGrade": true
+    },
+    {
+      "from": "M4.WORD.UNIT_RATE",
+      "to": "M7.RATIO.DIRECT",
+      "importance": 0.65,
+      "crossGrade": true
+    },
+    {
+      "from": "M4.GEO.ANGLE_TYPE",
+      "to": "M7.GEO.ANGLE_SPECIAL_BISECTOR",
+      "importance": 0.6,
+      "crossGrade": true
+    },
+    {
+      "from": "M4.GEO.PARALLEL",
+      "to": "M7.GEO.PARALLEL_CRITERIA",
+      "importance": 0.6,
+      "crossGrade": true
+    },
+    {
+      "from": "M7.RATIO.EQUAL_CHAIN",
+      "to": "M7.RATIO.MULTIVAR",
+      "importance": 0.85,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.ALG.POLY_MUL",
+      "to": "M7.ALG.IDENTITY",
+      "importance": 0.85,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.ALG.IDENTITY",
+      "to": "M7.ALG.SYMMETRIC",
+      "importance": 0.85,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.ALG.IDENTITY",
+      "to": "M7.ALG.FACTOR",
+      "importance": 0.85,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.ALG.SYMMETRIC",
+      "to": "M7.PROOF.ALGEBRA",
+      "importance": 0.85,
+      "crossGrade": false
+    }
   ],
   "problemTypes": [
-    { "id": "G7.RATIO.PROPORTION.PT1", "skillId": "G7.RATIO.PROPORTION", "name": "Tìm số hạng chưa biết của tỉ lệ thức", "knowledgeLevel": "K2", "thinkingLevel": "T1" },
-    { "id": "G7.RATIO.SUM_CONSTRAINT.PT1", "skillId": "G7.RATIO.SUM_CONSTRAINT", "name": "Tìm hai số biết tỉ số và tổng", "knowledgeLevel": "K2", "thinkingLevel": "T2" },
-    { "id": "G7.RATIO.EQUAL_CHAIN.PT1", "skillId": "G7.RATIO.EQUAL_CHAIN", "name": "Áp dụng tính chất dãy tỉ số bằng nhau", "knowledgeLevel": "K2", "thinkingLevel": "T2" },
-    { "id": "G7.RATIO.EQUAL_CHAIN.PT_HSG", "skillId": "G7.RATIO.EQUAL_CHAIN", "name": "So sánh b hơn a bao nhiêu phần trăm không tính từng số", "knowledgeLevel": "K3", "thinkingLevel": "T5" },
-    { "id": "G7.MULTIVAR.XYZ.PT1", "skillId": "G7.MULTIVAR.XYZ", "name": "Giải hệ x/a=y/b=z/c với tổng cho trước", "knowledgeLevel": "K3", "thinkingLevel": "T3" },
-    { "id": "G7.MULTIVAR.PRODUCT.PT1", "skillId": "G7.MULTIVAR.PRODUCT", "name": "Tỉ số kèm điều kiện tích xyz", "knowledgeLevel": "K4", "thinkingLevel": "T4" },
-    { "id": "G7.ALG.IDENTITY.PT1", "skillId": "G7.ALG.IDENTITY", "name": "Khai triển bằng hằng đẳng thức đáng nhớ", "knowledgeLevel": "K3", "thinkingLevel": "T2" },
-    { "id": "G7.SYM.BASIC.PT_RECALL", "skillId": "G7.SYM.BASIC", "name": "Viết đúng công thức (a±b)³, a³±b³", "knowledgeLevel": "K4", "thinkingLevel": "T1" },
-    { "id": "G7.SYM.BASIC.PT1", "skillId": "G7.SYM.BASIC", "name": "Tính a²+b² từ a+b và ab", "knowledgeLevel": "K4", "thinkingLevel": "T4" },
-    { "id": "G7.SYM.BASIC.PT_HSG", "skillId": "G7.SYM.BASIC", "name": "Tính lũy thừa cao của x+1/x", "knowledgeLevel": "K4", "thinkingLevel": "T5" }
+    {
+      "id": "M7.PT.RAT.FRACTION_RATIONAL_OPERATIONS",
+      "skillId": "M7.RAT.OPERATIONS",
+      "name": "fraction_rational_operations",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T2"
+    },
+    {
+      "id": "M7.PT.RAT.FAST_CALCULATION_BY_STRUCTURE",
+      "skillId": "M7.RAT.OPERATIONS",
+      "name": "fast_calculation_by_structure",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T2"
+    },
+    {
+      "id": "M7.PT.RAT.POWERS_ZERO_EXPONENT",
+      "skillId": "M7.RAT.OPERATIONS",
+      "name": "powers_zero_exponent",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T3"
+    },
+    {
+      "id": "M7.PT.RAT.SIGN_RULES",
+      "skillId": "M7.RAT.OPERATIONS",
+      "name": "sign_rules",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T3"
+    },
+    {
+      "id": "M7.PT.RAT.NESTED_RATIONAL_EXPRESSIONS",
+      "skillId": "M7.RAT.OPERATIONS",
+      "name": "nested_rational_expressions",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T4"
+    },
+    {
+      "id": "M7.PT.EQ.ONE_STEP_RATIONAL_EQUATION",
+      "skillId": "M7.RAT.ORDER_TRANSPOSE",
+      "name": "one_step_rational_equation",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T2"
+    },
+    {
+      "id": "M7.PT.EQ.MULTI_STEP_LINEAR_EQUATION",
+      "skillId": "M7.RAT.ORDER_TRANSPOSE",
+      "name": "multi_step_linear_equation",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T2"
+    },
+    {
+      "id": "M7.PT.EQ.DISTRIBUTIVE_EQUATION",
+      "skillId": "M7.RAT.ORDER_TRANSPOSE",
+      "name": "distributive_equation",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T3"
+    },
+    {
+      "id": "M7.PT.EQ.RATIONAL_EXPRESSION_EQUATION",
+      "skillId": "M7.RAT.ORDER_TRANSPOSE",
+      "name": "rational_expression_equation",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T3"
+    },
+    {
+      "id": "M7.PT.EQ.SQUARE_OR_QUADRATIC_STRUCTURE",
+      "skillId": "M7.RAT.ORDER_TRANSPOSE",
+      "name": "square_or_quadratic_structure",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T4"
+    },
+    {
+      "id": "M7.PT.EQ.EQUATION_IN_RATIO_OR_SYSTEM",
+      "skillId": "M7.RAT.ORDER_TRANSPOSE",
+      "name": "equation_in_ratio_or_system",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T4"
+    },
+    {
+      "id": "M7.PT.RATIO.DIRECT_RATIO",
+      "skillId": "M7.RATIO.EQUAL_CHAIN",
+      "name": "direct_ratio",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T2"
+    },
+    {
+      "id": "M7.PT.RATIO.EQUAL_RATIO",
+      "skillId": "M7.RATIO.EQUAL_CHAIN",
+      "name": "equal_ratio",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T2"
+    },
+    {
+      "id": "M7.PT.RATIO.CHAINED_RATIO",
+      "skillId": "M7.RATIO.EQUAL_CHAIN",
+      "name": "chained_ratio",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T3"
+    },
+    {
+      "id": "M7.PT.RATIO.RATIO_LINEAR_CONSTRAINT",
+      "skillId": "M7.RATIO.EQUAL_CHAIN",
+      "name": "ratio_linear_constraint",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T3"
+    },
+    {
+      "id": "M7.PT.RATIO.RATIO_PRODUCT_CONSTRAINT",
+      "skillId": "M7.RATIO.EQUAL_CHAIN",
+      "name": "ratio_product_constraint",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T4"
+    },
+    {
+      "id": "M7.PT.RATIO.RATIO_QUADRATIC_CONSTRAINT",
+      "skillId": "M7.RATIO.EQUAL_CHAIN",
+      "name": "ratio_quadratic_constraint",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T4"
+    },
+    {
+      "id": "M7.PT.RATIO.TRANSFORMED_DENOMINATORS",
+      "skillId": "M7.RATIO.EQUAL_CHAIN",
+      "name": "transformed_denominators",
+      "knowledgeLevel": "K3",
+      "thinkingLevel": "T5"
+    },
+    {
+      "id": "M7.PT.RATIO.MULTIVARIABLE_NONLINEAR_REASONING",
+      "skillId": "M7.RATIO.EQUAL_CHAIN",
+      "name": "multivariable_nonlinear_reasoning",
+      "knowledgeLevel": "K3",
+      "thinkingLevel": "T5"
+    },
+    {
+      "id": "M7.PT.MULTIVAR.EQUAL_RATIO_XYZ",
+      "skillId": "M7.RATIO.MULTIVAR",
+      "name": "equal_ratio_xyz",
+      "knowledgeLevel": "K4",
+      "thinkingLevel": "T2"
+    },
+    {
+      "id": "M7.PT.MULTIVAR.MULTIPLE_CHAINED_RATIOS",
+      "skillId": "M7.RATIO.MULTIVAR",
+      "name": "multiple_chained_ratios",
+      "knowledgeLevel": "K4",
+      "thinkingLevel": "T2"
+    },
+    {
+      "id": "M7.PT.MULTIVAR.RATIO_LINEAR_EQUATION",
+      "skillId": "M7.RATIO.MULTIVAR",
+      "name": "ratio_linear_equation",
+      "knowledgeLevel": "K4",
+      "thinkingLevel": "T3"
+    },
+    {
+      "id": "M7.PT.MULTIVAR.RATIO_XYZ_CONSTRAINT",
+      "skillId": "M7.RATIO.MULTIVAR",
+      "name": "ratio_xyz_constraint",
+      "knowledgeLevel": "K4",
+      "thinkingLevel": "T3"
+    },
+    {
+      "id": "M7.PT.MULTIVAR.RATIO_QUADRATIC_FORM",
+      "skillId": "M7.RATIO.MULTIVAR",
+      "name": "ratio_quadratic_form",
+      "knowledgeLevel": "K4",
+      "thinkingLevel": "T4"
+    },
+    {
+      "id": "M7.PT.MULTIVAR.SHIFTED_VARIABLE_RATIO",
+      "skillId": "M7.RATIO.MULTIVAR",
+      "name": "shifted_variable_ratio",
+      "knowledgeLevel": "K4",
+      "thinkingLevel": "T4"
+    },
+    {
+      "id": "M7.PT.MULTIVAR.RATIONAL_DENOMINATOR_SYSTEMS",
+      "skillId": "M7.RATIO.MULTIVAR",
+      "name": "rational_denominator_systems",
+      "knowledgeLevel": "K4",
+      "thinkingLevel": "T5"
+    },
+    {
+      "id": "M7.PT.ALG_IDENTITY.DISTRIBUTIVE_PROPERTY",
+      "skillId": "M7.ALG.IDENTITY",
+      "name": "distributive_property",
+      "knowledgeLevel": "K4",
+      "thinkingLevel": "T2"
+    },
+    {
+      "id": "M7.PT.ALG_IDENTITY.POLYNOMIAL_EXPANSION",
+      "skillId": "M7.ALG.IDENTITY",
+      "name": "polynomial_expansion",
+      "knowledgeLevel": "K4",
+      "thinkingLevel": "T2"
+    },
+    {
+      "id": "M7.PT.ALG_IDENTITY.COMMON_FACTOR_EXTRACTION",
+      "skillId": "M7.ALG.IDENTITY",
+      "name": "common_factor_extraction",
+      "knowledgeLevel": "K4",
+      "thinkingLevel": "T3"
+    },
+    {
+      "id": "M7.PT.ALG_IDENTITY.ALGEBRAIC_IDENTITY",
+      "skillId": "M7.ALG.IDENTITY",
+      "name": "algebraic_identity",
+      "knowledgeLevel": "K4",
+      "thinkingLevel": "T3"
+    },
+    {
+      "id": "M7.PT.ALG_IDENTITY.SYMMETRIC_EXPRESSION",
+      "skillId": "M7.ALG.IDENTITY",
+      "name": "symmetric_expression",
+      "knowledgeLevel": "K4",
+      "thinkingLevel": "T4"
+    },
+    {
+      "id": "M7.PT.ALG_IDENTITY.FACTORIZATION",
+      "skillId": "M7.ALG.IDENTITY",
+      "name": "factorization",
+      "knowledgeLevel": "K4",
+      "thinkingLevel": "T4"
+    },
+    {
+      "id": "M7.PT.ALG_IDENTITY.CONDITIONAL_SIMPLIFICATION",
+      "skillId": "M7.ALG.IDENTITY",
+      "name": "conditional_simplification",
+      "knowledgeLevel": "K4",
+      "thinkingLevel": "T5"
+    },
+    {
+      "id": "M7.PT.ALG_IDENTITY.PROOF",
+      "skillId": "M7.ALG.IDENTITY",
+      "name": "proof",
+      "knowledgeLevel": "K4",
+      "thinkingLevel": "T5"
+    },
+    {
+      "id": "M7.PT.ALG_IDENTITY.NONLINEAR_SYSTEM_HSG",
+      "skillId": "M7.ALG.IDENTITY",
+      "name": "nonlinear_system_HSG",
+      "knowledgeLevel": "K4",
+      "thinkingLevel": "T5"
+    },
+    {
+      "id": "M7.PT.SYM.DERIVE_FROM_SUM_PRODUCT",
+      "skillId": "M7.ALG.SYMMETRIC",
+      "name": "derive_from_sum_product",
+      "knowledgeLevel": "K5",
+      "thinkingLevel": "T2"
+    },
+    {
+      "id": "M7.PT.SYM.X_PLUS_INVERSE_X",
+      "skillId": "M7.ALG.SYMMETRIC",
+      "name": "x_plus_inverse_x",
+      "knowledgeLevel": "K5",
+      "thinkingLevel": "T2"
+    },
+    {
+      "id": "M7.PT.SYM.AB_BC_CA_CONDITION",
+      "skillId": "M7.ALG.SYMMETRIC",
+      "name": "ab_bc_ca_condition",
+      "knowledgeLevel": "K5",
+      "thinkingLevel": "T3"
+    },
+    {
+      "id": "M7.PT.SYM.CYCLIC_SYMMETRIC_RATIONAL",
+      "skillId": "M7.ALG.SYMMETRIC",
+      "name": "cyclic_symmetric_rational",
+      "knowledgeLevel": "K5",
+      "thinkingLevel": "T3"
+    },
+    {
+      "id": "M7.PT.SYM.SUM_ZERO_IDENTITY",
+      "skillId": "M7.ALG.SYMMETRIC",
+      "name": "sum_zero_identity",
+      "knowledgeLevel": "K5",
+      "thinkingLevel": "T4"
+    },
+    {
+      "id": "M7.PT.FACTOR.COMMON_FACTOR",
+      "skillId": "M7.ALG.FACTOR",
+      "name": "common_factor",
+      "knowledgeLevel": "K4",
+      "thinkingLevel": "T2"
+    },
+    {
+      "id": "M7.PT.FACTOR.GROUPING",
+      "skillId": "M7.ALG.FACTOR",
+      "name": "grouping",
+      "knowledgeLevel": "K4",
+      "thinkingLevel": "T2"
+    },
+    {
+      "id": "M7.PT.FACTOR.IDENTITIES",
+      "skillId": "M7.ALG.FACTOR",
+      "name": "identities",
+      "knowledgeLevel": "K4",
+      "thinkingLevel": "T3"
+    },
+    {
+      "id": "M7.PT.FACTOR.CYCLIC_SYMMETRIC",
+      "skillId": "M7.ALG.FACTOR",
+      "name": "cyclic_symmetric",
+      "knowledgeLevel": "K4",
+      "thinkingLevel": "T3"
+    },
+    {
+      "id": "M7.PT.FACTOR.UNDER_CONDITION",
+      "skillId": "M7.ALG.FACTOR",
+      "name": "under_condition",
+      "knowledgeLevel": "K4",
+      "thinkingLevel": "T4"
+    },
+    {
+      "id": "M7.PT.PROOF.IDENTITY_PROOF",
+      "skillId": "M7.PROOF.ALGEBRA",
+      "name": "identity_proof",
+      "knowledgeLevel": "K5",
+      "thinkingLevel": "T2"
+    },
+    {
+      "id": "M7.PT.PROOF.DERIVE_INVARIANT",
+      "skillId": "M7.PROOF.ALGEBRA",
+      "name": "derive_invariant",
+      "knowledgeLevel": "K5",
+      "thinkingLevel": "T2"
+    },
+    {
+      "id": "M7.PT.PROOF.INEQUALITY_SIGN_REASONING",
+      "skillId": "M7.PROOF.ALGEBRA",
+      "name": "inequality_sign_reasoning",
+      "knowledgeLevel": "K5",
+      "thinkingLevel": "T3"
+    },
+    {
+      "id": "M7.PT.PROOF.INTEGER_PERFECT_POWER",
+      "skillId": "M7.PROOF.ALGEBRA",
+      "name": "integer_perfect_power",
+      "knowledgeLevel": "K5",
+      "thinkingLevel": "T3"
+    },
+    {
+      "id": "M7.PT.PROOF.HSG_TRANSFORMATION",
+      "skillId": "M7.PROOF.ALGEBRA",
+      "name": "HSG_transformation",
+      "knowledgeLevel": "K5",
+      "thinkingLevel": "T4"
+    },
+    {
+      "id": "M7.PT.GEO.ANGLES_PARALLEL_LINES",
+      "skillId": "M7.GEO.PARALLEL_CRITERIA",
+      "name": "angles_parallel_lines",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T2"
+    },
+    {
+      "id": "M7.PT.GEO.CONGRUENT_TRIANGLES",
+      "skillId": "M7.GEO.PARALLEL_CRITERIA",
+      "name": "congruent_triangles",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T2"
+    },
+    {
+      "id": "M7.PT.GEO.MIDPOINT_RAY_SEGMENT",
+      "skillId": "M7.GEO.PARALLEL_CRITERIA",
+      "name": "midpoint_ray_segment",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T3"
+    },
+    {
+      "id": "M7.PT.GEO.TRIANGLE_RELATIONSHIPS",
+      "skillId": "M7.GEO.PARALLEL_CRITERIA",
+      "name": "triangle_relationships",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T3"
+    },
+    {
+      "id": "M7.PT.GEO.PRACTICAL_SOLIDS",
+      "skillId": "M7.GEO.PARALLEL_CRITERIA",
+      "name": "practical_solids",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T4"
+    },
+    {
+      "id": "M7.PT.COMB.CHOOSE_TWO_ENDPOINTS",
+      "skillId": "M7.TRI.CONGRUENCE_1",
+      "name": "choose_two_endpoints",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T2"
+    },
+    {
+      "id": "M7.PT.COMB.SYSTEMATIC_COUNTING",
+      "skillId": "M7.TRI.CONGRUENCE_1",
+      "name": "systematic_counting",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T2"
+    }
   ]
 }

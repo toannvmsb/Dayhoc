@@ -21,7 +21,7 @@ describe('Definition of Done — MVP', () => {
   it('parent can build a Learning Context with NO teacher participation', () => {
     const evidence = buildEvidence(
       childId,
-      [{ skillId: 'G7.RATIO.EQUAL_CHAIN', daysAgo: 4, correct: true, source: 'notebook_scan', provenance: 'scan' }],
+      [{ skillId: 'M7.RATIO.EQUAL_CHAIN', daysAgo: 4, correct: true, source: 'notebook_scan', provenance: 'scan' }],
       asOf,
     );
     const ctx = buildLearningContext({ childId, gradeContext: 7, evidence, teacherContributions: [], knowledgeBase: KB, asOf });
@@ -46,12 +46,12 @@ describe('Definition of Done — MVP', () => {
     const evidence = buildEvidence(
       childId,
       [
-        { skillId: 'G7.ALG.IDENTITY', daysAgo: 10, correct: true, confidenceTier: 'A' }, // origin 8
-        { skillId: 'G7.ALG.IDENTITY', daysAgo: 4, correct: true, confidenceTier: 'A' },
-        // G7.RAT.OPS: a moderate (not critical) prerequisite dip
-        { skillId: 'G7.RAT.OPS', daysAgo: 12, correct: true, confidenceTier: 'A' },
-        { skillId: 'G7.RAT.OPS', daysAgo: 8, correct: true },
-        { skillId: 'G7.RAT.OPS', daysAgo: 3, correct: false, reasoningQuality: 'weak' },
+        { skillId: 'M7.ALG.IDENTITY', daysAgo: 10, correct: true, confidenceTier: 'A' }, // origin 8
+        { skillId: 'M7.ALG.IDENTITY', daysAgo: 4, correct: true, confidenceTier: 'A' },
+        // M7.RAT.OPERATIONS: a moderate (not critical) prerequisite dip
+        { skillId: 'M7.RAT.OPERATIONS', daysAgo: 12, correct: true, confidenceTier: 'A' },
+        { skillId: 'M7.RAT.OPERATIONS', daysAgo: 8, correct: true },
+        { skillId: 'M7.RAT.OPERATIONS', daysAgo: 3, correct: false, reasoningQuality: 'weak' },
       ],
       asOf,
     );
@@ -59,8 +59,8 @@ describe('Definition of Done — MVP', () => {
     const algebra = twin.frontier.find((f) => f.domain === 'algebraic_thinking')!;
     expect(algebra.aboveGrade).toBe(true); // above-grade exposure tracked
 
-    // G7.RATIO.PROPORTION's direct prerequisite is the (moderately weak) G7.RAT.OPS
-    const readiness = computeReadiness(childId, asSkillId('G7.RATIO.PROPORTION'), twin, KB, DEFAULT_GAP_CONFIG);
+    // M7.RATIO.PROPORTION's direct prerequisite is the (moderately weak) M7.RAT.OPERATIONS
+    const readiness = computeReadiness(childId, asSkillId('M7.RATIO.PROPORTION'), twin, KB, DEFAULT_GAP_CONFIG);
     expect(['ready', 'parallel_repair']).toContain(readiness.recommendation); // advanced path not force-stopped
   });
 

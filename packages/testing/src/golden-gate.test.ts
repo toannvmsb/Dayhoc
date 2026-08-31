@@ -67,7 +67,7 @@ describe('GOLDEN GATE', () => {
       description: 'mixed evidence across grades',
       gradeContext: 7,
       evidence: [
-        { skillId: 'G7.ALG.IDENTITY', daysAgo: 6, correct: true },
+        { skillId: 'M7.ALG.IDENTITY', daysAgo: 6, correct: true },
         { skillId: 'M4.FRAC.MUL', daysAgo: 4, correct: true },
       ],
     });

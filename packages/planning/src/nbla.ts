@@ -49,11 +49,17 @@ export function candidateActions(input: NblaInput, config: PlanningConfig): Plan
   }
 
   // 2 — practice the skills currently being taught (school bucket).
+  // A skill with its own detected gap is handled by the gap-repair action above,
+  // not by plain practice — demote it here so repair leads.
+  const skillsWithGap = new Set(
+    gaps.gaps.filter((g) => g.type !== 'careless_error').map((g) => g.targetSkillId),
+  );
   for (const skillId of context.activeSkillIds.slice(0, 3)) {
     const state = twin.skillMastery.get(skillId);
     const mastery = state?.mastery ?? 40;
     if (mastery >= 90) continue;
-    const roi = clamp01((MASTERY_TARGET + 20 - mastery) / 100) * 0.8;
+    const hasGap = skillsWithGap.has(skillId);
+    const roi = clamp01((MASTERY_TARGET + 20 - mastery) / 100) * (hasGap ? 0.35 : 0.8);
     out.push({
       kind: 'practice_current_skill',
       mixBucket: 'school',
@@ -67,6 +73,10 @@ export function candidateActions(input: NblaInput, config: PlanningConfig): Plan
   }
 
   // 3 — advanced extension when a strong active skill is "ready" to push further.
+  // Demoted while a blocking gap is open — repair before racing ahead.
+  const blockingGapOpen = gaps.gaps.some(
+    (g) => g.type !== 'careless_error' && g.blocksCurrentLearning && g.score.band !== 'low',
+  );
   for (const skillId of context.activeSkillIds) {
     const state = twin.skillMastery.get(skillId);
     if (!state || state.mastery < 75) continue;
@@ -78,7 +88,7 @@ export function candidateActions(input: NblaInput, config: PlanningConfig): Plan
       mixBucket: 'advanced',
       targetSkillId: next,
       estimatedMinutes: 8,
-      roiPerMinute: clamp01(0.5 + (state.mastery - 75) / 100),
+      roiPerMinute: clamp01((0.5 + (state.mastery - 75) / 100) * (blockingGapOpen ? 0.55 : 1)),
       parentFacingTitle: `Nâng cao — ${nameOf(next)}`,
       childFacingTitle: nameOf(next),
       rationale: `Con đã vững ${nameOf(skillId)}, thử bước tiếp theo.`,

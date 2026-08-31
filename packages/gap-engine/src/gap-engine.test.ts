@@ -45,10 +45,10 @@ describe('traceRootGap', () => {
   });
 
   it('does NOT invent a prerequisite root when the prereq has no evidence (HSG rule)', () => {
-    const evidence = [ev('G7.SYM.BASIC', 6, false), ev('G7.SYM.BASIC', 2, false)];
-    const trace = traceRootGap(asSkillId('G7.SYM.BASIC'), twinOf(evidence), kb, DEFAULT_GAP_CONFIG);
+    const evidence = [ev('M7.ALG.IDENTITY', 6, false), ev('M7.ALG.IDENTITY', 2, false)];
+    const trace = traceRootGap(asSkillId('M7.ALG.IDENTITY'), twinOf(evidence), kb, DEFAULT_GAP_CONFIG);
     expect(trace.isPrerequisite).toBe(false);
-    expect(trace.rootSkillId).toBe('G7.SYM.BASIC');
+    expect(trace.rootSkillId).toBe('M7.ALG.IDENTITY');
   });
 });
 
@@ -72,13 +72,13 @@ describe('computeReadiness', () => {
 
   it('recommends parallel_repair (keep the advanced path) when prereqs are only moderately weak', () => {
     const evidence = [
-      ev('G7.RATIO.EQUAL_RATIO', 20, true),
-      ev('G7.RATIO.EQUAL_RATIO', 14, true),
-      ev('G7.RATIO.EQUAL_RATIO', 9, false), // dips it below target, not critical
+      ev('M7.RATIO.PROPORTION', 20, true),
+      ev('M7.RATIO.PROPORTION', 14, true),
+      ev('M7.RATIO.PROPORTION', 9, false), // dips it below target, not critical
     ];
     const r = computeReadiness(
       childId,
-      asSkillId('G7.RATIO.EQUAL_CHAIN'),
+      asSkillId('M7.RATIO.EQUAL_CHAIN'),
       twinOf(evidence),
       kb,
       DEFAULT_GAP_CONFIG,
@@ -88,13 +88,13 @@ describe('computeReadiness', () => {
 
   it('recommends ready when prerequisites are solid', () => {
     const evidence = [
-      ev('G7.RATIO.EQUAL_RATIO', 20, true, { confidenceTier: 'A' }),
-      ev('G7.RATIO.EQUAL_RATIO', 12, true, { confidenceTier: 'A' }),
-      ev('G7.RATIO.EQUAL_RATIO', 4, true),
+      ev('M7.RATIO.PROPORTION', 20, true, { confidenceTier: 'A' }),
+      ev('M7.RATIO.PROPORTION', 12, true, { confidenceTier: 'A' }),
+      ev('M7.RATIO.PROPORTION', 4, true),
     ];
     const r = computeReadiness(
       childId,
-      asSkillId('G7.RATIO.EQUAL_CHAIN'),
+      asSkillId('M7.RATIO.EQUAL_CHAIN'),
       twinOf(evidence),
       kb,
       DEFAULT_GAP_CONFIG,

@@ -1,0 +1,337 @@
+grade: 4
+skills:
+  M4.NUM.001:
+    name: Place value up to 100000
+    domain: number_sense
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.NUM.010:
+    name: Six-digit numbers and 1,000,000
+    domain: number_sense
+    prerequisites:
+    - M4.NUM.001
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.NUM.020:
+    name: Hàng và lớp
+    domain: number_sense
+    prerequisites:
+    - M4.NUM.010
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.NUM.030:
+    name: Numbers in millions class
+    domain: number_sense
+    prerequisites:
+    - M4.NUM.020
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.NUM.040:
+    name: Compare multi-digit numbers
+    domain: number_sense
+    prerequisites:
+    - M4.NUM.020
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.NUM.050:
+    name: Round to hundred-thousands
+    domain: number_sense
+    prerequisites:
+    - M4.NUM.020
+    - M4.NUM.040
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.NUM.060:
+    name: Natural-number sequence
+    domain: pattern_reasoning
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.NUM.070:
+    name: Even and odd numbers
+    domain: number_sense
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.ARITH.ADD_MULTI:
+    name: Multi-digit addition
+    domain: arithmetic
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.ARITH.SUB_MULTI:
+    name: Multi-digit subtraction
+    domain: arithmetic
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.ARITH.ADD_COMM:
+    name: Commutative property of addition
+    domain: arithmetic
+    prerequisites:
+    - M4.ARITH.ADD_MULTI
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.ARITH.ADD_ASSOC:
+    name: Associative property of addition
+    domain: arithmetic
+    prerequisites:
+    - M4.ARITH.ADD_MULTI
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.ARITH.ADD_FAST:
+    name: Strategic fast addition
+    domain: arithmetic
+    prerequisites:
+    - M4.ARITH.ADD_COMM
+    - M4.ARITH.ADD_ASSOC
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.ARITH.MUL_1DIGIT:
+    name: Multiply by one-digit number
+    domain: arithmetic
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.ARITH.DIV_1DIGIT:
+    name: Divide by one-digit number
+    domain: arithmetic
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.ARITH.MUL_COMM:
+    name: Commutative property of multiplication
+    domain: arithmetic
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.ARITH.MUL_ASSOC:
+    name: Associative property of multiplication
+    domain: arithmetic
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.ARITH.POW10:
+    name: Multiply/divide by 10, 100, 1000...
+    domain: arithmetic
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.ARITH.DISTRIBUTIVE:
+    name: Distributive property
+    domain: algebraic_thinking
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.ARITH.MUL_2DIGIT:
+    name: Multiply by two-digit number
+    domain: arithmetic
+    prerequisites:
+    - M4.ARITH.MUL_1DIGIT
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.ARITH.DIV_2DIGIT:
+    name: Divide by two-digit number
+    domain: arithmetic
+    prerequisites:
+    - M4.ARITH.DIV_1DIGIT
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.ARITH.ESTIMATE:
+    name: Estimation in calculation
+    domain: number_sense
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.ARITH.AVERAGE:
+    name: Arithmetic mean
+    domain: word_problems
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.ALG.EXPR_VAR:
+    name: Biểu thức chữ
+    domain: algebraic_thinking
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.ALG.FIND_X:
+    name: Tìm thành phần chưa biết / tìm x
+    domain: algebraic_thinking
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.WORD.3STEP:
+    name: Giải bài toán có ba bước tính
+    domain: word_problems
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.WORD.SUM_DIFF:
+    name: Tìm hai số biết tổng và hiệu
+    domain: word_problems
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.WORD.UNIT_RATE:
+    name: Rút về đơn vị
+    domain: word_problems
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.FRAC.CONCEPT:
+    name: Khái niệm phân số
+    domain: fractions
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.FRAC.AS_DIVISION:
+    name: Phân số và phép chia số tự nhiên
+    domain: fractions
+    prerequisites:
+    - M4.FRAC.CONCEPT
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.FRAC.EQUIVALENT:
+    name: Tính chất cơ bản / phân số bằng nhau
+    domain: fractions
+    prerequisites:
+    - M4.FRAC.AS_DIVISION
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.FRAC.SIMPLIFY:
+    name: Rút gọn phân số
+    domain: fractions
+    prerequisites:
+    - M4.FRAC.EQUIVALENT
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.FRAC.COMMON_DENOM:
+    name: Quy đồng mẫu số
+    domain: fractions
+    prerequisites:
+    - M4.FRAC.EQUIVALENT
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.FRAC.COMPARE:
+    name: So sánh phân số
+    domain: fractions
+    prerequisites:
+    - M4.FRAC.COMMON_DENOM
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.FRAC.ADD:
+    name: Phép cộng phân số
+    domain: fractions
+    prerequisites:
+    - M4.FRAC.COMMON_DENOM
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.FRAC.SUB:
+    name: Phép trừ phân số
+    domain: fractions
+    prerequisites:
+    - M4.FRAC.COMMON_DENOM
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.FRAC.MUL:
+    name: Phép nhân phân số
+    domain: fractions
+    prerequisites:
+    - M4.FRAC.CONCEPT
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.FRAC.DIV:
+    name: Phép chia phân số
+    domain: fractions
+    prerequisites:
+    - M4.FRAC.MUL
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.FRAC.OF_QUANTITY:
+    name: Tìm phân số của một số
+    domain: fractions
+    prerequisites:
+    - M4.FRAC.MUL
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.GEO.ANGLE_MEASURE:
+    name: Đo góc và đơn vị độ
+    domain: geometry
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.GEO.ANGLE_TYPE:
+    name: Góc nhọn, góc tù, góc bẹt
+    domain: geometry
+    prerequisites:
+    - M4.GEO.ANGLE_MEASURE
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.GEO.PERPENDICULAR:
+    name: Hai đường thẳng vuông góc
+    domain: geometry
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.GEO.PARALLEL:
+    name: Hai đường thẳng song song
+    domain: geometry
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.GEO.PARALLELOGRAM:
+    name: Hình bình hành
+    domain: geometry
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.GEO.RHOMBUS:
+    name: Hình thoi
+    domain: geometry
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.MEAS.MASS:
+    name: Yến, tạ, tấn
+    domain: measurement
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.MEAS.AREA:
+    name: dm², m², mm²
+    domain: measurement
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.MEAS.TIME:
+    name: Giây, thế kỉ
+    domain: measurement
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.MEAS.CONVERSION:
+    name: Đổi đơn vị đo
+    domain: measurement
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.STAT.DATA_SEQUENCE:
+    name: Dãy số liệu thống kê
+    domain: statistics_probability
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.STAT.BAR_CHART:
+    name: Biểu đồ cột
+    domain: statistics_probability
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD
+  M4.PROB.EVENT_FREQUENCY:
+    name: Số lần xuất hiện của một sự kiện
+    domain: statistics_probability
+    prerequisites: []
+    status: source_backed_initial_core
+    curriculum_origin: G4_STANDARD

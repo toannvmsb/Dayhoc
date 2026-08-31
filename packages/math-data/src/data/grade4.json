@@ -1,60 +1,1645 @@
 {
   "gradeContext": 4,
   "curriculum": [
-    { "id": "C.G4.EXPR_VAR", "gradeContext": 4, "textbook": "Toán 4 - Kết nối tri thức", "volume": 1, "strand": "Chủ đề 1 — Ôn tập và bổ sung", "lesson": "Biểu thức chữ" },
-    { "id": "C.G4.SUMDIFF", "gradeContext": 4, "textbook": "Toán 4 - Kết nối tri thức", "volume": 1, "strand": "Chủ đề 5 — Phép cộng và phép trừ", "lesson": "Tìm hai số biết tổng và hiệu của hai số đó" },
-    { "id": "C.G4.DISTRIB", "gradeContext": 4, "textbook": "Toán 4 - Kết nối tri thức", "volume": 2, "strand": "Chủ đề 8 — Phép nhân và phép chia", "lesson": "Tính chất phân phối của phép nhân đối với phép cộng" },
-    { "id": "C.G4.FRAC.CONCEPT", "gradeContext": 4, "textbook": "Toán 4 - Kết nối tri thức", "volume": 2, "strand": "Chủ đề 10 — Phân số", "lesson": "Khái niệm phân số" },
-    { "id": "C.G4.FRAC.AS_DIVISION", "gradeContext": 4, "textbook": "Toán 4 - Kết nối tri thức", "volume": 2, "strand": "Chủ đề 10 — Phân số", "lesson": "Phân số và phép chia số tự nhiên" },
-    { "id": "C.G4.FRAC.EQUIV", "gradeContext": 4, "textbook": "Toán 4 - Kết nối tri thức", "volume": 2, "strand": "Chủ đề 10 — Phân số", "lesson": "Tính chất cơ bản của phân số" },
-    { "id": "C.G4.FRAC.SIMPLIFY", "gradeContext": 4, "textbook": "Toán 4 - Kết nối tri thức", "volume": 2, "strand": "Chủ đề 10 — Phân số", "lesson": "Rút gọn phân số" },
-    { "id": "C.G4.FRAC.COMMON_DENOM", "gradeContext": 4, "textbook": "Toán 4 - Kết nối tri thức", "volume": 2, "strand": "Chủ đề 10 — Phân số", "lesson": "Quy đồng mẫu số các phân số" },
-    { "id": "C.G4.FRAC.COMPARE", "gradeContext": 4, "textbook": "Toán 4 - Kết nối tri thức", "volume": 2, "strand": "Chủ đề 10 — Phân số", "lesson": "So sánh phân số" },
-    { "id": "C.G4.FRAC.ADDSUB", "gradeContext": 4, "textbook": "Toán 4 - Kết nối tri thức", "volume": 2, "strand": "Chủ đề 11 — Phép cộng, phép trừ phân số", "lesson": "Phép cộng, phép trừ phân số" },
-    { "id": "C.G4.FRAC.MULDIV", "gradeContext": 4, "textbook": "Toán 4 - Kết nối tri thức", "volume": 2, "strand": "Chủ đề 12 — Phép nhân, phép chia phân số", "lesson": "Phép nhân, phép chia phân số; tìm phân số của một số" }
+    {
+      "id": "C.G4.1.1",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Ôn tập và bổ sung",
+      "lesson": "Ôn tập các số đến 100 000"
+    },
+    {
+      "id": "C.G4.1.2",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Ôn tập và bổ sung",
+      "lesson": "Ôn tập các phép tính trong phạm vi 100 000"
+    },
+    {
+      "id": "C.G4.1.3",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Ôn tập và bổ sung",
+      "lesson": "Số chẵn, số lẻ"
+    },
+    {
+      "id": "C.G4.1.4",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Ôn tập và bổ sung",
+      "lesson": "Biểu thức chữ"
+    },
+    {
+      "id": "C.G4.1.5",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Ôn tập và bổ sung",
+      "lesson": "Giải bài toán có ba bước tính"
+    },
+    {
+      "id": "C.G4.1.6",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Ôn tập và bổ sung",
+      "lesson": "Luyện tập chung"
+    },
+    {
+      "id": "C.G4.2.1",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Góc và đơn vị đo góc",
+      "lesson": "Đo góc, đơn vị đo góc"
+    },
+    {
+      "id": "C.G4.2.2",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Góc và đơn vị đo góc",
+      "lesson": "Góc nhọn, góc tù, góc bẹt"
+    },
+    {
+      "id": "C.G4.2.3",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Góc và đơn vị đo góc",
+      "lesson": "Luyện tập chung"
+    },
+    {
+      "id": "C.G4.3.1",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Số có nhiều chữ số",
+      "lesson": "Số có sáu chữ số, số 1 000 000"
+    },
+    {
+      "id": "C.G4.3.2",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Số có nhiều chữ số",
+      "lesson": "Hàng và lớp"
+    },
+    {
+      "id": "C.G4.3.3",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Số có nhiều chữ số",
+      "lesson": "Các số trong phạm vi lớp triệu"
+    },
+    {
+      "id": "C.G4.3.4",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Số có nhiều chữ số",
+      "lesson": "Làm tròn số đến hàng trăm nghìn"
+    },
+    {
+      "id": "C.G4.3.5",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Số có nhiều chữ số",
+      "lesson": "So sánh các số có nhiều chữ số"
+    },
+    {
+      "id": "C.G4.3.6",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Số có nhiều chữ số",
+      "lesson": "Làm quen với dãy số tự nhiên"
+    },
+    {
+      "id": "C.G4.3.7",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Số có nhiều chữ số",
+      "lesson": "Luyện tập chung"
+    },
+    {
+      "id": "C.G4.4.1",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Một số đơn vị đo đại lượng",
+      "lesson": "Yến, tạ, tấn"
+    },
+    {
+      "id": "C.G4.4.2",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Một số đơn vị đo đại lượng",
+      "lesson": "Đề-xi-mét vuông, mét vuông, mi-li-mét vuông"
+    },
+    {
+      "id": "C.G4.4.3",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Một số đơn vị đo đại lượng",
+      "lesson": "Giây, thế kỉ"
+    },
+    {
+      "id": "C.G4.4.4",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Một số đơn vị đo đại lượng",
+      "lesson": "Thực hành và trải nghiệm sử dụng một số đơn vị đo"
+    },
+    {
+      "id": "C.G4.4.5",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Một số đơn vị đo đại lượng",
+      "lesson": "Luyện tập chung"
+    },
+    {
+      "id": "C.G4.5.1",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Phép cộng và phép trừ",
+      "lesson": "Phép cộng các số có nhiều chữ số"
+    },
+    {
+      "id": "C.G4.5.2",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Phép cộng và phép trừ",
+      "lesson": "Phép trừ các số có nhiều chữ số"
+    },
+    {
+      "id": "C.G4.5.3",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Phép cộng và phép trừ",
+      "lesson": "Tính chất giao hoán và kết hợp của phép cộng"
+    },
+    {
+      "id": "C.G4.5.4",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Phép cộng và phép trừ",
+      "lesson": "Tìm hai số biết tổng và hiệu của hai số đó"
+    },
+    {
+      "id": "C.G4.5.5",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Phép cộng và phép trừ",
+      "lesson": "Luyện tập chung"
+    },
+    {
+      "id": "C.G4.6.1",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Đường thẳng vuông góc. Đường thẳng song song",
+      "lesson": "Hai đường thẳng vuông góc"
+    },
+    {
+      "id": "C.G4.6.2",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Đường thẳng vuông góc. Đường thẳng song song",
+      "lesson": "Thực hành và trải nghiệm vẽ hai đường thẳng vuông góc"
+    },
+    {
+      "id": "C.G4.6.3",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Đường thẳng vuông góc. Đường thẳng song song",
+      "lesson": "Hai đường thẳng song song"
+    },
+    {
+      "id": "C.G4.6.4",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Đường thẳng vuông góc. Đường thẳng song song",
+      "lesson": "Thực hành và trải nghiệm vẽ hai đường thẳng song song"
+    },
+    {
+      "id": "C.G4.6.5",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Đường thẳng vuông góc. Đường thẳng song song",
+      "lesson": "Hình bình hành, hình thoi"
+    },
+    {
+      "id": "C.G4.6.6",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Đường thẳng vuông góc. Đường thẳng song song",
+      "lesson": "Luyện tập chung"
+    },
+    {
+      "id": "C.G4.7.1",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Ôn tập học kì I",
+      "lesson": "Ôn tập các số đến lớp triệu"
+    },
+    {
+      "id": "C.G4.7.2",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Ôn tập học kì I",
+      "lesson": "Ôn tập phép cộng, phép trừ"
+    },
+    {
+      "id": "C.G4.7.3",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Ôn tập học kì I",
+      "lesson": "Ôn tập hình học"
+    },
+    {
+      "id": "C.G4.7.4",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Ôn tập học kì I",
+      "lesson": "Ôn tập đo lường"
+    },
+    {
+      "id": "C.G4.7.5",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 1,
+      "strand": "Ôn tập học kì I",
+      "lesson": "Ôn tập chung"
+    },
+    {
+      "id": "C.G4.8.1",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Phép nhân và phép chia",
+      "lesson": "Nhân với số có một chữ số"
+    },
+    {
+      "id": "C.G4.8.2",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Phép nhân và phép chia",
+      "lesson": "Chia cho số có một chữ số"
+    },
+    {
+      "id": "C.G4.8.3",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Phép nhân và phép chia",
+      "lesson": "Tính chất giao hoán và kết hợp của phép nhân"
+    },
+    {
+      "id": "C.G4.8.4",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Phép nhân và phép chia",
+      "lesson": "Nhân, chia với 10, 100, 1 000, ..."
+    },
+    {
+      "id": "C.G4.8.5",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Phép nhân và phép chia",
+      "lesson": "Tính chất phân phối của phép nhân đối với phép cộng"
+    },
+    {
+      "id": "C.G4.8.6",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Phép nhân và phép chia",
+      "lesson": "Nhân với số có hai chữ số"
+    },
+    {
+      "id": "C.G4.8.7",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Phép nhân và phép chia",
+      "lesson": "Chia cho số có hai chữ số"
+    },
+    {
+      "id": "C.G4.8.8",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Phép nhân và phép chia",
+      "lesson": "Thực hành và trải nghiệm ước lượng trong tính toán"
+    },
+    {
+      "id": "C.G4.8.9",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Phép nhân và phép chia",
+      "lesson": "Tìm số trung bình cộng"
+    },
+    {
+      "id": "C.G4.8.10",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Phép nhân và phép chia",
+      "lesson": "Bài toán liên quan đến rút về đơn vị"
+    },
+    {
+      "id": "C.G4.8.11",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Phép nhân và phép chia",
+      "lesson": "Luyện tập chung"
+    },
+    {
+      "id": "C.G4.9.1",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Làm quen với yếu tố thống kê, xác suất",
+      "lesson": "Dãy số liệu thống kê"
+    },
+    {
+      "id": "C.G4.9.2",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Làm quen với yếu tố thống kê, xác suất",
+      "lesson": "Biểu đồ cột"
+    },
+    {
+      "id": "C.G4.9.3",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Làm quen với yếu tố thống kê, xác suất",
+      "lesson": "Số lần xuất hiện của một sự kiện"
+    },
+    {
+      "id": "C.G4.9.4",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Làm quen với yếu tố thống kê, xác suất",
+      "lesson": "Luyện tập chung"
+    },
+    {
+      "id": "C.G4.10.1",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Phân số",
+      "lesson": "Khái niệm phân số"
+    },
+    {
+      "id": "C.G4.10.2",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Phân số",
+      "lesson": "Phân số và phép chia số tự nhiên"
+    },
+    {
+      "id": "C.G4.10.3",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Phân số",
+      "lesson": "Tính chất cơ bản của phân số"
+    },
+    {
+      "id": "C.G4.10.4",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Phân số",
+      "lesson": "Rút gọn phân số"
+    },
+    {
+      "id": "C.G4.10.5",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Phân số",
+      "lesson": "Quy đồng mẫu số các phân số"
+    },
+    {
+      "id": "C.G4.10.6",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Phân số",
+      "lesson": "So sánh phân số"
+    },
+    {
+      "id": "C.G4.10.7",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Phân số",
+      "lesson": "Luyện tập chung"
+    },
+    {
+      "id": "C.G4.11.1",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Phép cộng, phép trừ phân số",
+      "lesson": "Phép cộng phân số"
+    },
+    {
+      "id": "C.G4.11.2",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Phép cộng, phép trừ phân số",
+      "lesson": "Phép trừ phân số"
+    },
+    {
+      "id": "C.G4.11.3",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Phép cộng, phép trừ phân số",
+      "lesson": "Luyện tập chung"
+    },
+    {
+      "id": "C.G4.12.1",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Phép nhân, phép chia phân số",
+      "lesson": "Phép nhân phân số"
+    },
+    {
+      "id": "C.G4.12.2",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Phép nhân, phép chia phân số",
+      "lesson": "Phép chia phân số"
+    },
+    {
+      "id": "C.G4.12.3",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Phép nhân, phép chia phân số",
+      "lesson": "Tìm phân số của một số"
+    },
+    {
+      "id": "C.G4.12.4",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Phép nhân, phép chia phân số",
+      "lesson": "Luyện tập chung"
+    },
+    {
+      "id": "C.G4.13.1",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Ôn tập cuối năm",
+      "lesson": "Ôn tập số tự nhiên"
+    },
+    {
+      "id": "C.G4.13.2",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Ôn tập cuối năm",
+      "lesson": "Ôn tập phép tính với số tự nhiên"
+    },
+    {
+      "id": "C.G4.13.3",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Ôn tập cuối năm",
+      "lesson": "Ôn tập phân số"
+    },
+    {
+      "id": "C.G4.13.4",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Ôn tập cuối năm",
+      "lesson": "Ôn tập phép tính với phân số"
+    },
+    {
+      "id": "C.G4.13.5",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Ôn tập cuối năm",
+      "lesson": "Ôn tập hình học và đo lường"
+    },
+    {
+      "id": "C.G4.13.6",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Ôn tập cuối năm",
+      "lesson": "Ôn tập một số yếu tố thống kê và xác suất"
+    },
+    {
+      "id": "C.G4.13.7",
+      "gradeContext": 4,
+      "textbook": "Kết nối tri thức với cuộc sống",
+      "volume": 2,
+      "strand": "Ôn tập cuối năm",
+      "lesson": "Ôn tập chung"
+    },
+    {
+      "id": "C.G4.EXT.0",
+      "gradeContext": 4,
+      "textbook": "Math Core (skill family)",
+      "strand": "Nội dung theo skill family / nâng cao",
+      "lesson": "Không ứng với một bài SGK đơn lẻ"
+    }
   ],
   "skills": [
-    { "id": "M4.ALG.EXPR_VAR", "gradeContext": 4, "domain": "algebraic_thinking", "topic": "Biểu thức chữ", "name": "Hiểu và tính giá trị biểu thức chữ", "description": "Hiểu chữ là chỗ thay số, thay giá trị và tính giá trị biểu thức.", "curriculumNodeId": "C.G4.EXPR_VAR", "curriculumOrigin": 4, "thinkingDimensions": ["algebraic_thinking", "problem_representation"], "advancedExtensions": ["compare_expressions"] },
-    { "id": "M4.WORD.SUM_DIFF", "gradeContext": 4, "domain": "word_problems", "topic": "Tổng - hiệu", "name": "Tìm hai số biết tổng và hiệu", "description": "Giải bài toán tổng - hiệu, kể cả khi tổng hoặc hiệu bị ẩn.", "curriculumNodeId": "C.G4.SUMDIFF", "curriculumOrigin": 4, "thinkingDimensions": ["problem_representation", "strategic_choice", "reverse_reasoning"], "advancedExtensions": ["hidden_sum", "hidden_difference", "before_after_change"] },
-    { "id": "M4.ARITH.DISTRIBUTIVE", "gradeContext": 4, "domain": "arithmetic", "topic": "Tính chất phân phối", "name": "Tính chất phân phối của phép nhân với phép cộng", "description": "Dùng a×(b+c)=a×b+a×c cả hai chiều; nhận ra nhân tử chung.", "curriculumNodeId": "C.G4.DISTRIB", "curriculumOrigin": 4, "thinkingDimensions": ["pattern_recognition", "strategic_choice", "algebraic_thinking"], "advancedExtensions": ["hidden_common_factor", "transform_before_calculating", "equation_simplification"] },
-    { "id": "M4.FRAC.CONCEPT", "gradeContext": 4, "domain": "fractions", "topic": "Phân số", "name": "Khái niệm phân số", "description": "Hiểu phân số là phần của một tổng thể; đọc, viết phân số.", "curriculumNodeId": "C.G4.FRAC.CONCEPT", "curriculumOrigin": 4, "thinkingDimensions": ["number_sense", "problem_representation"], "advancedExtensions": [] },
-    { "id": "M4.FRAC.AS_DIVISION", "gradeContext": 4, "domain": "fractions", "topic": "Phân số", "name": "Phân số và phép chia số tự nhiên", "description": "Hiểu a/b = a : b.", "curriculumNodeId": "C.G4.FRAC.AS_DIVISION", "curriculumOrigin": 4, "thinkingDimensions": ["number_sense"], "advancedExtensions": [] },
-    { "id": "M4.FRAC.EQUIVALENT", "gradeContext": 4, "domain": "fractions", "topic": "Phân số", "name": "Phân số bằng nhau", "description": "Nhân/chia cả tử và mẫu cho cùng một số khác 0 được phân số bằng nhau.", "curriculumNodeId": "C.G4.FRAC.EQUIV", "curriculumOrigin": 4, "thinkingDimensions": ["number_sense", "pattern_recognition"], "advancedExtensions": [] },
-    { "id": "M4.FRAC.SIMPLIFY", "gradeContext": 4, "domain": "fractions", "topic": "Phân số", "name": "Rút gọn phân số", "description": "Chia tử và mẫu cho ước chung để được phân số tối giản.", "curriculumNodeId": "C.G4.FRAC.SIMPLIFY", "curriculumOrigin": 4, "thinkingDimensions": ["number_sense", "strategic_choice"], "advancedExtensions": [] },
-    { "id": "M4.FRAC.COMMON_DENOM", "gradeContext": 4, "domain": "fractions", "topic": "Phân số", "name": "Quy đồng mẫu số các phân số", "description": "Đưa các phân số về cùng mẫu số bằng phân số bằng nhau.", "curriculumNodeId": "C.G4.FRAC.COMMON_DENOM", "curriculumOrigin": 4, "thinkingDimensions": ["strategic_choice", "number_sense"], "advancedExtensions": ["least_common_denominator", "one_denominator_is_multiple"] },
-    { "id": "M4.FRAC.COMPARE", "gradeContext": 4, "domain": "fractions", "topic": "Phân số", "name": "So sánh phân số", "description": "So sánh phân số cùng mẫu, khác mẫu, so với 1.", "curriculumNodeId": "C.G4.FRAC.COMPARE", "curriculumOrigin": 4, "thinkingDimensions": ["number_sense", "strategic_choice"], "advancedExtensions": [] },
-    { "id": "M4.FRAC.ADD", "gradeContext": 4, "domain": "fractions", "topic": "Phân số", "name": "Cộng phân số", "description": "Cộng hai phân số cùng mẫu và khác mẫu.", "curriculumNodeId": "C.G4.FRAC.ADDSUB", "curriculumOrigin": 4, "thinkingDimensions": ["number_sense"], "advancedExtensions": [] },
-    { "id": "M4.FRAC.SUB", "gradeContext": 4, "domain": "fractions", "topic": "Phân số", "name": "Trừ phân số", "description": "Trừ hai phân số cùng mẫu và khác mẫu.", "curriculumNodeId": "C.G4.FRAC.ADDSUB", "curriculumOrigin": 4, "thinkingDimensions": ["number_sense"], "advancedExtensions": [] },
-    { "id": "M4.FRAC.MUL", "gradeContext": 4, "domain": "fractions", "topic": "Phân số", "name": "Nhân phân số", "description": "Nhân hai phân số, rút gọn trước khi nhân.", "curriculumNodeId": "C.G4.FRAC.MULDIV", "curriculumOrigin": 4, "thinkingDimensions": ["number_sense", "strategic_choice"], "advancedExtensions": [] },
-    { "id": "M4.FRAC.DIV", "gradeContext": 4, "domain": "fractions", "topic": "Phân số", "name": "Chia phân số", "description": "Chia phân số bằng cách nhân với phân số nghịch đảo.", "curriculumNodeId": "C.G4.FRAC.MULDIV", "curriculumOrigin": 4, "thinkingDimensions": ["number_sense"], "advancedExtensions": [] },
-    { "id": "M4.FRAC.OF_QUANTITY", "gradeContext": 4, "domain": "fractions", "topic": "Phân số", "name": "Tìm phân số của một số", "description": "Tính m/n của một số lượng cho trước.", "curriculumNodeId": "C.G4.FRAC.MULDIV", "curriculumOrigin": 4, "thinkingDimensions": ["problem_representation", "number_sense"], "advancedExtensions": ["reverse_find_whole"] }
+    {
+      "id": "M4.NUM.001",
+      "gradeContext": 4,
+      "domain": "number_sense",
+      "topic": "Place value up to 100000",
+      "name": "Place value up to 100000",
+      "description": "",
+      "curriculumNodeId": "C.G4.1.1",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.NUM.010",
+      "gradeContext": 4,
+      "domain": "number_sense",
+      "topic": "Six-digit numbers and 1,000,000",
+      "name": "Six-digit numbers and 1,000,000",
+      "description": "",
+      "curriculumNodeId": "C.G4.3.1",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.NUM.020",
+      "gradeContext": 4,
+      "domain": "number_sense",
+      "topic": "Hàng và lớp",
+      "name": "Hàng và lớp",
+      "description": "",
+      "curriculumNodeId": "C.G4.3.2",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.NUM.030",
+      "gradeContext": 4,
+      "domain": "number_sense",
+      "topic": "Numbers in millions class",
+      "name": "Numbers in millions class",
+      "description": "",
+      "curriculumNodeId": "C.G4.3.3",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.NUM.040",
+      "gradeContext": 4,
+      "domain": "number_sense",
+      "topic": "Compare multi-digit numbers",
+      "name": "Compare multi-digit numbers",
+      "description": "",
+      "curriculumNodeId": "C.G4.3.5",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.NUM.050",
+      "gradeContext": 4,
+      "domain": "number_sense",
+      "topic": "Round to hundred-thousands",
+      "name": "Round to hundred-thousands",
+      "description": "",
+      "curriculumNodeId": "C.G4.3.4",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.NUM.060",
+      "gradeContext": 4,
+      "domain": "pattern_reasoning",
+      "topic": "Natural-number sequence",
+      "name": "Natural-number sequence",
+      "description": "",
+      "curriculumNodeId": "C.G4.3.6",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "pattern_recognition",
+        "number_sense"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.NUM.070",
+      "gradeContext": 4,
+      "domain": "number_sense",
+      "topic": "Even and odd numbers",
+      "name": "Even and odd numbers",
+      "description": "",
+      "curriculumNodeId": "C.G4.1.3",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.ARITH.ADD_MULTI",
+      "gradeContext": 4,
+      "domain": "arithmetic",
+      "topic": "Multi-digit addition",
+      "name": "Multi-digit addition",
+      "description": "",
+      "curriculumNodeId": "C.G4.1.2",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.ARITH.SUB_MULTI",
+      "gradeContext": 4,
+      "domain": "arithmetic",
+      "topic": "Multi-digit subtraction",
+      "name": "Multi-digit subtraction",
+      "description": "",
+      "curriculumNodeId": "C.G4.1.2",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.ARITH.ADD_COMM",
+      "gradeContext": 4,
+      "domain": "arithmetic",
+      "topic": "Commutative property of addition",
+      "name": "Commutative property of addition",
+      "description": "",
+      "curriculumNodeId": "C.G4.5.3",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.ARITH.ADD_ASSOC",
+      "gradeContext": 4,
+      "domain": "arithmetic",
+      "topic": "Associative property of addition",
+      "name": "Associative property of addition",
+      "description": "",
+      "curriculumNodeId": "C.G4.5.3",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.ARITH.ADD_FAST",
+      "gradeContext": 4,
+      "domain": "arithmetic",
+      "topic": "Strategic fast addition",
+      "name": "Strategic fast addition",
+      "description": "",
+      "curriculumNodeId": "C.G4.EXT.0",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.ARITH.MUL_1DIGIT",
+      "gradeContext": 4,
+      "domain": "arithmetic",
+      "topic": "Multiply by one-digit number",
+      "name": "Multiply by one-digit number",
+      "description": "",
+      "curriculumNodeId": "C.G4.8.1",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.ARITH.DIV_1DIGIT",
+      "gradeContext": 4,
+      "domain": "arithmetic",
+      "topic": "Divide by one-digit number",
+      "name": "Divide by one-digit number",
+      "description": "",
+      "curriculumNodeId": "C.G4.8.2",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.ARITH.MUL_COMM",
+      "gradeContext": 4,
+      "domain": "arithmetic",
+      "topic": "Commutative property of multiplication",
+      "name": "Commutative property of multiplication",
+      "description": "",
+      "curriculumNodeId": "C.G4.8.3",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.ARITH.MUL_ASSOC",
+      "gradeContext": 4,
+      "domain": "arithmetic",
+      "topic": "Associative property of multiplication",
+      "name": "Associative property of multiplication",
+      "description": "",
+      "curriculumNodeId": "C.G4.8.3",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.ARITH.POW10",
+      "gradeContext": 4,
+      "domain": "arithmetic",
+      "topic": "Multiply/divide by 10, 100, 1000...",
+      "name": "Multiply/divide by 10, 100, 1000...",
+      "description": "",
+      "curriculumNodeId": "C.G4.8.4",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.ARITH.DISTRIBUTIVE",
+      "gradeContext": 4,
+      "domain": "algebraic_thinking",
+      "topic": "Distributive property",
+      "name": "Distributive property",
+      "description": "",
+      "curriculumNodeId": "C.G4.8.5",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "algebraic_thinking",
+        "problem_representation",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.ARITH.MUL_2DIGIT",
+      "gradeContext": 4,
+      "domain": "arithmetic",
+      "topic": "Multiply by two-digit number",
+      "name": "Multiply by two-digit number",
+      "description": "",
+      "curriculumNodeId": "C.G4.8.6",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.ARITH.DIV_2DIGIT",
+      "gradeContext": 4,
+      "domain": "arithmetic",
+      "topic": "Divide by two-digit number",
+      "name": "Divide by two-digit number",
+      "description": "",
+      "curriculumNodeId": "C.G4.8.7",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.ARITH.ESTIMATE",
+      "gradeContext": 4,
+      "domain": "number_sense",
+      "topic": "Estimation in calculation",
+      "name": "Estimation in calculation",
+      "description": "",
+      "curriculumNodeId": "C.G4.8.8",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.ARITH.AVERAGE",
+      "gradeContext": 4,
+      "domain": "word_problems",
+      "topic": "Arithmetic mean",
+      "name": "Arithmetic mean",
+      "description": "",
+      "curriculumNodeId": "C.G4.8.9",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "problem_representation",
+        "strategic_choice",
+        "reverse_reasoning"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.ALG.EXPR_VAR",
+      "gradeContext": 4,
+      "domain": "algebraic_thinking",
+      "topic": "Biểu thức chữ",
+      "name": "Biểu thức chữ",
+      "description": "",
+      "curriculumNodeId": "C.G4.1.4",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "algebraic_thinking",
+        "problem_representation",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.ALG.FIND_X",
+      "gradeContext": 4,
+      "domain": "algebraic_thinking",
+      "topic": "Tìm thành phần chưa biết / tìm x",
+      "name": "Tìm thành phần chưa biết / tìm x",
+      "description": "",
+      "curriculumNodeId": "C.G4.EXT.0",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "algebraic_thinking",
+        "problem_representation",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.WORD.3STEP",
+      "gradeContext": 4,
+      "domain": "word_problems",
+      "topic": "Giải bài toán có ba bước tính",
+      "name": "Giải bài toán có ba bước tính",
+      "description": "",
+      "curriculumNodeId": "C.G4.1.5",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "problem_representation",
+        "strategic_choice",
+        "reverse_reasoning"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.WORD.SUM_DIFF",
+      "gradeContext": 4,
+      "domain": "word_problems",
+      "topic": "Tìm hai số biết tổng và hiệu",
+      "name": "Tìm hai số biết tổng và hiệu",
+      "description": "",
+      "curriculumNodeId": "C.G4.5.4",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "problem_representation",
+        "strategic_choice",
+        "reverse_reasoning"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.WORD.UNIT_RATE",
+      "gradeContext": 4,
+      "domain": "word_problems",
+      "topic": "Rút về đơn vị",
+      "name": "Rút về đơn vị",
+      "description": "",
+      "curriculumNodeId": "C.G4.8.10",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "problem_representation",
+        "strategic_choice",
+        "reverse_reasoning"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.FRAC.CONCEPT",
+      "gradeContext": 4,
+      "domain": "fractions",
+      "topic": "Khái niệm phân số",
+      "name": "Khái niệm phân số",
+      "description": "",
+      "curriculumNodeId": "C.G4.10.1",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.FRAC.AS_DIVISION",
+      "gradeContext": 4,
+      "domain": "fractions",
+      "topic": "Phân số và phép chia số tự nhiên",
+      "name": "Phân số và phép chia số tự nhiên",
+      "description": "",
+      "curriculumNodeId": "C.G4.10.2",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.FRAC.EQUIVALENT",
+      "gradeContext": 4,
+      "domain": "fractions",
+      "topic": "Tính chất cơ bản / phân số bằng nhau",
+      "name": "Tính chất cơ bản / phân số bằng nhau",
+      "description": "",
+      "curriculumNodeId": "C.G4.10.3",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.FRAC.SIMPLIFY",
+      "gradeContext": 4,
+      "domain": "fractions",
+      "topic": "Rút gọn phân số",
+      "name": "Rút gọn phân số",
+      "description": "",
+      "curriculumNodeId": "C.G4.10.4",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.FRAC.COMMON_DENOM",
+      "gradeContext": 4,
+      "domain": "fractions",
+      "topic": "Quy đồng mẫu số",
+      "name": "Quy đồng mẫu số",
+      "description": "",
+      "curriculumNodeId": "C.G4.10.5",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.FRAC.COMPARE",
+      "gradeContext": 4,
+      "domain": "fractions",
+      "topic": "So sánh phân số",
+      "name": "So sánh phân số",
+      "description": "",
+      "curriculumNodeId": "C.G4.10.6",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.FRAC.ADD",
+      "gradeContext": 4,
+      "domain": "fractions",
+      "topic": "Phép cộng phân số",
+      "name": "Phép cộng phân số",
+      "description": "",
+      "curriculumNodeId": "C.G4.11.1",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.FRAC.SUB",
+      "gradeContext": 4,
+      "domain": "fractions",
+      "topic": "Phép trừ phân số",
+      "name": "Phép trừ phân số",
+      "description": "",
+      "curriculumNodeId": "C.G4.11.2",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.FRAC.MUL",
+      "gradeContext": 4,
+      "domain": "fractions",
+      "topic": "Phép nhân phân số",
+      "name": "Phép nhân phân số",
+      "description": "",
+      "curriculumNodeId": "C.G4.12.1",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.FRAC.DIV",
+      "gradeContext": 4,
+      "domain": "fractions",
+      "topic": "Phép chia phân số",
+      "name": "Phép chia phân số",
+      "description": "",
+      "curriculumNodeId": "C.G4.12.2",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.FRAC.OF_QUANTITY",
+      "gradeContext": 4,
+      "domain": "fractions",
+      "topic": "Tìm phân số của một số",
+      "name": "Tìm phân số của một số",
+      "description": "",
+      "curriculumNodeId": "C.G4.12.3",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "strategic_choice"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.GEO.ANGLE_MEASURE",
+      "gradeContext": 4,
+      "domain": "geometry",
+      "topic": "Đo góc và đơn vị độ",
+      "name": "Đo góc và đơn vị độ",
+      "description": "",
+      "curriculumNodeId": "C.G4.2.1",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "spatial_reasoning",
+        "proof_explanation",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.GEO.ANGLE_TYPE",
+      "gradeContext": 4,
+      "domain": "geometry",
+      "topic": "Góc nhọn, góc tù, góc bẹt",
+      "name": "Góc nhọn, góc tù, góc bẹt",
+      "description": "",
+      "curriculumNodeId": "C.G4.2.2",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "spatial_reasoning",
+        "proof_explanation",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.GEO.PERPENDICULAR",
+      "gradeContext": 4,
+      "domain": "geometry",
+      "topic": "Hai đường thẳng vuông góc",
+      "name": "Hai đường thẳng vuông góc",
+      "description": "",
+      "curriculumNodeId": "C.G4.6.1",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "spatial_reasoning",
+        "proof_explanation",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.GEO.PARALLEL",
+      "gradeContext": 4,
+      "domain": "geometry",
+      "topic": "Hai đường thẳng song song",
+      "name": "Hai đường thẳng song song",
+      "description": "",
+      "curriculumNodeId": "C.G4.6.3",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "spatial_reasoning",
+        "proof_explanation",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.GEO.PARALLELOGRAM",
+      "gradeContext": 4,
+      "domain": "geometry",
+      "topic": "Hình bình hành",
+      "name": "Hình bình hành",
+      "description": "",
+      "curriculumNodeId": "C.G4.6.5",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "spatial_reasoning",
+        "proof_explanation",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.GEO.RHOMBUS",
+      "gradeContext": 4,
+      "domain": "geometry",
+      "topic": "Hình thoi",
+      "name": "Hình thoi",
+      "description": "",
+      "curriculumNodeId": "C.G4.6.5",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "spatial_reasoning",
+        "proof_explanation",
+        "pattern_recognition"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.MEAS.MASS",
+      "gradeContext": 4,
+      "domain": "measurement",
+      "topic": "Yến, tạ, tấn",
+      "name": "Yến, tạ, tấn",
+      "description": "",
+      "curriculumNodeId": "C.G4.4.1",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "problem_representation"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.MEAS.AREA",
+      "gradeContext": 4,
+      "domain": "measurement",
+      "topic": "dm², m², mm²",
+      "name": "dm², m², mm²",
+      "description": "",
+      "curriculumNodeId": "C.G4.4.2",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "problem_representation"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.MEAS.TIME",
+      "gradeContext": 4,
+      "domain": "measurement",
+      "topic": "Giây, thế kỉ",
+      "name": "Giây, thế kỉ",
+      "description": "",
+      "curriculumNodeId": "C.G4.4.3",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "problem_representation"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.MEAS.CONVERSION",
+      "gradeContext": 4,
+      "domain": "measurement",
+      "topic": "Đổi đơn vị đo",
+      "name": "Đổi đơn vị đo",
+      "description": "",
+      "curriculumNodeId": "C.G4.EXT.0",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "number_sense",
+        "problem_representation"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.STAT.DATA_SEQUENCE",
+      "gradeContext": 4,
+      "domain": "statistics_probability",
+      "topic": "Dãy số liệu thống kê",
+      "name": "Dãy số liệu thống kê",
+      "description": "",
+      "curriculumNodeId": "C.G4.9.1",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "problem_representation",
+        "logical_reasoning"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.STAT.BAR_CHART",
+      "gradeContext": 4,
+      "domain": "statistics_probability",
+      "topic": "Biểu đồ cột",
+      "name": "Biểu đồ cột",
+      "description": "",
+      "curriculumNodeId": "C.G4.9.2",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "problem_representation",
+        "logical_reasoning"
+      ],
+      "advancedExtensions": []
+    },
+    {
+      "id": "M4.PROB.EVENT_FREQUENCY",
+      "gradeContext": 4,
+      "domain": "statistics_probability",
+      "topic": "Số lần xuất hiện của một sự kiện",
+      "name": "Số lần xuất hiện của một sự kiện",
+      "description": "",
+      "curriculumNodeId": "C.G4.9.3",
+      "curriculumOrigin": 4,
+      "thinkingDimensions": [
+        "problem_representation",
+        "logical_reasoning"
+      ],
+      "advancedExtensions": []
+    }
   ],
   "prerequisites": [
-    { "from": "M4.FRAC.CONCEPT", "to": "M4.FRAC.AS_DIVISION", "importance": 0.9, "crossGrade": false },
-    { "from": "M4.FRAC.AS_DIVISION", "to": "M4.FRAC.EQUIVALENT", "importance": 0.8, "crossGrade": false },
-    { "from": "M4.FRAC.EQUIVALENT", "to": "M4.FRAC.SIMPLIFY", "importance": 0.95, "crossGrade": false },
-    { "from": "M4.FRAC.EQUIVALENT", "to": "M4.FRAC.COMMON_DENOM", "importance": 0.95, "crossGrade": false },
-    { "from": "M4.FRAC.SIMPLIFY", "to": "M4.FRAC.COMMON_DENOM", "importance": 0.6, "crossGrade": false },
-    { "from": "M4.FRAC.COMMON_DENOM", "to": "M4.FRAC.COMPARE", "importance": 0.85, "crossGrade": false },
-    { "from": "M4.FRAC.COMMON_DENOM", "to": "M4.FRAC.ADD", "importance": 0.95, "crossGrade": false },
-    { "from": "M4.FRAC.COMMON_DENOM", "to": "M4.FRAC.SUB", "importance": 0.95, "crossGrade": false },
-    { "from": "M4.FRAC.ADD", "to": "M4.FRAC.SUB", "importance": 0.5, "crossGrade": false },
-    { "from": "M4.FRAC.SIMPLIFY", "to": "M4.FRAC.MUL", "importance": 0.7, "crossGrade": false },
-    { "from": "M4.FRAC.MUL", "to": "M4.FRAC.DIV", "importance": 0.9, "crossGrade": false },
-    { "from": "M4.FRAC.MUL", "to": "M4.FRAC.OF_QUANTITY", "importance": 0.8, "crossGrade": false },
-    { "from": "M4.ALG.EXPR_VAR", "to": "M4.ARITH.DISTRIBUTIVE", "importance": 0.55, "crossGrade": false }
+    {
+      "from": "M4.NUM.001",
+      "to": "M4.NUM.010",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M4.NUM.010",
+      "to": "M4.NUM.020",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M4.NUM.020",
+      "to": "M4.NUM.030",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M4.NUM.020",
+      "to": "M4.NUM.040",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M4.NUM.020",
+      "to": "M4.NUM.050",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M4.NUM.040",
+      "to": "M4.NUM.050",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M4.ARITH.ADD_MULTI",
+      "to": "M4.ARITH.ADD_COMM",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M4.ARITH.ADD_MULTI",
+      "to": "M4.ARITH.ADD_ASSOC",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M4.ARITH.ADD_COMM",
+      "to": "M4.ARITH.ADD_FAST",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M4.ARITH.ADD_ASSOC",
+      "to": "M4.ARITH.ADD_FAST",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M4.ARITH.MUL_1DIGIT",
+      "to": "M4.ARITH.MUL_2DIGIT",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M4.ARITH.DIV_1DIGIT",
+      "to": "M4.ARITH.DIV_2DIGIT",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M4.FRAC.CONCEPT",
+      "to": "M4.FRAC.AS_DIVISION",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M4.FRAC.AS_DIVISION",
+      "to": "M4.FRAC.EQUIVALENT",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M4.FRAC.EQUIVALENT",
+      "to": "M4.FRAC.SIMPLIFY",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M4.FRAC.EQUIVALENT",
+      "to": "M4.FRAC.COMMON_DENOM",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M4.FRAC.COMMON_DENOM",
+      "to": "M4.FRAC.COMPARE",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M4.FRAC.COMMON_DENOM",
+      "to": "M4.FRAC.ADD",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M4.FRAC.COMMON_DENOM",
+      "to": "M4.FRAC.SUB",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M4.FRAC.CONCEPT",
+      "to": "M4.FRAC.MUL",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M4.FRAC.MUL",
+      "to": "M4.FRAC.DIV",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M4.FRAC.MUL",
+      "to": "M4.FRAC.OF_QUANTITY",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M4.GEO.ANGLE_MEASURE",
+      "to": "M4.GEO.ANGLE_TYPE",
+      "importance": 0.8,
+      "crossGrade": false
+    }
   ],
   "problemTypes": [
-    { "id": "M4.FRAC.EQUIVALENT.PT1", "skillId": "M4.FRAC.EQUIVALENT", "name": "Điền số để hai phân số bằng nhau", "knowledgeLevel": "K2", "thinkingLevel": "T1" },
-    { "id": "M4.FRAC.COMMON_DENOM.PT1", "skillId": "M4.FRAC.COMMON_DENOM", "name": "Quy đồng hai phân số khác mẫu", "knowledgeLevel": "K2", "thinkingLevel": "T1" },
-    { "id": "M4.FRAC.COMMON_DENOM.PT2", "skillId": "M4.FRAC.COMMON_DENOM", "name": "Quy đồng khi một mẫu là bội của mẫu kia", "knowledgeLevel": "K2", "thinkingLevel": "T2" },
-    { "id": "M4.FRAC.COMMON_DENOM.PT3", "skillId": "M4.FRAC.COMMON_DENOM", "name": "Quy đồng ba phân số", "knowledgeLevel": "K3", "thinkingLevel": "T2" },
-    { "id": "M4.WORD.SUM_DIFF.PT1", "skillId": "M4.WORD.SUM_DIFF", "name": "Tổng - hiệu cho trực tiếp", "knowledgeLevel": "K2", "thinkingLevel": "T2" },
-    { "id": "M4.WORD.SUM_DIFF.PT2", "skillId": "M4.WORD.SUM_DIFF", "name": "Tổng - hiệu với hiệu bị ẩn", "knowledgeLevel": "K3", "thinkingLevel": "T3" },
-    { "id": "M4.ARITH.DISTRIBUTIVE.PT1", "skillId": "M4.ARITH.DISTRIBUTIVE", "name": "Dùng trực tiếp a×(b+c)", "knowledgeLevel": "K2", "thinkingLevel": "T1" },
-    { "id": "M4.ARITH.DISTRIBUTIVE.PT2", "skillId": "M4.ARITH.DISTRIBUTIVE", "name": "Nhận ra nhân tử chung", "knowledgeLevel": "K2", "thinkingLevel": "T2" },
-    { "id": "M4.ARITH.DISTRIBUTIVE.PT4", "skillId": "M4.ARITH.DISTRIBUTIVE", "name": "Nhân tử chung bị che", "knowledgeLevel": "K3", "thinkingLevel": "T3" },
-    { "id": "M4.ARITH.DISTRIBUTIVE.PT_THINK", "skillId": "M4.ARITH.DISTRIBUTIVE", "name": "Tính nhanh 2026×99+2026 bằng cấu trúc", "knowledgeLevel": "K2", "thinkingLevel": "T4" },
-    { "id": "M4.ARITH.DISTRIBUTIVE.PT_CHALLENGE", "skillId": "M4.ARITH.DISTRIBUTIVE", "name": "Tự tạo biểu thức tính nhanh và giải thích", "knowledgeLevel": "K2", "thinkingLevel": "T5" }
+    {
+      "id": "M4.PT.DIST.DIRECT",
+      "skillId": "M4.ARITH.DISTRIBUTIVE",
+      "name": "direct_use",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T2"
+    },
+    {
+      "id": "M4.PT.DIST.COMMON_FACTOR",
+      "skillId": "M4.ARITH.DISTRIBUTIVE",
+      "name": "recognize_common_factor",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T2"
+    },
+    {
+      "id": "M4.PT.DIST.CONVENIENT",
+      "skillId": "M4.ARITH.DISTRIBUTIVE",
+      "name": "convenient_calculation",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T3"
+    },
+    {
+      "id": "M4.PT.DIST.HIDDEN_FACTOR",
+      "skillId": "M4.ARITH.DISTRIBUTIVE",
+      "name": "hidden_common_factor",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T4"
+    },
+    {
+      "id": "M4.PT.DIST.MULTI_TERM",
+      "skillId": "M4.ARITH.DISTRIBUTIVE",
+      "name": "three_or_more_terms",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T4"
+    },
+    {
+      "id": "M4.PT.DIST.EQUATION",
+      "skillId": "M4.ARITH.DISTRIBUTIVE",
+      "name": "equation_with_common_factor",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T4"
+    },
+    {
+      "id": "M4.PT.DIST.CREATE",
+      "skillId": "M4.ARITH.DISTRIBUTIVE",
+      "name": "create_own_expression",
+      "knowledgeLevel": "K3",
+      "thinkingLevel": "T5"
+    },
+    {
+      "id": "M4.PT.SD.DIRECT",
+      "skillId": "M4.WORD.SUM_DIFF",
+      "name": "direct_sum_difference",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T2"
+    },
+    {
+      "id": "M4.PT.SD.HIDDEN_SUM",
+      "skillId": "M4.WORD.SUM_DIFF",
+      "name": "hidden_sum",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T3"
+    },
+    {
+      "id": "M4.PT.SD.HIDDEN_DIFF",
+      "skillId": "M4.WORD.SUM_DIFF",
+      "name": "hidden_difference",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T3"
+    },
+    {
+      "id": "M4.PT.SD.TRANSFER",
+      "skillId": "M4.WORD.SUM_DIFF",
+      "name": "after_transfer",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T4"
+    },
+    {
+      "id": "M4.PT.SD.BEFORE_AFTER",
+      "skillId": "M4.WORD.SUM_DIFF",
+      "name": "before_after_change",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T4"
+    },
+    {
+      "id": "M4.PT.UR.ONE_MANY",
+      "skillId": "M4.WORD.UNIT_RATE",
+      "name": "find_one_then_many",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T2"
+    },
+    {
+      "id": "M4.PT.UR.MANY_ONE",
+      "skillId": "M4.WORD.UNIT_RATE",
+      "name": "find_many_then_one",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T2"
+    },
+    {
+      "id": "M4.PT.UR.INVERSE",
+      "skillId": "M4.WORD.UNIT_RATE",
+      "name": "inverse_unit_rate",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T3"
+    },
+    {
+      "id": "M4.PT.UR.MULTISTEP",
+      "skillId": "M4.WORD.UNIT_RATE",
+      "name": "multi_step_unit_rate",
+      "knowledgeLevel": "K2",
+      "thinkingLevel": "T3"
+    }
   ]
 }

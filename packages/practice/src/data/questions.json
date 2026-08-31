@@ -2,7 +2,7 @@
   {
     "id": "Q.M4.FRAC.COMMON_DENOM.001",
     "skillId": "M4.FRAC.COMMON_DENOM",
-    "problemTypeId": "M4.FRAC.COMMON_DENOM.PT1",
+    "problemTypeId": "M4.PT.SD.DIRECT",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T1",
     "prompt": "Quy đồng mẫu số hai phân số 2/3 và 3/4.",
@@ -21,7 +21,7 @@
   {
     "id": "Q.M4.FRAC.COMMON_DENOM.002",
     "skillId": "M4.FRAC.COMMON_DENOM",
-    "problemTypeId": "M4.FRAC.COMMON_DENOM.PT2",
+    "problemTypeId": "M4.PT.SD.DIRECT",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T2",
     "prompt": "Quy đồng mẫu số 5/6 và 7/12.",
@@ -40,7 +40,7 @@
   {
     "id": "Q.M4.FRAC.EQUIVALENT.001",
     "skillId": "M4.FRAC.EQUIVALENT",
-    "problemTypeId": "M4.FRAC.EQUIVALENT.PT1",
+    "problemTypeId": "M4.PT.SD.DIRECT",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T1",
     "prompt": "Điền số thích hợp: 3/5 = ?/15.",
@@ -59,7 +59,7 @@
   {
     "id": "Q.M4.ARITH.DISTRIBUTIVE.001",
     "skillId": "M4.ARITH.DISTRIBUTIVE",
-    "problemTypeId": "M4.ARITH.DISTRIBUTIVE.PT2",
+    "problemTypeId": "M4.PT.DIST.COMMON_FACTOR",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T2",
     "prompt": "Tính nhanh: 37 × 28 + 37 × 72.",
@@ -78,7 +78,7 @@
   {
     "id": "Q.M4.ARITH.DISTRIBUTIVE.CHALLENGE.001",
     "skillId": "M4.ARITH.DISTRIBUTIVE",
-    "problemTypeId": "M4.ARITH.DISTRIBUTIVE.PT_CHALLENGE",
+    "problemTypeId": "M4.PT.DIST.CREATE",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T5",
     "prompt": "Không dùng máy tính, hãy tạo một biểu thức có dạng a×b + a×c mà tính ra đúng 2026, rồi giải thích cách con nghĩ.",
@@ -95,9 +95,9 @@
     "origin": "authored"
   },
   {
-    "id": "Q.G7.RATIO.EQUAL_CHAIN.001",
-    "skillId": "G7.RATIO.EQUAL_CHAIN",
-    "problemTypeId": "G7.RATIO.EQUAL_CHAIN.PT1",
+    "id": "Q.M7.RATIO.EQUAL_CHAIN.001",
+    "skillId": "M7.RATIO.EQUAL_CHAIN",
+    "problemTypeId": "M7.PT.RATIO.EQUAL_RATIO",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T2",
     "prompt": "Cho a/2 = b/3 và a + b = 25. Tìm a và b.",
@@ -114,9 +114,9 @@
     "origin": "authored"
   },
   {
-    "id": "Q.G7.RATIO.EQUAL_CHAIN.CHALLENGE.001",
-    "skillId": "G7.RATIO.EQUAL_CHAIN",
-    "problemTypeId": "G7.RATIO.EQUAL_CHAIN.PT_HSG",
+    "id": "Q.M7.RATIO.EQUAL_CHAIN.CHALLENGE.001",
+    "skillId": "M7.RATIO.EQUAL_CHAIN",
+    "problemTypeId": "M7.PT.RATIO.RATIO_QUADRATIC_CONSTRAINT",
     "knowledgeLevel": "K3",
     "thinkingLevel": "T5",
     "prompt": "Cho a/2 = b/3 = c/4 và a + b + c = 36. Không tính từng số, hãy nói b lớn hơn a bao nhiêu phần trăm, và giải thích.",

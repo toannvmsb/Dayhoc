@@ -25,8 +25,8 @@ function scene() {
   const evidence: Evidence[] = buildEvidence(
     childId,
     [
-      { skillId: 'G7.RATIO.EQUAL_RATIO', daysAgo: 20, correct: true, confidenceTier: 'A' },
-      { skillId: 'G7.ALG.IDENTITY', daysAgo: 12, correct: true, confidenceTier: 'A' },
+      { skillId: 'M7.RATIO.PROPORTION', daysAgo: 20, correct: true, confidenceTier: 'A' },
+      { skillId: 'M7.ALG.IDENTITY', daysAgo: 12, correct: true, confidenceTier: 'A' },
       { skillId: 'M4.FRAC.COMMON_DENOM', daysAgo: 8, correct: false, reasoningQuality: 'weak', source: 'school_test', provenance: 'assessment', confidenceTier: 'A' },
       { skillId: 'M4.FRAC.COMMON_DENOM', daysAgo: 3, correct: false, reasoningQuality: 'weak', source: 'school_test', provenance: 'assessment', confidenceTier: 'A' },
     ],

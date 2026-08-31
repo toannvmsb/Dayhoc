@@ -101,7 +101,7 @@ describe('EvidenceService — append-only ledger (Phase 2 acceptance)', () => {
       contributedAs: 'parent',
       actorUserId: 'user_thu_ha',
       occurredOn: '2026-08-30',
-      taughtSkillIds: ['G7.RATIO.EQUAL_RATIO'],
+      taughtSkillIds: ['M7.RATIO.PROPORTION'],
       problemTypeIds: [],
       homeworkRefs: ['SGK tr.12 bài 1-4'],
     });

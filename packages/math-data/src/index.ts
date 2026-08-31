@@ -7,10 +7,11 @@
  * against Zod schemas and cross-checks referential integrity + acyclicity before
  * returning an indexed KnowledgeBase. Invalid data is a hard failure.
  *
- * Phase 1 ships a vertical slice — the fraction chain, distributive property, and
- * the ratio → equal-ratio-chain → multivariable families — enough to exercise the
- * Grade 4 and Grade 7 golden scenarios and the cross-grade prerequisite bridge
- * (M4.FRAC.COMMON_DENOM → G7.RAT.OPS → G7.RATIO.*).
+ * Data source: Math Dev Core v1.0 (`data/dev-core/`, anh-supplied) — 52 Grade 4
+ * skills + 37 Grade 7 (`M7.*`, provisional normalization) — converted to the
+ * loader schema by `scripts/build-kb.mjs` (run `npm run data -w @copilot/math-data`).
+ * Cross-grade prerequisite bridges (M4 → M7) live in `data/bridges.yaml` and are
+ * flagged for math-educator review (P-01).
  */
 export * from './schema.js';
 export * from './loader.js';

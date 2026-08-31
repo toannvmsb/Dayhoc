@@ -103,7 +103,7 @@ describe('API role gating (Phase 10)', () => {
       contributedAs: 'parent',
       actorUserId: 'parent_thu_ha',
       occurredOn: '2026-08-30',
-      taughtSkillIds: ['G7.RATIO.EQUAL_CHAIN'],
+      taughtSkillIds: ['M7.RATIO.EQUAL_CHAIN'],
       problemTypeIds: [],
       homeworkRefs: [],
     });

@@ -35,7 +35,7 @@ function scene() {
     mk(1, 'M4.FRAC.EQUIVALENT', 24, true, { confidenceTier: 'A' }),
     mk(2, 'M4.FRAC.COMMON_DENOM', 8, false, { reasoningQuality: 'weak', source: 'school_test', provenance: 'assessment', confidenceTier: 'A' }),
     mk(3, 'M4.FRAC.COMMON_DENOM', 3, false, { reasoningQuality: 'weak', source: 'school_test', provenance: 'assessment', confidenceTier: 'A' }),
-    mk(4, 'G7.RATIO.EQUAL_CHAIN', 5, true),
+    mk(4, 'M7.RATIO.EQUAL_CHAIN', 5, true),
   ];
   const twin = buildLearningTwin({ childId: CHILD, gradeContext: 7, evidence, knowledgeBase: kb, asOf: AS_OF });
   const gaps = runGapEngine({ childId: CHILD, gradeContext: 7, twin, evidence, knowledgeBase: kb, asOf: AS_OF });

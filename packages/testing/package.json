@@ -5,23 +5,33 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
-  "scripts": { "build": "tsc -b" },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b"
+  },
   "dependencies": {
+    "@copilot/ai": "0.1.0",
+    "@copilot/api": "0.1.0",
+    "@copilot/api-contract": "0.1.0",
+    "@copilot/audit": "0.1.0",
     "@copilot/domain": "0.1.0",
     "@copilot/education-core": "0.1.0",
-    "@copilot/math-data": "0.1.0",
     "@copilot/evidence": "0.1.0",
+    "@copilot/gap-engine": "0.1.0",
     "@copilot/learning-context": "0.1.0",
     "@copilot/learning-twin": "0.1.0",
-    "@copilot/gap-engine": "0.1.0",
+    "@copilot/math-data": "0.1.0",
     "@copilot/planning": "0.1.0",
     "@copilot/practice": "0.1.0",
-    "@copilot/api-contract": "0.1.0",
     "@copilot/projections": "0.1.0",
-    "@copilot/revision": "0.1.0",
-    "@copilot/ai": "0.1.0",
-    "@copilot/audit": "0.1.0",
-    "@copilot/api": "0.1.0"
+    "@copilot/revision": "0.1.0"
+  },
+  "devDependencies": {
+    "yaml": "^2.9.0"
   }
 }

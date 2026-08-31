@@ -27,7 +27,7 @@ describe('buildLearningContext (Phase 2 acceptance)', () => {
       childId,
       gradeContext: 7,
       evidence: [
-        ev({ skillId: 'G7.RATIO.EQUAL_RATIO', occurredAt: '2026-08-28T10:00:00Z' }),
+        ev({ skillId: 'M7.RATIO.PROPORTION', occurredAt: '2026-08-28T10:00:00Z' }),
         ev({ skillId: 'M4.FRAC.COMMON_DENOM', occurredAt: '2026-08-20T10:00:00Z', result: { correct: false } }),
       ],
       teacherContributions: [],
@@ -36,7 +36,7 @@ describe('buildLearningContext (Phase 2 acceptance)', () => {
     });
 
     expect(ctx.teacherParticipated).toBe(false);
-    expect(ctx.activeSkillIds).toContain('G7.RATIO.EQUAL_RATIO');
+    expect(ctx.activeSkillIds).toContain('M7.RATIO.PROPORTION');
     expect(ctx.actualTaughtPosition.skillIds.length).toBeGreaterThan(0);
     expect(ctx.actualTaughtPosition.note).toMatch(/chưa có cập nhật của giáo viên/);
     expect(ctx.standardPosition.skillIds.length).toBeGreaterThan(0);
@@ -50,20 +50,20 @@ describe('buildLearningContext (Phase 2 acceptance)', () => {
       actorUserId: 'user_teacher',
       occurredOn: '2026-08-29',
       recordedAt: '2026-08-29T12:00:00Z',
-      taughtSkillIds: [asSkillId('G7.RATIO.EQUAL_CHAIN')],
+      taughtSkillIds: [asSkillId('M7.RATIO.EQUAL_CHAIN')],
       problemTypeIds: [],
       homeworkRefs: [],
     };
     const ctx = buildLearningContext({
       childId,
       gradeContext: 7,
-      evidence: [ev({ skillId: 'G7.RATIO.EQUAL_CHAIN', occurredAt: '2026-08-30T10:00:00Z' })],
+      evidence: [ev({ skillId: 'M7.RATIO.EQUAL_CHAIN', occurredAt: '2026-08-30T10:00:00Z' })],
       teacherContributions: [contribution],
       knowledgeBase: kb,
       asOf,
     });
     expect(ctx.teacherParticipated).toBe(true);
-    expect(ctx.actualTaughtPosition.skillIds).toContain('G7.RATIO.EQUAL_CHAIN');
+    expect(ctx.actualTaughtPosition.skillIds).toContain('M7.RATIO.EQUAL_CHAIN');
     expect(ctx.actualTaughtPosition.note).toMatch(/giáo viên\/bố mẹ/);
     expect(ctx.conflicts).toHaveLength(0);
   });
@@ -76,7 +76,7 @@ describe('buildLearningContext (Phase 2 acceptance)', () => {
       actorUserId: 'user_teacher',
       occurredOn: '2026-08-29',
       recordedAt: '2026-08-29T12:00:00Z',
-      taughtSkillIds: [asSkillId('G7.RATIO.EQUAL_CHAIN')],
+      taughtSkillIds: [asSkillId('M7.RATIO.EQUAL_CHAIN')],
       problemTypeIds: [],
       homeworkRefs: [],
     };
@@ -97,8 +97,8 @@ describe('buildLearningContext (Phase 2 acceptance)', () => {
       childId,
       gradeContext: 7,
       evidence: [
-        ev({ skillId: 'G7.ALG.IDENTITY', occurredAt: '2026-08-27T10:00:00Z' }), // origin 8 → above grade
-        ev({ skillId: 'G7.RAT.OPS', occurredAt: '2026-08-27T10:00:00Z' }), // origin 7
+        ev({ skillId: 'M7.ALG.IDENTITY', occurredAt: '2026-08-27T10:00:00Z' }), // origin 8 → above grade
+        ev({ skillId: 'M7.RAT.OPERATIONS', occurredAt: '2026-08-27T10:00:00Z' }), // origin 7
       ],
       teacherContributions: [],
       knowledgeBase: kb,

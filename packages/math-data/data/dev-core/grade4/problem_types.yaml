@@ -1,0 +1,85 @@
+grade: 4
+rule: track_problem_type_mastery_separately_from_skill_mastery
+problem_type_families:
+  M4.ARITH.DISTRIBUTIVE:
+  - id: M4.PT.DIST.DIRECT
+    name: direct_use
+    thinking_level: T2
+  - id: M4.PT.DIST.COMMON_FACTOR
+    name: recognize_common_factor
+    thinking_level: T2
+  - id: M4.PT.DIST.CONVENIENT
+    name: convenient_calculation
+    thinking_level: T3
+  - id: M4.PT.DIST.HIDDEN_FACTOR
+    name: hidden_common_factor
+    thinking_level: T4
+  - id: M4.PT.DIST.MULTI_TERM
+    name: three_or_more_terms
+    thinking_level: T4
+  - id: M4.PT.DIST.EQUATION
+    name: equation_with_common_factor
+    thinking_level: T4
+  - id: M4.PT.DIST.CREATE
+    name: create_own_expression
+    thinking_level: T5
+  M4.WORD.SUM_DIFF:
+  - id: M4.PT.SD.DIRECT
+    name: direct_sum_difference
+    thinking_level: T2
+  - id: M4.PT.SD.HIDDEN_SUM
+    name: hidden_sum
+    thinking_level: T3
+  - id: M4.PT.SD.HIDDEN_DIFF
+    name: hidden_difference
+    thinking_level: T3
+  - id: M4.PT.SD.TRANSFER
+    name: after_transfer
+    thinking_level: T4
+  - id: M4.PT.SD.BEFORE_AFTER
+    name: before_after_change
+    thinking_level: T4
+  M4.WORD.UNIT_RATE:
+  - id: M4.PT.UR.ONE_MANY
+    name: find_one_then_many
+    thinking_level: T2
+  - id: M4.PT.UR.MANY_ONE
+    name: find_many_then_one
+    thinking_level: T2
+  - id: M4.PT.UR.INVERSE
+    name: inverse_unit_rate
+    thinking_level: T3
+  - id: M4.PT.UR.MULTISTEP
+    name: multi_step_unit_rate
+    thinking_level: T3
+advanced_families:
+- fast_calculation_add_sub
+- fast_calculation_mul_div
+- distributive_factorization
+- mixed_fast_calculation
+- advanced_find_x
+- multi_step_find_x
+- arithmetic_sequences
+- advanced_sequences
+- number_construction
+- digit_problems
+- divisibility
+- division_with_remainder
+- average
+- advanced_average
+- sum_difference
+- advanced_sum_difference
+- sum_ratio
+- difference_ratio
+- age_problems
+- advanced_age_problems
+- units_conversion
+- time_problems
+- logical_reasoning
+- systematic_counting
+- reverse_calculation
+- multiple_methods
+- mixed_HSG
+- final_challenge
+status_note: Only problem-type families explicitly present in the Grade 4 Math Core are enumerated in detail; advanced families
+  remain family-level until educator normalization.

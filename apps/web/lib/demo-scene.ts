@@ -44,12 +44,12 @@ function seedEvidence(): Evidence[] {
   });
 
   return [
-    mk(1, 'G7.RATIO.PROPORTION', 26, true, { confidenceTier: 'A' }),
-    mk(2, 'G7.RATIO.EQUAL_RATIO', 18, true, { confidenceTier: 'A' }),
-    mk(3, 'G7.RATIO.EQUAL_CHAIN', 9, true, { problemTypeId: undefined }),
-    mk(4, 'G7.RATIO.EQUAL_CHAIN', 4, true),
-    mk(5, 'G7.ALG.IDENTITY', 12, true, { confidenceTier: 'A' }),
-    mk(6, 'G7.ALG.IDENTITY', 5, true),
+    mk(1, 'M7.RATIO.PROPORTION', 26, true, { confidenceTier: 'A' }),
+    mk(2, 'M7.RATIO.PROPORTION', 18, true, { confidenceTier: 'A' }),
+    mk(3, 'M7.RATIO.EQUAL_CHAIN', 9, true, { problemTypeId: undefined }),
+    mk(4, 'M7.RATIO.EQUAL_CHAIN', 4, true),
+    mk(5, 'M7.ALG.IDENTITY', 12, true, { confidenceTier: 'A' }),
+    mk(6, 'M7.ALG.IDENTITY', 5, true),
     mk(7, 'M4.FRAC.EQUIVALENT', 24, true, { confidenceTier: 'A' }),
     mk(8, 'M4.FRAC.COMMON_DENOM', 10, false, { reasoningQuality: 'weak', source: 'school_homework', provenance: 'scan' }),
     mk(9, 'M4.FRAC.COMMON_DENOM', 6, false, { reasoningQuality: 'weak', source: 'school_test', provenance: 'assessment', confidenceTier: 'A' }),
@@ -82,7 +82,7 @@ export function demoScene() {
         actorUserId: 'teacher_hang',
         occurredOn: '2026-08-24',
         recordedAt: '2026-08-24T12:00:00Z',
-        taughtSkillIds: [asSkillId('G7.RATIO.EQUAL_CHAIN')],
+        taughtSkillIds: [asSkillId('M7.RATIO.EQUAL_CHAIN')],
         problemTypeIds: [],
         homeworkRefs: ['SGK tr.12 bài 1-4'],
       },

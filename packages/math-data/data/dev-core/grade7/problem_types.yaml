@@ -1,0 +1,82 @@
+grade: 7
+rule: track_problem_type_mastery_separately_from_skill_mastery
+families:
+  G7.RAT:
+  - fraction_rational_operations
+  - fast_calculation_by_structure
+  - powers_zero_exponent
+  - sign_rules
+  - nested_rational_expressions
+  G7.EQ:
+  - one_step_rational_equation
+  - multi_step_linear_equation
+  - distributive_equation
+  - rational_expression_equation
+  - square_or_quadratic_structure
+  - equation_in_ratio_or_system
+  G7.RATIO:
+  - direct_ratio
+  - equal_ratio
+  - chained_ratio
+  - ratio_linear_constraint
+  - ratio_product_constraint
+  - ratio_quadratic_constraint
+  - transformed_denominators
+  - multivariable_nonlinear_reasoning
+  G7.MULTIVAR:
+  - equal_ratio_xyz
+  - multiple_chained_ratios
+  - ratio_linear_equation
+  - ratio_xyz_constraint
+  - ratio_quadratic_form
+  - shifted_variable_ratio
+  - rational_denominator_systems
+  G7.ALG.IDENTITY:
+  - distributive_property
+  - polynomial_expansion
+  - common_factor_extraction
+  - algebraic_identity
+  - symmetric_expression
+  - factorization
+  - conditional_simplification
+  - proof
+  - nonlinear_system_HSG
+  G7.SYM:
+  - derive_from_sum_product
+  - x_plus_inverse_x
+  - ab_bc_ca_condition
+  - cyclic_symmetric_rational
+  - sum_zero_identity
+  G7.FACTOR:
+  - common_factor
+  - grouping
+  - identities
+  - cyclic_symmetric
+  - under_condition
+  G7.PROOF:
+  - identity_proof
+  - derive_invariant
+  - inequality_sign_reasoning
+  - integer_perfect_power
+  - HSG_transformation
+  G7.GEO:
+  - angles_parallel_lines
+  - congruent_triangles
+  - midpoint_ray_segment
+  - triangle_relationships
+  - practical_solids
+  G7.COMB:
+  - choose_two_endpoints
+  - systematic_counting
+explicit_mastery_keys:
+- direct_ratio
+- chained_ratio
+- ratio_linear_constraint
+- ratio_product_constraint
+- ratio_quadratic_constraint
+- identity_recognition
+- symmetric_transformation
+- factorization
+- proof_strategy
+source_note: Families and progression are sourced from the locked Grade 7 Math Core; some families are above the standard
+  Grade 7 textbook.

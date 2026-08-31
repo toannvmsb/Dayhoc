@@ -42,15 +42,20 @@ export function computeReadiness(
   const prereqEdges = kb.prerequisites.filter((e) => e.to === targetSkillId);
   const weakPrerequisites: SkillId[] = [];
 
+  // An UNOBSERVED prerequisite is a hypothesis, not a known weakness — count it
+  // at a neutral 0.6, never 0 (mirrors "never invent an unobserved prerequisite").
+  const NEUTRAL_UNOBSERVED = 0.6;
   let prereqScore = 1;
   if (prereqEdges.length > 0) {
     let weightedSum = 0;
     let weightTotal = 0;
     for (const edge of prereqEdges) {
-      const m = twin.skillMastery.get(edge.from)?.mastery ?? 0;
-      weightedSum += (m / 100) * edge.importance;
+      const state = twin.skillMastery.get(edge.from);
+      const observed = state !== undefined && state.evidenceCount > 0;
+      const value = observed ? state.mastery / 100 : NEUTRAL_UNOBSERVED;
+      weightedSum += value * edge.importance;
       weightTotal += edge.importance;
-      if (m < gapConfig.weakPrerequisite) weakPrerequisites.push(edge.from);
+      if (observed && state.mastery < gapConfig.weakPrerequisite) weakPrerequisites.push(edge.from);
     }
     prereqScore = weightTotal > 0 ? weightedSum / weightTotal : 1;
   }
@@ -82,11 +87,15 @@ export function computeReadiness(
       w.retentionConfidence * retentionScore,
   );
 
-  const criticallyWeak = prereqEdges.some(
-    (e) =>
+  const criticallyWeak = prereqEdges.some((e) => {
+    const state = twin.skillMastery.get(e.from);
+    return (
       e.importance >= gapConfig.blockingImportance &&
-      (twin.skillMastery.get(e.from)?.mastery ?? 0) < gapConfig.weakPrerequisite * 0.6,
-  );
+      state !== undefined &&
+      state.evidenceCount > 0 &&
+      state.mastery < gapConfig.weakPrerequisite * 0.6
+    );
+  });
 
   const recommendation: LearningReadiness['recommendation'] =
     readinessScore >= config.readyThreshold

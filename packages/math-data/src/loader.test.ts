@@ -5,10 +5,18 @@ import { gradeDatasetSchema } from './schema.js';
 
 const kb = loadKnowledgeBase();
 
-describe('Phase 1 acceptance — data integrity', () => {
-  it('loads and validates every grade dataset', () => {
-    expect(kb.skills.size).toBeGreaterThan(15);
-    expect(kb.curriculum.size).toBeGreaterThan(10);
+describe('Math Dev Core v1.0 — data integrity', () => {
+  it('loads all Grade 4 + Grade 7 skills (52 + 37 standard + 5 above-grade families)', () => {
+    expect(kb.skills.size).toBe(94);
+    expect([...kb.skills.values()].filter((s) => s.gradeContext === 4)).toHaveLength(52);
+    expect([...kb.skills.values()].filter((s) => s.gradeContext === 7)).toHaveLength(42);
+    expect(kb.curriculum.size).toBeGreaterThan(100);
+  });
+
+  it('marks the 5 above-grade Grade 7 skill families with curriculumOrigin > 7', () => {
+    const aboveGrade = [...kb.skills.values()].filter((s) => s.gradeContext === 7 && s.curriculumOrigin > 7);
+    expect(aboveGrade).toHaveLength(5);
+    expect(aboveGrade.map((s) => s.id)).toContain('M7.ALG.IDENTITY');
   });
 
   it('every skill maps to an existing curriculum node', () => {
@@ -18,17 +26,16 @@ describe('Phase 1 acceptance — data integrity', () => {
   });
 
   it('every problem type belongs to a known skill and carries a (K, T) pair', () => {
-    expect(kb.problemTypes.length).toBeGreaterThan(10);
+    expect(kb.problemTypes.length).toBeGreaterThan(50);
     for (const pt of kb.problemTypes) {
-      expect(kb.skills.has(pt.skillId as never) || [...kb.skills.keys()].includes(pt.skillId as never)).toBe(true);
+      expect(kb.skills.has(pt.skillId as never)).toBe(true);
       expect(KNOWLEDGE_LEVELS).toContain(pt.knowledgeLevel);
       expect(THINKING_LEVELS).toContain(pt.thinkingLevel);
     }
   });
 
-  it('the merged prerequisite graph is acyclic', () => {
-    // loadKnowledgeBase throws on a cycle; reaching here means it passed.
-    expect(kb.prerequisites.length).toBeGreaterThan(15);
+  it('the merged prerequisite graph is acyclic (loader throws on a cycle)', () => {
+    expect(kb.prerequisites.length).toBeGreaterThan(40);
   });
 
   it('crossGrade flags match the actual grade gap on every edge', () => {
@@ -42,34 +49,32 @@ describe('Phase 1 acceptance — data integrity', () => {
 
 describe('education-model invariants encoded in the data', () => {
   it('bridges Grade 4 fractions into Grade 7 rational arithmetic (school grade is not a ceiling)', () => {
-    const closure = kb.prerequisiteClosure('G7.RATIO.EQUAL_CHAIN');
-    expect(closure).toContain('G7.RAT.OPS');
-    expect(closure).toContain('M4.FRAC.COMMON_DENOM'); // cross-grade prerequisite
-    expect(closure).toContain('M4.FRAC.EQUIVALENT');
+    const closure = kb.prerequisiteClosure('M7.RATIO.EQUAL_CHAIN');
+    expect(closure).toContain('M7.RATIO.PROPORTION');
+    expect(closure).toContain('M4.FRAC.EQUIVALENT'); // cross-grade bridge (data/bridges.yaml)
   });
 
-  it('models "quy đồng mẫu số" as the blocker for the equal-ratio chain (design narrative)', () => {
-    expect(kb.dependents('M4.FRAC.COMMON_DENOM')).toContain('G7.RAT.OPS');
+  it('models a cross-grade bridge from M4.FRAC.COMMON_DENOM into Grade 7', () => {
+    expect(kb.dependents('M4.FRAC.COMMON_DENOM')).toContain('M7.RAT.OPERATIONS');
   });
 
-  it('keeps Knowledge and Thinking independent: a standard-knowledge item can be non-routine', () => {
-    const kt = kb.getProblemTypesForSkill('M4.ARITH.DISTRIBUTIVE');
-    const challenge = kt.find((pt) => pt.id.endsWith('PT_CHALLENGE'));
-    expect(challenge).toBeDefined();
-    expect(challenge!.knowledgeLevel).toBe('K2'); // only Grade 4 knowledge
-    expect(challenge!.thinkingLevel).toBe('T5'); // but non-routine thinking
-  });
-
-  it('tags above-grade skills with a higher curriculumOrigin than their gradeContext', () => {
-    const identity = kb.getSkill('G7.ALG.IDENTITY');
-    expect(identity.gradeContext).toBe(7);
-    expect(identity.curriculumOrigin).toBeGreaterThan(7);
+  it('keeps Knowledge and Thinking independent: problem types vary on both axes', () => {
+    const ks = new Set(kb.problemTypes.map((p) => p.knowledgeLevel));
+    const ts = new Set(kb.problemTypes.map((p) => p.thinkingLevel));
+    expect(ks.size).toBeGreaterThan(1);
+    expect(ts.size).toBeGreaterThan(1);
   });
 });
 
 describe('loader rejects malformed data', () => {
   it('flags a schema violation with a path', () => {
-    const bad = gradeDatasetSchema.safeParse({ gradeContext: 4, curriculum: [], skills: [{ id: 'nope' }], prerequisites: [], problemTypes: [] });
+    const bad = gradeDatasetSchema.safeParse({
+      gradeContext: 4,
+      curriculum: [],
+      skills: [{ id: 'nope' }],
+      prerequisites: [],
+      problemTypes: [],
+    });
     expect(bad.success).toBe(false);
   });
 
