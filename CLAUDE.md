@@ -29,9 +29,16 @@ Platforms: Web + iOS + Android. Pilot: Toán **lớp 4** + **lớp 7**. Bảy ca
 - Skill IDs **toàn cục**, không partition theo grade; DAG cross-grade G4→…→G9/HSG.
 
 ## Role restrictions
-- **Parent**: full projection (context, twin, gap/prescription, plan, report, controls).
-- **Child**: **child-safe projection từ SERVER** — chỉ tasks/content/hints/feedback. KHÔNG gap score, mastery, ranking, analytics, parent controls. Nav tối đa 4: Hôm nay·Ôn tập·Bài tập·Thử thách.
-- **Teacher**: chỉ context được mời; update < 60s; app đầy đủ khi không có teacher.
+- **Parent**: account owner + legal guardian. Full projection + quản lý consent + mọi data-subject-rights của con.
+- **Child**: login = **username + password do bố mẹ tạo** (con đổi được), scope child-safe projection. **PIN 4 số = shortcut vào bài được giao**, KHÔNG phải login. Child-safe từ SERVER — KHÔNG gap score/mastery/ranking/analytics/parent controls/consent/billing. Nav tối đa 4.
+- **Teacher**: chỉ context được mời; update < 60s; app đầy đủ khi không có teacher. KHÔNG thấy Twin/Gap.
+
+## Privacy invariants (anh duyệt P-05 — `docs/implementation/PRIVACY_ARCHITECTURE.md`)
+- Privacy-by-Design, theo NĐ 13/2023. **Consent versioned + auditable** (`consent_records` ⊕), không dùng boolean.
+- **Data minimization tới AI**: `minimizeForProvider()` bắt buộc — strip PII, thay childId bằng opaque ref, từ chối nếu vượt category cho phép hoặc `training_allowed=true`.
+- **Raw upload retention 30 ngày** (configurable), purge sau khi OCR→evidence xong. Mọi upload private, signed URL, không public.
+- **Append-only ≠ không xoá được** — quyền xoá data trẻ em chạy qua deletion workflow đặc quyền (tắt trigger cho transaction), xoá theo thứ tự, SLA ≤ 72h, ghi `deletion_jobs`.
+- Child API projection: 3 lớp enforce (type + `assertChildSafe` + route gate).
 
 ## Coding conventions
 - TypeScript **strict**; tránh `any`. Schema (Zod) validate ở mọi boundary + AI I/O.
@@ -83,12 +90,16 @@ Direction **LOCKED = "Hướng 1A · Bình tĩnh & ấm"** (anh chọn từ 3 h�
 Còn lại: `PENDING_APPROVAL.md` (P-01..05 anh duyệt; calibrate coefficients bằng pilot; OCR/scan flow; mobile app; 8 golden question cases cần domain data sâu hơn).
 Web dev: `npm run dev --workspace @copilot/web` (port 3100). browser-preview `.claude/launch.json` đọc từ cwd (PhongThuy) — start web bằng Bash + navigate localhost.
 
-## Approved decisions (anh duyệt 2026-08-30)
-- **D1** Skill ID grade-opaque + metadata `grade_context`; giữ `M4.*`/`G7.*` làm alias. (đã encode ở `@copilot/domain`)
-- **D2** Golden registry hợp nhất `GT-G4-*`/`GT-G7-*` (alias giữ lại).
+## Approved decisions
+- **D1** Skill ID grade-opaque + metadata `grade_context`. Từ 2026-08-31: source data = Math Dev Core v1.0 (`M4.*` + `M7.*`).
+- **D2** Golden registry hợp nhất (thay bằng golden dataset thật của anh — `packages/testing/golden-data/`).
 - **D3** Project root = `D:\Lap trinh\Claude\Dayhoc\`; KHÔNG đụng repo PhongThuy.
 - **D4** Stack: monorepo (npm workspaces) + Next.js + Expo/RN + PostgreSQL + Redis + S3 + Claude LLM.
-- **D5** Cần chuyên gia Toán review prerequisite DAG trước pilot (anh chỉ định sau).
+- **P-01** (2026-08-31) Em tự rà skill graph/DAG lớp 7 theo SGK → xuất bản đề xuất cho anh duyệt (chưa freeze `M7.*` ID).
+- **P-02** Giữ coefficients provisional tới khi có pilot data.
+- **P-03** Con login = username+password (bố mẹ tạo, con đổi được). PIN 4 số = shortcut vào bài được giao, không phải login.
+- **P-04** Chưa chốt LLM/OCR provider — dùng mock, quay lại sau.
+- **P-05** 17 nguyên tắc Privacy-by-Design → `docs/implementation/PRIVACY_ARCHITECTURE.md`. Architecture phải *capable*; consent UI làm sau.
 
 ## Working rule
 Thay đổi lớn ảnh hưởng LOCKED MVP → dùng **PROPOSED CHANGE (Reason/Benefits/Risks/Impact/Recommendation)** và chờ duyệt. Quyết định nhỏ tự làm. Không mở rộng scope âm thầm.

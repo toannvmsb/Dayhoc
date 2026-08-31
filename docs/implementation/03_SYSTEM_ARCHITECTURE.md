@@ -102,12 +102,15 @@ Engine core là **pure/deterministic** → dễ test bằng golden tests, tách 
 
 ## 5. Cross-cutting concerns
 
-- **Auth:** Parent account (email/OTP) + Child PIN/profile access + Teacher invite/role. RBAC least-privilege.
-- **Projection layer:** mọi response đi qua projector theo role (parent/child/teacher) — child-safe là **server-side**, không phải hide-in-UI.
-- **Observability:** structured logs, traces, audit events cho teacher update + AI-derived change; theo dõi **AI token/cost/latency**.
-- **Background jobs (Redis):** scan pipeline (OCR→classify→confirm), recompute mastery, notification fan-out, retention-check scheduling.
-- **Storage abstraction:** object storage sau interface (S3-compatible mặc định); signed upload URLs.
-- **Config/secrets:** ngoài source control; env + secret manager.
+- **Auth (Privacy Architecture §2):** Parent (email + password/OTP). Child = **username + password created by the parent, changeable by the child** → child-safe projection only. 4-digit **PIN = quick access to assigned work**, not a login. Teacher invite/role. RBAC least-privilege + family scope on every request.
+- **Projection layer:** mọi response đi qua projector theo role — child-safe là **server-side** (type + `assertChildSafe` + route gate), không hide-in-UI. Child token không bao giờ thấy analytics / mastery / gap / consent / billing.
+- **Observability:** structured logs, traces, audit events cho consent, teacher update, AI-derived change, **mọi data-subject-rights op**, mọi deletion; theo dõi AI token/cost/latency.
+- **Background jobs (Redis):** scan pipeline, recompute mastery, notification fan-out, **retention purge scheduling** (raw upload 30d), **deletion workflow** (drain AI jobs → xoá theo thứ tự, SLA ≤ 72h).
+- **Storage lifecycle:** object storage sau interface (S3-compatible). **Mọi upload private** — signed expiring URL theo family+role, không public URL. `retention_expires_at` mặc định +30d; sau OCR→evidence thành công thì raw eligible purge.
+- **AI provider registry:** mỗi provider có `ProviderCompliance` metadata (region, cross-border, `data_categories_allowed`, `training_allowed` **phải false** cho child data, DPA status). Orchestrator từ chối call vượt category cho phép.
+- **Config/secrets:** ngoài source control; env + secret manager. Encryption in transit + at rest.
+
+> Chi tiết đầy đủ: `docs/implementation/PRIVACY_ARCHITECTURE.md` (17 nguyên tắc, anh duyệt P-05).
 
 ---
 

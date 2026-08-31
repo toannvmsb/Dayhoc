@@ -46,6 +46,35 @@ export interface ProviderPricing {
   readonly outputPerMillion: number;
 }
 
+/**
+ * Child-data categories (Privacy Architecture §4). A payload sent to a provider
+ * declares which of these it contains; the provider declares which it may receive.
+ */
+export const DATA_CATEGORIES = [
+  'profile_context', // display name, grade, school context, goals
+  'raw_schoolwork', // photos/PDFs/handwriting
+  'learning_activity', // attempts, submissions, hint use, time
+  'derived_state', // evidence, twin, mastery, gaps, thinking profile
+  'ai_insights', // classifications, diagnoses, summaries
+] as const;
+export type DataCategory = (typeof DATA_CATEGORIES)[number];
+
+/**
+ * Per-provider compliance metadata (Privacy Architecture §10). The orchestrator
+ * refuses a call whose payload categories exceed `dataCategoriesAllowed`, and
+ * refuses any provider with `trainingAllowed === true` for child-data operations.
+ */
+export interface ProviderCompliance {
+  readonly provider: string;
+  readonly processingRegion: string;
+  readonly crossBorder: boolean;
+  readonly dataCategoriesAllowed: readonly DataCategory[];
+  readonly providerRetention: string;
+  /** MUST be false for any provider that touches child data. */
+  readonly trainingAllowed: boolean;
+  readonly dpaStatus: 'signed' | 'pending' | 'not_applicable';
+}
+
 export function estimateCostUsd(
   usage: LlmResponse['usage'],
   pricing: ProviderPricing,

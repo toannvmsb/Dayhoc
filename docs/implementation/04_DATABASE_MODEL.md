@@ -14,11 +14,50 @@ families(id PK, owner_parent_id FK→users, created_at)
 parents(id PK, user_id FK→users, family_id FK→families, display_name)
 child_profiles(id PK, family_id FK→families, display_name, school_grade,
                school_context jsonb, goals jsonb, available_time_profile,
+               deletion_state,                          -- active | deletion_requested | deleted
                created_at)
 teachers(id PK, user_id FK→users)
 teacher_invites(id PK, family_id FK, teacher_id FK?, child_id FK, class_ref,
                 status, invited_by FK→users, created_at)
+
+-- child auth (Privacy Architecture §2 — child logs in with a real credential,
+-- created by the parent, changeable by the child; PIN is a quick-access shortcut)
+child_credentials(child_id PK FK→child_profiles, username, password_hash,
+                  must_change_password bool, password_updated_at, created_at)
+child_quick_access(id PK, child_id FK→child_profiles, pin_hash, device_ref,
+                   scope,                               -- always 'assigned_work'
+                   created_at, revoked_at)
 ```
+
+### 1b. Consent & data governance (Privacy Architecture §3, §10, §11)
+
+```
+consent_records(id PK,                                  -- ⊕ append-only
+   child_id FK→child_profiles, granted_by FK→users, relationship,
+   data_categories jsonb, purpose, processor,
+   cross_border bool, destination_region,
+   policy_version, consent_text_version,
+   method, accepted_at, withdrawn_at)                   -- withdrawal = new row
+
+ai_provider_registry(provider PK, processing_region, cross_border bool,
+   data_categories_allowed jsonb, provider_retention,
+   training_allowed bool,                               -- MUST be false for child data
+   dpa_status, updated_at)
+
+data_processing_inventory(id PK, data_category, purpose, processor,
+   legal_basis, retention, cross_border bool, updated_at)
+
+deletion_jobs(id PK, child_id FK, requested_by FK→users, requested_at,
+   state, steps_completed jsonb, completed_at, audit_ref)   -- ⊕ workflow log
+
+rights_requests(id PK, child_id FK, requested_by FK→users, kind,          -- ⊕
+   -- export | delete_uploads | delete_history | delete_profile | withdraw_consent | stop_processing
+   requested_at, fulfilled_at, artifact_ref)
+```
+
+`uploads` gains: `retention_expires_at` (default now + 30d, configurable),
+`purged_at`. Every upload row is private — access is via signed expiring URLs
+scoped to family + role; there is no public URL column.
 
 ---
 
@@ -165,8 +204,9 @@ notifications(id PK, target_user_id FK, type, payload jsonb, read_at, created_at
 ## 6. Migration & integrity rules
 
 1. **Mọi thay đổi schema qua migration** (versioned, forward-only + rollback script).
-2. `evidence`, `ai_inferences`, `teacher_contributions`, `gap_lifecycle_events` chỉ INSERT (enforce ở app layer + DB grant).
+2. `evidence`, `ai_inferences`, `teacher_contributions`, `gap_lifecycle_events`, `consent_records`, `deletion_jobs`, `rights_requests` chỉ INSERT (enforce ở app layer + DB trigger).
 3. Curriculum/skill/prerequisite thay đổi qua **version bump**, không mutate bản đang dùng (giữ reproducibility của mastery đã tính).
 4. Foreign keys explicit; prerequisite DAG được validate **không có chu trình** ở CI (golden test riêng).
 5. Derived tables có thể `TRUNCATE + rebuild` từ evidence bất kỳ lúc nào — đây là bài test bất biến "recompute = same result".
-6. PII của child: consent-gated, retention/deletion controls, no public profile.
+6. **Append-only ≠ không xoá được.** Append-only là bất biến audit/compute *trong vòng đời hợp pháp của dữ liệu*. Quyền xoá dữ liệu trẻ em (Privacy Architecture §7–§8) chạy qua **deletion workflow có quyền đặc biệt** — tạm tắt trigger append-only cho transaction đó (`SET session_replication_role = replica`), xoá theo thứ tự, ghi `deletion_jobs` audit. SLA mục tiêu ≤ 72 giờ.
+7. **Child PII (Privacy Architecture):** consent versioned + auditable (`consent_records`), data minimization tới AI provider, raw upload retention 30 ngày (configurable), full-erasure workflow, mọi upload private. Xem `docs/implementation/PRIVACY_ARCHITECTURE.md`.

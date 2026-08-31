@@ -118,8 +118,24 @@ Chỉ context của child/class được mời, đủ để thêm learning updat
 ## 5. Contract rules
 
 1. Mọi endpoint khai báo **request + response Zod schema**; reject nếu invalid.
-2. Endpoint trả field nhạy cảm phải đi qua projector theo token role — **default deny** cho child.
+2. Endpoint trả field nhạy cảm phải đi qua projector theo token role — **default deny** cho child (type + `assertChildSafe` + route gate). Child token không bao giờ thấy analytics, mastery, gap, family settings, consent, billing.
 3. AI-derived data luôn kèm `{ confidence, source, aiInferenceId }` để UI hiển thị review path.
-4. Không đưa PII/child data vào URL/query string.
+4. Không đưa PII/child data vào URL/query string. Upload dùng signed expiring URL, **không public URL**.
 5. Idempotency key cho submission & scan (tránh double-write evidence).
 6. Errors: shape thống nhất `{ code, message, retryable }`; hỗ trợ offline queue cho submission.
+
+---
+
+## 6. Data-subject rights — parent-only, family-scoped (Privacy Architecture §7)
+
+| Endpoint | Việc |
+|---|---|
+| `POST /children/{id}/data-export` | Xuất toàn bộ dữ liệu trẻ (mọi category §4) dạng machine-readable |
+| `DELETE /children/{id}/uploads` | Xoá ảnh/PDF đã upload (giữ evidence đã trích) |
+| `DELETE /children/{id}/learning-history` | Xoá attempts / evidence / twin / gaps |
+| `DELETE /children/{id}` | Full erasure — chạy `deletion_jobs` workflow (SLA ≤ 72h) |
+| `POST /children/{id}/consent/withdraw` | Rút consent theo category/purpose/processor (ghi row `consent_records` mới) |
+| `POST /children/{id}/processing/stop` | Dừng AI job + recompute cho trẻ |
+
+Mọi op ghi `rights_requests` (⊕) + audit log. `DELETE /children/{id}` không phải
+soft-delete — trigger workflow §8 của Privacy Architecture.

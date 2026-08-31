@@ -50,6 +50,12 @@ Mọi inference trả JSON theo schema versioned. Ví dụ classification:
 
 Pipeline validation:
 ```
+build payload
+  → minimizeForProvider(payload, provider.data_categories_allowed)   -- Privacy Arch §5
+      · strip name/address/school/phone/full-profile unless task needs it
+      · replace child_id with opaque child_ref hash
+      · refuse if payload categories exceed provider allowance
+      · refuse provider if training_allowed = true (child data)
 LLM/OCR output
   → Zod parse (schema_version)          → fail ⇒ fallback
   → confidence ≥ threshold?             → no  ⇒ mark low_confidence → parent review
@@ -96,7 +102,7 @@ Confidence tier khác với **evidence confidence tier (A/B/C/D)** ở tầng do
 
 - Track **token_in/out, cost, latency_ms** mỗi inference → dashboard + budget alert.
 - Batch/caching cho generation lặp; cache theo (skill, problem_type, K, T).
-- Safety: lọc nội dung, không rò rỉ PII của child vào prompt provider ngoài mức cần thiết.
+- Safety: `minimizeForProvider` bắt buộc trước mọi call — không rò rỉ PII của child vào prompt provider. Provider cho child-data phải có `training_allowed = false` + DPA đã ký (`ai_provider_registry`).
 - Fail-open cho học tập (fallback về ngân hàng câu hỏi authored) nhưng **fail-closed cho ghi state**.
 
 ---

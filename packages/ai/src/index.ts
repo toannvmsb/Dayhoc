@@ -9,5 +9,6 @@
  * fully deterministic.
  */
 export * from './provider.js';
+export * from './minimize.js';
 export * from './orchestrator.js';
 export * from './providers/mock.js';

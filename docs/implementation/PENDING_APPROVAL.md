@@ -13,15 +13,15 @@
 
 ---
 
-## A. Quyết định cần anh duyệt
+## A. Quyết định — ✅ ANH ĐÃ CHỐT 5/5 (2026-08-31)
 
-| # | Nội dung | Bối cảnh | Đề xuất của em | Trạng thái |
-|---|---|---|---|---|
-| P-01 | **Chuyên gia Toán review** (a) M7.\* skill IDs `provisional_normalization`, (b) prereq DAG G7 + 9 cross-grade bridges, (c) 5 synthetic above-grade families | Dev Core v1.0 README nói rõ M7 IDs KHÔNG nên freeze trước review. Ảnh hưởng mọi mastery/gap decision cho lớp 7. | Anh chỉ định 1 giáo viên Toán; em xuất DAG + skill list dạng bảng để review | 🔴 quan trọng — chờ anh |
-| P-02 | **Coefficients calibration** (R3) | mastery/gap_score/readiness coefficients đang `provisional`, đặt bằng phán đoán | Giữ provisional tới khi có evidence pilot thật; anh/chuyên gia review ngưỡng | ⏳ chờ pilot |
-| P-03 | **Auth con: PIN 4 số per-child** | Thiết kế + spec đều dùng PIN; em implement theo hướng này | Xác nhận PIN per-child (không device-based) cho MVP | ⏳ chờ anh |
-| P-04 | **LLM/OCR provider mặc định + ngân sách pilot** | Phase 2 để adapter; Phase 9 (scan) cần provider thật | Claude cho LLM; OCR: thử Google Vision / Azure — cần anh chốt ngân sách | ⏳ chờ anh |
-| P-05 | **Yêu cầu pháp lý dữ liệu trẻ em VN** (R8) | consent, retention, xoá dữ liệu | Em làm consent-gated + retention config; anh xác nhận có nghĩa vụ pháp lý cụ thể nào | ⏳ chờ anh |
+| # | Quyết định của anh | Em đã làm gì |
+|---|---|---|
+| P-01 | **Em tự rà skill graph/DAG lớp 7 theo SGK trước → xuất bản đề xuất, anh duyệt.** Chưa freeze `M7.*`. | ⏳ TODO: em rà 42 skill + DAG + 9 bridge + 5 family HSG theo SGK Toán 7 KNTT, xuất Google Sheet cho anh. |
+| P-02 | Giữ coefficients provisional tới khi có pilot data. | ✅ Đã đúng (config tách riêng, mọi output có `confidence`). |
+| P-03 | **Con login = username + password do bố mẹ tạo (con đổi được). PIN 4 số = shortcut vào bài được giao, KHÔNG phải login.** | ✅ `04_DATABASE_MODEL §1`: `child_credentials` + `child_quick_access` (scope='assigned_work'). Migration `1756684800000`. CLAUDE.md role restrictions cập nhật. |
+| P-04 | Chưa chốt LLM/OCR — dùng mock, quay lại sau. | ✅ Đã đúng (`@copilot/ai` MockProvider; `ai_provider_registry` seed 'internal'+'mock'). |
+| P-05 | **17 nguyên tắc Privacy-by-Design → bake vào architecture trước khi build module data trẻ em.** | ✅ `docs/implementation/PRIVACY_ARCHITECTURE.md` + delta vào docs 03/04/05/06. Migration `1756684800000_privacy_foundation`: `consent_records` (⊕ versioned), `ai_provider_registry` (`training_allowed` CHECK false), `data_processing_inventory`, `deletion_jobs`, `rights_requests` (⊕), upload retention 30d. `@copilot/ai` `minimizeForProvider()` + 5 test. Consent UI = deliverable sau. |
 
 ## B. Dữ liệu — CẬP NHẬT 2026-08-31
 
