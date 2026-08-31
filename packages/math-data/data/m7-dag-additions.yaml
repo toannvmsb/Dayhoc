@@ -1,0 +1,31 @@
+# PROPOSED cross-chapter prerequisite edges for the M7 skill graph.
+#
+# STATUS: proposal only — NOT loaded by build-kb.mjs. Produced by the P-01
+# review (docs/implementation/M7_SKILL_REVIEW.md §3), awaiting anh's approval.
+# Once approved, these fold into grade7/skill_graph.yaml `prerequisites:` and the
+# skills flip to status: educator_reviewed.
+#
+# Rationale: Dev Core v1.0 only encodes within-chapter prerequisites; the SGK
+# Toán 7 KNTT sequence implies these between-chapter dependencies.
+
+edges:
+  - { from: M7.GEO.EUCLID_PARALLEL,        to: M7.GEO.THEOREM_PROOF,            importance: 0.7,  note: "B11 chứng minh định lí dựa trên tính chất song song B10" }
+  - { from: M7.GEO.THEOREM_PROOF,          to: M7.TRI.ANGLE_SUM,               importance: 0.75, note: "B12 tổng góc 180° chứng minh bằng đường phụ song song" }
+  - { from: M7.TRI.ANGLE_SUM,              to: M7.TRI.CONGRUENCE_1,            importance: 0.6,  note: "chứng minh bằng nhau dùng tổng góc" }
+  - { from: M7.TRI.CONGRUENCE_2_3,         to: M7.TRI.ISOSCELES_PERP_BISECTOR, importance: 0.8,  note: "B16 tam giác cân + trung trực qua c.g.c / g.c.g" }
+  - { from: M7.TRI.CONGRUENCE_2_3,         to: M7.TRI.ANGLE_OPPOSITE_SIDE,     importance: 0.7,  note: "Chương IX xây trên tam giác bằng nhau (Chương IV)" }
+  - { from: M7.TRI.ANGLE_OPPOSITE_SIDE,    to: M7.TRI.PERP_OBLIQUE,            importance: 0.75, note: "B32 nối tiếp B31" }
+  - { from: M7.TRI.PERP_OBLIQUE,           to: M7.TRI.INEQUALITY,              importance: 0.75, note: "B33 dùng quan hệ đường xiên B32" }
+  - { from: M7.TRI.ISOSCELES_PERP_BISECTOR, to: M7.TRI.CONC_MEDIAN_BISECTOR,   importance: 0.7,  note: "B34 đồng quy dùng tính chất trung trực/cân B16" }
+  - { from: M7.TRI.CONC_MEDIAN_BISECTOR,   to: M7.TRI.CONC_PERP_ALTITUDE,      importance: 0.7,  note: "B35 nối tiếp B34" }
+  - { from: M7.SOLID.BOX_CUBE,             to: M7.SOLID.PRISM,                 importance: 0.7,  note: "B37 dựng trên thể tích/diện tích xung quanh B36" }
+  - { from: M7.RAT.POWER,                  to: M7.REAL.IRR_SQRT,               importance: 0.5,  note: "căn bậc hai số học là phép ngược của lũy thừa 2" }
+
+# Also proposed (review §4): extra prereqs for M7.PROOF.ALGEBRA (HSG)
+hsg_edges:
+  - { from: M7.REAL.IRR_SQRT,      to: M7.PROOF.ALGEBRA, importance: 0.6, note: "bất đẳng thức có căn" }
+  - { from: M7.RAT.ORDER_TRANSPOSE, to: M7.PROOF.ALGEBRA, importance: 0.6, note: "biến đổi bất đẳng thức / chuyển vế" }
+
+# Also proposed (review §3): tune down one M4→M7 bridge
+bridge_changes:
+  - { from: M4.ALG.FIND_X, to: M7.RAT.ORDER_TRANSPOSE, current_importance: 0.6, proposed_importance: 0.45, note: "'tìm x' lớp 4 ↔ 'chuyển vế' lớp 7 hơi xa; hoặc bỏ hẳn" }
