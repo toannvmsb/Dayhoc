@@ -8,6 +8,7 @@
     { "path": "../domain" },
     { "path": "../education-core" },
     { "path": "../math-data" },
+    { "path": "../evidence" },
     { "path": "../learning-context" },
     { "path": "../learning-twin" },
     { "path": "../gap-engine" },

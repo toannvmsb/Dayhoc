@@ -160,3 +160,34 @@ export interface ChildChallengeView {
   readonly instruction: string; // "Không cần ra đáp số ngay. Viết cách con nghĩ trước."
   readonly firstHintAvailable: boolean;
 }
+
+// ---------- Teacher (MVP lightweight — goal < 60s) ----------
+export interface TeacherHomeView {
+  readonly teacherName: string;
+  readonly subject: string;
+  readonly todayUpdated: boolean;
+  readonly classes: readonly {
+    readonly classRef: string;
+    readonly connectedParents: number;
+    readonly lastUpdatedLabel: string; // "Đã cập nhật 29/8" | "Chưa cập nhật"
+    readonly updatedToday: boolean;
+  }[];
+  readonly recentHistory: readonly { readonly topic: string; readonly detail: string; readonly dateLabel: string }[];
+}
+
+/** The quick-update form (UI/UX Spec §14). Steps 1–4, all optional except a topic. */
+export interface TeacherUpdateFormView {
+  readonly classRef: string;
+  readonly dateLabel: string;
+  readonly topicChoices: readonly { readonly skillId: string; readonly name: string }[];
+  readonly problemTypeChoices: readonly { readonly problemTypeId: string; readonly name: string }[];
+  readonly estimatedSeconds: number; // ~40
+}
+
+export interface TeacherUpdateResult {
+  readonly contributionId: string;
+  readonly recordedForClass: string;
+  /** How the parent-facing Learning Context changed as a result. */
+  readonly contextHeadlineAfter: string;
+  readonly parentsNotified: number;
+}
