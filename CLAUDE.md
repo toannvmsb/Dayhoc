@@ -62,10 +62,12 @@ Direction **LOCKED = "Hướng 1A · Bình tĩnh & ấm"** (anh chọn từ 3 h�
 - **P5 Planning & Practice** `398997c` — `@copilot/planning` (Learning Mix §24, NBLA ROI/phút §40, `buildDailyPlan` + "no plan needed" §17), `@copilot/practice` (authored question bank + 6-rung hint ladder §17, stretch-zone, assignment, `submissionToEvidence` đóng loop §29).
 - **P6 Parent Experience** `7094317` — `@copilot/api-contract` + `@copilot/projections` (parent full views + **child-safe projection** absent-by-construction + `assertChildSafe` guard). `apps/web` (Next.js): Parent Home / Progress / Gap Detail trên design-tokens Hướng 1A, data engine thật. Còn thiếu (không chặn): scan→AI confirm, teaching session, mobile — `PENDING_APPROVAL.md §C1`.
 - **P7 Child Experience** `2d4850d` — child projections (one-question view, result + reasoning prompt §35, challenge), `OfflineSubmissionQueue` (FIFO, idempotent §17). `apps/web/child/*`. Verified.
-- **P8 Teacher Quick Update** `7cb8276` — `buildTeacherHome` + `buildTeacherUpdateForm` (grade-scoped, ≤12 topic, ~40s; teacher không thấy Twin/Gap). `apps/web/teacher/*` (T02/T03, neutral surface). Flow test: contribution (teacher HOẶC parent proxy) → parent context/home update; context vẫn build khi 0 contribution.
+- **P8 Teacher Quick Update** `7cb8276` — `buildTeacherHome`/`buildTeacherUpdateForm` (grade-scoped, ~40s; không thấy Twin/Gap). `apps/web/teacher/*`. Flow test: contribution (teacher/parent proxy) → parent context update.
+- **P9 Assessment & Revision** `82c3933` — `@copilot/revision`: `inferExamScope`, `buildRevisionPlan` (§28), `diagnoseAssessment` (§29), `buildWeeklyReport`, notifications. `apps/web`: Exam (P13) + Weekly Report (P14).
+- **P10 Pilot Hardening** `<pending>` — `@copilot/ai` (replaceable LLM/Vision provider port + `AiOrchestrator.runStructured`: validate schema + record cost/latency/provenance; `MockLlmProvider` giữ CI deterministic), `@copilot/audit` (`traceGap`/`tracePrescription`/`tracePlanAction` → rule + evidence + AI ids), `services/api` (`createApi` role-gated: family scope + child token chỉ child-safe + `assertChildSafe` enforce), `pilot-dod.test.ts` (DoD checklist executable), `docs/implementation/SECURITY_AND_RETENTION.md`.
 
 ## Current phase
-**Phase 9 — Assessment & Revision** (đang làm). Blockers → `docs/implementation/PENDING_APPROVAL.md` (autonomous, anh duyệt sau).
+**Phase 10 xong (vertical slice). MVP các phase P0–P10 đều có vertical slice + tests xanh (149 pass).** Còn lại: `PENDING_APPROVAL.md` (P-01..05 cần anh duyệt; D-01..03 chờ data; S-01..04 màn/OCR còn thiếu). Bước tiếp thực chất: bổ sung data Toán đầy đủ → bật 8 golden todo → calibrate coefficients với pilot thật → OCR provider + scan flow → mobile app.
 Web dev: `npm run dev --workspace @copilot/web` (port 3100). browser-preview `.claude/launch.json` đọc từ cwd (PhongThuy) — start web bằng Bash + navigate localhost.
 
 ## Approved decisions (anh duyệt 2026-08-30)

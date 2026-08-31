@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "rootDir": "./src", "outDir": "./dist" },
+  "references": [
+    { "path": "../../packages/api-contract" },
+    { "path": "../../packages/domain" },
+    { "path": "../../packages/evidence" },
+    { "path": "../../packages/gap-engine" },
+    { "path": "../../packages/learning-context" },
+    { "path": "../../packages/learning-twin" },
+    { "path": "../../packages/math-data" },
+    { "path": "../../packages/observability" },
+    { "path": "../../packages/planning" },
+    { "path": "../../packages/practice" },
+    { "path": "../../packages/projections" },
+    { "path": "../../packages/schemas" }
+  ],
+  "include": ["src/**/*.ts"],
+  "exclude": ["**/*.test.ts"]
+}

@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "rootDir": "./src", "outDir": "./dist" },
+  "references": [{ "path": "../domain" }, { "path": "../schemas" }, { "path": "../observability" }],
+  "include": ["src/**/*.ts"],
+  "exclude": ["**/*.test.ts"]
+}

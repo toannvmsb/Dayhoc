@@ -16,7 +16,10 @@
     { "path": "../practice" },
     { "path": "../api-contract" },
     { "path": "../projections" },
-    { "path": "../revision" }
+    { "path": "../revision" },
+    { "path": "../ai" },
+    { "path": "../audit" },
+    { "path": "../../services/api" }
   ],
   "include": ["src/**/*.ts"],
   "exclude": ["**/*.test.ts"]

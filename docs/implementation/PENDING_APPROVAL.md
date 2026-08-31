@@ -4,7 +4,12 @@
 > trong quá trình em làm autonomous các phase. **Không có mục nào trong đây chặn
 > phase kế tiếp** — em đã đi vòng hoặc để lại `todo` có đánh dấu.
 >
-> Cập nhật lần cuối: 2026-08-31.
+> Cập nhật lần cuối: 2026-08-31 (sau khi hoàn thành vertical slice P0–P10).
+>
+> **Tình trạng:** Toàn bộ 11 phase (P0→P10) đã có vertical slice + 149 test xanh.
+> Deterministic engine, projections, web app (Parent/Child/Teacher/Exam/Weekly),
+> API role-gated, AI adapter + audit trace đều chạy. Phần còn lại chủ yếu là
+> **dữ liệu** và **quyết định của anh** — liệt kê dưới đây.
 
 ---
 
