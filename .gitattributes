@@ -1,0 +1,14 @@
+# Normalize line endings — LF in the repo, checkout as-is per platform.
+* text=auto eol=lf
+
+# Binary / non-diffable assets
+*.docx binary
+*.pdf binary
+*.zip binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.dc.html -diff
+
+# Generated
+package-lock.json -diff linguist-generated
