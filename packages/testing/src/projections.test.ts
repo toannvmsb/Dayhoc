@@ -4,9 +4,12 @@ import { buildLearningTwin } from '@copilot/learning-twin';
 import { runGapEngine } from '@copilot/gap-engine';
 import { buildLearningContext } from '@copilot/learning-context';
 import { buildDailyPlan } from '@copilot/planning';
-import { buildAssignmentsForPlan } from '@copilot/practice';
+import { buildAssignmentsForPlan, initHintLadder, loadQuestionBank } from '@copilot/practice';
 import {
   assertChildSafe,
+  buildChildChallenge,
+  buildChildQuestion,
+  buildChildResult,
   buildChildToday,
   buildParentGapDetail,
   buildParentHome,
@@ -97,5 +100,37 @@ describe('Child-safe projection (server-side)', () => {
 
   it('assertChildSafe rejects a hand-crafted leak', () => {
     expect(() => assertChildSafe({ tasks: [{ title: 'x', mastery: 82 }] })).toThrow(/forbidden key "mastery"/);
+  });
+
+  it('child question view: one question, only unlocked hints, no answer key', () => {
+    const q = loadQuestionBank().find((x) => x.skillId === 'M4.FRAC.COMMON_DENOM')!;
+    const view = buildChildQuestion({
+      assignmentId: 'asg_1',
+      question: q,
+      index: 2,
+      total: 5,
+      hintState: { ...initHintLadder(q.id), rungsRevealed: 1, rung: 'orientation', dependency: 0.2 },
+    });
+    expect(view.index).toBe(2);
+    expect(view.revealedHints).toHaveLength(1); // only the first rung
+    expect(view).not.toHaveProperty('answerSpec');
+    expect(view).not.toHaveProperty('workedSolution');
+    expect(() => assertChildSafe(view)).not.toThrow();
+  });
+
+  it('child result view: shows a reasoning prompt after a challenge, and it is child-safe', () => {
+    const challenge = loadQuestionBank().find((x) => x.answerSpec.kind === 'reasoning')!;
+    const result = buildChildResult({
+      assignmentId: 'asg_c',
+      questions: [challenge],
+      outcomes: [{ questionId: challenge.id, correct: true }],
+      hasNext: false,
+    });
+    expect(result.reasoningPrompt).toBe('Con đã nghĩ theo cách nào?');
+    expect(() => assertChildSafe(result)).not.toThrow();
+
+    const chView = buildChildChallenge('asg_c', challenge);
+    expect(chView.badge).toBe('SUY LUẬN');
+    expect(() => assertChildSafe(chView)).not.toThrow();
   });
 });

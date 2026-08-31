@@ -12,3 +12,4 @@ export * from './hint-ladder.js';
 export * from './stretch-zone.js';
 export * from './assignment.js';
 export * from './submission.js';
+export * from './offline-queue.js';

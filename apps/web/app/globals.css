@@ -162,3 +162,61 @@ a {
   height: 14px;
   background: var(--c-text-heading);
 }
+
+/* --- child app: bigger type, one thing per view --- */
+.child-hero {
+  background: var(--c-primary);
+  color: #fff;
+  padding: 20px var(--sp-xl) 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.child-hero__name {
+  font-size: 27px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.child-task {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-card);
+}
+.child-task[data-primary='true'] {
+  border: 2px solid var(--c-primary);
+}
+.child-task__title {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--c-text-heading);
+}
+.child-q {
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--c-text-heading);
+}
+.child-cta {
+  height: var(--hit-cta-child);
+  border: none;
+  border-radius: 17px;
+  background: var(--c-primary);
+  color: #fff;
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+.child-dark {
+  background: var(--c-surface-inverse);
+  min-height: 100vh;
+  color: #fff;
+}

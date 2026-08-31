@@ -120,3 +120,43 @@ export interface ChildTask {
   readonly kind: 'practice' | 'review' | 'challenge';
   readonly assignedBy: 'app' | 'parent';
 }
+
+/** One question at a time (UI/UX Spec §13 — one step per viewport on mobile). */
+export interface ChildQuestionView {
+  readonly assignmentId: string;
+  readonly questionId: string;
+  readonly index: number; // 1-based
+  readonly total: number;
+  readonly prompt: string;
+  readonly answerKind: 'exact' | 'fraction' | 'numeric' | 'choice' | 'reasoning';
+  readonly choices?: readonly string[];
+  /** Only the hint rungs already unlocked for this child on this question. */
+  readonly revealedHints: readonly { readonly rung: string; readonly text: string }[];
+  readonly canRequestHint: boolean;
+  // NOTE: no correct answer, no mastery, no difficulty score.
+}
+
+export interface ChildResultView {
+  readonly assignmentId: string;
+  readonly correctCount: number;
+  readonly total: number;
+  readonly headline: string; // "Con làm đúng 4/5 câu"
+  readonly encouragement: string;
+  readonly reviewItems: readonly {
+    readonly questionId: string;
+    readonly prompt: string;
+    readonly steps: readonly string[]; // worked solution, step by step
+  }[];
+  /** Shown after a reasoning/challenge item (Math Core §35). */
+  readonly reasoningPrompt: string | null;
+  readonly nextLabel: string; // "Việc tiếp theo" | "Xong rồi"
+}
+
+export interface ChildChallengeView {
+  readonly assignmentId: string;
+  readonly questionId: string;
+  readonly badge: string; // "SUY LUẬN"
+  readonly prompt: string;
+  readonly instruction: string; // "Không cần ra đáp số ngay. Viết cách con nghĩ trước."
+  readonly firstHintAvailable: boolean;
+}
