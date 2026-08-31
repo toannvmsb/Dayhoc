@@ -8,6 +8,7 @@
     { "path": "packages/design-tokens" },
     { "path": "packages/observability" },
     { "path": "packages/evidence" },
-    { "path": "packages/learning-context" }
+    { "path": "packages/learning-context" },
+    { "path": "packages/learning-twin" }
   ]
 }

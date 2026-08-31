@@ -42,7 +42,7 @@ Platforms: Web + iOS + Android. Pilot: Toán **lớp 4** + **lớp 7**. Bảy ca
 
 ## Folder structure
 `/apps/{web,mobile}` · `/packages/{domain,schemas,education-core,observability,math-data,api-contract,api-client,ai,design-tokens,testing}` · `/services/{api,workers}` · `/migrations` · `/docs`.
-Monorepo dùng **npm workspaces** (corepack/pnpm bị chặn quyền trên Windows — quyết định nhỏ). Packages đã có: `@copilot/{domain, schemas, education-core, observability, math-data, design-tokens, evidence, learning-context}`.
+Monorepo dùng **npm workspaces** (corepack/pnpm bị chặn quyền trên Windows — quyết định nhỏ). Packages đã có: `@copilot/{domain, schemas, education-core, observability, math-data, design-tokens, evidence, learning-context, learning-twin}`.
 Quyết định nhỏ: `evidence.skill_id`/`problem_type_id` là **TEXT, không FK** — skill graph là static versioned data của `@copilot/math-data`, validate ở app layer.
 
 ## Design system
@@ -53,13 +53,12 @@ Direction **LOCKED = "Hướng 1A · Bình tĩnh & ấm"** (anh chọn từ 3 h�
 - DAG acyclic invariant; recompute-idempotent invariant; child-projection deny tests; AI schema contract tests (mock provider trong CI).
 
 ## Current phase
-**Phase 2 — Evidence & Learning Context: xong (vertical slice).**
-- `@copilot/evidence`: `EvidenceService` (validate ở boundary, stamp id/time/provenance), `LedgerStore` port **không có update/delete**, `InMemoryLedgerStore` + `PgLedgerStore` (`@copilot/evidence/pg`). TeacherContribution = optional context source (teacher HOẶC parent nhập thay).
-- `@copilot/learning-context`: `buildLearningContext` **pure** — standard position + actual-taught + per-domain frontier + activeSkills + conflicts; **chạy được với 0 teacher contribution**.
-- Migration `1756598400000_evidence_ledger`: identity core (users/families/parents/teachers/child_profiles/teacher_invites) + `evidence`/`ai_inferences`/`teacher_contributions`/`uploads` với **trigger DB chặn UPDATE/DELETE** (đã verify: up/down/up sạch + trigger reject thật). Xoá child cho retention = privileged op tạm tắt trigger (`session_replication_role=replica`) — Phase 10.
-- `typecheck/lint/test` xanh: **43 pass + 2 integration** (chạy khi có `DATABASE_URL`). CI đã thêm service Postgres 16.
-- Phase 1 vẫn còn: mở rộng data coverage Toán (anh update sau) + review chuyên gia (D5).
-**Tiếp theo: Phase 3 — Child Learning Twin** (mastery/problem-type/thinking derived, recompute idempotent).
+**Phase 3 — Child Learning Twin: xong (vertical slice).**
+- `@copilot/learning-twin`: `buildLearningTwin` **pure/deterministic** từ evidence stream → skill mastery đa tín hiệu (correctness × hint dependency × reasoning × retention × recurrence × evidence confidence, KHÔNG raw accuracy), problem-type mastery (tách riêng), thinking profile (tách riêng, `demonstratedLevel` bị cap bởi thinkingLevel đã thử), per-domain frontier (KHÔNG global level). `recomputeTwin` job qua `EvidenceReader` port. Coefficients ở `DEFAULT_MASTERY_CONFIG` — **provisional/chưa calibrate (R3)**, mọi output có `confidence`.
+- Bất biến đã test: recompute idempotent (kể cả đảo thứ tự input), careless slip (wrong+strong reasoning) hạ mastery nhẹ hơn real gap nhiều, 3 trục tách biệt, hint dependency ăn mòn credit, retention decay, không claim thinking level cao hơn item đã thử.
+- `typecheck/lint/test` xanh: **52 pass + 2 integration**.
+- **Phase 1 & 2 còn nợ** (không chặn): data Toán mở rộng (anh update sau) + review chuyên gia (D5); child-delete retention op (Phase 10).
+**Tiếp theo: Phase 4 — Gap & Readiness Engine** (gap detection 8 loại, root-gap trace, gap_score, lifecycle state machine, readiness, prescription). Golden discrimination matrix bắt đầu ở đây.
 
 ## Approved decisions (anh duyệt 2026-08-30)
 - **D1** Skill ID grade-opaque + metadata `grade_context`; giữ `M4.*`/`G7.*` làm alias. (đã encode ở `@copilot/domain`)
