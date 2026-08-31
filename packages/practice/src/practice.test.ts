@@ -5,15 +5,30 @@ import { advanceHintLadder, currentHintText, initHintLadder } from './hint-ladde
 import { selectStretchSet } from './stretch-zone.js';
 import { submissionToEvidence } from './submission.js';
 
-describe('authored question bank', () => {
+describe('question bank', () => {
   it('validates every question and requires a full six-rung hint ladder', () => {
     const bank = loadQuestionBank();
     expect(bank.length).toBeGreaterThan(4);
+    const ids = new Set<string>();
     for (const q of bank) {
       expect(q.hints).toHaveLength(6);
+      for (const h of q.hints) expect(h.trim().length).toBeGreaterThan(0);
       expect(q.workedSolution.length).toBeGreaterThan(0);
-      expect(q.origin).toBe('authored');
+      expect(['authored', 'ai_generated']).toContain(q.origin);
+      expect(ids.has(q.id), `duplicate question id ${q.id}`).toBe(false);
+      ids.add(q.id);
     }
+  });
+
+  it('AI-drafted questions are flagged for educator review (anh decision Q5)', () => {
+    const drafts = loadQuestionBank().filter((q) => q.origin === 'ai_generated');
+    // every draft id is namespaced so a reviewer can tell them apart at a glance
+    for (const q of drafts) expect(q.id).toContain('.AI.');
+    // the first batch covers a spread of core Grade 4 + Grade 7 skills
+    const skills = new Set(drafts.map((q) => q.skillId));
+    expect(skills.size).toBeGreaterThanOrEqual(12);
+    expect([...skills].some((s) => s.startsWith('M4.'))).toBe(true);
+    expect([...skills].some((s) => s.startsWith('M7.'))).toBe(true);
   });
 });
 

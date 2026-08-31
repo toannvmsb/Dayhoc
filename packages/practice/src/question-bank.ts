@@ -6,7 +6,16 @@ import {
   THINKING_LEVELS,
   type Question,
 } from '@copilot/domain';
-import raw from './data/questions.json' with { type: 'json' };
+import authoredRaw from './data/questions.json' with { type: 'json' };
+import aiDraftRaw from './data/questions.ai-draft.json' with { type: 'json' };
+
+/**
+ * Two-tier bank: `questions.json` = educator-authored & final; `questions.ai-draft.json`
+ * = AI-drafted from Dev Core problem types (anh's decision Q5, 2026-09-01), every
+ * item `origin: 'ai_generated'`, pending educator review before it is considered
+ * final. Both validate against the same schema. See docs/implementation/QUESTION_BANK_PLAN.md.
+ */
+const raw = [...(authoredRaw as unknown[]), ...(aiDraftRaw as unknown[])];
 
 const answerSpecSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('exact'), value: z.string() }),

@@ -41,7 +41,7 @@
 
 | # | Nội dung | Trạng thái |
 |---|---|---|
-| D-03 | **Ngân hàng câu hỏi authored** (100–200 câu, mỗi skill/problem-type) | ⏳ chưa có — `@copilot/practice` hiện có 7 câu mẫu. Dev Core README §"việc cần làm tiếp" #4 cũng ghi. |
+| D-03 | **Ngân hàng câu hỏi authored** (100–200 câu, mỗi skill/problem-type) | 🔄 **Đang làm (anh chốt Q5 = em sinh nháp):** Batch 1 = 22 câu nháp AI (`questions.ai-draft.json`, `origin: ai_generated`, id `.AI.`) phủ 17 skill lõi M4+M7, đủ 6 bậc gợi ý. Kế hoạch + quy trình GV duyệt: `docs/implementation/QUESTION_BANK_PLAN.md`. Còn ~130 câu để đạt "2 câu/skill". |
 | D-04 | **Item-level curriculum G7 + full prereq DAG lớp 1–9** | ⏳ Dev Core mới có skill-level; prereq graph G7 provisional. |
 | D-05 | **8 golden question case** cần domain sâu (factorization, combinatorics HSG…) | Có trong 120 câu nhưng problem_type là free-form slug, engine map best-effort. |
 | D-07 | **30–50 ảnh vở/bài kiểm tra THẬT đã ẩn PII** + ground truth người xác minh. | ⏸ **Hoãn tới sau pilot** (anh chốt Q1, 2026-09-01). Pilot chạy Luna mặc định; kit 40 slot vẫn sẵn ở `packages/testing/benchmark-data/`. Sau pilot: gom ảnh → chạy 4 pipeline → điền `FINAL_ROUTING_DECISION_TEMPLATE.json` + 3 report → anh duyệt. |
