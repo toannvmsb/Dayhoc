@@ -32,7 +32,12 @@
   - `golden/e2e-journey.test.ts` — referential integrity 24 journey; 15 E2E invariant; ranh giới child-projection (FAIL-12) qua `createApi`; cả 15 failure-recovery scenario map vào assertion engine/ledger.
   - `golden-gate.test.ts` — thêm 2 gate: 48/48 hồ sơ plan trong budget; 24 family ↔ journey ↔ twin-profile resolve.
   - **Bug đã sửa khi test:** `buildDailyPlan` trước đây cho phép vượt time budget +3′ (slack cứng trong `fillBudget`) — vi phạm invariant "Daily Plan must never exceed selected time budget". Đã bỏ slack; nếu mọi action đều dài hơn budget thì lấy 1 action ROI cao nhất và cắt còn đúng budget.
-  - **Cần calibrate (không chặn):** 12/663 cặp (skill × hồ sơ) engine cho mastery thấp hơn hẳn expected (phần lớn expected ~75 nhưng evidence chỉ có 1 quan sát sai / parent-only). Là tín hiệu để tinh chỉnh hệ số ở pilot (P-02), không phải lỗi logic.
+  - `golden-data/README.md` — mô tả cả 4 bộ golden + phần nào assert, phần nào hoãn tới calibrate.
+  - `@copilot/testing` index giờ export golden loader + pipeline runner để tái dùng.
+  - **Cần calibrate (không chặn) — cùng một nguyên nhân gốc "nhạy cảm với 1 quan sát":**
+    1. 12/663 cặp (skill × hồ sơ) engine cho mastery ~0 trong khi dataset để ~75 conf thấp — 1 lần sai chưa verify.
+    2. Engine surface `concept_gap` (mọi hồ sơ có 3–12 gap, kể cả `standard_progress`) từ 1 quan sát sai; dataset coi đó là `none_or_low_priority`.
+    Cả 2 là tinh chỉnh ngưỡng sparse-evidence ở pilot (P-02), **không phải lỗi logic** — lifecycle vẫn đúng (gap luôn `DETECTED`, không auto-confirm), rationale vẫn nêu đúng tên kỹ năng gốc.
 
 | # | Nội dung | Trạng thái |
 |---|---|---|

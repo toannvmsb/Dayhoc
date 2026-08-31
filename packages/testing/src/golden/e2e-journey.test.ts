@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { asChildId, asSkillId, type Evidence } from '@copilot/domain';
 import { buildLearningTwin } from '@copilot/learning-twin';
 import { classifyErrorSignature, computeReadiness, DEFAULT_GAP_CONFIG, runGapEngine } from '@copilot/gap-engine';
+import { buildLearningContext } from '@copilot/learning-context';
 import { assertChildSafe } from '@copilot/projections';
 import { AuthzError, createApi } from '@copilot/api';
 import { InMemoryLedgerStore } from '@copilot/evidence';
@@ -222,6 +223,111 @@ describe('Golden E2E — 15 invariants over the deterministic pipeline', () => {
     expect(invariants.some((s) => /append-only/i.test(s))).toBe(true);
     expect(invariants.some((s) => /Parallel Gap Repair/i.test(s))).toBe(true);
     expect(invariants.some((s) => /Child API projection/i.test(s))).toBe(true);
+  });
+});
+
+describe('Golden E2E — journey checkpoint milestones', () => {
+  // every one of the 24 journeys carries the same generic checkpoint expectations,
+  // so we verify them once against a representative pipeline run that has gaps.
+  const run = runTwinPlanner(profileById.get('LT-G4-03')!, events); // prerequisite_gap archetype
+  const context = buildLearningContext({
+    childId: run.childId,
+    gradeContext: 4,
+    evidence: run.evidence,
+    teacherContributions: [],
+    knowledgeBase: KB,
+    asOf: TP_AS_OF,
+  });
+
+  it('every journey shares the 5 canonical checkpoint stages', () => {
+    for (const c of checkpoints) {
+      expect(c.checkpoints.map((cp) => cp.at)).toEqual([
+        'after_first_scan',
+        'after_first_week',
+        'after_diagnosis',
+        'after_retest',
+        'final_day',
+      ]);
+    }
+  });
+
+  it('after_first_scan — Learning Context is initialized and evidence is appended', () => {
+    expect(run.evidence.length).toBeGreaterThan(0);
+    expect(context.activeSkillIds.length).toBeGreaterThan(0);
+    expect(context.standardPosition.skillIds.length + context.actualTaughtPosition.skillIds.length).toBeGreaterThan(0);
+    expect(context.frontier.length).toBeGreaterThan(0);
+  });
+
+  it('after_first_week — the plan is skill-specific, within budget, and every action states its reason', () => {
+    expect(run.twin.skillMastery.size).toBeGreaterThan(1);
+    if (run.plan.kind === 'plan') {
+      expect(run.plan.orderedActions.reduce((s, a) => s + a.estimatedMinutes, 0)).toBeLessThanOrEqual(
+        run.profile.daily_time_budget_min,
+      );
+      for (const a of run.plan.orderedActions) {
+        expect(a.parentFacingTitle.trim().length, `parentFacingTitle for ${a.kind}`).toBeGreaterThan(0);
+        expect(a.childFacingTitle.trim().length, `childFacingTitle for ${a.kind}`).toBeGreaterThan(0);
+        expect(a.rationale.trim().length, `rationale for ${a.kind}`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('after_diagnosis — every gap names a concrete root skill, not a generic "weak at maths" label', () => {
+    expect(run.gaps.gaps.length).toBeGreaterThan(0);
+    for (const g of run.gaps.gaps) {
+      expect(KB.skills.has(g.rootSkillId as never), `root skill ${g.rootSkillId}`).toBe(true);
+      expect(g.rationale.trim().length).toBeGreaterThan(10);
+      // must not be a bare blanket label
+      expect(g.rationale.toLowerCase()).not.toMatch(/^(yếu môn toán|weak at math(s)?|kém toán)\.?$/);
+      // the rationale should reference the specific skill by name
+      const skillName = KB.skills.get(g.rootSkillId as never)?.name ?? '';
+      if (skillName) expect(g.rationale).toContain(skillName);
+    }
+  });
+
+  it('after_diagnosis — gap state follows evidence confidence (parent-only stays a hypothesis)', () => {
+    const cid2 = asChildId('cp_conf');
+    const evidence: Evidence[] = [
+      {
+        id: 'cpc_1' as Evidence['id'],
+        childId: cid2,
+        source: 'app_practice',
+        occurredAt: new Date(TP_AS_OF.getTime() - 18 * 86_400_000).toISOString(),
+        recordedAt: new Date(TP_AS_OF.getTime() - 18 * 86_400_000).toISOString(),
+        skillId: asSkillId('M4.FRAC.COMMON_DENOM'),
+        result: { correct: true },
+        confidenceTier: 'A',
+        provenance: 'assessment',
+      },
+      {
+        id: 'cpc_2' as Evidence['id'],
+        childId: cid2,
+        source: 'parent_feedback',
+        occurredAt: new Date(TP_AS_OF.getTime() - 2 * 86_400_000).toISOString(),
+        recordedAt: new Date(TP_AS_OF.getTime() - 2 * 86_400_000).toISOString(),
+        skillId: asSkillId('M4.FRAC.COMMON_DENOM'),
+        result: { correct: false },
+        confidenceTier: 'D',
+        provenance: 'parent',
+      },
+    ];
+    const twin = buildLearningTwin({ childId: cid2, gradeContext: 4, evidence, knowledgeBase: KB, asOf: TP_AS_OF });
+    const gaps = runGapEngine({ childId: cid2, gradeContext: 4, twin, evidence, knowledgeBase: KB, asOf: TP_AS_OF });
+    for (const g of gaps.gaps) expect(g.lifecycleState).toBe('DETECTED'); // never auto-confirmed on weak evidence
+  });
+
+  it('after_retest — mastery reflects independent vs hinted success (covered by the hint invariant)', () => {
+    const unaided = buildLearningTwin({
+      childId: run.childId,
+      gradeContext: 4,
+      evidence: run.evidence.map((e) => ({ ...e, hintDependency: 0 })),
+      knowledgeBase: KB,
+      asOf: TP_AS_OF,
+    });
+    for (const [id, s] of run.twin.skillMastery) {
+      const free = unaided.skillMastery.get(id);
+      if (free) expect(s.mastery).toBeLessThanOrEqual(free.mastery + 1);
+    }
   });
 });
 

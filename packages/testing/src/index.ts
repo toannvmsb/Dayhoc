@@ -8,3 +8,5 @@
  * registry is completed in Phase 4.5.
  */
 export * from './harness.js';
+export * from './golden/load.js';
+export * from './golden/twin-planner-pipeline.js';
