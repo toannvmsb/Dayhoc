@@ -86,8 +86,8 @@ Direction **LOCKED = "Hướng 1A · Bình tĩnh & ấm"** (anh chọn từ 3 h�
 
 ### Data (anh gửi 2026-08-31, commit `5e7d252`+)
 - **Math Dev Core v1.0** = source of truth. `packages/math-data/data/dev-core/` YAML → `scripts/build-kb.mjs` → `src/data/*.json` (commit output; `npm run data -w @copilot/math-data` regenerate). KB: **94 skills** (52 M4 + 37 M7 provisional + 5 synthetic above-grade families), 112 curriculum nodes.
-- `data/bridges.yaml` — 9 M4→M7 cross-grade prereq bridges (implementation-team, provisional, cần educator review P-01).
-- **G7.\* IDs migrated → M7.\*** across toàn repo.
+- `data/bridges.yaml` — 9 M4→M7 cross-grade prereq bridges (P-01 educator-reviewed 2026-09-01; trọng số vẫn provisional).
+- **G7.\* → M7.\*** rồi **M7.RAT.\* → M7.QNUM.\*** (P-01, tránh nhầm `M7.RATIO.*`). M7.\* `status: educator_reviewed`, đã freeze. KB grade-7: 47 prereq edge.
 - **Golden datasets** ở `packages/testing/golden-data/`: 120 questions, 360 error cases, 15 curated scenarios, 12 profiles.
 
 ### Real engine tests (không chỉ schema)
@@ -103,7 +103,7 @@ Web dev: `npm run dev --workspace @copilot/web` (port 3100). browser-preview `.c
 - **D2** Golden registry hợp nhất (thay bằng golden dataset thật của anh — `packages/testing/golden-data/`).
 - **D3** Project root = `D:\Lap trinh\Claude\Dayhoc\`; KHÔNG đụng repo PhongThuy.
 - **D4** Stack: monorepo (npm workspaces) + Next.js + Expo/RN + PostgreSQL + Redis + S3 + Claude LLM.
-- **P-01** (2026-08-31) Em tự rà skill graph/DAG lớp 7 theo SGK → xuất bản đề xuất cho anh duyệt (chưa freeze `M7.*` ID).
+- **P-01** ✅ XONG 2026-09-01 — rà M7 theo SGK Toán 7 KNTT, anh duyệt: `M7.RAT.*`→`M7.QNUM.*`, +11 cạnh DAG giữa chương, `M7.*` freeze (`educator_reviewed`). `docs/implementation/M7_SKILL_REVIEW.md`.
 - **P-02** Giữ coefficients provisional tới khi có pilot data.
 - **P-03** Con login = username+password (bố mẹ tạo, con đổi được). PIN 4 số = shortcut vào bài được giao, không phải login.
 - **P-04** LLM/OCR provider: **architecture đã chốt & code** (Pricing + AI Cost Guardrails v1.0 — Luna-first routing, pricing registry, margin floor 50%, budget engine + hard ceilings, cost telemetry, provider adapter). **Đợt 2 (2026-09-01):** Q1 hoãn benchmark ảnh → pilot chạy **Luna mặc định**, advanced model (Sonnet 5 vs Terra) quyết sau bằng AI COGS pilot thật. Q2 ca `advanced` chưa có model → `resolveRoute` trả `effectiveTier:'luna'` + `effort:'high'` + `reviewReason` (không chặn, không tự chọn provider). Xem `docs/implementation/PRICING_AND_COST_GUARDRAILS.md`. Runtime vẫn `MockLlmProvider`.

@@ -82,8 +82,9 @@ const DIMENSIONS_BY_DOMAIN = {
 
 /**
  * Above-grade Grade 7 skill families (from Math Core "Biến đổi đồng nhất" +
- * cross-grade paths). These are real skills that carry G8/G9/HSG exposure —
- * PROVISIONAL, added by the implementation team, needs educator review (P-01).
+ * cross-grade paths). Real skills carrying G8/G9/HSG exposure. Reviewed against
+ * SGK Toán 7 KNTT in the P-01 review, approved by anh 2026-09-01
+ * (docs/implementation/M7_SKILL_REVIEW.md §4).
  */
 const ADVANCED_G7 = [
   { id: 'M7.RATIO.MULTIVAR', name: 'Hệ tỉ số nhiều biến (x/a=y/b=z/c, điều kiện tích/bậc hai)', domain: 'algebraic_thinking', origin: 8, prereq: 'M7.RATIO.EQUAL_CHAIN' },
@@ -161,7 +162,7 @@ function buildGrade(gradeContext) {
         domain: a.domain,
         topic: a.name,
         name: a.name,
-        description: 'Above-grade / HSG exposure family (provisional, needs educator review).',
+        description: 'Above-grade / HSG exposure family (P-01 educator-reviewed 2026-09-01).',
         curriculumNodeId: fallbackNodeId,
         curriculumOrigin: a.origin,
         thinkingDimensions: DIMENSIONS_BY_DOMAIN[a.domain] ?? ['algebraic_thinking'],
@@ -244,8 +245,8 @@ function pickFamilySkills(families, skillIds, skills) {
   const has = (id) => skillIds.has(id);
   const map = {};
   const pref = {
-    'G7.RAT': ['M7.RAT.OPERATIONS', 'M7.RAT.SET'],
-    'G7.EQ': ['M7.RAT.ORDER_TRANSPOSE', 'M7.ALG.EXPRESSION'],
+    'G7.RAT': ['M7.QNUM.OPERATIONS', 'M7.QNUM.SET'],
+    'G7.EQ': ['M7.QNUM.ORDER_TRANSPOSE', 'M7.ALG.EXPRESSION'],
     'G7.RATIO': ['M7.RATIO.EQUAL_CHAIN', 'M7.RATIO.PROPORTION'],
     'G7.MULTIVAR': ['M7.RATIO.MULTIVAR', 'M7.RATIO.EQUAL_CHAIN'],
     'G7.ALG.IDENTITY': ['M7.ALG.IDENTITY', 'M7.ALG.POLY_MUL'],

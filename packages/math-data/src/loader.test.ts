@@ -55,7 +55,7 @@ describe('education-model invariants encoded in the data', () => {
   });
 
   it('models a cross-grade bridge from M4.FRAC.COMMON_DENOM into Grade 7', () => {
-    expect(kb.dependents('M4.FRAC.COMMON_DENOM')).toContain('M7.RAT.OPERATIONS');
+    expect(kb.dependents('M4.FRAC.COMMON_DENOM')).toContain('M7.QNUM.OPERATIONS');
   });
 
   it('keeps Knowledge and Thinking independent: problem types vary on both axes', () => {

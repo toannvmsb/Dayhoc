@@ -307,7 +307,7 @@
   ],
   "skills": [
     {
-      "id": "M7.RAT.SET",
+      "id": "M7.QNUM.SET",
       "gradeContext": 7,
       "domain": "arithmetic",
       "topic": "Tập hợp số hữu tỉ",
@@ -322,7 +322,7 @@
       "advancedExtensions": []
     },
     {
-      "id": "M7.RAT.OPERATIONS",
+      "id": "M7.QNUM.OPERATIONS",
       "gradeContext": 7,
       "domain": "arithmetic",
       "topic": "Cộng, trừ, nhân, chia số hữu tỉ",
@@ -337,7 +337,7 @@
       "advancedExtensions": []
     },
     {
-      "id": "M7.RAT.POWER",
+      "id": "M7.QNUM.POWER",
       "gradeContext": 7,
       "domain": "arithmetic",
       "topic": "Lũy thừa số hữu tỉ với số mũ tự nhiên",
@@ -352,7 +352,7 @@
       "advancedExtensions": []
     },
     {
-      "id": "M7.RAT.ORDER_TRANSPOSE",
+      "id": "M7.QNUM.ORDER_TRANSPOSE",
       "gradeContext": 7,
       "domain": "arithmetic",
       "topic": "Thứ tự phép tính và quy tắc chuyển vế",
@@ -892,7 +892,7 @@
       "domain": "algebraic_thinking",
       "topic": "Hệ tỉ số nhiều biến (x/a=y/b=z/c, điều kiện tích/bậc hai)",
       "name": "Hệ tỉ số nhiều biến (x/a=y/b=z/c, điều kiện tích/bậc hai)",
-      "description": "Above-grade / HSG exposure family (provisional, needs educator review).",
+      "description": "Above-grade / HSG exposure family (P-01 educator-reviewed 2026-09-01).",
       "curriculumNodeId": "C.G7.EXT.0",
       "curriculumOrigin": 8,
       "thinkingDimensions": [
@@ -908,7 +908,7 @@
       "domain": "algebraic_thinking",
       "topic": "Biến đổi đồng nhất và hằng đẳng thức",
       "name": "Biến đổi đồng nhất và hằng đẳng thức",
-      "description": "Above-grade / HSG exposure family (provisional, needs educator review).",
+      "description": "Above-grade / HSG exposure family (P-01 educator-reviewed 2026-09-01).",
       "curriculumNodeId": "C.G7.EXT.0",
       "curriculumOrigin": 8,
       "thinkingDimensions": [
@@ -924,7 +924,7 @@
       "domain": "algebraic_thinking",
       "topic": "Biểu thức đối xứng từ a+b và ab (HSG)",
       "name": "Biểu thức đối xứng từ a+b và ab (HSG)",
-      "description": "Above-grade / HSG exposure family (provisional, needs educator review).",
+      "description": "Above-grade / HSG exposure family (P-01 educator-reviewed 2026-09-01).",
       "curriculumNodeId": "C.G7.EXT.0",
       "curriculumOrigin": 9,
       "thinkingDimensions": [
@@ -940,7 +940,7 @@
       "domain": "algebraic_thinking",
       "topic": "Phân tích thành nhân tử nâng cao",
       "name": "Phân tích thành nhân tử nâng cao",
-      "description": "Above-grade / HSG exposure family (provisional, needs educator review).",
+      "description": "Above-grade / HSG exposure family (P-01 educator-reviewed 2026-09-01).",
       "curriculumNodeId": "C.G7.EXT.0",
       "curriculumOrigin": 8,
       "thinkingDimensions": [
@@ -956,7 +956,7 @@
       "domain": "logical_reasoning",
       "topic": "Chứng minh đại số / bất đẳng thức (HSG)",
       "name": "Chứng minh đại số / bất đẳng thức (HSG)",
-      "description": "Above-grade / HSG exposure family (provisional, needs educator review).",
+      "description": "Above-grade / HSG exposure family (P-01 educator-reviewed 2026-09-01).",
       "curriculumNodeId": "C.G7.EXT.0",
       "curriculumOrigin": 9,
       "thinkingDimensions": [
@@ -969,31 +969,31 @@
   ],
   "prerequisites": [
     {
-      "from": "M7.RAT.SET",
-      "to": "M7.RAT.OPERATIONS",
+      "from": "M7.QNUM.SET",
+      "to": "M7.QNUM.OPERATIONS",
       "importance": 0.8,
       "crossGrade": false
     },
     {
-      "from": "M7.RAT.OPERATIONS",
-      "to": "M7.RAT.POWER",
+      "from": "M7.QNUM.OPERATIONS",
+      "to": "M7.QNUM.POWER",
       "importance": 0.8,
       "crossGrade": false
     },
     {
-      "from": "M7.RAT.OPERATIONS",
-      "to": "M7.RAT.ORDER_TRANSPOSE",
+      "from": "M7.QNUM.OPERATIONS",
+      "to": "M7.QNUM.ORDER_TRANSPOSE",
       "importance": 0.8,
       "crossGrade": false
     },
     {
-      "from": "M7.RAT.SET",
+      "from": "M7.QNUM.SET",
       "to": "M7.REAL.REPEATING_DECIMAL",
       "importance": 0.8,
       "crossGrade": false
     },
     {
-      "from": "M7.RAT.SET",
+      "from": "M7.QNUM.SET",
       "to": "M7.REAL.SET",
       "importance": 0.8,
       "crossGrade": false
@@ -1089,8 +1089,86 @@
       "crossGrade": false
     },
     {
+      "from": "M7.GEO.EUCLID_PARALLEL",
+      "to": "M7.GEO.THEOREM_PROOF",
+      "importance": 0.7,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.GEO.THEOREM_PROOF",
+      "to": "M7.TRI.ANGLE_SUM",
+      "importance": 0.75,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.TRI.ANGLE_SUM",
+      "to": "M7.TRI.CONGRUENCE_1",
+      "importance": 0.6,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.TRI.CONGRUENCE_2_3",
+      "to": "M7.TRI.ISOSCELES_PERP_BISECTOR",
+      "importance": 0.8,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.TRI.CONGRUENCE_2_3",
+      "to": "M7.TRI.ANGLE_OPPOSITE_SIDE",
+      "importance": 0.7,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.TRI.ANGLE_OPPOSITE_SIDE",
+      "to": "M7.TRI.PERP_OBLIQUE",
+      "importance": 0.75,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.TRI.PERP_OBLIQUE",
+      "to": "M7.TRI.INEQUALITY",
+      "importance": 0.75,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.TRI.ISOSCELES_PERP_BISECTOR",
+      "to": "M7.TRI.CONC_MEDIAN_BISECTOR",
+      "importance": 0.7,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.TRI.CONC_MEDIAN_BISECTOR",
+      "to": "M7.TRI.CONC_PERP_ALTITUDE",
+      "importance": 0.7,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.SOLID.BOX_CUBE",
+      "to": "M7.SOLID.PRISM",
+      "importance": 0.7,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.QNUM.POWER",
+      "to": "M7.REAL.IRR_SQRT",
+      "importance": 0.5,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.REAL.IRR_SQRT",
+      "to": "M7.PROOF.ALGEBRA",
+      "importance": 0.6,
+      "crossGrade": false
+    },
+    {
+      "from": "M7.QNUM.ORDER_TRANSPOSE",
+      "to": "M7.PROOF.ALGEBRA",
+      "importance": 0.6,
+      "crossGrade": false
+    },
+    {
       "from": "M4.FRAC.COMMON_DENOM",
-      "to": "M7.RAT.OPERATIONS",
+      "to": "M7.QNUM.OPERATIONS",
       "importance": 0.8,
       "crossGrade": true
     },
@@ -1102,7 +1180,7 @@
     },
     {
       "from": "M4.FRAC.MUL",
-      "to": "M7.RAT.OPERATIONS",
+      "to": "M7.QNUM.OPERATIONS",
       "importance": 0.65,
       "crossGrade": true
     },
@@ -1120,8 +1198,8 @@
     },
     {
       "from": "M4.ALG.FIND_X",
-      "to": "M7.RAT.ORDER_TRANSPOSE",
-      "importance": 0.6,
+      "to": "M7.QNUM.ORDER_TRANSPOSE",
+      "importance": 0.45,
       "crossGrade": true
     },
     {
@@ -1176,77 +1254,77 @@
   "problemTypes": [
     {
       "id": "M7.PT.RAT.FRACTION_RATIONAL_OPERATIONS",
-      "skillId": "M7.RAT.OPERATIONS",
+      "skillId": "M7.QNUM.OPERATIONS",
       "name": "fraction_rational_operations",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T2"
     },
     {
       "id": "M7.PT.RAT.FAST_CALCULATION_BY_STRUCTURE",
-      "skillId": "M7.RAT.OPERATIONS",
+      "skillId": "M7.QNUM.OPERATIONS",
       "name": "fast_calculation_by_structure",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T2"
     },
     {
       "id": "M7.PT.RAT.POWERS_ZERO_EXPONENT",
-      "skillId": "M7.RAT.OPERATIONS",
+      "skillId": "M7.QNUM.OPERATIONS",
       "name": "powers_zero_exponent",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T3"
     },
     {
       "id": "M7.PT.RAT.SIGN_RULES",
-      "skillId": "M7.RAT.OPERATIONS",
+      "skillId": "M7.QNUM.OPERATIONS",
       "name": "sign_rules",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T3"
     },
     {
       "id": "M7.PT.RAT.NESTED_RATIONAL_EXPRESSIONS",
-      "skillId": "M7.RAT.OPERATIONS",
+      "skillId": "M7.QNUM.OPERATIONS",
       "name": "nested_rational_expressions",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T4"
     },
     {
       "id": "M7.PT.EQ.ONE_STEP_RATIONAL_EQUATION",
-      "skillId": "M7.RAT.ORDER_TRANSPOSE",
+      "skillId": "M7.QNUM.ORDER_TRANSPOSE",
       "name": "one_step_rational_equation",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T2"
     },
     {
       "id": "M7.PT.EQ.MULTI_STEP_LINEAR_EQUATION",
-      "skillId": "M7.RAT.ORDER_TRANSPOSE",
+      "skillId": "M7.QNUM.ORDER_TRANSPOSE",
       "name": "multi_step_linear_equation",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T2"
     },
     {
       "id": "M7.PT.EQ.DISTRIBUTIVE_EQUATION",
-      "skillId": "M7.RAT.ORDER_TRANSPOSE",
+      "skillId": "M7.QNUM.ORDER_TRANSPOSE",
       "name": "distributive_equation",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T3"
     },
     {
       "id": "M7.PT.EQ.RATIONAL_EXPRESSION_EQUATION",
-      "skillId": "M7.RAT.ORDER_TRANSPOSE",
+      "skillId": "M7.QNUM.ORDER_TRANSPOSE",
       "name": "rational_expression_equation",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T3"
     },
     {
       "id": "M7.PT.EQ.SQUARE_OR_QUADRATIC_STRUCTURE",
-      "skillId": "M7.RAT.ORDER_TRANSPOSE",
+      "skillId": "M7.QNUM.ORDER_TRANSPOSE",
       "name": "square_or_quadratic_structure",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T4"
     },
     {
       "id": "M7.PT.EQ.EQUATION_IN_RATIO_OR_SYSTEM",
-      "skillId": "M7.RAT.ORDER_TRANSPOSE",
+      "skillId": "M7.QNUM.ORDER_TRANSPOSE",
       "name": "equation_in_ratio_or_system",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T4"

@@ -98,7 +98,7 @@ describe('buildLearningContext (Phase 2 acceptance)', () => {
       gradeContext: 7,
       evidence: [
         ev({ skillId: 'M7.ALG.IDENTITY', occurredAt: '2026-08-27T10:00:00Z' }), // origin 8 → above grade
-        ev({ skillId: 'M7.RAT.OPERATIONS', occurredAt: '2026-08-27T10:00:00Z' }), // origin 7
+        ev({ skillId: 'M7.QNUM.OPERATIONS', occurredAt: '2026-08-27T10:00:00Z' }), // origin 7
       ],
       teacherContributions: [],
       knowledgeBase: kb,

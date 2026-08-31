@@ -48,10 +48,10 @@ describe('Definition of Done — MVP', () => {
       [
         { skillId: 'M7.ALG.IDENTITY', daysAgo: 10, correct: true, confidenceTier: 'A' }, // origin 8
         { skillId: 'M7.ALG.IDENTITY', daysAgo: 4, correct: true, confidenceTier: 'A' },
-        // M7.RAT.OPERATIONS: a moderate (not critical) prerequisite dip
-        { skillId: 'M7.RAT.OPERATIONS', daysAgo: 12, correct: true, confidenceTier: 'A' },
-        { skillId: 'M7.RAT.OPERATIONS', daysAgo: 8, correct: true },
-        { skillId: 'M7.RAT.OPERATIONS', daysAgo: 3, correct: false, reasoningQuality: 'weak' },
+        // M7.QNUM.OPERATIONS: a moderate (not critical) prerequisite dip
+        { skillId: 'M7.QNUM.OPERATIONS', daysAgo: 12, correct: true, confidenceTier: 'A' },
+        { skillId: 'M7.QNUM.OPERATIONS', daysAgo: 8, correct: true },
+        { skillId: 'M7.QNUM.OPERATIONS', daysAgo: 3, correct: false, reasoningQuality: 'weak' },
       ],
       asOf,
     );
@@ -59,7 +59,7 @@ describe('Definition of Done — MVP', () => {
     const algebra = twin.frontier.find((f) => f.domain === 'algebraic_thinking')!;
     expect(algebra.aboveGrade).toBe(true); // above-grade exposure tracked
 
-    // M7.RATIO.PROPORTION's direct prerequisite is the (moderately weak) M7.RAT.OPERATIONS
+    // M7.RATIO.PROPORTION's direct prerequisite is the (moderately weak) M7.QNUM.OPERATIONS
     const readiness = computeReadiness(childId, asSkillId('M7.RATIO.PROPORTION'), twin, KB, DEFAULT_GAP_CONFIG);
     expect(['ready', 'parallel_repair']).toContain(readiness.recommendation); // advanced path not force-stopped
   });

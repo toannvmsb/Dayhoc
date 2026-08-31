@@ -96,7 +96,7 @@ describe('buildLearningTwin — Phase 3 acceptance', () => {
     const twin = build([
       ev({ skillId: 'M7.ALG.IDENTITY', daysAgo: 4, correct: true }), // origin 8 → above grade 7
       ev({ skillId: 'M7.ALG.IDENTITY', daysAgo: 2, correct: true }),
-      ev({ skillId: 'M7.RAT.OPERATIONS', daysAgo: 3, correct: true }), // origin 7
+      ev({ skillId: 'M7.QNUM.OPERATIONS', daysAgo: 3, correct: true }), // origin 7
     ]);
     expect(twin).not.toHaveProperty('level');
     const algebra = twin.frontier.find((f) => f.domain === 'algebraic_thinking')!;

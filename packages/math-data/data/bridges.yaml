@@ -4,17 +4,18 @@
 # root-gap trace and readiness engine reason across the grade boundary
 # (e.g. "the Grade 7 ratio failure roots in a Grade 4 fraction gap").
 #
-# STATUS: provisional, added by the implementation team — NOT from the source
-# Math Core. Needs the same math-educator review as the M7 skill graph (D5 / P-01).
+# STATUS: reviewed in the P-01 review (docs/implementation/M7_SKILL_REVIEW.md §3),
+# approved by anh 2026-09-01. Importance coefficients stay provisional pending
+# pilot calibration (P-02).
 edges:
   - from: M4.FRAC.COMMON_DENOM
-    to: M7.RAT.OPERATIONS
+    to: M7.QNUM.OPERATIONS
     importance: 0.8
   - from: M4.FRAC.EQUIVALENT
     to: M7.RATIO.PROPORTION
     importance: 0.8
   - from: M4.FRAC.MUL
-    to: M7.RAT.OPERATIONS
+    to: M7.QNUM.OPERATIONS
     importance: 0.65
   - from: M4.ARITH.DISTRIBUTIVE
     to: M7.ALG.POLY_MUL
@@ -23,8 +24,8 @@ edges:
     to: M7.ALG.EXPRESSION
     importance: 0.7
   - from: M4.ALG.FIND_X
-    to: M7.RAT.ORDER_TRANSPOSE
-    importance: 0.6
+    to: M7.QNUM.ORDER_TRANSPOSE
+    importance: 0.45 # P-01 §3b: "tìm x" (G4) ↔ "chuyển vế" (G7) is a weak link
   - from: M4.WORD.UNIT_RATE
     to: M7.RATIO.DIRECT
     importance: 0.65

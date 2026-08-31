@@ -1,43 +1,43 @@
-skill_id,sgk,origin,ten,prereq_hien_tai,em_danh_gia,em_de_xuat,anh_duyet(OK/Sua),ghi_chu_cua_anh
-M7.ALG.EXPRESSION,VII·B24,7,Biểu thức đại số,M4.ALG.EXPR_VAR*,,,,
-M7.ALG.FACTOR,HSG,8,Phân tích thành nhân tử nâng cao,M7.ALG.IDENTITY,,,,
-M7.ALG.IDENTITY,HSG,8,Biến đổi đồng nhất và hằng đẳng thức,M7.ALG.POLY_MUL,,,,
-M7.ALG.POLY_1VAR,VII·B25,7,Đa thức một biến,M7.ALG.EXPRESSION,,,,
-M7.ALG.POLY_ADD_SUB,VII·B26,7,Cộng và trừ đa thức một biến,M7.ALG.POLY_1VAR,,,,
-M7.ALG.POLY_DIV,VII·B28,7,Chia đa thức một biến,M7.ALG.POLY_MUL,,,,
-M7.ALG.POLY_MUL,VII·B27,7,Nhân đa thức một biến,M7.ALG.POLY_1VAR | M4.ARITH.DISTRIBUTIVE*,,,,
-M7.ALG.SYMMETRIC,HSG,9,Biểu thức đối xứng từ a+b và ab (HSG),M7.ALG.IDENTITY,,,,
-M7.DATA.COLLECT_CLASSIFY,V·B17,7,Thu thập và phân loại dữ liệu,—,,,,
-M7.DATA.LINE_CHART,V·B19,7,Biểu đồ đoạn thẳng,M7.DATA.COLLECT_CLASSIFY,,,,
-M7.DATA.PIE_CHART,V·B18,7,Biểu đồ hình quạt tròn,M7.DATA.COLLECT_CLASSIFY,,,,
-M7.GEO.ANGLE_SPECIAL_BISECTOR,III·B8,7,Góc ở vị trí đặc biệt và tia phân giác,M4.GEO.ANGLE_TYPE*,,,,
-M7.GEO.EUCLID_PARALLEL,III·B10,7,Tiên đề Euclid và tính chất hai đường thẳng song song,M7.GEO.PARALLEL_CRITERIA,,,,
-M7.GEO.PARALLEL_CRITERIA,III·B9,7,Dấu hiệu nhận biết hai đường thẳng song song,M7.GEO.ANGLE_SPECIAL_BISECTOR | M4.GEO.PARALLEL*,,,,
-M7.GEO.THEOREM_PROOF,III·B11,7,Định lí và chứng minh định lí,—,,,,
-M7.PROB.EVENT,VIII·B29,7,Làm quen với biến cố,—,,,,
-M7.PROB.EVENT_PROB,VIII·B30,7,Làm quen với xác suất của biến cố,M7.PROB.EVENT,,,,
-M7.PROOF.ALGEBRA,HSG,9,Chứng minh đại số / bất đẳng thức (HSG),M7.ALG.SYMMETRIC,,,,
-M7.RAT.OPERATIONS,I·B2,7,"Cộng, trừ, nhân, chia số hữu tỉ",M7.RAT.SET | M4.FRAC.COMMON_DENOM* | M4.FRAC.MUL*,,,,
-M7.RAT.ORDER_TRANSPOSE,I·B4,7,Thứ tự phép tính và quy tắc chuyển vế,M7.RAT.OPERATIONS | M4.ALG.FIND_X*,,,,
-M7.RAT.POWER,I·B3,7,Lũy thừa số hữu tỉ với số mũ tự nhiên,M7.RAT.OPERATIONS,,,,
-M7.RAT.SET,I·B1,7,Tập hợp số hữu tỉ,—,,,,
-M7.RATIO.DIRECT,VI·B22,7,Đại lượng tỉ lệ thuận,M7.RATIO.PROPORTION | M4.WORD.UNIT_RATE*,,,,
-M7.RATIO.EQUAL_CHAIN,VI·B21,7,Tính chất dãy tỉ số bằng nhau,M7.RATIO.PROPORTION,,,,
-M7.RATIO.INVERSE,VI·B23,7,Đại lượng tỉ lệ nghịch,M7.RATIO.PROPORTION,,,,
-M7.RATIO.MULTIVAR,HSG,8,"Hệ tỉ số nhiều biến (x/a=y/b=z/c, điều kiện tích/bậc hai)",M7.RATIO.EQUAL_CHAIN,,,,
-M7.RATIO.PROPORTION,VI·B20,7,Tỉ lệ thức,M4.FRAC.EQUIVALENT*,,,,
-M7.REAL.IRR_SQRT,II·B6,7,Số vô tỉ và căn bậc hai số học,—,,,,
-M7.REAL.REPEATING_DECIMAL,II·B5,7,Số thập phân vô hạn tuần hoàn,M7.RAT.SET,,,,
-M7.REAL.SET,II·B7,7,Tập hợp số thực,M7.RAT.SET | M7.REAL.IRR_SQRT,,,,
-M7.SOLID.BOX_CUBE,X·B36,7,Hình hộp chữ nhật và hình lập phương,—,,,,
-M7.SOLID.PRISM,X·B37,7,Lăng trụ đứng tam giác và tứ giác,—,,,,
-M7.TRI.ANGLE_OPPOSITE_SIDE,IX·B31,7,Quan hệ góc và cạnh đối diện trong tam giác,—,,,,
-M7.TRI.ANGLE_SUM,IV·B12,7,Tổng các góc trong tam giác,—,,,,
-M7.TRI.CONC_MEDIAN_BISECTOR,IX·B34,7,Đồng quy trung tuyến và phân giác,—,,,,
-M7.TRI.CONC_PERP_ALTITUDE,IX·B35,7,Đồng quy trung trực và đường cao,—,,,,
-M7.TRI.CONGRUENCE_1,IV·B13,7,Tam giác bằng nhau và trường hợp thứ nhất,—,,,,
-M7.TRI.CONGRUENCE_2_3,IV·B14,7,Trường hợp bằng nhau thứ hai và thứ ba,M7.TRI.CONGRUENCE_1,,,,
-M7.TRI.INEQUALITY,IX·B33,7,Quan hệ giữa ba cạnh của tam giác,—,,,,
-M7.TRI.ISOSCELES_PERP_BISECTOR,IV·B16,7,Tam giác cân và đường trung trực,—,,,,
-M7.TRI.PERP_OBLIQUE,IX·B32,7,Quan hệ đường vuông góc và đường xiên,—,,,,
-M7.TRI.RIGHT_CONGRUENCE,IV·B15,7,Trường hợp bằng nhau của tam giác vuông,M7.TRI.CONGRUENCE_1,,,,
+skill_id,sgk,origin,ten,prereq (edge đã nạp),ghi_chu
+M7.ALG.EXPRESSION,VII·B24,7,Biểu thức đại số,M4.ALG.EXPR_VAR*@0.7,educator_reviewed
+M7.ALG.FACTOR,HSG,8,Phân tích thành nhân tử nâng cao,M7.ALG.IDENTITY@0.85,educator_reviewed
+M7.ALG.IDENTITY,HSG,8,Biến đổi đồng nhất và hằng đẳng thức,M7.ALG.POLY_MUL@0.85,educator_reviewed
+M7.ALG.POLY_1VAR,VII·B25,7,Đa thức một biến,M7.ALG.EXPRESSION@0.8,educator_reviewed
+M7.ALG.POLY_ADD_SUB,VII·B26,7,Cộng và trừ đa thức một biến,M7.ALG.POLY_1VAR@0.8,educator_reviewed
+M7.ALG.POLY_DIV,VII·B28,7,Chia đa thức một biến,M7.ALG.POLY_MUL@0.8,educator_reviewed
+M7.ALG.POLY_MUL,VII·B27,7,Nhân đa thức một biến,M7.ALG.POLY_1VAR@0.8 | M4.ARITH.DISTRIBUTIVE*@0.75,educator_reviewed
+M7.ALG.SYMMETRIC,HSG,9,Biểu thức đối xứng từ a+b và ab (HSG),M7.ALG.IDENTITY@0.85,educator_reviewed
+M7.DATA.COLLECT_CLASSIFY,V·B17,7,Thu thập và phân loại dữ liệu,—,educator_reviewed
+M7.DATA.LINE_CHART,V·B19,7,Biểu đồ đoạn thẳng,M7.DATA.COLLECT_CLASSIFY@0.8,educator_reviewed
+M7.DATA.PIE_CHART,V·B18,7,Biểu đồ hình quạt tròn,M7.DATA.COLLECT_CLASSIFY@0.8,educator_reviewed
+M7.GEO.ANGLE_SPECIAL_BISECTOR,III·B8,7,Góc ở vị trí đặc biệt và tia phân giác,M4.GEO.ANGLE_TYPE*@0.6,educator_reviewed
+M7.GEO.EUCLID_PARALLEL,III·B10,7,Tiên đề Euclid và tính chất hai đường thẳng song song,M7.GEO.PARALLEL_CRITERIA@0.8,educator_reviewed
+M7.GEO.PARALLEL_CRITERIA,III·B9,7,Dấu hiệu nhận biết hai đường thẳng song song,M7.GEO.ANGLE_SPECIAL_BISECTOR@0.8 | M4.GEO.PARALLEL*@0.6,educator_reviewed
+M7.GEO.THEOREM_PROOF,III·B11,7,Định lí và chứng minh định lí,M7.GEO.EUCLID_PARALLEL@0.7,educator_reviewed
+M7.PROB.EVENT,VIII·B29,7,Làm quen với biến cố,—,educator_reviewed
+M7.PROB.EVENT_PROB,VIII·B30,7,Làm quen với xác suất của biến cố,M7.PROB.EVENT@0.8,educator_reviewed
+M7.PROOF.ALGEBRA,HSG,9,Chứng minh đại số / bất đẳng thức (HSG),M7.REAL.IRR_SQRT@0.6 | M7.QNUM.ORDER_TRANSPOSE@0.6 | M7.ALG.SYMMETRIC@0.85,educator_reviewed
+M7.QNUM.OPERATIONS,I·B2,7,"Cộng, trừ, nhân, chia số hữu tỉ",M7.QNUM.SET@0.8 | M4.FRAC.COMMON_DENOM*@0.8 | M4.FRAC.MUL*@0.65,educator_reviewed
+M7.QNUM.ORDER_TRANSPOSE,I·B4,7,Thứ tự phép tính và quy tắc chuyển vế,M7.QNUM.OPERATIONS@0.8 | M4.ALG.FIND_X*@0.45,educator_reviewed
+M7.QNUM.POWER,I·B3,7,Lũy thừa số hữu tỉ với số mũ tự nhiên,M7.QNUM.OPERATIONS@0.8,educator_reviewed
+M7.QNUM.SET,I·B1,7,Tập hợp số hữu tỉ,—,educator_reviewed
+M7.RATIO.DIRECT,VI·B22,7,Đại lượng tỉ lệ thuận,M7.RATIO.PROPORTION@0.8 | M4.WORD.UNIT_RATE*@0.65,educator_reviewed
+M7.RATIO.EQUAL_CHAIN,VI·B21,7,Tính chất dãy tỉ số bằng nhau,M7.RATIO.PROPORTION@0.8,educator_reviewed
+M7.RATIO.INVERSE,VI·B23,7,Đại lượng tỉ lệ nghịch,M7.RATIO.PROPORTION@0.8,educator_reviewed
+M7.RATIO.MULTIVAR,HSG,8,"Hệ tỉ số nhiều biến (x/a=y/b=z/c, điều kiện tích/bậc hai)",M7.RATIO.EQUAL_CHAIN@0.85,educator_reviewed
+M7.RATIO.PROPORTION,VI·B20,7,Tỉ lệ thức,M4.FRAC.EQUIVALENT*@0.8,educator_reviewed
+M7.REAL.IRR_SQRT,II·B6,7,Số vô tỉ và căn bậc hai số học,M7.QNUM.POWER@0.5,educator_reviewed
+M7.REAL.REPEATING_DECIMAL,II·B5,7,Số thập phân vô hạn tuần hoàn,M7.QNUM.SET@0.8,educator_reviewed
+M7.REAL.SET,II·B7,7,Tập hợp số thực,M7.QNUM.SET@0.8 | M7.REAL.IRR_SQRT@0.8,educator_reviewed
+M7.SOLID.BOX_CUBE,X·B36,7,Hình hộp chữ nhật và hình lập phương,—,educator_reviewed
+M7.SOLID.PRISM,X·B37,7,Lăng trụ đứng tam giác và tứ giác,M7.SOLID.BOX_CUBE@0.7,educator_reviewed
+M7.TRI.ANGLE_OPPOSITE_SIDE,IX·B31,7,Quan hệ góc và cạnh đối diện trong tam giác,M7.TRI.CONGRUENCE_2_3@0.7,educator_reviewed
+M7.TRI.ANGLE_SUM,IV·B12,7,Tổng các góc trong tam giác,M7.GEO.THEOREM_PROOF@0.75,educator_reviewed
+M7.TRI.CONC_MEDIAN_BISECTOR,IX·B34,7,Đồng quy trung tuyến và phân giác,M7.TRI.ISOSCELES_PERP_BISECTOR@0.7,educator_reviewed
+M7.TRI.CONC_PERP_ALTITUDE,IX·B35,7,Đồng quy trung trực và đường cao,M7.TRI.CONC_MEDIAN_BISECTOR@0.7,educator_reviewed
+M7.TRI.CONGRUENCE_1,IV·B13,7,Tam giác bằng nhau và trường hợp thứ nhất,M7.TRI.ANGLE_SUM@0.6,educator_reviewed
+M7.TRI.CONGRUENCE_2_3,IV·B14,7,Trường hợp bằng nhau thứ hai và thứ ba,M7.TRI.CONGRUENCE_1@0.8,educator_reviewed
+M7.TRI.INEQUALITY,IX·B33,7,Quan hệ giữa ba cạnh của tam giác,M7.TRI.PERP_OBLIQUE@0.75,educator_reviewed
+M7.TRI.ISOSCELES_PERP_BISECTOR,IV·B16,7,Tam giác cân và đường trung trực,M7.TRI.CONGRUENCE_2_3@0.8,educator_reviewed
+M7.TRI.PERP_OBLIQUE,IX·B32,7,Quan hệ đường vuông góc và đường xiên,M7.TRI.ANGLE_OPPOSITE_SIDE@0.75,educator_reviewed
+M7.TRI.RIGHT_CONGRUENCE,IV·B15,7,Trường hợp bằng nhau của tam giác vuông,M7.TRI.CONGRUENCE_1@0.8,educator_reviewed

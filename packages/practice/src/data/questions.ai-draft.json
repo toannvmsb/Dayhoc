@@ -266,8 +266,8 @@
     "origin": "ai_generated"
   },
   {
-    "id": "Q.M7.RAT.OPERATIONS.AI.001",
-    "skillId": "M7.RAT.OPERATIONS",
+    "id": "Q.M7.QNUM.OPERATIONS.AI.001",
+    "skillId": "M7.QNUM.OPERATIONS",
     "problemTypeId": "M7.PT.RAT.DIRECT",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T1",
@@ -285,8 +285,8 @@
     "origin": "ai_generated"
   },
   {
-    "id": "Q.M7.RAT.OPERATIONS.AI.002",
-    "skillId": "M7.RAT.OPERATIONS",
+    "id": "Q.M7.QNUM.OPERATIONS.AI.002",
+    "skillId": "M7.QNUM.OPERATIONS",
     "problemTypeId": "M7.PT.RAT.SIGN_RULES",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T2",
@@ -304,8 +304,8 @@
     "origin": "ai_generated"
   },
   {
-    "id": "Q.M7.RAT.ORDER_TRANSPOSE.AI.001",
-    "skillId": "M7.RAT.ORDER_TRANSPOSE",
+    "id": "Q.M7.QNUM.ORDER_TRANSPOSE.AI.001",
+    "skillId": "M7.QNUM.ORDER_TRANSPOSE",
     "problemTypeId": "M7.PT.EQ.ONE_STEP",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T2",

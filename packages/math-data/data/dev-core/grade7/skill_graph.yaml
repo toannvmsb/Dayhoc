@@ -1,281 +1,292 @@
 grade: 7
 skills:
-  M7.RAT.SET:
+  M7.QNUM.SET:
     name: Tập hợp số hữu tỉ
     domain: rational_numbers
     prerequisites: []
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
-  M7.RAT.OPERATIONS:
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
+  M7.QNUM.OPERATIONS:
     name: Cộng, trừ, nhân, chia số hữu tỉ
     domain: rational_numbers
     prerequisites:
-    - M7.RAT.SET
+    - M7.QNUM.SET
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
-  M7.RAT.POWER:
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
+  M7.QNUM.POWER:
     name: Lũy thừa số hữu tỉ với số mũ tự nhiên
     domain: rational_numbers
     prerequisites:
-    - M7.RAT.OPERATIONS
+    - M7.QNUM.OPERATIONS
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
-  M7.RAT.ORDER_TRANSPOSE:
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
+  M7.QNUM.ORDER_TRANSPOSE:
     name: Thứ tự phép tính và quy tắc chuyển vế
     domain: rational_numbers
     prerequisites:
-    - M7.RAT.OPERATIONS
+    - M7.QNUM.OPERATIONS
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.REAL.REPEATING_DECIMAL:
     name: Số thập phân vô hạn tuần hoàn
     domain: real_numbers
     prerequisites:
-    - M7.RAT.SET
+    - M7.QNUM.SET
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.REAL.IRR_SQRT:
     name: Số vô tỉ và căn bậc hai số học
     domain: real_numbers
-    prerequisites: []
+    prerequisites:
+    - M7.QNUM.POWER
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.REAL.SET:
     name: Tập hợp số thực
     domain: real_numbers
     prerequisites:
-    - M7.RAT.SET
+    - M7.QNUM.SET
     - M7.REAL.IRR_SQRT
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.GEO.ANGLE_SPECIAL_BISECTOR:
     name: Góc ở vị trí đặc biệt và tia phân giác
     domain: angles_parallel_lines
     prerequisites: []
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.GEO.PARALLEL_CRITERIA:
     name: Dấu hiệu nhận biết hai đường thẳng song song
     domain: angles_parallel_lines
     prerequisites:
     - M7.GEO.ANGLE_SPECIAL_BISECTOR
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.GEO.EUCLID_PARALLEL:
     name: Tiên đề Euclid và tính chất hai đường thẳng song song
     domain: angles_parallel_lines
     prerequisites:
     - M7.GEO.PARALLEL_CRITERIA
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.GEO.THEOREM_PROOF:
     name: Định lí và chứng minh định lí
     domain: proof_reasoning
-    prerequisites: []
+    prerequisites:
+    - M7.GEO.EUCLID_PARALLEL
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.TRI.ANGLE_SUM:
     name: Tổng các góc trong tam giác
     domain: congruent_triangles
-    prerequisites: []
+    prerequisites:
+    - M7.GEO.THEOREM_PROOF
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.TRI.CONGRUENCE_1:
     name: Tam giác bằng nhau và trường hợp thứ nhất
     domain: congruent_triangles
-    prerequisites: []
+    prerequisites:
+    - M7.TRI.ANGLE_SUM
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.TRI.CONGRUENCE_2_3:
     name: Trường hợp bằng nhau thứ hai và thứ ba
     domain: congruent_triangles
     prerequisites:
     - M7.TRI.CONGRUENCE_1
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.TRI.RIGHT_CONGRUENCE:
     name: Trường hợp bằng nhau của tam giác vuông
     domain: congruent_triangles
     prerequisites:
     - M7.TRI.CONGRUENCE_1
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.TRI.ISOSCELES_PERP_BISECTOR:
     name: Tam giác cân và đường trung trực
     domain: congruent_triangles
-    prerequisites: []
+    prerequisites:
+    - M7.TRI.CONGRUENCE_2_3
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.DATA.COLLECT_CLASSIFY:
     name: Thu thập và phân loại dữ liệu
     domain: data_representation
     prerequisites: []
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.DATA.PIE_CHART:
     name: Biểu đồ hình quạt tròn
     domain: data_representation
     prerequisites:
     - M7.DATA.COLLECT_CLASSIFY
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.DATA.LINE_CHART:
     name: Biểu đồ đoạn thẳng
     domain: data_representation
     prerequisites:
     - M7.DATA.COLLECT_CLASSIFY
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.RATIO.PROPORTION:
     name: Tỉ lệ thức
     domain: ratios_proportions
     prerequisites: []
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.RATIO.EQUAL_CHAIN:
     name: Tính chất dãy tỉ số bằng nhau
     domain: ratios_proportions
     prerequisites:
     - M7.RATIO.PROPORTION
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.RATIO.DIRECT:
     name: Đại lượng tỉ lệ thuận
     domain: ratios_proportions
     prerequisites:
     - M7.RATIO.PROPORTION
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.RATIO.INVERSE:
     name: Đại lượng tỉ lệ nghịch
     domain: ratios_proportions
     prerequisites:
     - M7.RATIO.PROPORTION
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.ALG.EXPRESSION:
     name: Biểu thức đại số
     domain: algebra_polynomials
     prerequisites: []
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.ALG.POLY_1VAR:
     name: Đa thức một biến
     domain: algebra_polynomials
     prerequisites:
     - M7.ALG.EXPRESSION
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.ALG.POLY_ADD_SUB:
     name: Cộng và trừ đa thức một biến
     domain: algebra_polynomials
     prerequisites:
     - M7.ALG.POLY_1VAR
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.ALG.POLY_MUL:
     name: Nhân đa thức một biến
     domain: algebra_polynomials
     prerequisites:
     - M7.ALG.POLY_1VAR
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.ALG.POLY_DIV:
     name: Chia đa thức một biến
     domain: algebra_polynomials
     prerequisites:
     - M7.ALG.POLY_MUL
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.PROB.EVENT:
     name: Làm quen với biến cố
     domain: probability
     prerequisites: []
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.PROB.EVENT_PROB:
     name: Làm quen với xác suất của biến cố
     domain: probability
     prerequisites:
     - M7.PROB.EVENT
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.TRI.ANGLE_OPPOSITE_SIDE:
     name: Quan hệ góc và cạnh đối diện trong tam giác
     domain: triangle_relationships
-    prerequisites: []
+    prerequisites:
+    - M7.TRI.CONGRUENCE_2_3
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.TRI.PERP_OBLIQUE:
     name: Quan hệ đường vuông góc và đường xiên
     domain: triangle_relationships
-    prerequisites: []
+    prerequisites:
+    - M7.TRI.ANGLE_OPPOSITE_SIDE
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.TRI.INEQUALITY:
     name: Quan hệ giữa ba cạnh của tam giác
     domain: triangle_relationships
-    prerequisites: []
+    prerequisites:
+    - M7.TRI.PERP_OBLIQUE
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.TRI.CONC_MEDIAN_BISECTOR:
     name: Đồng quy trung tuyến và phân giác
     domain: triangle_relationships
-    prerequisites: []
+    prerequisites:
+    - M7.TRI.ISOSCELES_PERP_BISECTOR
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.TRI.CONC_PERP_ALTITUDE:
     name: Đồng quy trung trực và đường cao
     domain: triangle_relationships
-    prerequisites: []
+    prerequisites:
+    - M7.TRI.CONC_MEDIAN_BISECTOR
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.SOLID.BOX_CUBE:
     name: Hình hộp chữ nhật và hình lập phương
     domain: practical_solids
     prerequisites: []
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01
   M7.SOLID.PRISM:
     name: Lăng trụ đứng tam giác và tứ giác
     domain: practical_solids
-    prerequisites: []
+    prerequisites:
+    - M7.SOLID.BOX_CUBE
     curriculum_origin: G7_STANDARD
-    status: provisional_normalization
-    validation_required: math_educator
+    status: educator_reviewed
+    reviewed_by: P-01_review_2026-09-01

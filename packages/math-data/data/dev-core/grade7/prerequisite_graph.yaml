@@ -1,86 +1,102 @@
 grade: 7
 graph_type: DAG
 standard_curriculum_edges:
-- from: M7.RAT.SET
-  to: M7.RAT.OPERATIONS
+- from: M7.QNUM.SET
+  to: M7.QNUM.OPERATIONS
   relation: prerequisite
-  status: provisional_normalization
-- from: M7.RAT.OPERATIONS
-  to: M7.RAT.POWER
+  status: educator_reviewed
+- from: M7.QNUM.OPERATIONS
+  to: M7.QNUM.POWER
   relation: prerequisite
-  status: provisional_normalization
-- from: M7.RAT.OPERATIONS
-  to: M7.RAT.ORDER_TRANSPOSE
+  status: educator_reviewed
+- from: M7.QNUM.OPERATIONS
+  to: M7.QNUM.ORDER_TRANSPOSE
   relation: prerequisite
-  status: provisional_normalization
-- from: M7.RAT.SET
+  status: educator_reviewed
+- from: M7.QNUM.SET
   to: M7.REAL.REPEATING_DECIMAL
   relation: prerequisite
-  status: provisional_normalization
-- from: M7.RAT.SET
+  status: educator_reviewed
+- from: M7.QNUM.SET
   to: M7.REAL.SET
   relation: prerequisite
-  status: provisional_normalization
+  status: educator_reviewed
 - from: M7.REAL.IRR_SQRT
   to: M7.REAL.SET
   relation: prerequisite
-  status: provisional_normalization
+  status: educator_reviewed
 - from: M7.GEO.ANGLE_SPECIAL_BISECTOR
   to: M7.GEO.PARALLEL_CRITERIA
   relation: prerequisite
-  status: provisional_normalization
+  status: educator_reviewed
 - from: M7.GEO.PARALLEL_CRITERIA
   to: M7.GEO.EUCLID_PARALLEL
   relation: prerequisite
-  status: provisional_normalization
+  status: educator_reviewed
 - from: M7.TRI.CONGRUENCE_1
   to: M7.TRI.CONGRUENCE_2_3
   relation: prerequisite
-  status: provisional_normalization
+  status: educator_reviewed
 - from: M7.TRI.CONGRUENCE_1
   to: M7.TRI.RIGHT_CONGRUENCE
   relation: prerequisite
-  status: provisional_normalization
+  status: educator_reviewed
 - from: M7.DATA.COLLECT_CLASSIFY
   to: M7.DATA.PIE_CHART
   relation: prerequisite
-  status: provisional_normalization
+  status: educator_reviewed
 - from: M7.DATA.COLLECT_CLASSIFY
   to: M7.DATA.LINE_CHART
   relation: prerequisite
-  status: provisional_normalization
+  status: educator_reviewed
 - from: M7.RATIO.PROPORTION
   to: M7.RATIO.EQUAL_CHAIN
   relation: prerequisite
-  status: provisional_normalization
+  status: educator_reviewed
 - from: M7.RATIO.PROPORTION
   to: M7.RATIO.DIRECT
   relation: prerequisite
-  status: provisional_normalization
+  status: educator_reviewed
 - from: M7.RATIO.PROPORTION
   to: M7.RATIO.INVERSE
   relation: prerequisite
-  status: provisional_normalization
+  status: educator_reviewed
 - from: M7.ALG.EXPRESSION
   to: M7.ALG.POLY_1VAR
   relation: prerequisite
-  status: provisional_normalization
+  status: educator_reviewed
 - from: M7.ALG.POLY_1VAR
   to: M7.ALG.POLY_ADD_SUB
   relation: prerequisite
-  status: provisional_normalization
+  status: educator_reviewed
 - from: M7.ALG.POLY_1VAR
   to: M7.ALG.POLY_MUL
   relation: prerequisite
-  status: provisional_normalization
+  status: educator_reviewed
 - from: M7.ALG.POLY_MUL
   to: M7.ALG.POLY_DIV
   relation: prerequisite
-  status: provisional_normalization
+  status: educator_reviewed
 - from: M7.PROB.EVENT
   to: M7.PROB.EVENT_PROB
   relation: prerequisite
-  status: provisional_normalization
+  status: educator_reviewed
+# --- cross-chapter edges added by the P-01 review (2026-09-01), approved by anh.
+#     SGK Toán 7 KNTT implies these between-chapter dependencies. ---
+- { from: M7.GEO.EUCLID_PARALLEL, to: M7.GEO.THEOREM_PROOF, relation: prerequisite, importance: 0.7, status: educator_reviewed }
+- { from: M7.GEO.THEOREM_PROOF, to: M7.TRI.ANGLE_SUM, relation: prerequisite, importance: 0.75, status: educator_reviewed }
+- { from: M7.TRI.ANGLE_SUM, to: M7.TRI.CONGRUENCE_1, relation: prerequisite, importance: 0.6, status: educator_reviewed }
+- { from: M7.TRI.CONGRUENCE_2_3, to: M7.TRI.ISOSCELES_PERP_BISECTOR, relation: prerequisite, importance: 0.8, status: educator_reviewed }
+- { from: M7.TRI.CONGRUENCE_2_3, to: M7.TRI.ANGLE_OPPOSITE_SIDE, relation: prerequisite, importance: 0.7, status: educator_reviewed }
+- { from: M7.TRI.ANGLE_OPPOSITE_SIDE, to: M7.TRI.PERP_OBLIQUE, relation: prerequisite, importance: 0.75, status: educator_reviewed }
+- { from: M7.TRI.PERP_OBLIQUE, to: M7.TRI.INEQUALITY, relation: prerequisite, importance: 0.75, status: educator_reviewed }
+- { from: M7.TRI.ISOSCELES_PERP_BISECTOR, to: M7.TRI.CONC_MEDIAN_BISECTOR, relation: prerequisite, importance: 0.7, status: educator_reviewed }
+- { from: M7.TRI.CONC_MEDIAN_BISECTOR, to: M7.TRI.CONC_PERP_ALTITUDE, relation: prerequisite, importance: 0.7, status: educator_reviewed }
+- { from: M7.SOLID.BOX_CUBE, to: M7.SOLID.PRISM, relation: prerequisite, importance: 0.7, status: educator_reviewed }
+- { from: M7.QNUM.POWER, to: M7.REAL.IRR_SQRT, relation: prerequisite, importance: 0.5, status: educator_reviewed }
+# extra HSG prereqs for M7.PROOF.ALGEBRA (review §4)
+- { from: M7.REAL.IRR_SQRT, to: M7.PROOF.ALGEBRA, relation: prerequisite, importance: 0.6, status: educator_reviewed }
+- { from: M7.QNUM.ORDER_TRANSPOSE, to: M7.PROOF.ALGEBRA, relation: prerequisite, importance: 0.6, status: educator_reviewed }
 cross_grade_family_paths:
 - family: G7.ALG.IDENTITY
   path:
@@ -105,5 +121,6 @@ cross_grade_family_paths:
   - transformed_denominators
   - multivariable_nonlinear_reasoning
   status: source_backed_family_path
-warning: Standard curriculum prerequisite edges are initial/provisional and require educator validation before production
-  mastery decisions.
+review: Standard curriculum prerequisite edges reviewed against SGK Toán 7 KNTT in the
+  P-01 review (docs/implementation/M7_SKILL_REVIEW.md), approved by anh 2026-09-01.
+  Importance coefficients remain provisional pending pilot calibration (P-02).
