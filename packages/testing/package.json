@@ -9,6 +9,7 @@
   "scripts": { "build": "tsc -b" },
   "dependencies": {
     "@copilot/domain": "0.1.0",
+    "@copilot/education-core": "0.1.0",
     "@copilot/math-data": "0.1.0",
     "@copilot/learning-twin": "0.1.0",
     "@copilot/gap-engine": "0.1.0"

@@ -6,6 +6,7 @@
   },
   "references": [
     { "path": "../domain" },
+    { "path": "../education-core" },
     { "path": "../math-data" },
     { "path": "../learning-twin" },
     { "path": "../gap-engine" }

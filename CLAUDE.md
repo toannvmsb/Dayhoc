@@ -52,15 +52,16 @@ Direction **LOCKED = "Hướng 1A · Bình tĩnh & ấm"** (anh chọn từ 3 h�
 - Golden educational tests (registry `GT-G4-*`/`GT-G7-*`) + discrimination matrix (8 gap types + K/T separation) phải pass **trước khi mở rộng UI** (Golden Gate ở Phase 4.5).
 - DAG acyclic invariant; recompute-idempotent invariant; child-projection deny tests; AI schema contract tests (mock provider trong CI).
 
+## Phase history (mỗi phase 1 commit, tests xanh)
+- **P0 Foundation** `04884d7` — monorepo npm-workspaces, TS strict, eslint ban `any`, vitest, node-pg-migrate, portable Postgres 16.4.
+- **P1 Education Core** `3302f2b` — `@copilot/math-data` (schema + JSON G4/G7 slice + loader/DAG), `@copilot/design-tokens` (Hướng 1A).
+- **P2 Evidence & Context** `cddc9b3` — `@copilot/evidence` (append-only ledger, DB triggers), `@copilot/learning-context` (teacher-optional builder).
+- **P3 Child Learning Twin** `a70daa0` — `@copilot/learning-twin` (multi-signal mastery, 3 trục tách, per-domain frontier, recompute idempotent).
+- **P4 Gap & Readiness** `6e45836` — `@copilot/gap-engine` (8-type classifier + priority order + ruledOut, root-gap trace chỉ vào prereq evidenced+weak, gap_score §21, lifecycle không-đóng-sau-1-lần-đúng, readiness ready/parallel_repair/repair_first, prescription §23 + 4 lựa chọn parent).
+- **P4.5 Golden Gate** — `@copilot/testing`: harness + discrimination matrix (8 gap + K/T) + golden registry (10 case pass, 8 `it.todo` chờ data D-01) + `golden-gate.test.ts` (DAG/recompute/no-global-level) = cổng CI.
+
 ## Current phase
-**Phase 4 — Gap & Readiness Engine: xong (vertical slice).**
-- `@copilot/gap-engine` (pure, no I/O, no AI): `detectGaps` phân loại lỗi thành 1 trong 8+ gap type theo priority order (retention→careless→prerequisite→reasoning→recognition/application→method→procedural→concept[fallback]) kèm `ruledOut`; `traceRootGap` đi ngược prereq DAG **chỉ vào prereq có evidence & yếu** (không bịa "yếu đại số" từ bài HSG); `scoreGap` (công thức §21, gap nhỏ vẫn ưu tiên cao nếu chặn học tiếp); `lifecycle` state machine — **không đóng gap sau 1 lần đúng** (CLOSED cần remediation + re-test lặp + retention check); `computeReadiness` → ready / parallel_repair / repair_first (giữ đường advanced khi an toàn); `generatePrescription` (§23, 4 lựa chọn parent: follow/lighter/intensify/later); `runGapEngine` orchestrate.
-- `@copilot/testing`: golden harness (evidence→twin→gap, AI decoupled) + **Golden Discrimination Matrix**: 8 gap type phân biệt đúng + K/T độc lập (K2/T5 fail → reasoning_gap KHÔNG "cần lớp cao hơn", frontier không aboveGrade).
-- `math-data`: thêm `G7.SYM.BASIC.PT_RECALL` (K4/T1) cho case K/T.
-- Coefficients `DEFAULT_GAP_CONFIG`/`DEFAULT_READINESS_CONFIG` — **provisional (R3, D5)**.
-- `typecheck/lint/test` xanh: **77 pass + 2 integration**.
-- Nợ (không chặn): data Toán mở rộng (anh update sau) + review chuyên gia DAG (D5); child-delete retention op (Phase 10).
-**Tiếp theo: Phase 4.5 — GOLDEN GATE** (hoàn thiện registry GT-G4-*/GT-G7-*, CI chặn merge nếu golden fail) rồi Phase 5 — Planning & Practice.
+**Phase 5 — Planning & Practice** (đang làm). Blockers/cần duyệt/data thiếu → gom ở `docs/implementation/PENDING_APPROVAL.md` (đang tự làm autonomous, anh duyệt sau).
 
 ## Approved decisions (anh duyệt 2026-08-30)
 - **D1** Skill ID grade-opaque + metadata `grade_context`; giữ `M4.*`/`G7.*` làm alias. (đã encode ở `@copilot/domain`)
