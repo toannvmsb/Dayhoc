@@ -67,7 +67,20 @@ Direction **LOCKED = "Hướng 1A · Bình tĩnh & ấm"** (anh chọn từ 3 h�
 - **P10 Pilot Hardening** `<pending>` — `@copilot/ai` (replaceable LLM/Vision provider port + `AiOrchestrator.runStructured`: validate schema + record cost/latency/provenance; `MockLlmProvider` giữ CI deterministic), `@copilot/audit` (`traceGap`/`tracePrescription`/`tracePlanAction` → rule + evidence + AI ids), `services/api` (`createApi` role-gated: family scope + child token chỉ child-safe + `assertChildSafe` enforce), `pilot-dod.test.ts` (DoD checklist executable), `docs/implementation/SECURITY_AND_RETENTION.md`.
 
 ## Current phase
-**Phase 10 xong (vertical slice). MVP các phase P0–P10 đều có vertical slice + tests xanh (149 pass).** Còn lại: `PENDING_APPROVAL.md` (P-01..05 cần anh duyệt; D-01..03 chờ data; S-01..04 màn/OCR còn thiếu). Bước tiếp thực chất: bổ sung data Toán đầy đủ → bật 8 golden todo → calibrate coefficients với pilot thật → OCR provider + scan flow → mobile app.
+**P0–P10 vertical slice xong + REAL DATA integrated. `145 tests xanh`.**
+
+### Data (anh gửi 2026-08-31, commit `5e7d252`+)
+- **Math Dev Core v1.0** = source of truth. `packages/math-data/data/dev-core/` YAML → `scripts/build-kb.mjs` → `src/data/*.json` (commit output; `npm run data -w @copilot/math-data` regenerate). KB: **94 skills** (52 M4 + 37 M7 provisional + 5 synthetic above-grade families), 112 curriculum nodes.
+- `data/bridges.yaml` — 9 M4→M7 cross-grade prereq bridges (implementation-team, provisional, cần educator review P-01).
+- **G7.\* IDs migrated → M7.\*** across toàn repo.
+- **Golden datasets** ở `packages/testing/golden-data/`: 120 questions, 360 error cases, 15 curated scenarios, 12 profiles.
+
+### Real engine tests (không chỉ schema)
+- `golden/mapping.test.ts` — 120/120 question skill_ids resolve (100%).
+- `gap-engine/error-signature.ts` (`classifyErrorSignature`) + `golden/error-diagnosis.test.ts` — AI đề xuất `error_signature`, engine **deterministic** map (+ prereq state + thinking level) → gap type. **360/360** khớp `expected_gap_type`; non-negotiables enforced (careless không thành knowledge gap; 1 observation không high-confidence; T4/T5 + knowledge mạnh → reasoning_gap; unobserved prereq = neutral không phải 0).
+- `golden/curated.test.ts` — 9/15 curated hard-case scenarios.
+
+Còn lại: `PENDING_APPROVAL.md` (P-01..05 anh duyệt; calibrate coefficients bằng pilot; OCR/scan flow; mobile app; 8 golden question cases cần domain data sâu hơn).
 Web dev: `npm run dev --workspace @copilot/web` (port 3100). browser-preview `.claude/launch.json` đọc từ cwd (PhongThuy) — start web bằng Bash + navigate localhost.
 
 ## Approved decisions (anh duyệt 2026-08-30)
