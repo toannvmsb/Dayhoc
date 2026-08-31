@@ -13,6 +13,8 @@
     { "path": "packages/gap-engine" },
     { "path": "packages/planning" },
     { "path": "packages/practice" },
+    { "path": "packages/api-contract" },
+    { "path": "packages/projections" },
     { "path": "packages/testing" }
   ]
 }

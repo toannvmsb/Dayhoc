@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "rootDir": "./src", "outDir": "./dist" },
+  "references": [
+    { "path": "../domain" },
+    { "path": "../api-contract" },
+    { "path": "../math-data" },
+    { "path": "../gap-engine" },
+    { "path": "../planning" }
+  ],
+  "include": ["src/**/*.ts"],
+  "exclude": ["**/*.test.ts"]
+}

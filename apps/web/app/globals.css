@@ -1,0 +1,164 @@
+@import '@copilot/design-tokens/css';
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  background: var(--c-bg);
+  color: var(--c-text-body);
+  font-family: var(--font-family);
+  -webkit-font-smoothing: antialiased;
+}
+a {
+  color: var(--c-primary-strong);
+  text-decoration: none;
+}
+
+/* --- primitives (Hướng 1A) --- */
+.screen {
+  max-width: 430px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-bg);
+}
+.screen__body {
+  flex: 1;
+  padding: var(--sp-sm) var(--sp-xl) var(--sp-2xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-md);
+}
+.card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-card);
+  padding: var(--sp-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-sm);
+}
+.card--teal {
+  background: var(--c-primary);
+  color: var(--c-text-on-primary);
+  border: none;
+  border-radius: var(--r-card-lg);
+}
+.card--attention {
+  background: var(--c-attention-bg);
+  border-color: var(--c-attention-border);
+}
+.overline {
+  font-size: var(--fs-overline);
+  font-weight: var(--fw-extrabold);
+  letter-spacing: var(--ls-overline);
+  text-transform: uppercase;
+  color: var(--c-primary);
+}
+.overline--attention {
+  color: var(--c-attention-text);
+}
+.overline--onteal {
+  color: #a7e3da;
+}
+.h1 {
+  margin: 0;
+  font-size: var(--fs-hero);
+  font-weight: var(--fw-extrabold);
+  letter-spacing: var(--ls-heading);
+  color: var(--c-text-heading);
+}
+.h2 {
+  margin: 0;
+  font-size: var(--fs-card-title);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-heading);
+  color: var(--c-text-heading);
+}
+.muted {
+  font-size: var(--fs-caption);
+  color: var(--c-text-muted);
+}
+.cta {
+  height: var(--hit-cta);
+  border: none;
+  border-radius: var(--r-control);
+  background: var(--c-primary);
+  color: #fff;
+  font-family: inherit;
+  font-size: var(--fs-body-lg);
+  font-weight: var(--fw-extrabold);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cta--onteal {
+  background: #fff;
+  color: var(--c-primary-strong);
+}
+.chip {
+  font-size: 11.5px;
+  font-weight: var(--fw-semibold);
+  color: var(--c-text-label);
+  background: var(--c-surface-subtle);
+  padding: 4px 9px;
+  border-radius: var(--r-chip);
+}
+.mixbar {
+  display: flex;
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  gap: 2px;
+}
+.bottomnav {
+  display: flex;
+  gap: 2px;
+  padding: 10px 12px 22px;
+  background: var(--c-surface);
+  border-top: 1px solid var(--c-border);
+}
+.bottomnav__item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: var(--fw-semibold);
+  color: var(--c-text-faint);
+}
+.bottomnav__item[data-active='true'] {
+  color: var(--c-primary);
+  font-weight: var(--fw-bold);
+}
+.progressrow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.progressrow__track {
+  height: 8px;
+  border-radius: 4px;
+  background: #f0ede6;
+  overflow: hidden;
+  position: relative;
+}
+.progressrow__fill {
+  height: 100%;
+}
+.progressrow__target {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 14px;
+  background: var(--c-text-heading);
+}

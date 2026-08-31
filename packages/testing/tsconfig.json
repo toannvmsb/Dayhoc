@@ -12,7 +12,9 @@
     { "path": "../learning-twin" },
     { "path": "../gap-engine" },
     { "path": "../planning" },
-    { "path": "../practice" }
+    { "path": "../practice" },
+    { "path": "../api-contract" },
+    { "path": "../projections" }
   ],
   "include": ["src/**/*.ts"],
   "exclude": ["**/*.test.ts"]

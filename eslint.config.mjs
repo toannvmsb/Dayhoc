@@ -12,6 +12,7 @@ export default [
       '**/node_modules/**',
       '**/.next/**',
       'apps/mobile/**',
+      'apps/web/**', // Next.js app — linted by `next lint` with its own config
       // Vendored Claude Design export — reference artifact, not our source.
       'docs/design/handoff/**',
     ],

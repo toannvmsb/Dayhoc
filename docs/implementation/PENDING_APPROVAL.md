@@ -26,6 +26,15 @@
 | D-02 | **Golden student profiles thật** (8–12 hồ sơ) | Calibration | Hiện dùng synthetic evidence. |
 | D-03 | **Ngân hàng câu hỏi authored** (100–200 câu) | Phase 5 practice dùng authored-first trước khi bật AI-gen | Hiện Phase 5 dùng câu mẫu tối thiểu. |
 
+## C1. Màn hình còn thiếu (không chặn — engine + projection đã đủ)
+
+| # | Nội dung | Phase gốc | Ghi chú |
+|---|---|---|---|
+| S-01 | Scan → AI confirmation flow (P05/P06) | 6 | Cần LLM/OCR provider (P-04). Projection + evidence path đã sẵn; chỉ thiếu adapter + UI. |
+| S-02 | Teaching Session live (P09), Teach Me 3' (P08) | 6 | Content generation — authored-first, cần question bank rộng (D-03). |
+| S-03 | Mobile app (Expo/RN) parity | 6–7 | Web đã có Parent Home/Progress/Gap. Mobile scaffold sẽ làm ở phase sau, dùng chung `@copilot/projections` + `@copilot/design-tokens`. |
+| S-04 | Weekly Report (P14), Notifications (P15) | 9 | |
+
 ## C. Golden cases đang `todo` (thiếu dữ liệu D-01)
 
 Xem `packages/testing/src/golden-registry.test.ts`. Các case skip/todo:

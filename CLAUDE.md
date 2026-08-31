@@ -59,10 +59,12 @@ Direction **LOCKED = "Hướng 1A · Bình tĩnh & ấm"** (anh chọn từ 3 h�
 - **P3 Child Learning Twin** `a70daa0` — `@copilot/learning-twin` (multi-signal mastery, 3 trục tách, per-domain frontier, recompute idempotent).
 - **P4 Gap & Readiness** `6e45836` — `@copilot/gap-engine` (8-type classifier + priority order + ruledOut, root-gap trace chỉ vào prereq evidenced+weak, gap_score §21, lifecycle không-đóng-sau-1-lần-đúng, readiness ready/parallel_repair/repair_first, prescription §23 + 4 lựa chọn parent).
 - **P4.5 Golden Gate** — `@copilot/testing`: harness + discrimination matrix (8 gap + K/T) + golden registry (10 case pass, 8 `it.todo` chờ data D-01) + `golden-gate.test.ts` (DAG/recompute/no-global-level) = cổng CI.
-- **P5 Planning & Practice** `<pending>` — `@copilot/planning` (Learning Mix theo situation §24, NBLA ROI/phút §40, `buildDailyPlan` + "no plan needed" §17), `@copilot/practice` (authored question bank + 6-rung hint ladder state machine §17, stretch-zone §17, assignment builder, `submissionToEvidence` đóng loop §29). Pipeline test: evidence→twin→gaps→plan→assignment→submission→evidence→recompute.
+- **P5 Planning & Practice** `398997c` — `@copilot/planning` (Learning Mix §24, NBLA ROI/phút §40, `buildDailyPlan` + "no plan needed" §17), `@copilot/practice` (authored question bank + 6-rung hint ladder §17, stretch-zone, assignment, `submissionToEvidence` đóng loop §29).
+- **P6 Parent Experience** `<pending>` — `@copilot/api-contract` (view-model types) + `@copilot/projections` (parent full views + **child-safe projection** `buildChildToday` với sensitive fields absent by construction + `assertChildSafe` runtime guard). `apps/web` (Next.js): Parent **Home / Progress / Gap Detail** render bằng `@copilot/design-tokens` (Hướng 1A), data từ engine thật (`demo-scene.ts`). Verified in browser. Còn thiếu (không chặn): scan→AI confirm, teaching session, mobile — xem `PENDING_APPROVAL.md §C1`.
 
 ## Current phase
-**Phase 6 — Parent Experience** (đang làm). Blockers/cần duyệt/data thiếu → `docs/implementation/PENDING_APPROVAL.md` (autonomous, anh duyệt sau).
+**Phase 7 — Child Experience** (đang làm). Blockers → `docs/implementation/PENDING_APPROVAL.md` (autonomous, anh duyệt sau).
+Web dev: `npm run dev --workspace @copilot/web` (port 3100). Note: browser-preview `.claude/launch.json` đọc từ repo PhongThuy (cwd), nên start web bằng Bash + navigate localhost.
 
 ## Approved decisions (anh duyệt 2026-08-30)
 - **D1** Skill ID grade-opaque + metadata `grade_context`; giữ `M4.*`/`G7.*` làm alias. (đã encode ở `@copilot/domain`)

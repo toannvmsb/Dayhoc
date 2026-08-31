@@ -1,0 +1,28 @@
+{
+  "name": "@copilot/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3100",
+    "build": "next build",
+    "start": "next start -p 3100",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@copilot/api-contract": "0.1.0",
+    "@copilot/design-tokens": "0.1.0",
+    "@copilot/gap-engine": "0.1.0",
+    "@copilot/learning-context": "0.1.0",
+    "@copilot/learning-twin": "0.1.0",
+    "@copilot/math-data": "0.1.0",
+    "@copilot/planning": "0.1.0",
+    "@copilot/projections": "0.1.0",
+    "next": "^14.2.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.1"
+  }
+}

@@ -1,5 +1,5 @@
 {
-  "name": "@copilot/testing",
+  "name": "@copilot/projections",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,14 +9,9 @@
   "scripts": { "build": "tsc -b" },
   "dependencies": {
     "@copilot/domain": "0.1.0",
-    "@copilot/education-core": "0.1.0",
-    "@copilot/math-data": "0.1.0",
-    "@copilot/learning-context": "0.1.0",
-    "@copilot/learning-twin": "0.1.0",
-    "@copilot/gap-engine": "0.1.0",
-    "@copilot/planning": "0.1.0",
-    "@copilot/practice": "0.1.0",
     "@copilot/api-contract": "0.1.0",
-    "@copilot/projections": "0.1.0"
+    "@copilot/math-data": "0.1.0",
+    "@copilot/gap-engine": "0.1.0",
+    "@copilot/planning": "0.1.0"
   }
 }
