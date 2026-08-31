@@ -11,6 +11,8 @@
     { "path": "packages/learning-context" },
     { "path": "packages/learning-twin" },
     { "path": "packages/gap-engine" },
+    { "path": "packages/planning" },
+    { "path": "packages/practice" },
     { "path": "packages/testing" }
   ]
 }

@@ -1,0 +1,135 @@
+[
+  {
+    "id": "Q.M4.FRAC.COMMON_DENOM.001",
+    "skillId": "M4.FRAC.COMMON_DENOM",
+    "problemTypeId": "M4.FRAC.COMMON_DENOM.PT1",
+    "knowledgeLevel": "K2",
+    "thinkingLevel": "T1",
+    "prompt": "Quy đồng mẫu số hai phân số 2/3 và 3/4.",
+    "answerSpec": { "kind": "exact", "value": "8/12 và 9/12" },
+    "hints": [
+      "Hai phân số chưa cùng mẫu. Con cần tìm một mẫu số chung.",
+      "Mẫu chung nhỏ nhất của 3 và 4 là bao nhiêu?",
+      "Mẫu chung là 12. Nhân cả tử và mẫu của mỗi phân số cho số thích hợp.",
+      "Với 1/2 và 1/3 con làm thế nào? Mẫu chung 6: 1/2 = 3/6, 1/3 = 2/6.",
+      "Thử lại: 2/3 = ?/12 và 3/4 = ?/12.",
+      "2/3 = 8/12 (nhân 4/4); 3/4 = 9/12 (nhân 3/3)."
+    ],
+    "workedSolution": "Mẫu chung nhỏ nhất của 3 và 4 là 12. 2/3 = (2·4)/(3·4) = 8/12. 3/4 = (3·3)/(4·3) = 9/12.",
+    "origin": "authored"
+  },
+  {
+    "id": "Q.M4.FRAC.COMMON_DENOM.002",
+    "skillId": "M4.FRAC.COMMON_DENOM",
+    "problemTypeId": "M4.FRAC.COMMON_DENOM.PT2",
+    "knowledgeLevel": "K2",
+    "thinkingLevel": "T2",
+    "prompt": "Quy đồng mẫu số 5/6 và 7/12.",
+    "answerSpec": { "kind": "exact", "value": "10/12 và 7/12" },
+    "hints": [
+      "So sánh hai mẫu số 6 và 12 — có gì đặc biệt?",
+      "12 có chia hết cho 6 không?",
+      "12 là bội của 6, nên mẫu chung là 12. Chỉ cần đổi 5/6.",
+      "Ví dụ dễ hơn: 1/2 và 3/4 → mẫu chung 4, 1/2 = 2/4.",
+      "5/6 = ?/12.",
+      "5/6 = 10/12 (nhân 2/2); 7/12 giữ nguyên."
+    ],
+    "workedSolution": "12 là bội của 6, mẫu chung là 12. 5/6 = 10/12. 7/12 giữ nguyên.",
+    "origin": "authored"
+  },
+  {
+    "id": "Q.M4.FRAC.EQUIVALENT.001",
+    "skillId": "M4.FRAC.EQUIVALENT",
+    "problemTypeId": "M4.FRAC.EQUIVALENT.PT1",
+    "knowledgeLevel": "K2",
+    "thinkingLevel": "T1",
+    "prompt": "Điền số thích hợp: 3/5 = ?/15.",
+    "answerSpec": { "kind": "numeric", "value": 9, "tolerance": 0 },
+    "hints": [
+      "Mẫu số đã nhân với mấy để từ 5 thành 15?",
+      "5 × 3 = 15. Vậy tử số cũng phải nhân với 3.",
+      "3 × 3 = ?",
+      "Với 1/2 = ?/6: 2×3=6 nên 1×3=3.",
+      "Thử: 3/5 = (3×3)/(5×3).",
+      "3/5 = 9/15."
+    ],
+    "workedSolution": "5 × 3 = 15 nên nhân cả tử: 3 × 3 = 9. Vậy 3/5 = 9/15.",
+    "origin": "authored"
+  },
+  {
+    "id": "Q.M4.ARITH.DISTRIBUTIVE.001",
+    "skillId": "M4.ARITH.DISTRIBUTIVE",
+    "problemTypeId": "M4.ARITH.DISTRIBUTIVE.PT2",
+    "knowledgeLevel": "K2",
+    "thinkingLevel": "T2",
+    "prompt": "Tính nhanh: 37 × 28 + 37 × 72.",
+    "answerSpec": { "kind": "numeric", "value": 3700, "tolerance": 0 },
+    "hints": [
+      "Hai tích có thừa số nào giống nhau không?",
+      "Cả hai đều có 37. Đặt 37 ra ngoài.",
+      "37 × 28 + 37 × 72 = 37 × (28 + 72).",
+      "Ví dụ: 5×3 + 5×7 = 5×(3+7) = 5×10 = 50.",
+      "28 + 72 = ?",
+      "37 × (28 + 72) = 37 × 100 = 3700."
+    ],
+    "workedSolution": "37 × 28 + 37 × 72 = 37 × (28 + 72) = 37 × 100 = 3700.",
+    "origin": "authored"
+  },
+  {
+    "id": "Q.M4.ARITH.DISTRIBUTIVE.CHALLENGE.001",
+    "skillId": "M4.ARITH.DISTRIBUTIVE",
+    "problemTypeId": "M4.ARITH.DISTRIBUTIVE.PT_CHALLENGE",
+    "knowledgeLevel": "K2",
+    "thinkingLevel": "T5",
+    "prompt": "Không dùng máy tính, hãy tạo một biểu thức có dạng a×b + a×c mà tính ra đúng 2026, rồi giải thích cách con nghĩ.",
+    "answerSpec": { "kind": "reasoning" },
+    "hints": [
+      "2026 có thể viết thành tích của hai số nào?",
+      "2026 = 2 × 1013. Hoặc 2026 = 1013 × (1 + 1).",
+      "Chọn a = 1013, cần b + c = 2.",
+      "Ví dụ: 1013 × 1 + 1013 × 1 = 1013 × 2 = 2026.",
+      "Hoặc a = 2: 2 × 1000 + 2 × 13 = 2 × 1013 = 2026.",
+      "Một đáp án: 2 × 1000 + 2 × 13 = 2 × (1000 + 13) = 2 × 1013 = 2026."
+    ],
+    "workedSolution": "Nhiều đáp án. Ví dụ 2 × 1000 + 2 × 13: đặt 2 ra ngoài được 2 × (1000 + 13) = 2 × 1013 = 2026.",
+    "origin": "authored"
+  },
+  {
+    "id": "Q.G7.RATIO.EQUAL_CHAIN.001",
+    "skillId": "G7.RATIO.EQUAL_CHAIN",
+    "problemTypeId": "G7.RATIO.EQUAL_CHAIN.PT1",
+    "knowledgeLevel": "K2",
+    "thinkingLevel": "T2",
+    "prompt": "Cho a/2 = b/3 và a + b = 25. Tìm a và b.",
+    "answerSpec": { "kind": "exact", "value": "a = 10, b = 15" },
+    "hints": [
+      "Đặt a/2 = b/3 = k. Khi đó a và b viết theo k thế nào?",
+      "a = 2k và b = 3k.",
+      "Thay vào a + b = 25: 2k + 3k = 25.",
+      "Ví dụ: x/1 = y/2, x + y = 9 → x = 3, y = 6 (k = 3).",
+      "5k = 25 nên k = ?",
+      "k = 5 → a = 10, b = 15."
+    ],
+    "workedSolution": "Đặt a/2 = b/3 = k → a = 2k, b = 3k. a + b = 5k = 25 → k = 5. Vậy a = 10, b = 15.",
+    "origin": "authored"
+  },
+  {
+    "id": "Q.G7.RATIO.EQUAL_CHAIN.CHALLENGE.001",
+    "skillId": "G7.RATIO.EQUAL_CHAIN",
+    "problemTypeId": "G7.RATIO.EQUAL_CHAIN.PT_HSG",
+    "knowledgeLevel": "K3",
+    "thinkingLevel": "T5",
+    "prompt": "Cho a/2 = b/3 = c/4 và a + b + c = 36. Không tính từng số, hãy nói b lớn hơn a bao nhiêu phần trăm, và giải thích.",
+    "answerSpec": { "kind": "reasoning" },
+    "hints": [
+      "b hơn a bao nhiêu phần trăm chỉ phụ thuộc vào tỉ số b/a, không cần biết tổng.",
+      "Đặt a = 2k, b = 3k. Tỉ số b/a = 3/2.",
+      "b/a = 1,5 nghĩa là b = a + 0,5a.",
+      "0,5a so với a là bao nhiêu phần trăm?",
+      "0,5 = 50%.",
+      "b = 3k, a = 2k → b/a = 1,5 → b hơn a 50%. Tổng 36 không ảnh hưởng đến phần trăm này."
+    ],
+    "workedSolution": "Đặt a = 2k, b = 3k. b/a = 3/2 = 1,5, tức b = a + 50% của a. Vậy b lớn hơn a 50%, không phụ thuộc tổng.",
+    "origin": "authored"
+  }
+]

@@ -8,8 +8,11 @@
     { "path": "../domain" },
     { "path": "../education-core" },
     { "path": "../math-data" },
+    { "path": "../learning-context" },
     { "path": "../learning-twin" },
-    { "path": "../gap-engine" }
+    { "path": "../gap-engine" },
+    { "path": "../planning" },
+    { "path": "../practice" }
   ],
   "include": ["src/**/*.ts"],
   "exclude": ["**/*.test.ts"]

@@ -59,9 +59,10 @@ Direction **LOCKED = "Hướng 1A · Bình tĩnh & ấm"** (anh chọn từ 3 h�
 - **P3 Child Learning Twin** `a70daa0` — `@copilot/learning-twin` (multi-signal mastery, 3 trục tách, per-domain frontier, recompute idempotent).
 - **P4 Gap & Readiness** `6e45836` — `@copilot/gap-engine` (8-type classifier + priority order + ruledOut, root-gap trace chỉ vào prereq evidenced+weak, gap_score §21, lifecycle không-đóng-sau-1-lần-đúng, readiness ready/parallel_repair/repair_first, prescription §23 + 4 lựa chọn parent).
 - **P4.5 Golden Gate** — `@copilot/testing`: harness + discrimination matrix (8 gap + K/T) + golden registry (10 case pass, 8 `it.todo` chờ data D-01) + `golden-gate.test.ts` (DAG/recompute/no-global-level) = cổng CI.
+- **P5 Planning & Practice** `<pending>` — `@copilot/planning` (Learning Mix theo situation §24, NBLA ROI/phút §40, `buildDailyPlan` + "no plan needed" §17), `@copilot/practice` (authored question bank + 6-rung hint ladder state machine §17, stretch-zone §17, assignment builder, `submissionToEvidence` đóng loop §29). Pipeline test: evidence→twin→gaps→plan→assignment→submission→evidence→recompute.
 
 ## Current phase
-**Phase 5 — Planning & Practice** (đang làm). Blockers/cần duyệt/data thiếu → gom ở `docs/implementation/PENDING_APPROVAL.md` (đang tự làm autonomous, anh duyệt sau).
+**Phase 6 — Parent Experience** (đang làm). Blockers/cần duyệt/data thiếu → `docs/implementation/PENDING_APPROVAL.md` (autonomous, anh duyệt sau).
 
 ## Approved decisions (anh duyệt 2026-08-30)
 - **D1** Skill ID grade-opaque + metadata `grade_context`; giữ `M4.*`/`G7.*` làm alias. (đã encode ở `@copilot/domain`)
