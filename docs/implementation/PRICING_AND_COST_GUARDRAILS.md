@@ -26,22 +26,32 @@ data minimization), [06_AI_ORCHESTRATION_PLAN.md](06_AI_ORCHESTRATION_PLAN.md).
 | Pricing registry with effective dates | `PricingRegistry` (`pricing.ts`), table `ai_pricing_registry` |
 | OCR is optional / fallback / benchmark-driven | routing tier `ocr_assist`, benchmark kit |
 
-### BENCHMARK BEFORE LOCKING — harness built, decision pending
-| Item | Status |
-|---|---|
-| Advanced production model: **Claude Sonnet 5 vs GPT-5.6 Terra** | `resolveRoute(...).advancedModelPending === true` until chosen; `FINAL_ROUTING_DECISION_TEMPLATE.json` = `NOT_RUN` |
-| Google OCR fallback thresholds | benchmark categories `ocr_fallback_categories` (empty) |
-| Exact confidence thresholds | `RouteContext.escalateBelowConfidence` is caller-supplied config |
-| Per-operation token / image budgets | to be set from measured telemetry |
+### BENCHMARK — DEFERRED TO POST-PILOT (anh, decision Q1, 2026-09-01)
 
-**Blocker for the benchmark:** it needs **30–50 real, PII-anonymized** Grade 4 +
-Grade 7 notebook/test images + human-verified ground truth. The kit ships 40
-slots (`packages/testing/benchmark-data/`), all `IMAGE_REQUIRED`. See
-[PENDING_APPROVAL.md](PENDING_APPROVAL.md) P-04.
+The image benchmark needs 30–50 real PII-anonymized Grade 4 + Grade 7 images +
+human ground truth. Rather than block on collecting them, **the pilot runs with
+Luna as the default vision/reasoning model; real per-cohort AI COGS from the
+pilot then drives the advanced-model decision.** The harness
+(`packages/testing/benchmark-data/` + `src/benchmark/`) stays ready to run once
+images exist.
+
+| Item | Interim state until post-pilot benchmark |
+|---|---|
+| Default vision / reasoning | **Luna** (`resolveRoute` primary) |
+| Advanced production model (Sonnet 5 vs Terra) | **not chosen.** At runtime an `advanced`-tier case with no model runs on **Luna at `effort: 'high'`** and carries a `reviewReason` for offline/human QA — anh's decision Q2. Never blocks the user, never pre-picks a provider. |
+| Google OCR fallback thresholds | `ocr_assist` tier defined; thresholds set from pilot data |
+| Exact confidence thresholds | `RouteContext.escalateBelowConfidence` — caller config, tuned from pilot |
+| Per-operation token / image budgets | set from pilot telemetry |
 
 ### VALIDATE AFTER PILOT
 Actual AI COGS by cohort, Free→Paid conversion, scan frequency, advanced-model
-escalation rate, paid-plan mix, willingness to pay.
+escalation rate, paid-plan mix, willingness to pay. **Then** run the image
+benchmark (needs the anonymized images) and pick the advanced model.
+
+### Confirmed defaults (anh, decision Q6, 2026-09-01)
+FX 26,000đ/USD (planning only, not billing) · raw-upload retention 30 days ·
+Luna-or-cheaper target ≥ 85% of AI calls · parent goal "advanced & thinking" →
+planner nudge slug `phat_trien_tu_duy`.
 
 ---
 
@@ -104,8 +114,11 @@ question-bank paths** (`cheapPathShare`, `LUNA_OR_CHEAPER_TARGET_*`).
 permissions, consent, gap-lifecycle thresholds, mastery formula, time-budget
 constraints, billing/quota enforcement.
 
-The advanced tier resolves to `advancedModelPending` until the benchmark picks
-Sonnet 5 or Terra; routing may pick different winners per capability (§3.2).
+Until the advanced model is picked (post-pilot), `resolveRoute` sets
+`advancedModelPending`, routes the call to `effectiveTier: 'luna'` at
+`effort: 'high'`, and stamps a `reviewReason` so the deterministic result gets a
+human / offline-QA second look (anh's decision Q2, 2026-09-01). `cheapPathShare`
+counts these as cheap-path calls since Luna is what actually runs.
 
 ---
 

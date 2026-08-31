@@ -106,7 +106,7 @@ Web dev: `npm run dev --workspace @copilot/web` (port 3100). browser-preview `.c
 - **P-01** (2026-08-31) Em tự rà skill graph/DAG lớp 7 theo SGK → xuất bản đề xuất cho anh duyệt (chưa freeze `M7.*` ID).
 - **P-02** Giữ coefficients provisional tới khi có pilot data.
 - **P-03** Con login = username+password (bố mẹ tạo, con đổi được). PIN 4 số = shortcut vào bài được giao, không phải login.
-- **P-04** LLM/OCR provider: **architecture đã chốt** (Pricing + AI Cost Guardrails v1.0 — Luna-first routing, pricing registry, margin floor 50%, budget engine + hard ceilings, cost telemetry, provider adapter). **Advanced model (Claude Sonnet 5 vs GPT-5.6 Terra) + OCR fallback thresholds vẫn benchmark-gated** — cần anh cấp 30–50 ảnh thật đã ẩn PII. Xem `docs/implementation/PRICING_AND_COST_GUARDRAILS.md`. Runtime vẫn dùng `MockLlmProvider`.
+- **P-04** LLM/OCR provider: **architecture đã chốt & code** (Pricing + AI Cost Guardrails v1.0 — Luna-first routing, pricing registry, margin floor 50%, budget engine + hard ceilings, cost telemetry, provider adapter). **Đợt 2 (2026-09-01):** Q1 hoãn benchmark ảnh → pilot chạy **Luna mặc định**, advanced model (Sonnet 5 vs Terra) quyết sau bằng AI COGS pilot thật. Q2 ca `advanced` chưa có model → `resolveRoute` trả `effectiveTier:'luna'` + `effort:'high'` + `reviewReason` (không chặn, không tự chọn provider). Xem `docs/implementation/PRICING_AND_COST_GUARDRAILS.md`. Runtime vẫn `MockLlmProvider`.
 - **P-05** 17 nguyên tắc Privacy-by-Design → `docs/implementation/PRIVACY_ARCHITECTURE.md`. Architecture phải *capable*; consent UI làm sau.
 
 ## Working rule

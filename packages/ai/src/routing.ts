@@ -100,11 +100,26 @@ export interface RouteContext {
 
 export interface RouteDecision {
   readonly operation: AiOperation;
+  /** The tier this operation *should* run on. */
   readonly tier: RoutingTier;
+  /**
+   * The tier that ACTUALLY runs now. Differs from `tier` only while the advanced
+   * model is un-chosen: anh's decision Q2 (2026-09-01) = fall back to Luna at
+   * high effort and flag the case for review, rather than block or pre-pick a
+   * provider.
+   */
+  readonly effectiveTier: RoutingTier;
+  /** 'high' asks the model layer for a higher-effort pass (used on the Luna fallback). */
+  readonly effort: 'standard' | 'high';
   readonly escalated: boolean;
   readonly reason: string;
   /** True when the resolved tier is `advanced` but no advanced model is chosen yet. */
   readonly advancedModelPending: boolean;
+  /**
+   * Non-null when the deterministic result should be double-checked by a human /
+   * offline QA — e.g. an advanced-tier case served by the Luna fallback.
+   */
+  readonly reviewReason: string | null;
 }
 
 const HIGH_K = new Set(['K4', 'K5']);
@@ -135,19 +150,38 @@ export function resolveRoute(
 
   // question-bank operations stay on the bank unless personalization is missing
   if ((operation === 'generate_standard' || operation === 'generate_advanced') && ctx.questionBankHit && !ctx.personalizationMissing) {
-    return { operation, tier: 'question_bank', escalated: false, reason: 'verified_question_bank_hit', advancedModelPending: false };
+    return {
+      operation,
+      tier: 'question_bank',
+      effectiveTier: 'question_bank',
+      effort: 'standard',
+      escalated: false,
+      reason: 'verified_question_bank_hit',
+      advancedModelPending: false,
+      reviewReason: null,
+    };
   }
 
   const shouldEscalate = reasons.length > 0 && rule.escalateTo !== null;
   const tier = shouldEscalate ? rule.escalateTo! : rule.primary;
   const advancedModelPending = tier === 'advanced' && !opts.advancedModelChosen;
 
+  // Q2 decision: advanced tier with no model chosen → Luna at high effort + review flag.
+  const effectiveTier: RoutingTier = advancedModelPending ? 'luna' : tier;
+  const effort: 'standard' | 'high' = advancedModelPending ? 'high' : 'standard';
+  const reviewReason = advancedModelPending
+    ? `advanced_tier_served_by_luna_fallback(${shouldEscalate ? reasons.join('+') : 'primary'})`
+    : null;
+
   return {
     operation,
     tier,
+    effectiveTier,
+    effort,
     escalated: shouldEscalate,
     reason: shouldEscalate ? reasons.join('+') : `primary:${rule.primary}`,
     advancedModelPending,
+    reviewReason,
   };
 }
 
@@ -157,9 +191,12 @@ export const LUNA_OR_CHEAPER_TARGET_MAX = 0.95;
 
 const CHEAP_TIERS = new Set<RoutingTier>(['deterministic', 'question_bank', 'cache', 'luna']);
 
-/** Given a batch of decisions, the fraction that stayed on Luna or cheaper. */
+/**
+ * Given a batch of decisions, the fraction that actually ran on Luna or cheaper.
+ * Uses `effectiveTier` — the advanced-tier Luna fallback (Q2) counts as cheap.
+ */
 export function cheapPathShare(decisions: readonly RouteDecision[]): number {
   if (decisions.length === 0) return 1;
-  const cheap = decisions.filter((d) => CHEAP_TIERS.has(d.tier)).length;
+  const cheap = decisions.filter((d) => CHEAP_TIERS.has(d.effectiveTier)).length;
   return cheap / decisions.length;
 }

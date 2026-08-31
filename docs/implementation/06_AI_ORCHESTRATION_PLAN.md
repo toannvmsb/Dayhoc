@@ -112,8 +112,13 @@ Confidence tier khác với **evidence confidence tier (A/B/C/D)** ở tầng do
 **Luna-first.** `resolveRoute(operation, ctx)` (`@copilot/ai` `routing.ts`) trả tier
 theo `ROUTING_MATRIX`; mục tiêu **85–95%** call ở Luna / deterministic / question-bank.
 Escalate chỉ khi đo được: confidence thấp, evidence mâu thuẫn, ứng viên nhập nhằng,
-chữ viết tay / layout toán, hoặc K4–K5 / T4–T5. Advanced tier = `advancedModelPending`
-cho tới khi benchmark chọn **Claude Sonnet 5 vs GPT-5.6 Terra** (§3.2).
+chữ viết tay / layout toán, hoặc K4–K5 / T4–T5.
+
+**Advanced tier chưa có model (Q1+Q2, 2026-09-01):** benchmark hoãn tới sau pilot.
+Khi 1 ca escalate lên `advanced` mà chưa chọn model → `resolveRoute` trả
+`effectiveTier: 'luna'`, `effort: 'high'`, và `reviewReason` (đánh dấu để QA
+offline/người rà lại). KHÔNG chặn người dùng, KHÔNG tự chọn provider. Pilot chạy
+Luna mặc định; AI COGS thật theo cohort sẽ quyết định Sonnet 5 vs Terra sau.
 
 **Budget gate trước mỗi metered call:** `checkBudget({ plan, state, estimatedCostVnd,
 requestedTier, safetyCritical? })`:

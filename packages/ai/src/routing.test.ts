@@ -42,6 +42,23 @@ describe('model routing matrix (§3, §4)', () => {
     expect(d.advancedModelPending).toBe(true); // Sonnet-5 vs Terra not chosen yet (§3.2)
   });
 
+  it('Q2: an advanced-tier case with no model chosen runs on Luna at high effort + review flag', () => {
+    const d = resolveRoute('diagnose', { conflictingEvidence: true });
+    expect(d.tier).toBe('advanced');
+    expect(d.effectiveTier).toBe('luna');
+    expect(d.effort).toBe('high');
+    expect(d.reviewReason).toContain('luna_fallback');
+    // it still counts as a cheap-path call for the Luna-first budget
+    expect(cheapPathShare([d])).toBe(1);
+  });
+
+  it('once an advanced model is chosen, the advanced tier runs for real with no review flag', () => {
+    const d = resolveRoute('diagnose', { conflictingEvidence: true }, { advancedModelChosen: true });
+    expect(d.effectiveTier).toBe('advanced');
+    expect(d.effort).toBe('standard');
+    expect(d.reviewReason).toBeNull();
+  });
+
   it('K4/K5 or T4/T5 advanced-question generation escalates past the bank', () => {
     expect(resolveRoute('generate_advanced', { thinkingLevel: 'T5' }).tier).toBe('advanced');
     expect(resolveRoute('generate_advanced', { knowledgeLevel: 'K4' }).tier).toBe('advanced');
