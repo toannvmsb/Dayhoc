@@ -21,6 +21,7 @@ export * from './cost.js';
 export * from './orchestrator.js';
 export * from './persistence.js';
 export * from './answer-verification.js';
+export * from './math-verifier.js';
 export * from './verifier.js';
 export * from './shadow.js';
 export * from './shadow-metrics.js';

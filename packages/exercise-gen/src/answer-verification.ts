@@ -1,44 +1,66 @@
 import type { AnswerVerificationLevel, GeneratedExercise, GeneratedExerciseBatch } from '@copilot/domain';
+import { verifyMathAnswer, type MathVerification } from './math-verifier.js';
 
 /**
- * Answer verification (doc 14 C5 §9). An AI-provided answer is never assumed
- * correct. This module classifies, per item, how sure we are — separate from
- * `ItemValidationOutcome`, which only checks contract SHAPE (schema, ids,
- * K/T range, etc.), not whether the answer key is actually right.
+ * Answer verification (doc 14 C5 §9 + C5.1 §1). An AI-provided answer is never
+ * assumed correct, and a well-formed answer key is NOT a correct one.
  *
- * Scope (honest, not overclaimed): for `exact` / `numeric` / `fraction` /
- * `choice`, "deterministic verification" here means the answer key is
- * internally well-formed and self-consistent (options contain the correct
- * choice, denominator ≠ 0, value finite, etc. — the same shape the validator
- * already enforces via `ANSWER_INCONSISTENT`/`ANSWER_UNVERIFIABLE`, so an item
- * that reached this stage already passed that gate). It does NOT re-derive the
- * answer from the word-problem prompt (that needs a symbolic math solver —
- * out of scope for C5; the second-pass verifier trigger in `verifier.ts`
- * exists precisely for the ambiguous/suspicious cases this can't catch).
- * `reasoning` items have no deterministic checker at all — they are always
- * `AI_CROSSCHECK_REQUIRED` until a human or a second-pass AI verifier confirms
- * them; **no exercise with an unverified factual/numeric answer may become
- * production-deliverable** (doc 14 C5 §9) — this module is what a future LIVE
- * gate would read to enforce that.
+ *   FORMAT_VERIFIED                     — key is well-formed & self-consistent
+ *   DETERMINISTIC_CORRECTNESS_VERIFIED  — an independent checker re-derived it
+ *   AI_CROSSCHECK_REQUIRED             — no deterministic path (reasoning, or
+ *                                        the math verifier couldn't parse it)
+ *   HUMAN_GOLDEN_VERIFIED             — a human confirmed this exact item
+ *   UNVERIFIED                        — key malformed, OR proven WRONG, OR nothing ran
+ *
+ * INVARIANT: FORMAT_VERIFIED ≠ DETERMINISTIC_CORRECTNESS_VERIFIED.
  */
+
+export interface ItemAnswerVerification {
+  readonly level: AnswerVerificationLevel;
+  /** True iff the answer key itself is well-formed (independent of correctness). */
+  readonly formatValid: boolean;
+  readonly math: MathVerification;
+}
+
+export function verifyItemAnswer(item: GeneratedExercise): ItemAnswerVerification {
+  const formatValid = isAnswerKeyWellFormed(item);
+  const math = verifyMathAnswer(item);
+
+  let level: AnswerVerificationLevel;
+  if (!formatValid) {
+    level = 'UNVERIFIED';
+  } else if (math.verdict === 'CORRECT') {
+    level = 'DETERMINISTIC_CORRECTNESS_VERIFIED';
+  } else if (math.verdict === 'INCORRECT') {
+    level = 'UNVERIFIED'; // proven wrong — a valid shape does not save it
+  } else if (item.answerSpec.kind === 'reasoning') {
+    level = 'AI_CROSSCHECK_REQUIRED';
+  } else {
+    // well-formed key, correctness not independently established
+    level = 'FORMAT_VERIFIED';
+  }
+  return { level, formatValid, math };
+}
+
+/** @deprecated use `verifyItemAnswer(...).level` — kept for older call sites. */
 export function assessItemAnswerVerification(item: GeneratedExercise): AnswerVerificationLevel {
+  return verifyItemAnswer(item).level;
+}
+
+function isAnswerKeyWellFormed(item: GeneratedExercise): boolean {
   switch (item.answerSpec.kind) {
     case 'reasoning':
-      return 'AI_CROSSCHECK_REQUIRED';
+      return Boolean(item.rubric && item.rubric.trim().length > 0);
     case 'exact':
-      return item.answerSpec.value.trim().length > 0 ? 'DETERMINISTIC_VERIFIED' : 'UNVERIFIED';
+      return item.answerSpec.value.trim().length > 0;
     case 'numeric':
-      return Number.isFinite(item.answerSpec.value) && item.answerSpec.tolerance >= 0
-        ? 'DETERMINISTIC_VERIFIED'
-        : 'UNVERIFIED';
+      return Number.isFinite(item.answerSpec.value) && item.answerSpec.tolerance >= 0;
     case 'fraction':
-      return item.answerSpec.denominator !== 0 ? 'DETERMINISTIC_VERIFIED' : 'UNVERIFIED';
+      return item.answerSpec.denominator !== 0 && Number.isInteger(item.answerSpec.numerator) && Number.isInteger(item.answerSpec.denominator);
     case 'choice':
-      return item.answerSpec.options.includes(item.answerSpec.correct) && item.answerSpec.options.length >= 2
-        ? 'DETERMINISTIC_VERIFIED'
-        : 'UNVERIFIED';
+      return item.answerSpec.options.length >= 2 && item.answerSpec.options.includes(item.answerSpec.correct);
     default:
-      return 'UNVERIFIED';
+      return false;
   }
 }
 
@@ -46,31 +68,41 @@ export interface AnswerVerificationSummary {
   readonly total: number;
   readonly byLevel: Readonly<Record<AnswerVerificationLevel, number>>;
   readonly items: Readonly<Record<string, AnswerVerificationLevel>>;
-  /** Share of items that are DETERMINISTIC_VERIFIED or HUMAN_GOLDEN_VERIFIED. */
-  readonly verifiedRate: number;
+  /** key well-formed (any level except UNVERIFIED-for-malformed). */
+  readonly formatValidRate: number;
+  /** independently re-derived correct. */
+  readonly deterministicCorrectnessVerifiedRate: number;
+  /** needs an AI or human crosscheck before it can be trusted (FORMAT_VERIFIED ∪ AI_CROSSCHECK_REQUIRED). */
+  readonly crosscheckRequiredRate: number;
+  /** malformed OR proven wrong OR nothing ran. */
   readonly unverifiedRate: number;
 }
 
 export function summarizeAnswerVerification(batch: GeneratedExerciseBatch): AnswerVerificationSummary {
   const items: Record<string, AnswerVerificationLevel> = {};
   const byLevel: Record<AnswerVerificationLevel, number> = {
-    DETERMINISTIC_VERIFIED: 0,
+    FORMAT_VERIFIED: 0,
+    DETERMINISTIC_CORRECTNESS_VERIFIED: 0,
     AI_CROSSCHECK_REQUIRED: 0,
     HUMAN_GOLDEN_VERIFIED: 0,
     UNVERIFIED: 0,
   };
+  let formatValid = 0;
   for (const item of batch.items) {
-    const level = assessItemAnswerVerification(item);
-    items[item.id] = level;
-    byLevel[level] += 1;
+    const v = verifyItemAnswer(item);
+    items[item.id] = v.level;
+    byLevel[v.level] += 1;
+    if (v.formatValid) formatValid += 1;
   }
   const total = batch.items.length;
-  const verified = byLevel.DETERMINISTIC_VERIFIED + byLevel.HUMAN_GOLDEN_VERIFIED;
+  const rate = (n: number) => (total > 0 ? n / total : 0);
   return {
     total,
     byLevel,
     items,
-    verifiedRate: total > 0 ? verified / total : 0,
-    unverifiedRate: total > 0 ? byLevel.UNVERIFIED / total : 0,
+    formatValidRate: rate(formatValid),
+    deterministicCorrectnessVerifiedRate: rate(byLevel.DETERMINISTIC_CORRECTNESS_VERIFIED + byLevel.HUMAN_GOLDEN_VERIFIED),
+    crosscheckRequiredRate: rate(byLevel.FORMAT_VERIFIED + byLevel.AI_CROSSCHECK_REQUIRED),
+    unverifiedRate: rate(byLevel.UNVERIFIED),
   };
 }

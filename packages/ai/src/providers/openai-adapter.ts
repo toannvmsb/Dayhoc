@@ -55,6 +55,14 @@ export function createOpenAiProviderAdapter(cfg: OpenAiAdapterConfig): AIProvide
         },
       ];
 
+      // strict JSON-Schema only when the caller asked for it AND supplied a schema;
+      // otherwise broad JSON-mode. We never claim strict support we don't have.
+      const wantStrict = input.structuredOutputMode === 'STRICT_JSON_SCHEMA' && input.jsonSchema !== undefined;
+      const usedMode: 'STRICT_JSON_SCHEMA' | 'JSON_OBJECT_FALLBACK' = wantStrict ? 'STRICT_JSON_SCHEMA' : 'JSON_OBJECT_FALLBACK';
+      const responseFormat = wantStrict
+        ? { type: 'json_schema', json_schema: { name: input.schemaName.replace(/\W+/g, '_'), strict: true, schema: input.jsonSchema } }
+        : { type: 'json_object' };
+
       const res = await doFetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
@@ -64,7 +72,7 @@ export function createOpenAiProviderAdapter(cfg: OpenAiAdapterConfig): AIProvide
         body: JSON.stringify({
           model: cfg.model,
           messages,
-          response_format: { type: 'json_object' },
+          response_format: responseFormat,
           temperature: input.temperature ?? 0.4,
           max_tokens: input.maxTokens ?? 4000,
         }),
@@ -81,6 +89,7 @@ export function createOpenAiProviderAdapter(cfg: OpenAiAdapterConfig): AIProvide
       const cached = usage?.prompt_tokens_details?.cached_tokens;
       return {
         text,
+        structuredOutputMode: usedMode,
         usage: {
           inputTokens: usage?.prompt_tokens ?? 0,
           outputTokens: usage?.completion_tokens ?? 0,

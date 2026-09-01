@@ -13,6 +13,8 @@ import {
   type StructuredAIOutput,
 } from '@copilot/ai';
 import { buildGenerationGrounding } from './grounding.js';
+import { validateGeneratedBatch } from './validator.js';
+import { verifyMathAnswer } from './math-verifier.js';
 import { createMockExerciseGenerator } from './mock-generator.js';
 import { createLunaExerciseGenerator, EXERCISE_GENERATOR_PROMPT_VERSION, EXERCISE_GENERATOR_SYSTEM_PROMPT } from './luna-generator.js';
 import { orchestrateGeneration } from './orchestrator.js';
@@ -152,18 +154,41 @@ describe('C5 §23 — live generation infrastructure (no network)', () => {
     expect(found).toBe(true);
   });
 
-  it('11-13. numeric / fraction / choice answers are DETERMINISTIC_VERIFIED', () => {
-    expect(assessItemAnswerVerification(item({ answerSpec: { kind: 'numeric', value: 42, tolerance: 0.01 } }))).toBe('DETERMINISTIC_VERIFIED');
-    expect(assessItemAnswerVerification(item({ answerSpec: { kind: 'fraction', numerator: 3, denominator: 4 } }))).toBe('DETERMINISTIC_VERIFIED');
-    expect(assessItemAnswerVerification(item({ answerSpec: { kind: 'choice', correct: 'B', options: ['A', 'B', 'C'] } }))).toBe('DETERMINISTIC_VERIFIED');
+  it('C5.1 §1 — a well-formed answer with a WORD-PROBLEM prompt is FORMAT_VERIFIED, never correctness', () => {
+    // prompt has no closed expression → the math verifier can't touch it
+    const numeric = item({ prompt: 'Một cửa hàng có 12 hộp bánh, mỗi hộp 8 cái.', answerSpec: { kind: 'numeric', value: 96, tolerance: 0 } });
+    expect(assessItemAnswerVerification(numeric)).toBe('FORMAT_VERIFIED');
+    const frac = item({ prompt: 'Chia đều cái bánh cho các bạn.', answerSpec: { kind: 'fraction', numerator: 3, denominator: 4 } });
+    expect(assessItemAnswerVerification(frac)).toBe('FORMAT_VERIFIED');
+    // malformed key → UNVERIFIED
     expect(assessItemAnswerVerification(item({ answerSpec: { kind: 'choice', correct: 'Z', options: ['A', 'B'] } }))).toBe('UNVERIFIED');
   });
 
-  it('14. reasoning answers are AI_CROSSCHECK_REQUIRED and flagged for verification', () => {
+  it('C5.1 §2 — supported arithmetic that is CORRECT becomes DETERMINISTIC_CORRECTNESS_VERIFIED', () => {
+    const ok = item({ prompt: '3/4 + 1/2 = ?', answerSpec: { kind: 'fraction', numerator: 5, denominator: 4 } });
+    expect(assessItemAnswerVerification(ok)).toBe('DETERMINISTIC_CORRECTNESS_VERIFIED');
+    const okNum = item({ prompt: 'Tính: 2 + 3 × 4', answerSpec: { kind: 'numeric', value: 14, tolerance: 0 } });
+    expect(assessItemAnswerVerification(okNum)).toBe('DETERMINISTIC_CORRECTNESS_VERIFIED');
+  });
+
+  it('C5.1 §2 — well-formed but mathematically WRONG answers are NOT correctness verified', () => {
+    const wrongFrac = item({ prompt: '1/2 + 1/3 = ?', answerSpec: { kind: 'fraction', numerator: 2, denominator: 5 } });
+    expect(assessItemAnswerVerification(wrongFrac)).toBe('UNVERIFIED'); // format ok, but proven wrong
+    const wrongPrec = item({ prompt: '2 + 3 × 4 = ?', answerSpec: { kind: 'numeric', value: 20, tolerance: 0 } });
+    expect(assessItemAnswerVerification(wrongPrec)).toBe('UNVERIFIED');
+    // and the validator rejects them so they are never delivered
+    const v = validateGeneratedBatch(
+      { generationSpecId: spec.generationSpecId, generatedAt: '2027-01-25T09:00:00.000Z', items: [wrongPrec] },
+      spec,
+      kb,
+    );
+    expect(v.reasonCodes).toContain('ANSWER_INCONSISTENT');
+  });
+
+  it('14. reasoning answers are AI_CROSSCHECK_REQUIRED and never faked as deterministic', () => {
     const r = item({ answerSpec: { kind: 'reasoning' }, rubric: 'grade the argument' });
     expect(assessItemAnswerVerification(r)).toBe('AI_CROSSCHECK_REQUIRED');
     expect(wouldRequireVerification(r, spec)).toContain('reasoning_or_proof_item');
-    // the stub verifier never falsely reports "verified"
     return createStubSecondPassVerifier()
       .verify(r, spec)
       .then((o) => expect(o.verified).toBe(false));
@@ -303,6 +328,104 @@ describe('C5 §23 — live generation infrastructure (no network)', () => {
     expect(ran).toBe(false); // not run synchronously
     await queue.drain();
     expect(ran).toBe(true);
+  });
+});
+
+describe('C5.1 §3/§4 — strict structured output + schema versioning', () => {
+  it('§3/§10.6 — STRICT mode asks the provider for a JSON schema; the mode used is recorded', async () => {
+    const adapter = fakeAdapter({ text: await validBatchJson() });
+    const gen = createLunaExerciseGenerator({ adapter, structuredOutputMode: 'STRICT_JSON_SCHEMA' });
+    // fake adapter echoes the requested mode, so it round-trips
+    const orig = adapter.call.bind(adapter);
+    let sawSchema = false;
+    (adapter as unknown as { call: typeof adapter.call }).call = (input) => {
+      if (input.structuredOutputMode === 'STRICT_JSON_SCHEMA' && input.jsonSchema) sawSchema = true;
+      return orig(input).then((o) => ({ ...o, structuredOutputMode: input.structuredOutputMode ?? 'JSON_OBJECT_FALLBACK' }));
+    };
+    const res = await orchestrateGeneration({ spec, generator: gen, referenceLibrary: lib, knowledgeBase: kb });
+    expect(sawSchema).toBe(true);
+    expect(res.trace.operations[0]!.structuredOutputMode).toBe('STRICT_JSON_SCHEMA');
+  });
+
+  it('§3/§10.7 — default is JSON_OBJECT_FALLBACK; never a fake strict claim', async () => {
+    const res = await orchestrateGeneration({
+      spec,
+      generator: createLunaExerciseGenerator({ adapter: fakeAdapter({ text: await validBatchJson() }) }),
+      referenceLibrary: lib,
+      knowledgeBase: kb,
+    });
+    expect(res.trace.operations[0]!.structuredOutputMode).toBe('JSON_OBJECT_FALLBACK');
+    expect(loadAiGenerationConfig({}).structuredOutputMode).toBe('JSON_OBJECT_FALLBACK');
+    expect(loadAiGenerationConfig({ AI_GENERATION_STRUCTURED_OUTPUT_MODE: 'STRICT_JSON_SCHEMA' }).structuredOutputMode).toBe('STRICT_JSON_SCHEMA');
+  });
+
+  it('§4/§10.8 — output schema name + version are recorded on the operation and the trace', async () => {
+    const res = await orchestrateGeneration({
+      spec,
+      generator: createLunaExerciseGenerator({ adapter: fakeAdapter({ text: await validBatchJson() }) }),
+      referenceLibrary: lib,
+      knowledgeBase: kb,
+    });
+    const op = res.trace.operations[0]!;
+    expect(op.outputSchemaName).toBe('generatedExerciseBatch');
+    expect(op.outputSchemaVersion).toBe('generatedExerciseBatch.jsonschema.v1');
+    expect(op.promptVersion).toBe(EXERCISE_GENERATOR_PROMPT_VERSION);
+    const { setRecord } = toGenerationRecords(spec, res, { setId: 'ges_ver' });
+    expect(JSON.stringify(setRecord.trace)).toContain('generatedExerciseBatch.jsonschema.v1');
+  });
+
+  it('§8/§10.13 — the config spend guardrail has sane positive defaults', () => {
+    const cfg = loadAiGenerationConfig({});
+    expect(cfg.liveBenchmarkMaxBatches).toBeGreaterThan(0);
+    expect(cfg.liveBenchmarkMaxCostUsd).toBeGreaterThan(0);
+    expect(loadAiGenerationConfig({ LIVE_BENCHMARK_MAX_BATCHES: '7' }).liveBenchmarkMaxBatches).toBe(7);
+    expect(loadAiGenerationConfig({ LIVE_BENCHMARK_MAX_COST_USD: '2.5' }).liveBenchmarkMaxCostUsd).toBe(2.5);
+  });
+});
+
+describe('C5.1 §5/§10 — reference-example copy detection precision', () => {
+  const g = buildGenerationGrounding(spec, lib, kb);
+  const refPrompt = g.referenceExamples[0]!.prompt;
+
+  const batchWith = (prompt: string): GeneratedExerciseBatch => ({
+    generationSpecId: spec.generationSpecId,
+    generatedAt: '2027-01-25T09:00:00.000Z',
+    items: [item({ id: 'gx_ref_1', prompt })],
+  });
+
+  it('9. an exact copy of a reference example is rejected', () => {
+    const v = validateGeneratedBatch(batchWith(refPrompt), spec, kb, g.referenceExamples);
+    expect(v.reasonCodes).toContain('REFERENCE_EXAMPLE_COPY');
+  });
+
+  it('10. a number-only mutation of the same template is rejected (normalization masks digits)', () => {
+    const mutated = refPrompt.replace(/\d+/g, (d) => String(Number(d) + 1));
+    const v = validateGeneratedBatch(batchWith(mutated), spec, kb, g.referenceExamples);
+    expect(v.reasonCodes).toContain('REFERENCE_EXAMPLE_COPY');
+  });
+
+  it('11. a structurally different same-skill question is accepted', () => {
+    const different = 'Một đội công nhân sửa 3/8 quãng đường trong ngày đầu, ngày sau sửa thêm 1/4. Hỏi còn lại bao nhiêu phần quãng đường?';
+    const v = validateGeneratedBatch(batchWith(different), spec, kb, g.referenceExamples);
+    expect(v.reasonCodes).not.toContain('REFERENCE_EXAMPLE_COPY');
+  });
+});
+
+describe('C5.1 §2 — deterministic math verifier scope', () => {
+  it('supports integer / decimal / fraction arithmetic with correct operator precedence', () => {
+    expect(verifyMathAnswer({ prompt: '2 + 3 × 4 = ?', workedSolution: '= 14', answerSpec: { kind: 'numeric', value: 14, tolerance: 0 } }).verdict).toBe('CORRECT');
+    expect(verifyMathAnswer({ prompt: '(2 + 3) × 4 = ?', workedSolution: '', answerSpec: { kind: 'numeric', value: 20, tolerance: 0 } }).verdict).toBe('CORRECT');
+    expect(verifyMathAnswer({ prompt: 'Tính: 1/2 + 1/3', workedSolution: '', answerSpec: { kind: 'fraction', numerator: 5, denominator: 6 } }).verdict).toBe('CORRECT');
+    expect(verifyMathAnswer({ prompt: '0,5 + 0,25 = ?', workedSolution: '', answerSpec: { kind: 'numeric', value: 0.75, tolerance: 0 } }).verdict).toBe('CORRECT');
+  });
+
+  it('returns UNSUPPORTED (never a guess) for word problems and reasoning', () => {
+    expect(verifyMathAnswer({ prompt: 'Một cửa hàng có 12 hộp bánh.', workedSolution: '', answerSpec: { kind: 'numeric', value: 96, tolerance: 0 } }).verdict).toBe('UNSUPPORTED');
+    expect(verifyMathAnswer({ prompt: '1/2 + 1/3 = ?', workedSolution: '', answerSpec: { kind: 'reasoning' } }).verdict).toBe('UNSUPPORTED');
+  });
+
+  it('flags a supported-but-wrong answer as INCORRECT', () => {
+    expect(verifyMathAnswer({ prompt: '1/2 + 1/3 = ?', workedSolution: '', answerSpec: { kind: 'fraction', numerator: 2, denominator: 5 } }).verdict).toBe('INCORRECT');
   });
 });
 

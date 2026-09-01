@@ -9,7 +9,7 @@ import type { KnowledgeBase } from '@copilot/math-data';
 import { PricingRegistry } from '@copilot/ai';
 import type { ReferenceExample } from '@copilot/reference-library';
 import { buildGenerationGrounding, type GenerationGrounding } from './grounding.js';
-import type { ExerciseGenerator, GenerationInability, GenerationUsage } from './generator.js';
+import type { ExerciseGenerator, GenerationInability, GenerationProviderMeta, GenerationUsage } from './generator.js';
 import { slotRequestsFor } from './repair.js';
 import { validateGeneratedBatch } from './validator.js';
 import type { GenerationOperation } from './telemetry.js';
@@ -102,6 +102,7 @@ export async function orchestrateGeneration(input: OrchestratorInput): Promise<O
     schemaValid: boolean,
     retryCount: number,
     usage?: GenerationUsage,
+    providerMeta?: GenerationProviderMeta,
   ): void => {
     const at = now();
     // MOCK is free by contract; a live provider's cost comes only from real usage —
@@ -116,6 +117,9 @@ export async function orchestrateGeneration(input: OrchestratorInput): Promise<O
       model,
       modelVersion,
       promptVersion: input.generator.promptVersion,
+      structuredOutputMode: providerMeta?.structuredOutputMode ?? null,
+      outputSchemaName: providerMeta?.outputSchemaName ?? null,
+      outputSchemaVersion: providerMeta?.outputSchemaVersion ?? null,
       generationSpecId: input.spec.generationSpecId,
       kTarget: `${input.spec.difficulty.kMin}-${input.spec.difficulty.kMax}`,
       tTarget: `${input.spec.difficulty.tMin}-${input.spec.difficulty.tMax}`,
@@ -156,11 +160,11 @@ export async function orchestrateGeneration(input: OrchestratorInput): Promise<O
     const gen = await input.generator.generate({ grounding });
     if (!gen.ok) {
       lastInability = gen.inability;
-      op(input.generator.provider, input.generator.model, input.generator.modelVersion, gen.latencyMs, false, generationAttempts - 1, gen.usage);
+      op(input.generator.provider, input.generator.model, input.generator.modelVersion, gen.latencyMs, false, generationAttempts - 1, gen.usage, gen.providerMeta);
       continue; // fresh attempt
     }
     let batch: GeneratedExerciseBatch = gen.batch;
-    op(input.generator.provider, input.generator.model, input.generator.modelVersion, gen.latencyMs, true, generationAttempts - 1, gen.usage);
+    op(input.generator.provider, input.generator.model, input.generator.modelVersion, gen.latencyMs, true, generationAttempts - 1, gen.usage, gen.providerMeta);
 
     // --- validate → repair/regenerate loop ---
     repairAttempts = 0;
@@ -195,6 +199,7 @@ export async function orchestrateGeneration(input: OrchestratorInput): Promise<O
         regen.ok,
         repairAttempts,
         regen.usage,
+        regen.providerMeta,
       );
       if (!regen.ok) {
         lastInability = regen.inability;

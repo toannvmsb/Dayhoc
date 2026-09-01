@@ -1,159 +1,266 @@
-import type { ExerciseGenerationSpec, ParentGoal } from '@copilot/domain';
-import { buildExerciseGenerationSpec } from '@copilot/planning';
 import { loadReferenceLibrary, type ReferenceExample } from '@copilot/reference-library';
 import type { KnowledgeBase } from '@copilot/math-data';
-import type { AIProviderAdapter } from '@copilot/ai';
+import type { AIProviderAdapter, StructuredOutputMode } from '@copilot/ai';
 import {
   aggregateShadowMetrics,
   createLunaExerciseGenerator,
+  EXERCISE_GENERATOR_PROMPT_VERSION,
   orchestrateGeneration,
   summarizeAnswerVerification,
   type ShadowMetricRecord,
   type ShadowMetrics,
 } from '@copilot/exercise-gen';
+import { GENERATED_BATCH_JSON_SCHEMA_VERSION } from '@copilot/schemas';
 import { KB } from '../harness.js';
-import { loadLearningEvidenceEvents, loadTwinPlannerProfiles } from '../golden/load.js';
-import { runTwinPlanner, TP_AS_OF } from '../golden/twin-planner-pipeline.js';
+import {
+  BENCHMARK_MANIFEST_VERSION,
+  buildBenchmarkManifest,
+  manifestCoverage,
+  type BenchmarkCase,
+} from './luna-benchmark-manifest.js';
+
+export { buildBenchmarkManifest, manifestCoverage, BENCHMARK_MANIFEST_VERSION, type BenchmarkCase };
 
 /**
- * Luna generation benchmark (doc 14 C5 §19/§25 B). Builds real
- * `ExerciseGenerationSpec`s from the 48 SYNTHETIC golden twin/planner profiles
- * (no real child data — profile ids like `LT-G4-01`) and runs them through the
- * live pipeline. NEVER makes a network call on its own — the caller injects the
- * `AIProviderAdapter`; the guarded test only builds a live one when
- * `RUN_LIVE_AI_BENCHMARK=1` and a key is present.
+ * Luna generation benchmark (doc 14 C5 §19 / C5.1 §6-§9). Runs the FROZEN
+ * manifest through the FULL production-like pipeline — spec → grounding →
+ * provider adapter → structured output → schema → validator → deterministic
+ * answer verifier → telemetry. NEVER makes a network call on its own; the
+ * caller injects the `AIProviderAdapter`. A spend guardrail (§8) stops before
+ * exceeding the configured batch / cost ceiling.
  */
 
-export interface BenchmarkCase {
-  readonly id: string;
-  readonly label: string;
-  readonly spec: ExerciseGenerationSpec;
+export const BENCHMARK_VERSION = 'luna-generation-benchmark.v1';
+
+export interface RunBenchmarkInput {
+  readonly adapter: AIProviderAdapter;
+  readonly cases: readonly BenchmarkCase[];
+  readonly structuredOutputMode: StructuredOutputMode;
+  readonly knowledgeBase?: KnowledgeBase;
+  readonly referenceLibrary?: readonly ReferenceExample[];
+  /** Spend guardrail (doc 14 C5.1 §8). The run stops BEFORE exceeding either. */
+  readonly maxBatches: number;
+  readonly maxCostUsd: number;
+  readonly pricingConfigVersion?: string;
 }
 
-/** A spread across grades / goals / difficulty that covers doc 14 C5 §19's case mix. */
-export function buildBenchmarkSpecs(kb: KnowledgeBase = KB, limit = 12): BenchmarkCase[] {
-  const profiles = loadTwinPlannerProfiles();
-  const events = loadLearningEvidenceEvents();
-  const cases: BenchmarkCase[] = [];
-  for (const p of profiles) {
-    if (cases.length >= limit) break;
-    const run = runTwinPlanner(p, events);
-    let i = 0;
-    const spec = buildExerciseGenerationSpec({
-      childId: run.childId,
-      gradeContext: run.profile.grade_context,
-      twin: run.twin,
-      gaps: run.gaps,
-      context: run.context,
-      knowledgeBase: kb,
-      parentGoal: run.parentGoal as ParentGoal,
-      availableMinutes: run.profile.daily_time_budget_min,
-      asOf: TP_AS_OF,
-      newId: () => `${p.profile_id}_${i++}`,
-    });
-    cases.push({ id: p.profile_id, label: `G${run.profile.grade_context} ${run.parentGoal}`, spec });
-  }
-  return cases;
+export interface BenchmarkReport {
+  readonly benchmarkVersion: string;
+  readonly manifestVersion: string;
+  readonly timestamp: string;
+  readonly provider: string;
+  readonly model: string;
+  readonly modelVersion: string | null;
+  readonly promptVersion: string;
+  readonly outputSchemaVersion: string;
+  readonly structuredOutputModeRequested: StructuredOutputMode;
+  readonly structuredOutputModeUsed: string | null;
+  readonly pricingConfigVersion: string | null;
+  readonly caseCount: number;
+  readonly questionCount: number;
+  readonly stoppedEarly: boolean;
+  readonly stopReason: string | null;
+  readonly quality: {
+    readonly schemaSuccessRate: number;
+    readonly firstPassValidatorRate: number;
+    readonly finalDeliverableRate: number;
+    readonly quarantineRate: number;
+    readonly regenerationRate: number;
+    readonly referenceCopyRate: number;
+    readonly skillAdherenceRate: number;
+    readonly roleAdherenceRate: number;
+    readonly kAdherenceRate: number;
+    readonly tAdherenceRate: number;
+  };
+  readonly answers: {
+    readonly formatValidRate: number;
+    readonly deterministicCorrectnessVerifiedRate: number;
+    readonly crosscheckRequiredRate: number;
+    readonly unverifiedRate: number;
+  };
+  readonly performance: { readonly avgLatencyMs: number; readonly p50LatencyMs: number; readonly p95LatencyMs: number };
+  readonly usage: { readonly inputTokens: number; readonly cachedInputTokens: number; readonly outputTokens: number };
+  readonly cost: {
+    readonly actualCostUsd: number;
+    readonly actualCostVnd: number;
+    readonly costPerBatchVnd: number;
+    readonly costPerQuestionVnd: number;
+  };
+  readonly failures: Readonly<Record<string, number>>;
+  readonly perCase: readonly { benchmarkCaseId: string; label: string; status: string; reason?: string }[];
+  readonly coverage: ReturnType<typeof manifestCoverage>;
+  readonly gates: readonly { name: string; label: string; pass: boolean; value: number }[];
 }
 
-export interface BenchmarkResult {
-  readonly cases: number;
-  readonly records: readonly ShadowMetricRecord[];
-  readonly metrics: ShadowMetrics;
-  readonly perCase: readonly { id: string; label: string; status: string; reason?: string }[];
-}
-
-export async function runLunaBenchmark(input: {
-  adapter: AIProviderAdapter;
-  specs: readonly BenchmarkCase[];
-  knowledgeBase?: KnowledgeBase;
-  referenceLibrary?: readonly ReferenceExample[];
-}): Promise<BenchmarkResult> {
+export async function runLunaBenchmark(input: RunBenchmarkInput): Promise<{ report: BenchmarkReport; records: ShadowMetricRecord[] }> {
   const kb = input.knowledgeBase ?? KB;
   const lib = input.referenceLibrary ?? loadReferenceLibrary();
-  const generator = createLunaExerciseGenerator({ adapter: input.adapter });
+  const generator = createLunaExerciseGenerator({ adapter: input.adapter, structuredOutputMode: input.structuredOutputMode });
   const records: ShadowMetricRecord[] = [];
-  const perCase: { id: string; label: string; status: string; reason?: string }[] = [];
+  const perCase: BenchmarkReport['perCase'][number][] = [];
 
-  for (const c of input.specs) {
+  let cumulativeUsd = 0;
+  let stoppedEarly = false;
+  let stopReason: string | null = null;
+  let structuredOutputModeUsed: string | null = null;
+
+  for (const c of input.cases) {
+    if (records.length >= input.maxBatches) {
+      stoppedEarly = true;
+      stopReason = `reached maxBatches=${input.maxBatches}`;
+      break;
+    }
+    if (cumulativeUsd >= input.maxCostUsd) {
+      stoppedEarly = true;
+      stopReason = `reached maxCostUsd=${input.maxCostUsd} (spent ${cumulativeUsd.toFixed(4)})`;
+      break;
+    }
+
     const result = await orchestrateGeneration({ spec: c.spec, generator, referenceLibrary: lib, knowledgeBase: kb });
+    for (const opRow of result.trace.operations) {
+      cumulativeUsd += opRow.actualCostUsd ?? 0;
+      if (opRow.structuredOutputMode) structuredOutputModeUsed = opRow.structuredOutputMode;
+    }
     records.push({
       spec: c.spec,
       result,
       answerVerification: result.status === 'delivered' ? summarizeAnswerVerification(result.batch) : null,
     });
     perCase.push({
-      id: c.id,
+      benchmarkCaseId: c.benchmarkCaseId,
       label: c.label,
       status: result.status,
       ...(result.status === 'failed' ? { reason: result.reason } : {}),
     });
   }
 
-  return { cases: input.specs.length, records, metrics: aggregateShadowMetrics(records), perCase };
+  const m = aggregateShadowMetrics(records);
+  const questionCount = records
+    .filter((r) => r.result.status === 'delivered')
+    .reduce((s, r) => s + r.spec.generationPlan.totalQuestions, 0);
+  const totalUsd = records
+    .flatMap((r) => r.result.trace.operations)
+    .reduce((s, opRow) => s + (opRow.actualCostUsd ?? 0), 0);
+  const totalVnd = records
+    .flatMap((r) => r.result.trace.operations)
+    .reduce((s, opRow) => s + (opRow.actualCostVnd ?? 0), 0);
+  const cachedTokens = records
+    .flatMap((r) => r.result.trace.operations)
+    .reduce((s, opRow) => s + (opRow.cachedInputTokens ?? 0), 0);
+
+  const report: BenchmarkReport = {
+    benchmarkVersion: BENCHMARK_VERSION,
+    manifestVersion: BENCHMARK_MANIFEST_VERSION,
+    timestamp: new Date().toISOString(),
+    provider: input.adapter.provider,
+    model: input.adapter.model,
+    modelVersion: generator.modelVersion,
+    promptVersion: EXERCISE_GENERATOR_PROMPT_VERSION,
+    outputSchemaVersion: GENERATED_BATCH_JSON_SCHEMA_VERSION,
+    structuredOutputModeRequested: input.structuredOutputMode,
+    structuredOutputModeUsed,
+    pricingConfigVersion: input.pricingConfigVersion ?? null,
+    caseCount: records.length,
+    questionCount,
+    stoppedEarly,
+    stopReason,
+    quality: {
+      schemaSuccessRate: m.firstPassSchemaRate,
+      firstPassValidatorRate: m.firstPassValidatorPassRate,
+      finalDeliverableRate: m.finalDeliverableRate,
+      quarantineRate: m.quarantineRate,
+      regenerationRate: m.regenerationRate,
+      referenceCopyRate: m.referenceCopyRate,
+      skillAdherenceRate: m.skillAdherenceRate,
+      roleAdherenceRate: m.bucketAdherenceRate,
+      kAdherenceRate: m.kAdherenceRate,
+      tAdherenceRate: m.tAdherenceRate,
+    },
+    answers: {
+      formatValidRate: m.answerFormatValidRate,
+      deterministicCorrectnessVerifiedRate: m.answerDeterministicCorrectnessVerifiedRate,
+      crosscheckRequiredRate: m.answerCrosscheckRequiredRate,
+      unverifiedRate: m.answerUnverifiedRate,
+    },
+    performance: { avgLatencyMs: m.averageLatencyMs, p50LatencyMs: m.p50LatencyMs, p95LatencyMs: m.p95LatencyMs },
+    usage: {
+      inputTokens: Math.round(m.averageInputTokens * Math.max(records.length, 1)),
+      cachedInputTokens: cachedTokens,
+      outputTokens: Math.round(m.averageOutputTokens * Math.max(records.length, 1)),
+    },
+    cost: {
+      actualCostUsd: totalUsd,
+      actualCostVnd: totalVnd,
+      costPerBatchVnd: records.length > 0 ? totalVnd / records.length : 0,
+      costPerQuestionVnd: questionCount > 0 ? totalVnd / questionCount : 0,
+    },
+    failures: m.failuresByReasonCode,
+    perCase,
+    coverage: manifestCoverage(input.cases),
+    gates: evaluateGates(m),
+  };
+  return { report, records };
 }
 
-/** Provisional benchmark review gates (doc 14 C5 §18). NOT auto-flips — a human reads these. */
-export const C5_SHADOW_GATES = {
-  firstPassSchemaRate: { min: 0.99, label: 'schema success' },
-  noInventedSkillIdRate: { min: 1.0, label: 'no invented production skill ids' },
-  noForbiddenKnowledgeRate: { min: 1.0, label: 'no forbidden required knowledge delivered' },
-  referenceCopyRateMax: { max: 0.01, label: 'no reference example copy' },
-  finalDeliverableRate: { min: 0.95, label: 'final deliverable rate (after bounded repair)' },
-  answerDeterministicVerificationRate: { min: 1.0, label: 'deterministic answer verification (numeric/fraction/choice)' },
-  quarantineRateMax: { max: 0.02, label: 'quarantine rate' },
-  averageGenerationAttemptsMax: { max: 1.25, label: 'average generation attempts' },
-  kAdherenceRate: { min: 0.98, label: 'K adherence' },
-  tAdherenceRate: { min: 0.98, label: 'T adherence' },
-  bucketAdherenceRate: { min: 1.0, label: 'bucket / target-role adherence' },
-  skillAdherenceRate: { min: 1.0, label: 'skill adherence' },
-} as const;
-
+/** Provisional benchmark review gates (doc 14 C5 §18 / C5.1 §1). NOT an auto-flip. */
 export function evaluateGates(m: ShadowMetrics): { name: string; label: string; pass: boolean; value: number }[] {
+  const g = (name: string, value: number, pass: boolean, label: string) => ({ name, label, pass, value });
   return [
-    gate('firstPassSchemaRate', m.firstPassSchemaRate, m.firstPassSchemaRate >= C5_SHADOW_GATES.firstPassSchemaRate.min, C5_SHADOW_GATES.firstPassSchemaRate.label),
-    gate('noInventedSkillIdRate', m.noInventedSkillIdRate, m.noInventedSkillIdRate >= 1, C5_SHADOW_GATES.noInventedSkillIdRate.label),
-    gate('noForbiddenKnowledgeRate', m.noForbiddenKnowledgeRate, m.noForbiddenKnowledgeRate >= 1, C5_SHADOW_GATES.noForbiddenKnowledgeRate.label),
-    gate('referenceCopyRate', m.referenceCopyRate, m.referenceCopyRate <= C5_SHADOW_GATES.referenceCopyRateMax.max, C5_SHADOW_GATES.referenceCopyRateMax.label),
-    gate('finalDeliverableRate', m.finalDeliverableRate, m.finalDeliverableRate >= C5_SHADOW_GATES.finalDeliverableRate.min, C5_SHADOW_GATES.finalDeliverableRate.label),
-    gate('answerDeterministicVerificationRate', m.answerDeterministicVerificationRate, m.answerDeterministicVerificationRate >= 1, C5_SHADOW_GATES.answerDeterministicVerificationRate.label),
-    gate('quarantineRate', m.quarantineRate, m.quarantineRate <= C5_SHADOW_GATES.quarantineRateMax.max, C5_SHADOW_GATES.quarantineRateMax.label),
-    gate('averageGenerationAttempts', m.averageGenerationAttempts, m.averageGenerationAttempts <= C5_SHADOW_GATES.averageGenerationAttemptsMax.max, C5_SHADOW_GATES.averageGenerationAttemptsMax.label),
-    gate('kAdherenceRate', m.kAdherenceRate, m.kAdherenceRate >= C5_SHADOW_GATES.kAdherenceRate.min, C5_SHADOW_GATES.kAdherenceRate.label),
-    gate('tAdherenceRate', m.tAdherenceRate, m.tAdherenceRate >= C5_SHADOW_GATES.tAdherenceRate.min, C5_SHADOW_GATES.tAdherenceRate.label),
-    gate('bucketAdherenceRate', m.bucketAdherenceRate, m.bucketAdherenceRate >= 1, C5_SHADOW_GATES.bucketAdherenceRate.label),
-    gate('skillAdherenceRate', m.skillAdherenceRate, m.skillAdherenceRate >= 1, C5_SHADOW_GATES.skillAdherenceRate.label),
+    g('schemaSuccessRate', m.firstPassSchemaRate, m.firstPassSchemaRate >= 0.99, 'schema success >= 99%'),
+    g('noInventedSkillIdRate', m.noInventedSkillIdRate, m.noInventedSkillIdRate >= 1, 'no invented production skill ids = 100%'),
+    g('noForbiddenKnowledgeRate', m.noForbiddenKnowledgeRate, m.noForbiddenKnowledgeRate >= 1, 'no forbidden required knowledge = 100%'),
+    g('referenceCopyRate', m.referenceCopyRate, m.referenceCopyRate <= 0.01, 'reference example copy <= 1%'),
+    g('finalDeliverableRate', m.finalDeliverableRate, m.finalDeliverableRate >= 0.95, 'final deliverable >= 95%'),
+    // C5.1 §1: this gate is now CORRECTNESS, not format. A well-formed key is not enough.
+    g('answerFormatValidRate', m.answerFormatValidRate, m.answerFormatValidRate >= 0.99, 'answer key well-formed >= 99%'),
+    g('answerNoProvenWrong', 1 - m.answerUnverifiedRate, m.answerUnverifiedRate <= 0.0, 'no answer proven WRONG by the deterministic checker'),
+    g('quarantineRate', m.quarantineRate, m.quarantineRate <= 0.02, 'quarantine rate <= 2%'),
+    g('averageGenerationAttempts', m.averageGenerationAttempts, m.averageGenerationAttempts <= 1.25, 'avg generation attempts <= 1.25'),
+    g('kAdherenceRate', m.kAdherenceRate, m.kAdherenceRate >= 0.98, 'K adherence >= 98%'),
+    g('tAdherenceRate', m.tAdherenceRate, m.tAdherenceRate >= 0.98, 'T adherence >= 98%'),
+    g('roleAdherenceRate', m.bucketAdherenceRate, m.bucketAdherenceRate >= 1, 'bucket / target-role adherence = 100%'),
+    g('skillAdherenceRate', m.skillAdherenceRate, m.skillAdherenceRate >= 1, 'skill adherence = 100%'),
   ];
 }
 
-function gate(name: string, value: number, pass: boolean, label: string) {
-  return { name, label, pass, value };
-}
-
-export function formatBenchmarkReport(r: BenchmarkResult): string {
-  const m = r.metrics;
+export function formatBenchmarkReport(r: BenchmarkReport): string {
   const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
-  const lines = [
-    `Luna generation benchmark — ${r.cases} cases`,
-    `  schema first-pass:        ${pct(m.firstPassSchemaRate)}`,
-    `  validator first-pass:     ${pct(m.firstPassValidatorPassRate)}`,
-    `  final deliverable:        ${pct(m.finalDeliverableRate)}`,
-    `  quarantine:               ${pct(m.quarantineRate)}`,
-    `  avg generation attempts:  ${m.averageGenerationAttempts.toFixed(2)}`,
-    `  avg repair attempts:      ${m.averageRepairAttempts.toFixed(2)}`,
-    `  answer deterministic ver: ${pct(m.answerDeterministicVerificationRate)}`,
-    `  answer unverified:        ${pct(m.answerUnverifiedRate)}`,
-    `  skill / bucket adherence: ${pct(m.skillAdherenceRate)} / ${pct(m.bucketAdherenceRate)}`,
-    `  K / T adherence:          ${pct(m.kAdherenceRate)} / ${pct(m.tAdherenceRate)}`,
-    `  reference-copy rate:      ${pct(m.referenceCopyRate)}`,
-    `  latency avg/p50/p95 ms:   ${m.averageLatencyMs.toFixed(0)} / ${m.p50LatencyMs} / ${m.p95LatencyMs}`,
-    `  tokens avg in/out:        ${m.averageInputTokens.toFixed(0)} / ${m.averageOutputTokens.toFixed(0)}`,
-    `  actual cost VND / batch:  ${m.averageActualCostVndPerBatch.toFixed(0)}`,
-    `  actual cost VND / q:      ${m.averageActualCostVndPerQuestion.toFixed(1)}`,
-    `  failures by reason:       ${JSON.stringify(m.failuresByReasonCode)}`,
+  return [
+    `Luna generation benchmark ${r.benchmarkVersion} — ${r.caseCount} batches / ${r.questionCount} questions`,
+    `  manifest:      ${r.manifestVersion}`,
+    `  model:         ${r.provider}/${r.model} (${r.modelVersion ?? 'no version'})`,
+    `  prompt:        ${r.promptVersion}`,
+    `  schema:        ${r.outputSchemaVersion}`,
+    `  structured:    requested ${r.structuredOutputModeRequested} / used ${r.structuredOutputModeUsed ?? 'n/a'}`,
+    `  pricing:       ${r.pricingConfigVersion ?? 'n/a'}`,
+    r.stoppedEarly ? `  STOPPED EARLY: ${r.stopReason}` : '  (ran the full manifest)',
     '',
-    'Gates (provisional — human review, not an auto-flip):',
-    ...evaluateGates(m).map((g) => `  [${g.pass ? 'PASS' : 'FAIL'}] ${g.label} = ${typeof g.value === 'number' ? g.value.toFixed(3) : g.value}`),
-  ];
-  return lines.join('\n');
+    'quality:',
+    `  schema first-pass:        ${pct(r.quality.schemaSuccessRate)}`,
+    `  validator first-pass:     ${pct(r.quality.firstPassValidatorRate)}`,
+    `  final deliverable:        ${pct(r.quality.finalDeliverableRate)}`,
+    `  quarantine / regen:       ${pct(r.quality.quarantineRate)} / ${pct(r.quality.regenerationRate)}`,
+    `  reference-copy:           ${pct(r.quality.referenceCopyRate)}`,
+    `  skill / role adherence:   ${pct(r.quality.skillAdherenceRate)} / ${pct(r.quality.roleAdherenceRate)}`,
+    `  K / T adherence:          ${pct(r.quality.kAdherenceRate)} / ${pct(r.quality.tAdherenceRate)}`,
+    '',
+    'answers (FORMAT != CORRECTNESS):',
+    `  format valid:             ${pct(r.answers.formatValidRate)}`,
+    `  deterministic CORRECTNESS: ${pct(r.answers.deterministicCorrectnessVerifiedRate)}`,
+    `  needs crosscheck:         ${pct(r.answers.crosscheckRequiredRate)}`,
+    `  unverified / proven wrong: ${pct(r.answers.unverifiedRate)}`,
+    '',
+    'performance / cost:',
+    `  latency avg/p50/p95 ms:   ${r.performance.avgLatencyMs.toFixed(0)} / ${r.performance.p50LatencyMs} / ${r.performance.p95LatencyMs}`,
+    `  tokens in/cached/out:     ${r.usage.inputTokens} / ${r.usage.cachedInputTokens} / ${r.usage.outputTokens}`,
+    `  actual cost USD / VND:    ${r.cost.actualCostUsd.toFixed(4)} / ${r.cost.actualCostVnd.toFixed(0)}`,
+    `  cost VND per batch / q:   ${r.cost.costPerBatchVnd.toFixed(0)} / ${r.cost.costPerQuestionVnd.toFixed(1)}`,
+    `  failures:                 ${JSON.stringify(r.failures)}`,
+    '',
+    `coverage: grades ${r.coverage.grades.join('+')}, K ${r.coverage.kRange.min}-${r.coverage.kRange.max}, T ${r.coverage.tRange.min}-${r.coverage.tRange.max}, prereq-repair ${r.coverage.withPrerequisiteRepair}, frontier ${r.coverage.withFrontier}, thinking ${r.coverage.withThinkingChallenge}`,
+    r.coverage.gaps.length > 0 ? `coverage gaps: ${r.coverage.gaps.join(' | ')}` : 'coverage gaps: none',
+    '',
+    'gates (provisional — human review, never an auto-flip):',
+    ...r.gates.map((x) => `  [${x.pass ? 'PASS' : 'FAIL'}] ${x.label} = ${x.value.toFixed(3)}`),
+  ].join('\n');
 }

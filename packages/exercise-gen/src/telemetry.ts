@@ -15,6 +15,11 @@ export interface GenerationOperation {
   readonly modelVersion: string | null;
   /** The generator's system-prompt version (doc 14 C5 §14) — `null` for the mock. */
   readonly promptVersion: string | null;
+  /** Which structured-output mode the provider actually used (doc 14 C5.1 §3) — `null` for the mock. */
+  readonly structuredOutputMode: string | null;
+  /** The output schema the provider was held to (doc 14 C5.1 §4) — `null` for the mock. */
+  readonly outputSchemaName: string | null;
+  readonly outputSchemaVersion: string | null;
   readonly generationSpecId: string;
   readonly kTarget: string | null;
   readonly tTarget: string | null;

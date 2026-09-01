@@ -54,9 +54,16 @@ export interface GenerationUsage {
   readonly outputTokens: number;
 }
 
+/** What the provider path actually did (doc 14 C5.1 §3/§4) — recorded on every op. */
+export interface GenerationProviderMeta {
+  readonly structuredOutputMode: 'STRICT_JSON_SCHEMA' | 'JSON_OBJECT_FALLBACK';
+  readonly outputSchemaName: string;
+  readonly outputSchemaVersion: string;
+}
+
 export type GenerationOutcome =
-  | { readonly ok: true; readonly batch: GeneratedExerciseBatch; readonly latencyMs: number; readonly usage?: GenerationUsage }
-  | { readonly ok: false; readonly inability: GenerationInability; readonly latencyMs: number; readonly usage?: GenerationUsage };
+  | { readonly ok: true; readonly batch: GeneratedExerciseBatch; readonly latencyMs: number; readonly usage?: GenerationUsage; readonly providerMeta?: GenerationProviderMeta }
+  | { readonly ok: false; readonly inability: GenerationInability; readonly latencyMs: number; readonly usage?: GenerationUsage; readonly providerMeta?: GenerationProviderMeta };
 
 export interface GenerationInability {
   readonly reason:

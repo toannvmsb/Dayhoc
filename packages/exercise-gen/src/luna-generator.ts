@@ -1,7 +1,7 @@
 import type { GeneratedExerciseBatch } from '@copilot/domain';
-import type { AIProviderAdapter, UsageProvider } from '@copilot/ai';
-import { generatedExerciseBatchSchema } from '@copilot/schemas';
-import type { ExerciseGenerator, GenerationInability, GenerationOutcome, GenerationRequest } from './generator.js';
+import type { AIProviderAdapter, StructuredOutputMode, UsageProvider } from '@copilot/ai';
+import { generatedExerciseBatchSchema, GENERATED_BATCH_JSON_SCHEMA, GENERATED_BATCH_JSON_SCHEMA_NAME, GENERATED_BATCH_JSON_SCHEMA_VERSION } from '@copilot/schemas';
+import type { ExerciseGenerator, GenerationInability, GenerationOutcome, GenerationProviderMeta, GenerationRequest } from './generator.js';
 
 /**
  * The live generator's system-prompt version (doc 14 C5 §14). Bump this the
@@ -36,6 +36,8 @@ Respond with a single JSON object matching the requested schema: a "generatedAt"
 
 export interface LunaGeneratorConfig {
   readonly adapter: AIProviderAdapter;
+  /** Requested structured-output mode (doc 14 C5.1 §3). Adapter may downgrade + report the real one. */
+  readonly structuredOutputMode?: StructuredOutputMode;
   /** Correlation id generator — MUST NOT encode child semantics (doc 14 C5 §6). */
   readonly newRequestId?: () => string;
   readonly now?: () => Date;
@@ -53,8 +55,14 @@ export interface LunaGeneratorConfig {
  */
 export function createLunaExerciseGenerator(cfg: LunaGeneratorConfig): ExerciseGenerator {
   const now = cfg.now ?? (() => new Date());
+  const requestedMode: StructuredOutputMode = cfg.structuredOutputMode ?? 'JSON_OBJECT_FALLBACK';
   let seq = 0;
   const newRequestId = cfg.newRequestId ?? (() => `luna_req_${(seq += 1)}`);
+  const metaFor = (usedMode: 'STRICT_JSON_SCHEMA' | 'JSON_OBJECT_FALLBACK'): GenerationProviderMeta => ({
+    structuredOutputMode: usedMode,
+    outputSchemaName: GENERATED_BATCH_JSON_SCHEMA_NAME,
+    outputSchemaVersion: GENERATED_BATCH_JSON_SCHEMA_VERSION,
+  });
 
   return {
     name: 'luna-exercise-generator',
@@ -90,11 +98,14 @@ export function createLunaExerciseGenerator(cfg: LunaGeneratorConfig): ExerciseG
           payload,
           temperature: 0.4,
           maxTokens: 4000,
+          structuredOutputMode: requestedMode,
+          ...(requestedMode === 'STRICT_JSON_SCHEMA' ? { jsonSchema: GENERATED_BATCH_JSON_SCHEMA } : {}),
         });
       } catch (err) {
         return {
           ok: false,
           latencyMs: now().getTime() - started,
+          providerMeta: metaFor('JSON_OBJECT_FALLBACK'),
           inability: {
             reason: 'provider_error',
             detail: err instanceof Error ? err.message : String(err),
@@ -103,6 +114,7 @@ export function createLunaExerciseGenerator(cfg: LunaGeneratorConfig): ExerciseG
       }
       const latencyMs = now().getTime() - started;
       const usage = { inputTokens: raw.usage.inputTokens, outputTokens: raw.usage.outputTokens, ...(raw.usage.cachedInputTokens !== undefined ? { cachedInputTokens: raw.usage.cachedInputTokens } : {}) };
+      const providerMeta = metaFor(raw.structuredOutputMode ?? 'JSON_OBJECT_FALLBACK');
 
       let parsedJson: unknown;
       try {
@@ -112,6 +124,7 @@ export function createLunaExerciseGenerator(cfg: LunaGeneratorConfig): ExerciseG
           ok: false,
           latencyMs,
           usage,
+          providerMeta,
           inability: inabilityForParseFailure(err, raw.text),
         };
       }
@@ -122,6 +135,7 @@ export function createLunaExerciseGenerator(cfg: LunaGeneratorConfig): ExerciseG
           ok: false,
           latencyMs,
           usage,
+          providerMeta,
           inability: {
             reason: 'cannot_satisfy_constraints',
             detail: `provider response failed schema validation: ${parsed.error.issues
@@ -137,7 +151,7 @@ export function createLunaExerciseGenerator(cfg: LunaGeneratorConfig): ExerciseG
       // nuance (exactOptionalPropertyTypes). The orchestrator re-runs the full
       // GeneratedExerciseValidator on this regardless (doc 14 C5 §4).
       const batch = parsed.data as unknown as GeneratedExerciseBatch;
-      return { ok: true, batch, latencyMs, usage };
+      return { ok: true, batch, latencyMs, usage, providerMeta };
     },
   };
 }

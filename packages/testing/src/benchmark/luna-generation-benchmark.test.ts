@@ -1,19 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { liveBenchmarkEnabled, loadAiGenerationConfig, resolveLunaApiKey, type AIProviderAdapter } from '@copilot/ai';
-import { createMockExerciseGenerator } from '@copilot/exercise-gen';
-import { buildGenerationGrounding } from '@copilot/exercise-gen';
+import { createMockExerciseGenerator, buildGenerationGrounding } from '@copilot/exercise-gen';
 import { KB } from '../harness.js';
 import { loadReferenceLibrary } from '@copilot/reference-library';
-import {
-  buildBenchmarkSpecs,
-  evaluateGates,
-  formatBenchmarkReport,
-  runLunaBenchmark,
-} from './luna-generation-benchmark.js';
+import { buildBenchmarkManifest, manifestCoverage } from './luna-benchmark-manifest.js';
+import { runLunaBenchmark, formatBenchmarkReport } from './luna-generation-benchmark.js';
 
 const lib = loadReferenceLibrary();
 
-/** A fake adapter that returns whatever the deterministic mock would produce for the spec. */
+/** Fake adapter: returns whatever the deterministic mock would produce for the grounding it is sent. */
 function mockBackedAdapter(): AIProviderAdapter {
   return {
     provider: 'openai',
@@ -27,47 +22,80 @@ function mockBackedAdapter(): AIProviderAdapter {
     dpaStatus: 'not_applicable',
     async call(input) {
       const grounding = input.payload as ReturnType<typeof buildGenerationGrounding>;
-      // reconstruct a spec-shaped stub is hard here; instead the mock generator is
-      // driven directly off the grounding the Luna generator forwards.
-      const gen = createMockExerciseGenerator();
-      const r = await gen.generate({ grounding });
+      const r = await createMockExerciseGenerator().generate({ grounding });
       const text = r.ok ? JSON.stringify(r.batch) : '{"broken":true}';
-      return { text, usage: { inputTokens: 1500, outputTokens: 1100 } };
+      return {
+        text,
+        structuredOutputMode: input.structuredOutputMode ?? 'JSON_OBJECT_FALLBACK',
+        usage: { inputTokens: 1500, outputTokens: 1100 },
+      };
     },
   };
 }
 
-describe('C5 §19/§25 — Luna generation benchmark harness (no network)', () => {
-  it('builds benchmark specs from SYNTHETIC profiles only — no real child PII', () => {
-    const cases = buildBenchmarkSpecs(KB, 12);
-    expect(cases.length).toBeGreaterThanOrEqual(8);
+describe('C5.1 §6-§9 / §12 — Luna benchmark manifest + harness (no network)', () => {
+  it('§7/§12 — the frozen manifest is built from SYNTHETIC golden profiles only (no real PII)', () => {
+    const cases = buildBenchmarkManifest(KB);
+    expect(cases.length).toBeGreaterThanOrEqual(12);
     for (const c of cases) {
-      // golden profile children are synthetic ids, never a real name / email
-      expect(c.spec.childId).toMatch(/^(child_|c_|lt-|LT-|tp_)/i);
+      expect(c.benchmarkCaseId).toMatch(/^BENCH-LT-G[47]-\d+$/);
+      expect(c.profileId).toMatch(/^LT-G[47]-\d+$/);
       expect(JSON.stringify(c.spec)).not.toMatch(/@[\w.]+\.\w{2,}/); // no email anywhere
     }
+    const cov = manifestCoverage(cases);
+    expect(cov.grades).toEqual([4, 7]);
+    expect(cov.withPrerequisiteRepair).toBeGreaterThan(0);
   });
 
-  it('runs the full harness against a deterministic adapter and aggregates metrics', async () => {
-    const cases = buildBenchmarkSpecs(KB, 6);
-    const result = await runLunaBenchmark({ adapter: mockBackedAdapter(), specs: cases, referenceLibrary: lib });
-    expect(result.cases).toBe(6);
-    expect(result.records).toHaveLength(6);
-    // deterministic mock content should be clean on the structural gates
-    const gates = Object.fromEntries(evaluateGates(result.metrics).map((g) => [g.name, g.pass]));
+  it('§6/§9 — the harness runs the production-like pipeline and emits a machine-readable report', async () => {
+    const cases = buildBenchmarkManifest(KB).slice(0, 6);
+    const { report } = await runLunaBenchmark({
+      adapter: mockBackedAdapter(),
+      cases,
+      structuredOutputMode: 'JSON_OBJECT_FALLBACK',
+      referenceLibrary: lib,
+      maxBatches: 20,
+      maxCostUsd: 5,
+      pricingConfigVersion: 'ai-pricing-registry.v1',
+    });
+    expect(report.caseCount).toBe(6);
+    expect(report.promptVersion).toBe('exercise-generator-prompt.v1');
+    expect(report.outputSchemaVersion).toBe('generatedExerciseBatch.jsonschema.v1');
+    expect(report.structuredOutputModeUsed).toBe('JSON_OBJECT_FALLBACK');
+    // deterministic mock content is clean on the structural gates
+    const gates = Object.fromEntries(report.gates.map((g) => [g.name, g.pass]));
     expect(gates.noInventedSkillIdRate).toBe(true);
     expect(gates.skillAdherenceRate).toBe(true);
-    expect(typeof formatBenchmarkReport(result)).toBe('string');
+    expect(gates.roleAdherenceRate).toBe(true);
+    // §1: format-valid is reported separately from deterministic correctness
+    expect(report.answers).toHaveProperty('formatValidRate');
+    expect(report.answers).toHaveProperty('deterministicCorrectnessVerifiedRate');
+    expect(typeof formatBenchmarkReport(report)).toBe('string');
   });
 
-  it('never runs a live call unless RUN_LIVE_AI_BENCHMARK=1', () => {
+  it('§8 — the spend guardrail stops before exceeding maxBatches', async () => {
+    const cases = buildBenchmarkManifest(KB);
+    const { report } = await runLunaBenchmark({
+      adapter: mockBackedAdapter(),
+      cases,
+      structuredOutputMode: 'JSON_OBJECT_FALLBACK',
+      referenceLibrary: lib,
+      maxBatches: 3,
+      maxCostUsd: 999,
+    });
+    expect(report.caseCount).toBe(3);
+    expect(report.stoppedEarly).toBe(true);
+    expect(report.stopReason).toMatch(/maxBatches=3/);
+  });
+
+  it('§14 — no paid network call unless RUN_LIVE_AI_BENCHMARK=1', () => {
     expect(liveBenchmarkEnabled({})).toBe(false);
     expect(liveBenchmarkEnabled({ RUN_LIVE_AI_BENCHMARK: '1' })).toBe(true);
   });
 });
 
-describe.skipIf(!liveBenchmarkEnabled())('C5 — LIVE Luna benchmark (paid)', () => {
-  it('runs the small benchmark and prints the report', async () => {
+describe.skipIf(!liveBenchmarkEnabled())('C5.1 — LIVE Luna benchmark (paid)', () => {
+  it('runs the frozen manifest under the spend guardrail and prints the report', async () => {
     const { createOpenAiProviderAdapter } = await import('@copilot/ai');
     const apiKey = resolveLunaApiKey();
     if (!apiKey) return;
@@ -78,9 +106,15 @@ describe.skipIf(!liveBenchmarkEnabled())('C5 — LIVE Luna benchmark (paid)', ()
       capability: 'generate_problem',
       compliance: { processingRegion: 'us', crossBorder: true, dataCategoriesAllowed: [], providerRetention: '30d', trainingAllowed: false, dpaStatus: 'pending' },
     });
-    const cases = buildBenchmarkSpecs(KB, 12);
-    const result = await runLunaBenchmark({ adapter, specs: cases, referenceLibrary: lib });
-    process.stdout.write(`\n${formatBenchmarkReport(result)}\n`);
-    expect(result.cases).toBe(cases.length);
-  }, 300_000);
+    const { report } = await runLunaBenchmark({
+      adapter,
+      cases: buildBenchmarkManifest(),
+      structuredOutputMode: cfg.structuredOutputMode,
+      maxBatches: cfg.liveBenchmarkMaxBatches,
+      maxCostUsd: cfg.liveBenchmarkMaxCostUsd,
+      pricingConfigVersion: cfg.pricingConfigVersion,
+    });
+    process.stdout.write(`\n${formatBenchmarkReport(report)}\n\n${JSON.stringify(report, null, 2)}\n`);
+    expect(report.caseCount).toBeGreaterThan(0);
+  }, 600_000);
 });

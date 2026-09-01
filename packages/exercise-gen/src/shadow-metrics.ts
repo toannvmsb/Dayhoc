@@ -29,7 +29,9 @@ export interface ShadowMetrics {
   readonly quarantineRate: number;
   readonly averageGenerationAttempts: number;
   readonly averageRepairAttempts: number;
-  readonly answerDeterministicVerificationRate: number;
+  readonly answerFormatValidRate: number;
+  readonly answerDeterministicCorrectnessVerifiedRate: number;
+  readonly answerCrosscheckRequiredRate: number;
   readonly answerUnverifiedRate: number;
   readonly skillAdherenceRate: number;
   readonly bucketAdherenceRate: number;
@@ -87,7 +89,9 @@ export function aggregateShadowMetrics(records: readonly ShadowMetricRecord[]): 
   let tOk = 0;
 
   let avTotal = 0;
+  let avFormatValid = 0;
   let avDeterministic = 0;
+  let avCrosscheck = 0;
   let avUnverified = 0;
 
   const failuresByReasonCode: Record<string, number> = {};
@@ -140,9 +144,12 @@ export function aggregateShadowMetrics(records: readonly ShadowMetricRecord[]): 
     }
 
     if (rec.answerVerification) {
-      avTotal += rec.answerVerification.total;
-      avDeterministic += rec.answerVerification.byLevel.DETERMINISTIC_VERIFIED + rec.answerVerification.byLevel.HUMAN_GOLDEN_VERIFIED;
-      avUnverified += rec.answerVerification.byLevel.UNVERIFIED;
+      const av = rec.answerVerification;
+      avTotal += av.total;
+      avFormatValid += Math.round(av.formatValidRate * av.total);
+      avDeterministic += av.byLevel.DETERMINISTIC_CORRECTNESS_VERIFIED + av.byLevel.HUMAN_GOLDEN_VERIFIED;
+      avCrosscheck += av.byLevel.FORMAT_VERIFIED + av.byLevel.AI_CROSSCHECK_REQUIRED;
+      avUnverified += av.byLevel.UNVERIFIED;
     }
   }
 
@@ -157,7 +164,9 @@ export function aggregateShadowMetrics(records: readonly ShadowMetricRecord[]): 
     quarantineRate: quarantined / n,
     averageGenerationAttempts: genAttempts / n,
     averageRepairAttempts: repairAttempts / n,
-    answerDeterministicVerificationRate: avTotal > 0 ? avDeterministic / avTotal : 0,
+    answerFormatValidRate: avTotal > 0 ? avFormatValid / avTotal : 0,
+    answerDeterministicCorrectnessVerifiedRate: avTotal > 0 ? avDeterministic / avTotal : 0,
+    answerCrosscheckRequiredRate: avTotal > 0 ? avCrosscheck / avTotal : 0,
     answerUnverifiedRate: avTotal > 0 ? avUnverified / avTotal : 0,
     skillAdherenceRate: acceptedItems > 0 ? skillOk / acceptedItems : 0,
     bucketAdherenceRate: acceptedItems > 0 ? bucketOk / acceptedItems : 0,
@@ -187,7 +196,9 @@ const EMPTY: ShadowMetrics = {
   quarantineRate: 0,
   averageGenerationAttempts: 0,
   averageRepairAttempts: 0,
-  answerDeterministicVerificationRate: 0,
+  answerFormatValidRate: 0,
+  answerDeterministicCorrectnessVerifiedRate: 0,
+  answerCrosscheckRequiredRate: 0,
   answerUnverifiedRate: 0,
   skillAdherenceRate: 0,
   bucketAdherenceRate: 0,

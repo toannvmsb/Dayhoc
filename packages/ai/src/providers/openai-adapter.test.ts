@@ -55,6 +55,25 @@ describe('OpenAiProviderAdapter (doc 14 C5 §2/§4/§8) — no real network', ()
     expect(captured!.body.messages[1].content).toContain('data here');
   });
 
+  it('C5.1 §3 — STRICT mode sends a json_schema response_format and reports the mode used', async () => {
+    let body: { response_format?: { type?: string; json_schema?: { strict?: boolean } } } = {};
+    const fakeFetch: typeof fetch = (_url, init) => {
+      body = JSON.parse(String(init?.body)) as typeof body;
+      return Promise.resolve(new Response(JSON.stringify({ choices: [{ message: { content: '{}' } }], usage: {} }), { status: 200 }));
+    };
+    const adapter = createOpenAiProviderAdapter({ apiKey: 'k', model: 'gpt-5.6-luna', capability: 'generate_problem', compliance, fetchImpl: fakeFetch });
+
+    const strict = await adapter.call({ operation: 'x', schemaName: 'generatedExerciseBatch.v1', payload: {}, structuredOutputMode: 'STRICT_JSON_SCHEMA', jsonSchema: { type: 'object' } });
+    expect(body.response_format?.type).toBe('json_schema');
+    expect(body.response_format?.json_schema?.strict).toBe(true);
+    expect(strict.structuredOutputMode).toBe('STRICT_JSON_SCHEMA');
+
+    // asked for strict but no schema → honest downgrade, reported
+    const down = await adapter.call({ operation: 'x', schemaName: 's', payload: {}, structuredOutputMode: 'STRICT_JSON_SCHEMA' });
+    expect(body.response_format?.type).toBe('json_object');
+    expect(down.structuredOutputMode).toBe('JSON_OBJECT_FALLBACK');
+  });
+
   it('surfaces an HTTP error as a thrown provider error', async () => {
     const fakeFetch: typeof fetch = () =>
       Promise.resolve(new Response('rate limited', { status: 429 }));

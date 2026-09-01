@@ -8,3 +8,4 @@ export * from './teacher-contribution.schema.js';
 export * from './ai-classification.schema.js';
 export * from './exercise-generation.schema.js';
 export * from './generated-exercise.schema.js';
+export * from './generated-exercise.jsonschema.js';

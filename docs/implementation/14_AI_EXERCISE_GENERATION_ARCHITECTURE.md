@@ -132,6 +132,20 @@
 >     `describe.skipIf(!RUN_LIVE_AI_BENCHMARK)` + key check.
 >   - **No live provider run** (no key in the build environment). Advanced
 >     provider stays OPEN_PENDING_BENCHMARK. Practice runtime NOT flipped.
+> - **C5.1 ✅ — benchmark readiness hardening** (anh 2026-09-01) — doc 18 §14–§20:
+>   - `AnswerVerificationLevel` split: **`FORMAT_VERIFIED` ≠
+>     `DETERMINISTIC_CORRECTNESS_VERIFIED`**. A valid schema is never "verified".
+>   - `math-verifier.ts` — a DELIBERATELY narrow exact (bigint-rational)
+>     arithmetic verifier; word problems / estimation / blanks → `UNSUPPORTED`
+>     (never a guess); a proven-wrong supported answer → validator
+>     `ANSWER_INCONSISTENT` (not delivered). 3 real false positives fixed.
+>   - `AI_GENERATION_STRUCTURED_OUTPUT_MODE` (`STRICT_JSON_SCHEMA` /
+>     `JSON_OBJECT_FALLBACK`, default fallback); `openai-adapter` honestly
+>     downgrades + reports the mode used. `GENERATED_BATCH_JSON_SCHEMA` v1.
+>   - `GenerationOperation` + `structuredOutputMode` / `outputSchemaName` /
+>     `outputSchemaVersion`. Frozen `BENCHMARK_MANIFEST_VERSION` + coverage
+>     (gaps exposed). Spend guardrail (`LIVE_BENCHMARK_MAX_BATCHES` /
+>     `_MAX_COST_USD`). Machine-readable `BenchmarkReport`.
 > - **C6–C7 NOT STARTED** — no LIVE mode, no Interactive Adaptive Mode, no NBQ.
 
 ---

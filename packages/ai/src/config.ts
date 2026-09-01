@@ -6,6 +6,16 @@
  */
 import { AI_GENERATION_MODES, type AiGenerationMode } from '@copilot/domain';
 
+/**
+ * How the provider is asked to return structured output (doc 14 C5.1 §3).
+ *   STRICT_JSON_SCHEMA   — provider-native strict JSON-Schema structured output.
+ *   JSON_OBJECT_FALLBACK — broad JSON-mode; the Zod parse is the real contract.
+ * We NEVER fake strict support — if the configured model can't do it, the
+ * adapter downgrades and the benchmark records `JSON_OBJECT_FALLBACK`.
+ */
+export const STRUCTURED_OUTPUT_MODES = ['STRICT_JSON_SCHEMA', 'JSON_OBJECT_FALLBACK'] as const;
+export type StructuredOutputMode = (typeof STRUCTURED_OUTPUT_MODES)[number];
+
 export interface AiGenerationConfig {
   /** e.g. 'openai' — which adapter family `LunaExerciseGenerator` binds to. */
   readonly defaultProvider: string;
@@ -14,6 +24,11 @@ export interface AiGenerationConfig {
   /** Which price-config bundle is in effect (informational; the registry does the real lookup). */
   readonly pricingConfigVersion: string;
   readonly mode: AiGenerationMode;
+  /** Requested structured-output mode; the adapter may downgrade and report the real one. */
+  readonly structuredOutputMode: StructuredOutputMode;
+  /** Paid-benchmark spend guardrails (doc 14 C5.1 §8). */
+  readonly liveBenchmarkMaxBatches: number;
+  readonly liveBenchmarkMaxCostUsd: number;
 }
 
 function readMode(raw: string | undefined): AiGenerationMode {
@@ -29,12 +44,27 @@ function readMode(raw: string | undefined): AiGenerationMode {
  * `OFF` until `AI_GENERATION_MODE` is explicitly set.
  */
 export function loadAiGenerationConfig(env: Record<string, string | undefined> = process.env): AiGenerationConfig {
+  const som = (env.AI_GENERATION_STRUCTURED_OUTPUT_MODE ?? '').toUpperCase();
   return {
     defaultProvider: env.AI_GENERATION_DEFAULT_PROVIDER ?? 'openai',
     defaultModel: env.AI_GENERATION_DEFAULT_MODEL ?? 'gpt-5.6-luna',
     pricingConfigVersion: env.AI_PRICING_CONFIG_VERSION ?? 'ai-pricing-registry.v1',
     mode: readMode(env.AI_GENERATION_MODE),
+    structuredOutputMode: (STRUCTURED_OUTPUT_MODES as readonly string[]).includes(som)
+      ? (som as StructuredOutputMode)
+      : 'JSON_OBJECT_FALLBACK',
+    liveBenchmarkMaxBatches: intOr(env.LIVE_BENCHMARK_MAX_BATCHES, 20),
+    liveBenchmarkMaxCostUsd: floatOr(env.LIVE_BENCHMARK_MAX_COST_USD, 5),
   };
+}
+
+function intOr(raw: string | undefined, fallback: number): number {
+  const n = Number.parseInt(raw ?? '', 10);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+function floatOr(raw: string | undefined, fallback: number): number {
+  const n = Number.parseFloat(raw ?? '');
+  return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
 /**

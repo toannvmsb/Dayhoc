@@ -22,10 +22,14 @@
 > education-dumb prompt v1, `REFERENCE_EXAMPLE_COPY`, `AnswerVerificationLevel` +
 > second-pass verifier port, effective-dated actual cost, `AiGenerationMode`
 > OFF/SHADOW/LIVE + shadow queue wired into `childToday`, `PgGenerationStore`,
-> shadow metrics + benchmark harness) ✅ — **no live provider run, LIVE not
-> activated, no child ever sees AI content.** See
+> shadow metrics + benchmark harness) ✅ ·
+> **C5.1** benchmark readiness hardening (answer verification FORMAT ≠
+> CORRECTNESS, narrow deterministic math verifier, explicit strict-vs-fallback
+> structured output, schema/prompt/manifest versioning, frozen benchmark
+> manifest, paid-spend guardrail, machine-readable benchmark report) ✅ —
+> **no live provider run, LIVE not activated, no child ever sees AI content.** See
 > [18](18_LIVE_AI_GENERATION_SHADOW_MODE.md).
-> **446 tests / 5 skipped. No live AI provider run.** C6+ not started — awaiting anh's approval of C5.
+> **460 tests / 5 skipped. No live AI provider run.** C6+ not started — awaiting anh's approval of C5.1.
 
 ---
 

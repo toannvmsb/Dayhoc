@@ -401,18 +401,34 @@ export type AiGenerationMode = (typeof AI_GENERATION_MODES)[number];
 
 /**
  * How sure we are the ANSWER on a generated item is actually correct (doc 14 C5
- * §9) — separate from `ItemValidationOutcome`, which only checks contract shape.
- * An AI-provided solution is never assumed correct.
- *   DETERMINISTIC_VERIFIED — a deterministic checker recomputed the answer and
- *                            it matches (numeric / fraction / choice today).
- *   AI_CROSSCHECK_REQUIRED — no deterministic checker exists for this answer
- *                            kind (e.g. reasoning/proof); a second-pass AI or
- *                            human check is needed before this can be trusted.
- *   HUMAN_GOLDEN_VERIFIED  — a human reviewer confirmed this exact item.
- *   UNVERIFIED             — no verification has run yet.
+ * §9 + C5.1 §1) — separate from `ItemValidationOutcome`, which only checks
+ * contract SHAPE. An AI-provided solution is never assumed correct, and a
+ * well-formed answer key is NOT a correct one.
+ *
+ *   FORMAT_VERIFIED
+ *     — the answer key is well-formed and self-consistent (options contain the
+ *       correct choice, denominator ≠ 0, value finite, …) but NOTHING has
+ *       independently established that it is the RIGHT answer.
+ *   DETERMINISTIC_CORRECTNESS_VERIFIED
+ *     — an independent deterministic checker re-derived the answer from the
+ *       problem and it matches (only for the narrow arithmetic families the
+ *       math verifier supports — doc 14 C5.1 §2).
+ *   AI_CROSSCHECK_REQUIRED
+ *     — no deterministic path exists for this answer kind (reasoning/proof, or
+ *       the math verifier could not parse the problem); a second-pass AI or a
+ *       human must confirm it before it can be trusted.
+ *   HUMAN_GOLDEN_VERIFIED
+ *     — a human reviewer confirmed this exact item.
+ *   UNVERIFIED
+ *     — the answer key is malformed, OR the deterministic checker proved it
+ *       WRONG, OR nothing has run yet.
+ *
+ * INVARIANT: FORMAT_VERIFIED ≠ DETERMINISTIC_CORRECTNESS_VERIFIED. Schema
+ * validity alone never counts as answer verification.
  */
 export const ANSWER_VERIFICATION_LEVELS = [
-  'DETERMINISTIC_VERIFIED',
+  'FORMAT_VERIFIED',
+  'DETERMINISTIC_CORRECTNESS_VERIFIED',
   'AI_CROSSCHECK_REQUIRED',
   'HUMAN_GOLDEN_VERIFIED',
   'UNVERIFIED',

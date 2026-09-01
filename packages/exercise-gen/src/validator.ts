@@ -17,6 +17,7 @@ import {
 } from '@copilot/domain';
 import type { KnowledgeBase } from '@copilot/math-data';
 import { generatedExerciseSchema } from '@copilot/schemas';
+import { verifyMathAnswer } from './math-verifier.js';
 
 export const VALIDATOR_VERSION = 'generated-exercise-validator.v1';
 
@@ -289,6 +290,14 @@ export function validateGeneratedBatch(
     }
     if (item.answerSpec.kind === 'numeric' && !Number.isFinite(item.answerSpec.value)) {
       add('ANSWER_UNVERIFIABLE', [item.id], 'numeric answer is not a finite number');
+    }
+    // deterministic correctness check for the narrow arithmetic families the math
+    // verifier supports (doc 14 C5.1 §2). It only ever fires on a HIGH-CONFIDENCE
+    // "supported AND provably wrong" verdict — an unparseable word problem is
+    // `UNSUPPORTED` and left alone.
+    const math = verifyMathAnswer(item);
+    if (math.verdict === 'INCORRECT') {
+      add('ANSWER_INCONSISTENT', [item.id], `deterministic check: ${math.detail}`);
     }
 
     // 8. safety / age / language

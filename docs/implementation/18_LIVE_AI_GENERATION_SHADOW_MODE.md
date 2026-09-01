@@ -138,3 +138,73 @@ integration test verified against the portable Postgres.
 No LIVE activation · no AI content to a child · legacy practice intact · no Next
 Best Question · Reference Library intact · no Terra/Sonnet hard-code · no pricing
 change · no OCR work · no paid network call in the default test run.
+
+---
+
+# C5.1 — Benchmark readiness hardening (anh 2026-09-01)
+
+## 14. Answer verification — FORMAT ≠ CORRECTNESS
+
+`AnswerVerificationLevel` (doc `exercise-gen.ts`) is now:
+`FORMAT_VERIFIED | DETERMINISTIC_CORRECTNESS_VERIFIED | AI_CROSSCHECK_REQUIRED |
+HUMAN_GOLDEN_VERIFIED | UNVERIFIED`. **A well-formed answer key is
+`FORMAT_VERIFIED`, never `DETERMINISTIC_CORRECTNESS_VERIFIED`** unless an
+independent checker re-derived the result. A key the checker proves WRONG →
+`UNVERIFIED` (and the validator raises `ANSWER_INCONSISTENT` → not delivered).
+Benchmark answer metrics: `answerFormatValidRate`,
+`answerDeterministicCorrectnessVerifiedRate`, `answerCrosscheckRequiredRate`,
+`answerUnverifiedRate` — the report never claims "100% verified" off a valid schema.
+
+## 15. Deliberately narrow deterministic math verifier
+
+`math-verifier.ts` `verifyMathAnswer(item)` → `CORRECT | INCORRECT | UNSUPPORTED`.
+Exact bigint-rational arithmetic (`+ - × · * / :` and parentheses, decimals with
+`.` or `,`, `−`/`–` normalized). It extracts a closed expression ONLY when the
+prompt is essentially just that expression — any estimation wording
+(`ước lượng`, `làm tròn`, `gần`, `khoảng`, …), any blank marker (`?`, `_`, `x`,
+`điền`, …), any leftover prose → `UNSUPPORTED` (never a guess). `choice`
+mismatches are `UNSUPPORTED` too (could be "closest to" semantics), never
+`INCORRECT`. Verified with 3 real reference-library false-positive cases that
+now pass. **NOT a CAS** — word problems are `AI_CROSSCHECK_REQUIRED`.
+
+## 16. Structured output mode — explicit, never faked
+
+Config `AI_GENERATION_STRUCTURED_OUTPUT_MODE` → `STRICT_JSON_SCHEMA |
+JSON_OBJECT_FALLBACK` (default FALLBACK). `openai-adapter.ts` sends
+`response_format: {type:'json_schema', json_schema:{strict:true, schema}}` only
+when STRICT is requested AND a schema is supplied — otherwise it honestly
+downgrades and reports `JSON_OBJECT_FALLBACK`. The hand-authored schema is
+`@copilot/schemas` `GENERATED_BATCH_JSON_SCHEMA`
+(`generatedExerciseBatch.jsonschema.v1`). The Zod parse + `GeneratedExerciseValidator`
+remain the real contract regardless.
+
+## 17. Versioning on every operation + benchmark result
+
+`GenerationOperation` gains `structuredOutputMode`, `outputSchemaName`,
+`outputSchemaVersion` (alongside `promptVersion`). The benchmark report records
+`benchmarkVersion`, `manifestVersion`, `promptVersion`, `outputSchemaVersion`,
+`structuredOutputModeRequested` / `…Used`, `pricingConfigVersion`.
+
+## 18. Frozen benchmark manifest + spend guardrail
+
+`luna-benchmark-manifest.ts` — `BENCHMARK_MANIFEST_VERSION`,
+`BENCHMARK_PROFILE_IDS` (8 × `LT-G4-*` + 8 × `LT-G7-*`, id order),
+`buildBenchmarkManifest()` builds real specs through `buildExerciseGenerationSpec`,
+`manifestCoverage()` reports what's covered AND the gaps (the golden dataset has
+no strong above-grade FRONTIER / T4-T5 profiles — flagged, not hidden).
+`runLunaBenchmark({..., maxBatches, maxCostUsd})` stops BEFORE exceeding either
+(`LIVE_BENCHMARK_MAX_BATCHES` default 20, `LIVE_BENCHMARK_MAX_COST_USD` default 5).
+Live test is `describe.skipIf(!RUN_LIVE_AI_BENCHMARK)` + a key check + a 600s cap.
+
+## 19. Machine-readable + human-readable benchmark output
+
+`BenchmarkReport` (see the interface in `luna-generation-benchmark.ts`) carries
+`quality{…}`, `answers{formatValidRate, deterministicCorrectnessVerifiedRate,
+crosscheckRequiredRate, unverifiedRate}`, `performance{…}`, `usage{…}`,
+`cost{actualCostUsd, actualCostVnd, costPerBatchVnd, costPerQuestionVnd}`,
+`failures{reasonCode→count}`, `perCase[]`, `coverage`, `gates[]`. Plus
+`formatBenchmarkReport()` for a readable summary. The live test prints both.
+
+## 20. What C5.1 did NOT do
+
+Same list as §13 — plus: no live benchmark run (still no key), no Terra/Sonnet.

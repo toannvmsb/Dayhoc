@@ -107,6 +107,10 @@ export interface StructuredAIInput {
   readonly imageRefs?: readonly string[];
   readonly maxTokens?: number;
   readonly temperature?: number;
+  /** Requested output mode. `'STRICT_JSON_SCHEMA'` needs `jsonSchema`; the adapter downgrades if unsupported. */
+  readonly structuredOutputMode?: 'STRICT_JSON_SCHEMA' | 'JSON_OBJECT_FALLBACK';
+  /** A JSON-Schema object for strict structured output (used only in STRICT mode). */
+  readonly jsonSchema?: unknown;
 }
 
 export interface StructuredAIOutput {
@@ -115,6 +119,8 @@ export interface StructuredAIOutput {
   readonly imageCount?: number;
   readonly ocrPages?: number;
   readonly confidence?: number;
+  /** Which structured-output mode the adapter ACTUALLY used (may be a downgrade). */
+  readonly structuredOutputMode?: 'STRICT_JSON_SCHEMA' | 'JSON_OBJECT_FALLBACK';
 }
 
 export function estimateCostUsd(

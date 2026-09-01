@@ -1,5 +1,6 @@
 import type { ExerciseGenerationSpec, GeneratedExercise } from '@copilot/domain';
 import { KNOWLEDGE_LEVELS, THINKING_LEVELS } from '@copilot/domain';
+import { verifyMathAnswer } from './math-verifier.js';
 
 /**
  * Second-pass verification (doc 14 C5 §10). NOT run on every item by default —
@@ -44,7 +45,9 @@ export function wouldRequireVerification(
   if (item.answerSpec.kind === 'numeric' && item.answerSpec.tolerance <= 0) {
     triggers.push('ambiguous_answer');
   }
-  if (item.answerSpec.kind !== 'reasoning' && item.answerSpec.kind !== 'choice' && item.answerSpec.kind !== 'numeric' && item.answerSpec.kind !== 'fraction' && item.answerSpec.kind !== 'exact') {
+  // a non-reasoning item the deterministic math verifier could NOT resolve
+  // (couldn't parse a closed expression) still needs a crosscheck (doc 14 C5.1 §2/§10).
+  if (item.answerSpec.kind !== 'reasoning' && verifyMathAnswer(item).verdict === 'UNSUPPORTED') {
     triggers.push('deterministic_verifier_unresolved');
   }
 
