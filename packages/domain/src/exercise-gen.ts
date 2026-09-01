@@ -349,6 +349,8 @@ export const EXERCISE_VALIDATION_REASON_CODES = [
   'ANSWER_INCONSISTENT',
   // batch / surface
   'DUPLICATE_VARIANT',
+  /** Too close to a Reference Library grounding example (doc 14 C5 §7) — regenerate, never deliver verbatim. */
+  'REFERENCE_EXAMPLE_COPY',
   'UNSAFE_CONTENT',
   'NOT_AGE_APPROPRIATE',
   'LANGUAGE_MISMATCH',
@@ -385,3 +387,34 @@ export interface BatchValidationResult {
   /** @deprecated worst item outcome; use `batchDisposition`. */
   readonly outcome: ItemValidationOutcome;
 }
+
+/**
+ * Generation rollout mode (doc 14 C5 §11). A per-deployment / per-child flag —
+ * NEVER selected by parent goal or plan tier.
+ *   OFF    — legacy practice only, no AI generation runs at all.
+ *   SHADOW — legacy practice is what the child sees; AI generation runs in
+ *            parallel and NEVER enters the child-visible Assignment.
+ *   LIVE   — reserved for a future phase; must stay disabled until approved.
+ */
+export const AI_GENERATION_MODES = ['OFF', 'SHADOW', 'LIVE'] as const;
+export type AiGenerationMode = (typeof AI_GENERATION_MODES)[number];
+
+/**
+ * How sure we are the ANSWER on a generated item is actually correct (doc 14 C5
+ * §9) — separate from `ItemValidationOutcome`, which only checks contract shape.
+ * An AI-provided solution is never assumed correct.
+ *   DETERMINISTIC_VERIFIED — a deterministic checker recomputed the answer and
+ *                            it matches (numeric / fraction / choice today).
+ *   AI_CROSSCHECK_REQUIRED — no deterministic checker exists for this answer
+ *                            kind (e.g. reasoning/proof); a second-pass AI or
+ *                            human check is needed before this can be trusted.
+ *   HUMAN_GOLDEN_VERIFIED  — a human reviewer confirmed this exact item.
+ *   UNVERIFIED             — no verification has run yet.
+ */
+export const ANSWER_VERIFICATION_LEVELS = [
+  'DETERMINISTIC_VERIFIED',
+  'AI_CROSSCHECK_REQUIRED',
+  'HUMAN_GOLDEN_VERIFIED',
+  'UNVERIFIED',
+] as const;
+export type AnswerVerificationLevel = (typeof ANSWER_VERIFICATION_LEVELS)[number];

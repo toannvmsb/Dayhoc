@@ -1,12 +1,14 @@
-import { asChildId, type Evidence, type GradeContext, type Role, type TeacherContribution } from '@copilot/domain';
+import { asChildId, type AiGenerationMode, type Evidence, type GradeContext, type Role, type TeacherContribution } from '@copilot/domain';
 import { EvidenceService, InMemoryLedgerStore, type LedgerStore } from '@copilot/evidence';
 import { loadKnowledgeBase, type KnowledgeBase } from '@copilot/math-data';
 import { buildLearningTwin } from '@copilot/learning-twin';
 import { runGapEngine } from '@copilot/gap-engine';
 import { buildLearningContext, evaluatePace } from '@copilot/learning-context';
 import { CurriculumClockService, toExpectedLearningContext } from '@copilot/curriculum-clock';
-import { buildDailyPlan } from '@copilot/planning';
+import { buildDailyPlan, buildExerciseGenerationSpec } from '@copilot/planning';
 import { buildAssignmentsForPlan } from '@copilot/practice';
+import type { ExerciseGenerator, GenerationStore, ShadowGenerationQueue, UsageContext } from '@copilot/exercise-gen';
+import type { ReferenceExample } from '@copilot/reference-library';
 import {
   assertChildSafe,
   buildChildToday,
@@ -56,6 +58,21 @@ export interface ApiDeps {
   >;
   /** Persisted per-child applied pace_delta (doc 13 §4). Default 0. */
   readonly appliedPaceDeltaFor?: (childId: string) => number;
+  /**
+   * Live AI generation in SHADOW mode (doc 14 C5 §11). When `mode === 'SHADOW'`
+   * a full generation pipeline runs in parallel with the legacy child path via
+   * `queue` — the result NEVER enters the child-visible Assignment. When absent
+   * or `mode !== 'SHADOW'` nothing extra runs. `mode === 'LIVE'` is reserved
+   * and behaves like OFF here (never delivers AI content to a child).
+   */
+  readonly shadowGeneration?: {
+    readonly mode: AiGenerationMode;
+    readonly queue: ShadowGenerationQueue;
+    readonly generator: ExerciseGenerator;
+    readonly referenceLibrary: readonly ReferenceExample[];
+    readonly store?: GenerationStore;
+    readonly resolveUsageContext?: (childId: string, ctx: RequestContext) => UsageContext;
+  };
 }
 
 /**
@@ -90,6 +107,42 @@ export function createApi(deps: ApiDeps) {
   }
 
   const clock = new CurriculumClockService((child) => deps.appliedPaceDeltaFor?.(child.curriculum) ?? 0);
+
+  /**
+   * Build an `ExerciseGenerationSpec` for the current scene and enqueue a shadow
+   * generation job. NEVER throws (SHADOW failure is telemetry, not user-facing);
+   * NEVER awaited by the request handler.
+   */
+  function maybeRunShadowGeneration(
+    ctx: RequestContext,
+    childId: string,
+    s: Awaited<ReturnType<typeof scene>>,
+  ): void {
+    const sg = deps.shadowGeneration;
+    if (!sg || sg.mode !== 'SHADOW' || s.plan.kind !== 'plan') return;
+    try {
+      const spec = buildExerciseGenerationSpec({
+        childId: asChildId(childId),
+        gradeContext: s.rec.gradeContext,
+        twin: s.twin,
+        gaps: s.gaps,
+        context: s.context,
+        knowledgeBase: kb,
+        availableMinutes: 25,
+        asOf: s.asOf,
+      });
+      sg.queue.enqueue({
+        spec,
+        generator: sg.generator,
+        referenceLibrary: sg.referenceLibrary,
+        knowledgeBase: kb,
+        ...(sg.store ? { store: sg.store } : {}),
+        ...(sg.resolveUsageContext ? { usageContext: sg.resolveUsageContext(childId, ctx) } : {}),
+      });
+    } catch (err) {
+      logger.warn('shadow generation enqueue failed', { childId, error: err instanceof Error ? err.message : String(err) });
+    }
+  }
 
   async function scene(childId: string) {
     const rec = deps.childProfiles[childId]!;
@@ -188,6 +241,12 @@ export function createApi(deps: ApiDeps) {
         completedAssignmentIds: [],
       });
       assertChildSafe(view);
+
+      // SHADOW mode (doc 14 C5 §11/§12): kick off a parallel AI generation that
+      // the child NEVER sees. Everything here is best-effort and cannot touch
+      // `view` — a spec-build error or a full queue is swallowed, not surfaced.
+      maybeRunShadowGeneration(ctx, childId, s);
+
       return view;
     },
 

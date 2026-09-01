@@ -102,6 +102,8 @@ export interface StructuredAIInput {
   readonly operation: string;
   readonly schemaName: string;
   readonly payload: unknown;
+  /** Static system-level policy text (education-dumb contract, delimited from `payload`). */
+  readonly system?: string;
   readonly imageRefs?: readonly string[];
   readonly maxTokens?: number;
   readonly temperature?: number;

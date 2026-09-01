@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { asChildId, asSkillId, type Evidence } from '@copilot/domain';
 import { loadKnowledgeBase } from '@copilot/math-data';
+import { loadReferenceLibrary } from '@copilot/reference-library';
+import {
+  createMockExerciseGenerator,
+  createLunaExerciseGenerator,
+  InMemoryShadowGenerationQueue,
+  InMemoryGenerationStore,
+  type ExerciseGenerator,
+} from '@copilot/exercise-gen';
 import { assertChildSafe } from '@copilot/projections';
 import { AuthzError, createApi, type ApiDeps } from './api.js';
 
@@ -213,5 +221,89 @@ describe('Curriculum Clock + Context Resolver — B3', () => {
     expect(home.learningContext.headline.length).toBeGreaterThan(0); // reads actualTaughtPosition
     const s = await api.parentProgress(pAn, 'c_fresh');
     expect(s.child.displayName).toBe('Bé An'); // whole pipeline still runs
+  });
+});
+
+describe('C5 §23 — AI generation SHADOW mode (child never sees AI content)', () => {
+  const lib = loadReferenceLibrary();
+
+  function spyGenerator(inner: ExerciseGenerator): ExerciseGenerator & { calls: number } {
+    let calls = 0;
+    return {
+      ...inner,
+      get calls() {
+        return calls;
+      },
+      generate: (req) => {
+        calls += 1;
+        return inner.generate(req);
+      },
+    };
+  }
+  const alwaysFails = createLunaExerciseGenerator({
+    adapter: {
+      provider: 'openai',
+      capability: 'generate_problem',
+      model: 'gpt-5.6-luna',
+      processingRegion: 't',
+      crossBorder: false,
+      dataCategoriesAllowed: [],
+      providerRetention: 'none',
+      trainingAllowed: false,
+      dpaStatus: 'not_applicable',
+      call: () => Promise.reject(new Error('shadow provider down')),
+    },
+  });
+
+  function depsWith(mode: 'OFF' | 'SHADOW' | 'LIVE', generator: ExerciseGenerator, queue = new InMemoryShadowGenerationQueue()) {
+    return {
+      ...deps,
+      shadowGeneration: { mode, queue, generator, referenceLibrary: lib, store: new InMemoryGenerationStore() },
+    } satisfies ApiDeps;
+  }
+
+  it('7. OFF — no AI generation runs at all', async () => {
+    const gen = spyGenerator(createMockExerciseGenerator());
+    const queue = new InMemoryShadowGenerationQueue();
+    const api = createApi(depsWith('OFF', gen, queue));
+    await api.childToday(childCtx, childId);
+    await queue.drain();
+    expect(gen.calls).toBe(0);
+  });
+
+  it('8. LIVE stays gated — still never generates for a child here', async () => {
+    const gen = spyGenerator(createMockExerciseGenerator());
+    const queue = new InMemoryShadowGenerationQueue();
+    const api = createApi(depsWith('LIVE', gen, queue));
+    await api.childToday(childCtx, childId);
+    await queue.drain();
+    expect(gen.calls).toBe(0);
+  });
+
+  it('6. SHADOW — the child-visible assignment is identical to the legacy path', async () => {
+    const off = await createApi(depsWith('OFF', createMockExerciseGenerator())).childToday(childCtx, childId);
+    const queue = new InMemoryShadowGenerationQueue();
+    const shadow = await createApi(depsWith('SHADOW', createMockExerciseGenerator(), queue)).childToday(childCtx, childId);
+    await queue.drain();
+    expect(shadow).toEqual(off);
+  });
+
+  it('5. a SHADOW generation failure never reaches the child response', async () => {
+    const off = await createApi(depsWith('OFF', createMockExerciseGenerator())).childToday(childCtx, childId);
+    const queue = new InMemoryShadowGenerationQueue();
+    const view = await createApi(depsWith('SHADOW', alwaysFails, queue)).childToday(childCtx, childId);
+    await queue.drain();
+    assertChildSafe(view);
+    expect(view).toEqual(off);
+  });
+
+  it('SHADOW actually ran the generator (off the request path)', async () => {
+    const gen = spyGenerator(createMockExerciseGenerator());
+    const queue = new InMemoryShadowGenerationQueue();
+    const api = createApi(depsWith('SHADOW', gen, queue));
+    await api.childToday(childCtx, childId);
+    expect(gen.calls).toBe(0); // not on the synchronous request path
+    await queue.drain();
+    expect(gen.calls).toBeGreaterThan(0); // but it did run
   });
 });

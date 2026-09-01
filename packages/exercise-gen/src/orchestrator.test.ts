@@ -21,6 +21,7 @@ function scripted(outcomes: GenerationOutcome[]): ExerciseGenerator {
     provider: 'mock',
     model: 'mock',
     modelVersion: null,
+    promptVersion: null,
     generate: (_req: GenerationRequest) => Promise.resolve(outcomes[Math.min(i++, outcomes.length - 1)]!),
   };
 }

@@ -89,9 +89,50 @@
 >   - `math-data`: `CurriculumNode.nodeType` (`CORE_CURRICULUM | ENRICHMENT |
 >     ADVANCED | HSG | DIAGNOSTIC | REFERENCE`, default `CORE_CURRICULUM`) +
 >     `isEligibleForCurrentLearningContext(node)`. No string-matching on `"EXT"`.
-> - **No live AI provider.**
-> - **C5–C7 NOT STARTED** — practice runtime NOT flipped, legacy bank path still
->   in place, no Interactive Adaptive Mode, no production NBQ.
+> - **C5 ✅ — LIVE AI GENERATION IN SHADOW MODE** (anh 2026-09-01) — see
+>   [18_LIVE_AI_GENERATION_SHADOW_MODE.md](18_LIVE_AI_GENERATION_SHADOW_MODE.md):
+>   - **`AIProviderAdapter` isolation** — `createOpenAiProviderAdapter`
+>     (`@copilot/ai/providers/openai-adapter.ts`) is the ONLY OpenAI-aware file;
+>     `LunaExerciseGenerator` (`@copilot/exercise-gen/luna-generator.ts`)
+>     implements the unchanged C4 `ExerciseGenerator` interface over it.
+>   - **`loadAiGenerationConfig()`** — `AI_GENERATION_DEFAULT_PROVIDER /
+>     _MODEL / AI_PRICING_CONFIG_VERSION / AI_GENERATION_MODE` from env; no
+>     literal model name in planner/validator/target-selector/practice/domain;
+>     `resolveLunaApiKey()` reads `OPENAI_API_KEY` fresh and stores it nowhere.
+>   - **Both gates stay** — provider `json_object` mode → Zod parse
+>     (`generatedExerciseBatchSchema`) → the full `GeneratedExerciseValidator`.
+>   - **Education-dumb system prompt** `exercise-generator-prompt.v1`;
+>     GENERATION SPEC / REFERENCE DATA are DATA not instructions, delimited from
+>     SYSTEM POLICY; `promptVersion` persisted on every op + trace.
+>   - **Provider payload = `GenerationGrounding` only** — no childId / name /
+>     Twin / evidence / history (asserted).
+>   - **`REFERENCE_EXAMPLE_COPY`** reason code — validator now takes the
+>     grounding's `referenceExamples` and rejects a verbatim/near copy → REGEN.
+>   - **`AnswerVerificationLevel`** — deterministic well-formedness check for
+>     numeric/fraction/choice/exact; reasoning → `AI_CROSSCHECK_REQUIRED`.
+>     `SecondPassVerifier` port + `wouldRequireVerification` trigger + stub — no
+>     live second call wired.
+>   - **Actual cost** — `computeActualCost(usage, model, at, PricingRegistry)`,
+>     effective-dated; `estimatedCostUsd` stays a forecast; unpriced → `null`,
+>     never a pretend actual. `GenerationOperation` gains `promptVersion`,
+>     `inputTokens`, `cachedInputTokens`, `outputTokens`, `actualCostVnd`,
+>     `priceConfigVersion`, `escalatedFrom`.
+>   - **SHADOW mode** — `AiGenerationMode = OFF | SHADOW | LIVE` (default OFF).
+>     `ShadowGenerationQueue` port + `InMemoryShadowGenerationQueue`
+>     (`setImmediate`, error-isolated). `services/api` `childToday` enqueues a
+>     shadow run AFTER returning the legacy child view — the child-visible
+>     assignment is byte-identical to the legacy path and a shadow failure never
+>     reaches the child. **LIVE is not activated.**
+>   - **`PgGenerationStore`** (`@copilot/exercise-gen/pg`) — no new migration
+>     (reuses `generation_specs` / `generated_exercise_sets`).
+>   - **`aggregateShadowMetrics`** + benchmark harness
+>     (`@copilot/testing` `benchmark/luna-generation-benchmark.ts`,
+>     `buildBenchmarkSpecs` from the 48 synthetic golden profiles) + provisional
+>     `C5_SHADOW_GATES` (review only, never an auto-flip). Live benchmark
+>     `describe.skipIf(!RUN_LIVE_AI_BENCHMARK)` + key check.
+>   - **No live provider run** (no key in the build environment). Advanced
+>     provider stays OPEN_PENDING_BENCHMARK. Practice runtime NOT flipped.
+> - **C6–C7 NOT STARTED** — no LIVE mode, no Interactive Adaptive Mode, no NBQ.
 
 ---
 

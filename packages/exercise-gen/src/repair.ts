@@ -27,6 +27,7 @@ const INSTRUCTION: Record<ExerciseValidationReasonCode, string> = {
   ANSWER_UNVERIFIABLE: 'Provide an answerSpec that can be checked deterministically.',
   ANSWER_INCONSISTENT: 'Make the answer key consistent with the prompt and options.',
   DUPLICATE_VARIANT: 'Regenerate a structurally different variant (different numbers AND surface story).',
+  REFERENCE_EXAMPLE_COPY: 'Regenerate an original item — do not reuse a grounding reference example, even with different numbers.',
   UNSAFE_CONTENT: 'Regenerate with age-appropriate, neutral context.',
   NOT_AGE_APPROPRIATE: 'Regenerate with age-appropriate context for a lower-secondary pupil.',
   LANGUAGE_MISMATCH: 'Write the prompt and solution in Vietnamese with SGK notation.',

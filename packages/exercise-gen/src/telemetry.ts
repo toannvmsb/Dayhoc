@@ -13,6 +13,8 @@ export interface GenerationOperation {
   readonly provider: UsageProvider;
   readonly model: string;
   readonly modelVersion: string | null;
+  /** The generator's system-prompt version (doc 14 C5 §14) — `null` for the mock. */
+  readonly promptVersion: string | null;
   readonly generationSpecId: string;
   readonly kTarget: string | null;
   readonly tTarget: string | null;
@@ -22,6 +24,14 @@ export interface GenerationOperation {
   readonly estimatedCostUsd: number;
   /** ACTUAL cost computed from the provider response; `null` for a failed call. Mock → 0. */
   readonly actualCostUsd: number | null;
+  readonly actualCostVnd: number | null;
+  /** Which price-registry entry (its effective date) priced this call; `null` if unpriced. */
+  readonly priceConfigVersion: string | null;
+  readonly inputTokens: number | null;
+  readonly cachedInputTokens: number | null;
+  readonly outputTokens: number | null;
+  /** Routing escalation source (doc 14/15 cost & routing) — `null` when not escalated. */
+  readonly escalatedFrom: string | null;
   readonly latencyMs: number;
   readonly requestId: string;
   readonly createdAt: string;
@@ -49,11 +59,16 @@ export function generationOperationToUsageEvent(
     provider: op.provider,
     model: op.model,
     modelVersion: op.modelVersion,
+    priceConfigEffectiveDate: op.priceConfigVersion,
+    inputTokens: op.inputTokens,
+    cachedInputTokens: op.cachedInputTokens,
+    outputTokens: op.outputTokens,
     estimatedCostUsd: op.estimatedCostUsd,
     actualCostUsd: op.actualCostUsd,
     ...(ctx.fxVndPerUsd !== undefined ? { fxVndPerUsd: ctx.fxVndPerUsd } : {}),
     latencyMs: op.latencyMs,
     retryCount: op.retryCount,
+    escalatedFrom: op.escalatedFrom,
     generationSpecId: op.generationSpecId,
     learningContextSource: ctx.learningContextSource ?? null,
     kTarget: op.kTarget,

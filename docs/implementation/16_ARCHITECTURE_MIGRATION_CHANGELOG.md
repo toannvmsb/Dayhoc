@@ -16,8 +16,16 @@
 > `isEligibleForCurrentLearningContext`, synthetic EXT nodes can no longer become
 > `resolved.lessonId`, Next Safe Frontier selection with traced
 > `selectionReason`/`frontierEvidenceOrigin`, thinking-target fallback, no global
-> above-grade unlock) ✅.
-> **415 tests. No live AI provider.** C5+ not started — awaiting anh's approval of C4.2.
+> above-grade unlock) ✅ ·
+> **C5** LIVE AI GENERATION IN SHADOW MODE (`AIProviderAdapter` + OpenAI adapter,
+> `LunaExerciseGenerator`, env-driven config, structured output + both gates,
+> education-dumb prompt v1, `REFERENCE_EXAMPLE_COPY`, `AnswerVerificationLevel` +
+> second-pass verifier port, effective-dated actual cost, `AiGenerationMode`
+> OFF/SHADOW/LIVE + shadow queue wired into `childToday`, `PgGenerationStore`,
+> shadow metrics + benchmark harness) ✅ — **no live provider run, LIVE not
+> activated, no child ever sees AI content.** See
+> [18](18_LIVE_AI_GENERATION_SHADOW_MODE.md).
+> **446 tests / 5 skipped. No live AI provider run.** C6+ not started — awaiting anh's approval of C5.
 
 ---
 

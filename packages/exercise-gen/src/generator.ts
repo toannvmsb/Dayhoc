@@ -23,6 +23,8 @@ export interface ExerciseGenerator {
   readonly provider: UsageProvider;
   readonly model: string;
   readonly modelVersion: string | null;
+  /** The system-prompt version this generator sends (doc 14 C5 §14); `null` for the mock. */
+  readonly promptVersion: string | null;
   generate(request: GenerationRequest): Promise<GenerationOutcome>;
 }
 
@@ -45,9 +47,16 @@ export interface SlotRequest {
   readonly replaces: readonly string[];
 }
 
+/** Token usage a live provider call actually consumed (doc 14 C5 §15/§16). */
+export interface GenerationUsage {
+  readonly inputTokens: number;
+  readonly cachedInputTokens?: number;
+  readonly outputTokens: number;
+}
+
 export type GenerationOutcome =
-  | { readonly ok: true; readonly batch: GeneratedExerciseBatch; readonly latencyMs: number }
-  | { readonly ok: false; readonly inability: GenerationInability; readonly latencyMs: number };
+  | { readonly ok: true; readonly batch: GeneratedExerciseBatch; readonly latencyMs: number; readonly usage?: GenerationUsage }
+  | { readonly ok: false; readonly inability: GenerationInability; readonly latencyMs: number; readonly usage?: GenerationUsage };
 
 export interface GenerationInability {
   readonly reason:

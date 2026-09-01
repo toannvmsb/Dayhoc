@@ -51,6 +51,7 @@ export function createMockExerciseGenerator(opts: MockGeneratorOptions = {}): Ex
     provider: 'mock',
     model: 'mock',
     modelVersion: 'mock-1',
+    promptVersion: null,
     generate: (request) => Promise.resolve(runMock(request, opts.seed ?? 0)),
   };
 }

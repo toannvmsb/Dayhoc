@@ -1,14 +1,26 @@
 /**
  * @copilot/exercise-gen — the deterministic side of AI exercise generation
- * (doc 14 §6, C3 + C4). Contains the validator, the generator INTERFACE, a
- * deterministic grounding builder, a Mock generator (no network), and the
- * bounded orchestrator state machine. No live AI provider lives here.
+ * (doc 14 §6, C3 + C4) plus the C5 live-generation shadow-mode infrastructure.
+ * Contains the validator, the generator INTERFACE, a deterministic grounding
+ * builder, a Mock generator (no network), `LunaExerciseGenerator` (a real
+ * `AIProviderAdapter`-backed implementation of that same interface), the
+ * bounded orchestrator state machine, answer verification, a second-pass
+ * verifier port, the shadow-mode runner, and shadow quality metrics.
+ *
+ * The Postgres persistence backend is at `@copilot/exercise-gen/pg` (keeps
+ * `pg` out of the default import graph for pure/test consumers).
  */
 export * from './validator.js';
 export * from './grounding.js';
 export * from './generator.js';
 export * from './mock-generator.js';
+export * from './luna-generator.js';
 export * from './repair.js';
 export * from './telemetry.js';
+export * from './cost.js';
 export * from './orchestrator.js';
 export * from './persistence.js';
+export * from './answer-verification.js';
+export * from './verifier.js';
+export * from './shadow.js';
+export * from './shadow-metrics.js';

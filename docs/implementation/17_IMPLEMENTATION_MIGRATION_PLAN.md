@@ -211,16 +211,21 @@ then the default flips and the old path is deleted in a later step.
 - **Tests:** `target-selector.test.ts` (unchanged, still 7/7 green against the v2 selector) + new `packages/testing/src/golden/context-frontier-separation.test.ts` (12 tests — §7 full traceable example: EXT node never becomes resolved lesson, frontier still updates, teacher confirmation of an eligible node wins, EXT confirmation rejected, `reachedCurriculumOrigin=9` doesn't unlock a graph-disconnected sibling skill, Grade-8 bridge preferred over Grade-9 evidence, a mastered bridge enables a Grade-9 NEXT_SAFE pick, blocking-gap rejection with explicit reason, full selection provenance, thinking fallback used/not-fabricated, Context and Frontier independently reproducible from raw evidence). **415 pass / 2 skip.**
 - **No live provider.**
 
-### C5 — flip the practice path: plan → spec → generate → validate → assignment
-- **Goal:** `buildDailyPlan` also emits spec(s); `generateWorksheet(plan)` replaces `buildAssignmentsForPlan`.
-- **Files:** `packages/planning/src/daily-plan.ts`, `packages/practice/src/assignment.ts` (**delete** the bank path), `packages/testing/src/pipeline.test.ts` (rework), `apps/web` demo scenes.
-- **Deps:** C1–C4, B3.
-- **DB:** none new.
-- **API:** assignment/daily-plan response carries `questions[]` + `generationSpecId`.
-- **Tests:** `pipeline.test.ts` end-to-end via mock generator; `practice.test.ts` reworked; hint-ladder / submission / offline-queue unchanged.
-- **Golden:** Twin/Planner + E2E — add `generationSpecId` assertions; **expected outputs unchanged**.
-- **Rollback:** flag `USE_GENERATION` (old bank path kept one release, then deleted in C6).
-- **Acceptance:** demo child screen shows an AI-generated (mock) worksheet; no `loadQuestionBank` in the delivery path.
+### C5 — LIVE AI GENERATION IN SHADOW MODE — ✅ DONE (2026-09-01), no live run
+- **Goal (as re-scoped by anh):** NOT flip the practice path. MEASURE whether a live model can satisfy the deterministic contract at acceptable quality / reliability / latency / cost. Legacy Practice → Child stays the only production path; the shadow path runs in parallel and never reaches a child. Full spec: [18_LIVE_AI_GENERATION_SHADOW_MODE.md](18_LIVE_AI_GENERATION_SHADOW_MODE.md).
+- **Files:** `packages/ai/src/config.ts` (env config + key resolver), `packages/ai/src/providers/openai-adapter.ts` (`createOpenAiProviderAdapter` — the only OpenAI-aware file), `packages/ai/src/provider.ts` (`StructuredAIInput.system?`), `packages/exercise-gen/src/luna-generator.ts` (`LunaExerciseGenerator` + `exercise-generator-prompt.v1`), `.../cost.ts` (`computeActualCost`), `.../answer-verification.ts`, `.../verifier.ts`, `.../shadow.ts` (mode + queue port + runner), `.../shadow-metrics.ts`, `.../pg-persistence.ts` (`@copilot/exercise-gen/pg`), `.../generator.ts` (`GenerationUsage`, `promptVersion`), `.../telemetry.ts` + `.../orchestrator.ts` (usage → actual cost, new op fields), `.../validator.ts` + `packages/domain/src/exercise-gen.ts` (`REFERENCE_EXAMPLE_COPY`, `AI_GENERATION_MODES`, `ANSWER_VERIFICATION_LEVELS`), `services/api/src/api.ts` (`shadowGeneration` deps + `maybeRunShadowGeneration` in `childToday`), `packages/testing/src/benchmark/luna-generation-benchmark.ts`.
+- **Deps:** C1–C4.2, B3.
+- **DB:** none new — `generation_specs` / `generated_exercise_sets` already hold it (spec jsonb + trace jsonb). `PgGenerationStore` integration test verified against the portable Postgres.
+- **API:** no route change. `childToday` returns the legacy assignment unchanged, THEN enqueues a shadow run when `shadowGeneration.mode === 'SHADOW'`.
+- **Config:** `AI_GENERATION_DEFAULT_PROVIDER` / `AI_GENERATION_DEFAULT_MODEL` / `AI_PRICING_CONFIG_VERSION` / `AI_GENERATION_MODE` (`OFF` default). Key from `OPENAI_API_KEY` only, read fresh, stored nowhere.
+- **Tests:** `packages/exercise-gen/src/c5-live-generation.test.ts` (20 — §23 items 1–4, 9–24, all with a fake adapter, no network), `services/api/src/api.test.ts` (+6 — §23 items 5–8: SHADOW output == legacy, shadow failure never reaches child, OFF/LIVE never generate, shadow runs off the request path), `packages/ai/src/providers/openai-adapter.test.ts` (3 — delimited request, JSON-mode, error surfacing, no key in config), `packages/testing/src/benchmark/luna-generation-benchmark.test.ts` (3 + 1 live-skip — synthetic-only specs, harness end-to-end on a deterministic adapter), `packages/exercise-gen/src/pg-persistence.integration.test.ts` (1, DB-gated). **446 pass / 5 skipped** (2 live-benchmark, 2 pg-integration, 1 pre-existing).
+- **Golden:** unchanged.
+- **Not done:** LIVE mode not activated · no live provider run (no key in the build env) · advanced provider stays OPEN_PENDING_BENCHMARK · legacy practice path intact · no NBQ · Reference Library intact.
+
+### C5b — flip the practice path (was "C5") — NOT STARTED
+- **Goal:** `buildDailyPlan` also emits spec(s); `generateWorksheet(plan)` replaces `buildAssignmentsForPlan`; `AI_GENERATION_MODE = LIVE` after the shadow benchmark passes anh's review.
+- **Deps:** C5 benchmark reviewed + approved by anh.
+- **Rollback:** `AI_GENERATION_MODE` flag (`SHADOW` → `LIVE`); old bank path kept one release, deleted in C7.
 
 ### C6 — Interactive Adaptive Mode (`nextBestMove` + `NEXT_BEST_QUESTION`)
 - **Goal:** event-driven next question after an attempt.
