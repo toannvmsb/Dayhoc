@@ -1,5 +1,7 @@
 # 07 — Math Engine Plan
 
+> **⚠ Một phần bị SUPERSEDED bởi Architecture Migration v1.1 (AI-Generation-First — chờ anh duyệt).** Xung đột + luật mới: `docs/implementation/12`–`17`. Doc này sẽ được cập nhật khi migration được APPROVE.
+
 > Authority: Math Core Grade 4 (§14–§40) + Grade 7 + Tech Spec §8–§9. **Deterministic-first.** Engine là pure functions trên evidence + rules → dễ golden-test.
 
 ---

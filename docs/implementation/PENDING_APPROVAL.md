@@ -4,12 +4,40 @@
 > trong quá trình em làm autonomous các phase. **Không có mục nào trong đây chặn
 > phase kế tiếp** — em đã đi vòng hoặc để lại `todo` có đánh dấu.
 >
-> Cập nhật lần cuối: 2026-09-01 (golden Twin/Planner + E2E datasets; AI cost/routing architecture).
+> Cập nhật lần cuối: 2026-09-01 (Architecture Migration v1.1 — AI-Generation-First).
 >
-> **Tình trạng:** Toàn bộ 11 phase (P0→P10) đã có vertical slice + **258 test xanh**.
-> Deterministic engine, projections, web app (Parent/Child/Teacher/Exam/Weekly),
-> API role-gated, AI adapter + audit trace, **AI cost/routing/budget + telemetry**
-> đều chạy. Phần còn lại chủ yếu là **dữ liệu** và **quyết định của anh** — liệt kê dưới đây.
+> **Tình trạng:** Vertical slice P0–P10 xong, **263 test xanh**, web PWA test được trên iPhone.
+> **⚠ ĐANG CHỜ ANH DUYỆT ARCHITECTURE MIGRATION** (mục 0 dưới) — chưa implement.
+
+---
+
+## 0. ARCHITECTURE MIGRATION v1.1 — chờ anh APPROVE (2026-09-01)
+
+anh chốt Pricing/AI Cost/Routing **v1.1** (thay v1.0). Core change:
+**AI_GENERATION_FIRST** + Curriculum Clock + Learning Context Resolver.
+
+Em đã hoàn thành Phase 1–3 (audit + spec + migration plan), **chưa code feature**:
+
+| Doc | Nội dung |
+|---|---|
+| `12_ARCHITECTURE_MIGRATION_AUDIT.md` | Bảng OLD ASSUMPTION → NEW RULE cho 10 xung đột; mọi file/module bị ảnh hưởng |
+| `13_CURRICULUM_CLOCK_AND_CONTEXT_RESOLVER.md` | Spec `CurriculumClockService` + `LearningContextResolver` |
+| `14_AI_EXERCISE_GENERATION_ARCHITECTURE.md` | Spec `ExerciseGenerationSpec` → `ExerciseGenerator` → `GeneratedExerciseValidator` |
+| `15_AI_COST_AND_MODEL_ROUTING.md` | v1.1 (thay `PRICING_AND_COST_GUARDRAILS.md`): 3 ngưỡng, 4 state, cost theo operation |
+| `16_ARCHITECTURE_MIGRATION_CHANGELOG.md` | Danh sách chính xác doc/package/DB/API/test thay đổi |
+| `17_IMPLEMENTATION_MIGRATION_PLAN.md` | Atomic steps (Group A/B/C/D), rollback, acceptance, thứ tự |
+
+**Open questions cần anh quyết** (những cái KHÔNG suy ra được từ tài liệu):
+
+| # | Câu hỏi | Gợi ý |
+|---|---|---|
+| **O-1** | Lịch năm học nào seed cho pilot (ngày khai giảng + Tết + hè 2026–2027, phân phối chương trình SGK G4/G7)? | Em suy được từ nguồn MOET/SGK công khai; anh xác nhận trường pilot có lịch riêng không. Không chặn. |
+| **O-2** | `@copilot/practice` có tách làm 2 (`practice` loop + `exercise-gen`) hay giữ 1 package? | Em đề xuất tách — sạch hơn. |
+| **O-3** | Reference/Grounding Library: 22 câu nháp hiện tại đủ làm few-shot, hay anh muốn bổ sung trước khi bật generation? | Đủ để bắt đầu; bổ sung song song. |
+| **O-4** | Có bật **Interactive Adaptive Mode** (Next-Best-Question) ngay ở pilot, hay chỉ Worksheet Mode trước? | Em đề xuất Worksheet Mode trước (Group C5), Adaptive sau (C6). |
+| **O-5** | Migration làm **cuốn chiếu trong nhánh chính** (feature flags) hay 1 nhánh migration lớn? | Em đề xuất cuốn chiếu + flags (đã thiết kế trong doc 17). |
+
+Còn lại: mọi thứ LOCKED trong prompt v1.1 → em coi là đã quyết, không hỏi lại.
 
 ---
 

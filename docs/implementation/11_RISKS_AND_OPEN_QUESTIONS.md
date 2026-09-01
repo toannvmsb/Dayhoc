@@ -1,5 +1,7 @@
 # 11 — Risks & Open Questions
 
+> **⚠ Một phần bị SUPERSEDED bởi Architecture Migration v1.1 (AI-Generation-First — chờ anh duyệt).** Xung đột + luật mới: `docs/implementation/12`–`17`. Doc này sẽ được cập nhật khi migration được APPROVE.
+
 > Bao gồm: top risks, các **inconsistency giữa tài liệu nguồn**, và các **quyết định cần anh duyệt** trước Phase 0.
 
 ---

@@ -1,5 +1,7 @@
 # 10 — Implementation Roadmap
 
+> **⚠ Một phần bị SUPERSEDED bởi Architecture Migration v1.1 (AI-Generation-First — chờ anh duyệt).** Xung đột + luật mới: `docs/implementation/12`–`17`. Doc này sẽ được cập nhật khi migration được APPROVE.
+
 > Nguyên tắc: **không sang phase sau khi acceptance criteria phase hiện tại chưa đạt.** Deterministic education core + golden tests đi trước UI (Tech Spec §15).
 
 Mỗi phase: **Goal · Deliverables · Dependencies · Acceptance · Tests · Risks.**

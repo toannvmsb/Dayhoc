@@ -1,5 +1,7 @@
 # 02 — Domain Model
 
+> **⚠ Một phần bị SUPERSEDED bởi Architecture Migration v1.1 (AI-Generation-First — chờ anh duyệt).** Xung đột + luật mới: `docs/implementation/12`–`17`. Doc này sẽ được cập nhật khi migration được APPROVE.
+
 > Domain được thiết kế quanh **educational reality**, KHÔNG quanh màn hình (screens). UI là projection của domain, không phải ngược lại.
 
 ---

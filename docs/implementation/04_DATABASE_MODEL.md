@@ -1,5 +1,7 @@
 # 04 — Database Model
 
+> **⚠ Một phần bị SUPERSEDED bởi Architecture Migration v1.1 (AI-Generation-First — chờ anh duyệt).** Xung đột + luật mới: `docs/implementation/12`–`17`. Doc này sẽ được cập nhật khi migration được APPROVE.
+
 > Store: **PostgreSQL** (source of truth + audit). Nguyên tắc: **evidence append-only/auditable; mastery recomputable; prerequisite explicit; skills cross-grade; problem-type ≠ skill mastery; thinking ≠ knowledge; AI inference lưu confidence + provenance; nhiều nguồn evidence cùng tồn tại.**
 
 Ký hiệu: PK = primary key, FK = foreign key, `⊕` = append-only (no UPDATE/DELETE), `≈` = derived/recomputable (rebuild từ evidence).

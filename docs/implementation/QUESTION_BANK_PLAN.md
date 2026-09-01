@@ -1,5 +1,13 @@
 # Ngân hàng câu hỏi authored (D-03) — kế hoạch & tiến độ
 
+> **⚠ ĐANG ĐƯỢC REFRAME (migration v1.1, chờ anh duyệt).** Quyết định
+> **AI_GENERATION_FIRST**: các file `questions*.json` KHÔNG còn là nguồn phát bài
+> chính. Chúng trở thành **Reference / Grounding Library** (ví dụ họ bài, few-shot
+> cho generator, tham chiếu validation, golden fixtures). Nội dung 22 câu nháp
+> vẫn giữ nguyên giá trị. Xem `docs/implementation/14_AI_EXERCISE_GENERATION_ARCHITECTURE.md`.
+> Doc này sẽ đổi tên thành `REFERENCE_LIBRARY_AND_GROUNDING_PLAN.md` khi migration
+> được duyệt.
+
 > **Quyết định anh chốt Q5 (2026-09-01):** *"Em sinh nháp từ problem-type của
 > Dev Core → anh / GV duyệt & sửa."*
 >

@@ -1,7 +1,13 @@
 # CLAUDE.md — AI Parent Learning Copilot
 
 > Bộ nhớ dự án cho các phiên Claude Code sau. Ngắn gọn, không copy nguyên spec.
-> Nguồn sự thật đầy đủ: `File du an/` (6 tài liệu LOCKED v1.0) + `docs/implementation/` (11 tài liệu kế hoạch).
+> Nguồn sự thật đầy đủ: `File du an/` (tài liệu LOCKED) + `docs/implementation/`.
+
+> **⚠ ARCHITECTURE MIGRATION đang chờ anh duyệt (2026-09-01).** Pricing/AI Cost/Routing
+> **v1.1** thay v1.0. Core change = **AI_GENERATION_FIRST** (không dùng Question Bank
+> tĩnh làm nguồn phát bài) + **Curriculum Clock** + **Learning Context Resolver**.
+> Đọc `docs/implementation/12`–`17`. **Chưa implement** — code hiện tại vẫn theo v1.0
+> cho tới khi anh APPROVE migration plan (`17_IMPLEMENTATION_MIGRATION_PLAN.md`).
 
 ## Product mission
 AI copilot cho **BỐ MẸ** giúp con học Toán hiệu quả (tiểu học→THCS). App không dạy thay bố mẹ; app loại bỏ phần chuẩn bị/phân tích/soạn bài. Tối ưu **Parent Time → Child Progress** và **Verified Skills Mastered / Month**. Primary user = Parent; beneficiary = Child; contributor tùy chọn = Teacher.
@@ -13,7 +19,8 @@ Platforms: Web + iOS + Android. Pilot: Toán **lớp 4** + **lớp 7**. Bảy ca
 
 ## Education model invariants (NON-NEGOTIABLE)
 - `school_grade ≠ learning_level` — grade là **context, không phải trần**.
-- Loop: Evidence → Context → Twin → Gap/Root → Readiness → Prescription → Plan → Practice → Assessment → Evidence.
+- Loop (v1.0): Evidence → Context → Twin → Gap/Root → Readiness → Prescription → Plan → Practice → Assessment → Evidence.
+- **Loop (v1.1, sau khi anh duyệt migration):** SGK Curriculum Graph → **Curriculum Clock** → Expected Context → **Context Resolver** → Resolved Context → Twin + Gap + Readiness + Frontier + Parent Goal → NBLA → **ExerciseGenerationSpec** → **AI Exercise Generator** → **Validation** → Practice → Attempt → Evidence → Twin update → re-plan. Xem `docs/implementation/14`.
 - Hai trục độc lập: **Knowledge Level K0–K5** vs **Thinking Level T1–T5** (K2 vẫn có thể T5). Không đánh đồng "advanced" = "grade cao hơn".
 - Problem-type mastery ≠ skill mastery ≠ thinking profile (lưu riêng).
 - Gap lifecycle: DETECTED→CONFIRMED→TREATING→IMPROVING→CLOSED→MONITORING; **không đóng gap sau một lần đúng**; careless error không hạ mastery mạnh.
@@ -33,13 +40,17 @@ Platforms: Web + iOS + Android. Pilot: Toán **lớp 4** + **lớp 7**. Bảy ca
 - **Child**: login = **username + password do bố mẹ tạo** (con đổi được), scope child-safe projection. **PIN 4 số = shortcut vào bài được giao**, KHÔNG phải login. Child-safe từ SERVER — KHÔNG gap score/mastery/ranking/analytics/parent controls/consent/billing. Nav tối đa 4.
 - **Teacher**: chỉ context được mời; update < 60s; app đầy đủ khi không có teacher. KHÔNG thấy Twin/Gap.
 
-## AI cost invariants (Pricing + AI Cost Guardrails v1.0 — `docs/implementation/PRICING_AND_COST_GUARDRAILS.md`)
-- **Luna-first**: `resolveRoute()` — 85–95% call ở deterministic / question-bank / Luna. Escalate chỉ khi đo được (confidence thấp, mâu thuẫn, K4–K5/T4–T5…). Advanced (Sonnet 5 vs Terra) benchmark-gated.
-- **LLM không bao giờ sở hữu**: production skill IDs, prerequisite DAG, permissions, consent, gap-lifecycle thresholds, mastery formula, time-budget, billing/quota.
-- **Budget gate trước mỗi metered call** (`checkBudget`): per-plan target + hard ceiling; graceful fallback; `safetyCritical` (privacy/xoá/kiểm chứng) luôn bypass. Không retry-loop nào vượt ceiling.
-- **Margin floor 50%** doanh thu kể cả ở AI hard ceiling. Giá LOCKED (Free/169K/229K/329K) — không giảm vì COGS thực thấp.
-- **Public model prices = config effective-dated** (`ai_pricing_registry` / `PricingRegistry`), KHÔNG hard-code vào domain logic. FX VND cấu hình được.
-- Mọi call AI/OCR → `ai_usage_events` (pseudonymous, INSERT-only).
+## AI cost invariants (Pricing + AI Cost Guardrails **v1.1** — `docs/implementation/15_AI_COST_AND_MODEL_ROUTING.md`)
+> v1.0 doc `PRICING_AND_COST_GUARDRAILS.md` SUPERSEDED. Code chưa migrate — số v1.0 vẫn trong `@copilot/ai` cho tới khi anh duyệt.
+- **AI_GENERATION_FIRST**: bài tập AI sinh theo trạng thái từng học sinh. KHÔNG dùng Question Bank tĩnh làm nguồn phát bài (`docs/implementation/14`). Bank cũ → Reference/Grounding Library.
+- **Luna-first**: default `gpt-5.6-luna` (gồm worksheet batch generation). Advanced (Terra vs Sonnet) benchmark-gated. Sol = offline golden eval.
+- **Plan tier KHÔNG chọn model** — nhu cầu giáo dục + confidence + độ khó chọn. PRO làm K2/T2 → default; BASIC gặp T5/HSG hợp lệ → có thể escalate. Plan chỉ set **budget envelope**.
+- **Batch**: 1 `ExerciseGenerationSpec` → 1 lần gọi AI → N câu. KHÔNG 1 call/câu. Adaptive Next-Best-Question = event-driven.
+- **LLM không bao giờ sở hữu**: production skill IDs, prerequisite DAG, permissions, gap-lifecycle, readiness, planner constraints, schema, cost guardrails. LLM không tạo skill_id mới; low-confidence không âm thầm update Twin.
+- **3 ngưỡng / 4 state** (`AIBudgetGuardrail`): GREEN ≤ target · YELLOW ≤ operational ceiling (tối ưu routing/cache, KHÔNG giảm chất lượng học) · RED > ceiling (chặn retry loop, ép task chuẩn về default route, GIỮ escalation cần thiết) · BLOCKER = kinh tế vượt ranh giới margin 50% → cần phê duyệt.
+- Số v1.1: target FREE 2K/BASIC 8K/PLUS 15K/PRO 28K; operational ceiling 3K/10K/22K/40K; absolute boundary BASIC 12.25K/PLUS 27.25K/PRO 52.25K. Margin floor 50%. Giá LOCKED 169/229/329K.
+- **Cost forecast theo operation** (`Σ volume × unit cost × retry factor`), KHÔNG theo tokens/user. Prices = config effective-dated.
+- Mọi call AI/OCR → `AICostLedger` (`ai_usage_events`, pseudonymous, INSERT-only) + các trường mới: `model_version`, `price_config_effective_date`, `generation_spec_id`, `learning_context_source`, `K_target`, `T_target`, `escalated_from`.
 
 ## Privacy invariants (anh duyệt P-05 — `docs/implementation/PRIVACY_ARCHITECTURE.md`)
 - Privacy-by-Design, theo NĐ 13/2023. **Consent versioned + auditable** (`consent_records` ⊕), không dùng boolean.

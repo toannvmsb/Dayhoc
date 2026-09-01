@@ -1,5 +1,7 @@
 # 09 — Frontend Architecture
 
+> **⚠ Một phần bị SUPERSEDED bởi Architecture Migration v1.1 (AI-Generation-First — chờ anh duyệt).** Xung đột + luật mới: `docs/implementation/12`–`17`. Doc này sẽ được cập nhật khi migration được APPROVE.
+
 > Authority: UI/UX Spec. **Parent-first.** Child nhận **child-safe projection từ API** (không chỉ ẩn field ở UI). Cross-platform: web + iOS + Android chia sẻ contract, tokens, state machines.
 
 ---

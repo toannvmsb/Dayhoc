@@ -1,5 +1,7 @@
 # 06 — AI Orchestration Plan
 
+> **⚠ Một phần bị SUPERSEDED bởi Architecture Migration v1.1 (AI-Generation-First — chờ anh duyệt).** Xung đột + luật mới: `docs/implementation/12`–`17`. Doc này sẽ được cập nhật khi migration được APPROVE.
+
 > Authority: Technical Spec §6, §7. **AI KHÔNG sở hữu deterministic educational rules.** Mọi AI output phục vụ engine phải qua **JSON schema validation + confidence threshold + fallback**.
 
 ---

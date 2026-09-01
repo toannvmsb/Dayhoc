@@ -1,5 +1,7 @@
 # 05 — API Contract Plan
 
+> **⚠ Một phần bị SUPERSEDED bởi Architecture Migration v1.1 (AI-Generation-First — chờ anh duyệt).** Xung đột + luật mới: `docs/implementation/12`–`17`. Doc này sẽ được cập nhật khi migration được APPROVE.
+
 > Authority: Technical Spec §10, §11. Nguyên tắc: **API-first, typed contract chia sẻ client↔server, role-based projection (child-safe ở server).**
 
 ---

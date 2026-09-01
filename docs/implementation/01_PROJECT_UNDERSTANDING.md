@@ -1,5 +1,7 @@
 # 01 — Project Understanding
 
+> **⚠ Một phần bị SUPERSEDED bởi Architecture Migration v1.1 (AI-Generation-First — chờ anh duyệt).** Xung đột + luật mới: `docs/implementation/12`–`17`. Doc này sẽ được cập nhật khi migration được APPROVE.
+
 > Tài liệu này xác nhận sự hiểu của Lead Architect về sản phẩm **AI Parent Learning Copilot** trước khi viết code.
 > Nguồn sự thật: `File du an/` (DEV CORE README, Product Blueprint, Technical Spec, UI/UX Spec, Math Core Grade 4, Math Core Grade 7).
 

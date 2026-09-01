@@ -1,5 +1,7 @@
 # 08 — Golden Test Plan
 
+> **⚠ Một phần bị SUPERSEDED bởi Architecture Migration v1.1 (AI-Generation-First — chờ anh duyệt).** Xung đột + luật mới: `docs/implementation/12`–`17`. Doc này sẽ được cập nhật khi migration được APPROVE.
+
 > Golden educational tests là **bắt buộc trước khi mở rộng UI** (Tech Spec §14). Engine phải chứng minh khả năng **phân biệt các loại lỗi** và **tách Knowledge Level khỏi Thinking Level** — deterministic, trong tolerance.
 
 ---
