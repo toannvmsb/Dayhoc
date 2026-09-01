@@ -19,16 +19,61 @@ export interface TeacherContribution {
   readonly examRef?: { readonly date: string; readonly scopeNote?: string };
 }
 
+/** How a learning-context position was established (Pricing v1.1 §2, doc 13). */
+export const LEARNING_CONTEXT_SOURCES = [
+  'TEACHER_UPDATE',
+  'PARENT_UPDATE',
+  'SCHOOLWORK_EVIDENCE',
+  'CURRICULUM_TIMELINE',
+] as const;
+export type LearningContextSource = (typeof LEARNING_CONTEXT_SOURCES)[number];
+
+export const LEARNING_CONTEXT_CONFIDENCE = ['VERIFIED', 'STRONG', 'SUPPORTING', 'ESTIMATED'] as const;
+export type LearningContextConfidence = (typeof LEARNING_CONTEXT_CONFIDENCE)[number];
+
+/** The calendar-based estimate of where the class *should* be (Curriculum Clock). */
+export interface ExpectedLearningContext {
+  readonly curriculum: string;
+  readonly chapterId: number;
+  /** KB curriculum-node id, e.g. C.G7.6.21. */
+  readonly lessonId: string;
+  readonly alsoPlausibleLessonIds: readonly string[];
+  readonly source: 'CURRICULUM_TIMELINE';
+  readonly confidence: 'ESTIMATED';
+  readonly asOfDate: string; // ISO date
+}
+
+/** The single resolved answer the planner uses (LearningContextResolver). */
+export interface ResolvedLearningContext {
+  readonly chapterId: number | null;
+  readonly lessonId: string | null;
+  readonly activeSkillIds: readonly SkillId[];
+  readonly source: LearningContextSource;
+  readonly confidence: LearningContextConfidence;
+  /** Timestamp of the strongest confirming signal; null when only an estimate. */
+  readonly lastVerifiedAt: string | null;
+}
+
 /**
- * LearningContext — "what is the child learning right now", assembled from evidence.
- * MUST build even with zero teacher contributions (parent-only path).
+ * LearningContext — "what is the child learning right now".
+ * MUST build even with zero teacher contributions AND zero parent input — the
+ * Curriculum Clock supplies an `ESTIMATED` baseline (Pricing v1.1 §2).
  */
 export interface LearningContext {
   readonly childId: ChildId;
   readonly builtAt: string; // ISO
-  /** Where the standard curriculum expects the child to be (from grade + calendar/evidence). */
+  /** Calendar estimate (Curriculum Clock). */
+  readonly expected: ExpectedLearningContext | null;
+  /** Reliability-weighted merge of estimate + all observed evidence (Context Resolver). */
+  readonly resolved: ResolvedLearningContext;
+  /** Learned class-pace adjustment, −0.35..0.35 (0 = on the calendar mean). */
+  readonly paceDelta: number;
+  /**
+   * @deprecated migration alias for `expected` — whole-grade scope.
+   * Removed once all consumers read `expected`/`resolved` (doc 17 Group B/C).
+   */
   readonly standardPosition: CurriculumPosition;
-  /** What has actually been taught recently, from teacher/parent/scan evidence. */
+  /** @deprecated migration alias for `resolved`. */
   readonly actualTaughtPosition: CurriculumPosition;
   /** Per-domain exposure frontier — NEVER a single global grade level. */
   readonly frontier: readonly FrontierEntry[];

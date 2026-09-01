@@ -3,12 +3,14 @@ import {
   type ChildId,
   type Domain,
   type Evidence,
+  type ExpectedLearningContext,
   type GradeContext,
   type LearningContext,
   type SkillId,
   type TeacherContribution,
 } from '@copilot/domain';
 import type { KnowledgeBase } from '@copilot/math-data';
+import { resolveLearningContext } from './resolver.js';
 
 export interface BuildContextInput {
   readonly childId: ChildId;
@@ -16,6 +18,12 @@ export interface BuildContextInput {
   readonly evidence: readonly Evidence[];
   readonly teacherContributions: readonly TeacherContribution[];
   readonly knowledgeBase: KnowledgeBase;
+  /**
+   * Curriculum Clock estimate (doc 13). When absent, `expected` is null and the
+   * resolver falls back to observed evidence / whole-grade scope. Wired in at
+   * doc 17 Group B3.
+   */
+  readonly expectedContext?: ExpectedLearningContext | null;
   /** "Now" for recency windows. Injectable for tests. */
   readonly asOf?: Date;
   /** How many days back counts as "actively being learned". */
@@ -75,24 +83,54 @@ export function buildLearningContext(input: BuildContextInput): LearningContext 
         ]
       : [];
 
+  const expected = input.expectedContext ?? null;
+  const { resolved, conflictLessonIds } = resolveLearningContext({
+    expected,
+    contributions: teacherContributions,
+    evidence,
+    knowledgeBase: kb,
+    asOf,
+    ...(input.recencyDays !== undefined ? { recencyDays: input.recencyDays } : {}),
+  });
+
+  const resolvedSkillIds =
+    resolved.activeSkillIds.length > 0
+      ? [...resolved.activeSkillIds]
+      : taughtSkillIds.length > 0
+        ? taughtSkillIds
+        : activeFromEvidence;
+
+  const lessonConflicts = conflictLessonIds.map((lessonId) => ({
+    skillId: (activeSkillIds[0] ?? standardSkillIds[0]) as SkillId,
+    reason: `Nguồn đang chỉ về hai bài học khác nhau (bài ${lessonId}) — bố mẹ xác nhận giúp.`,
+    sources: ['context_resolver'],
+  }));
+
   return {
     childId,
     builtAt: asOf.toISOString(),
+    expected,
+    resolved,
+    paceDelta: 0, // pace learning wired in at doc 17 Group B3
     standardPosition: {
       skillIds: standardSkillIds,
-      note: 'Phạm vi chuẩn theo lớp; lịch trình theo tuần chưa được cấu hình.',
+      note: 'Phạm vi chuẩn theo lớp.',
     },
     actualTaughtPosition: {
-      skillIds: taughtSkillIds.length > 0 ? taughtSkillIds : activeFromEvidence,
+      skillIds: resolvedSkillIds,
       note:
-        taughtSkillIds.length > 0
-          ? 'Từ cập nhật của giáo viên/bố mẹ.'
-          : 'Suy ra từ bài con đã làm (chưa có cập nhật của giáo viên).',
+        resolved.source === 'CURRICULUM_TIMELINE'
+          ? 'Ước tính theo lịch chương trình (chưa có xác nhận của giáo viên/bố mẹ).'
+          : resolved.source === 'TEACHER_UPDATE'
+            ? 'Từ cập nhật của giáo viên.'
+            : resolved.source === 'PARENT_UPDATE'
+              ? 'Từ cập nhật của bố mẹ.'
+              : 'Suy ra từ bài con đã làm.',
     },
     frontier,
     activeSkillIds,
     teacherParticipated: teacherContributions.length > 0,
-    conflicts,
+    conflicts: [...conflicts, ...lessonConflicts],
   };
 }
 

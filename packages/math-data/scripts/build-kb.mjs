@@ -273,3 +273,13 @@ for (const grade of [4, 7]) {
       `${data.prerequisites.length} prereq edges, ${data.problemTypes.length} problem types → ${path}`,
   );
 }
+
+// --- curriculum calendars (Pricing v1.1 §2 — Curriculum Clock) ---
+{
+  const CAL = join(ROOT, 'data', 'calendars');
+  const files = ['g4-2026-2027.yaml', 'g7-2026-2027.yaml'];
+  const calendars = files.map((f) => YAML.parse(readFileSync(join(CAL, f), 'utf8')));
+  const path = join(OUT, 'calendars.json');
+  writeFileSync(path, JSON.stringify(calendars, null, 2) + '\n');
+  console.log(`calendars: ${calendars.length} → ${path}`);
+}

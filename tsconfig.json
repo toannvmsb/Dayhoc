@@ -5,6 +5,7 @@
     { "path": "packages/schemas" },
     { "path": "packages/education-core" },
     { "path": "packages/math-data" },
+    { "path": "packages/curriculum-clock" },
     { "path": "packages/design-tokens" },
     { "path": "packages/observability" },
     { "path": "packages/evidence" },

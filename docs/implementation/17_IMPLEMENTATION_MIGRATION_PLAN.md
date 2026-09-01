@@ -79,6 +79,17 @@ then the default flips and the old path is deleted in a later step.
 
 ## Group B — Curriculum Clock & Context Resolver
 
+> **B1 + B2 ✅ DONE (2026-09-01).** New `@copilot/curriculum-clock`
+> (`CurriculumClockService`), provisional calendars for G4+G7 KNTT 2026–2027
+> (`packages/math-data/data/calendars/`, built into `calendars.json`).
+> `@copilot/learning-context` gains `resolveLearningContext` (reliability-weighted,
+> not latest-wins). `LearningContext` type extended with `expected` / `resolved`
+> / `paceDelta`; `standardPosition` / `actualTaughtPosition` kept as deprecated
+> aliases. `buildLearningContext` accepts an optional `expectedContext` and calls
+> the resolver. **No behaviour change until B3 wires the clock in.** 285 tests green.
+> **B3 (wiring + API + web) not started** — next.
+
+
 ### B1 — calendar reference data + `@copilot/curriculum-clock`
 - **Goal:** `CurriculumClockService.positionFor(child, date)` → estimated position.
 - **Files:** new `packages/math-data/data/calendars/{g4,g7}-2026-2027.yaml` (from SGK phân phối chương trình); `packages/math-data/scripts/build-kb.mjs` (load calendars); new `packages/curriculum-clock/`.

@@ -7,3 +7,4 @@
  * usable context — teacher participation is optional, never required.
  */
 export * from './build.js';
+export * from './resolver.js';

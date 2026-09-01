@@ -37,8 +37,10 @@ describe('buildLearningContext (Phase 2 acceptance)', () => {
 
     expect(ctx.teacherParticipated).toBe(false);
     expect(ctx.activeSkillIds).toContain('M7.RATIO.PROPORTION');
+    // resolver falls back to observed schoolwork when there is no teacher/parent update
+    expect(ctx.resolved.source).toBe('SCHOOLWORK_EVIDENCE');
+    expect(ctx.resolved.activeSkillIds.length).toBeGreaterThan(0);
     expect(ctx.actualTaughtPosition.skillIds.length).toBeGreaterThan(0);
-    expect(ctx.actualTaughtPosition.note).toMatch(/chưa có cập nhật của giáo viên/);
     expect(ctx.standardPosition.skillIds.length).toBeGreaterThan(0);
   });
 
@@ -64,7 +66,8 @@ describe('buildLearningContext (Phase 2 acceptance)', () => {
     });
     expect(ctx.teacherParticipated).toBe(true);
     expect(ctx.actualTaughtPosition.skillIds).toContain('M7.RATIO.EQUAL_CHAIN');
-    expect(ctx.actualTaughtPosition.note).toMatch(/giáo viên\/bố mẹ/);
+    expect(ctx.resolved.source).toBe('TEACHER_UPDATE');
+    expect(ctx.resolved.lastVerifiedAt).not.toBeNull();
     expect(ctx.conflicts).toHaveLength(0);
   });
 
