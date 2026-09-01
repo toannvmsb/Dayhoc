@@ -1,6 +1,7 @@
-import type { ChildId, ProblemTypeId, SkillId } from './identifiers.js';
+import type { ChildId, GradeContext, ProblemTypeId, SkillId } from './identifiers.js';
 import type { KnowledgeLevel, ThinkingDimension, ThinkingLevel } from './taxonomy.js';
 import type { LearningContextConfidence, LearningContextSource } from './context.js';
+import type { AnswerSpec } from './planning.js';
 
 /**
  * ExerciseGenerationSpec (doc 14 §3, Pricing v1.1 §3 — LOCKED, AI_GENERATION_FIRST).
@@ -22,6 +23,8 @@ export interface ExerciseGenerationSpec {
   readonly generationSpecId: string;
   readonly childId: ChildId;
   readonly createdAt: string; // ISO
+  /** The child's school grade — CONTEXT for above-grade checks, never a ceiling. */
+  readonly schoolGrade: GradeContext;
 
   readonly learningContext: SpecLearningContext;
   readonly goal: SpecGoal;
@@ -150,4 +153,101 @@ export interface SpecProvenance {
   readonly twinVersion: string;
   /** gapEngineResult.computedAt. */
   readonly gapSnapshotVersion: string;
+}
+
+// --- Generated exercises + validation (doc 14 §6, C3) -------------------
+
+/**
+ * One AI-generated exercise. Content only — every structural / curricular
+ * decision was already made by the `ExerciseGenerationSpec`. Must pass
+ * `GeneratedExerciseValidator` before it can reach a child.
+ */
+export interface GeneratedExercise {
+  readonly id: string; // ULID assigned by the generator
+  readonly generationSpecId: string;
+  readonly skillId: SkillId;
+  readonly problemTypeId?: ProblemTypeId;
+  /** Which `ExerciseDistribution` bucket this item fills. */
+  readonly bucket: keyof ExerciseDistribution;
+  readonly knowledgeLevel: KnowledgeLevel;
+  readonly thinkingLevel: ThinkingLevel;
+  readonly prompt: string;
+  readonly answerSpec: AnswerSpec;
+  /** Six-rung hint ladder (Math Core §17) — last rung is the full solution. */
+  readonly hints: readonly string[];
+  readonly workedSolution: string;
+  /** Required for `answerSpec.kind === 'reasoning'`: how to grade the explanation. */
+  readonly rubric?: string;
+  readonly origin: 'ai_generated';
+  readonly variantOf?: string;
+}
+
+export interface GeneratedExerciseBatch {
+  readonly generationSpecId: string;
+  readonly generatedAt: string; // ISO
+  readonly generatorModel?: string;
+  readonly items: readonly GeneratedExercise[];
+}
+
+export const VALIDATION_OUTCOMES = ['PASS', 'REPAIRABLE', 'REGENERATE', 'BLOCK'] as const;
+export type ValidationOutcome = (typeof VALIDATION_OUTCOMES)[number];
+
+/** Worst-wins ordering. */
+export const OUTCOME_SEVERITY: Record<ValidationOutcome, number> = {
+  PASS: 0,
+  REPAIRABLE: 1,
+  REGENERATE: 2,
+  BLOCK: 3,
+};
+
+export const EXERCISE_VALIDATION_REASON_CODES = [
+  // schema / completeness
+  'SCHEMA_INVALID',
+  'MISSING_ANSWER',
+  'MISSING_SOLUTION',
+  'MISSING_RUBRIC',
+  'HINT_LADDER_MALFORMED',
+  // identity (non-negotiable — AI may not invent IDs)
+  'UNKNOWN_SKILL_ID',
+  'SKILL_NOT_IN_SPEC',
+  'UNKNOWN_PROBLEM_TYPE',
+  'PROBLEM_TYPE_SKILL_MISMATCH',
+  // difficulty
+  'OUTSIDE_K_RANGE',
+  'OUTSIDE_T_RANGE',
+  'CHALLENGE_EXCEEDS_SPEC',
+  // curriculum safety
+  'UNLEARNED_REQUIRED_KNOWLEDGE',
+  'ABOVE_GRADE_KNOWLEDGE_NOT_ALLOWED',
+  // answer
+  'ANSWER_UNVERIFIABLE',
+  'ANSWER_INCONSISTENT',
+  // batch / surface
+  'DUPLICATE_VARIANT',
+  'UNSAFE_CONTENT',
+  'NOT_AGE_APPROPRIATE',
+  'LANGUAGE_MISMATCH',
+  'DISTRIBUTION_MISMATCH',
+] as const;
+export type ExerciseValidationReasonCode = (typeof EXERCISE_VALIDATION_REASON_CODES)[number];
+
+export interface ExerciseFinding {
+  readonly code: ExerciseValidationReasonCode;
+  readonly outcome: ValidationOutcome;
+  /** Item ids this finding is about (empty for batch-level findings). */
+  readonly questionIds: readonly string[];
+  readonly detail: string;
+  readonly repairInstruction?: string;
+}
+
+export interface BatchValidationResult {
+  /** Worst finding outcome (PASS when there are no findings). */
+  readonly outcome: ValidationOutcome;
+  readonly validatorVersion: string;
+  /** Items that passed EVERY check — the only ones that may reach an Assignment. */
+  readonly acceptedItems: readonly GeneratedExercise[];
+  readonly findings: readonly ExerciseFinding[];
+  readonly reasonCodes: readonly ExerciseValidationReasonCode[];
+  /** How many more items the caller should regenerate to honour the spec. */
+  readonly shortfall: number;
 }

@@ -33,6 +33,7 @@ export const exerciseGenerationSpecSchema = z
     generationSpecId: z.string().min(1),
     childId: z.string().min(1),
     createdAt: z.string().datetime(),
+    schoolGrade: z.number().int().min(1).max(9),
 
     learningContext: z
       .object({

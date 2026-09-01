@@ -15,6 +15,7 @@
     { "path": "../planning" },
     { "path": "../practice" },
     { "path": "../reference-library" },
+    { "path": "../exercise-gen" },
     { "path": "../api-contract" },
     { "path": "../projections" },
     { "path": "../revision" },

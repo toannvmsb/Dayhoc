@@ -65,6 +65,7 @@ function spec(childId: string, evidence: Evidence[], parentGoal: ParentGoal, day
   });
   return buildExerciseGenerationSpec({
     childId: cid,
+    gradeContext: 7,
     twin,
     gaps,
     context,
@@ -199,7 +200,7 @@ describe('buildExerciseGenerationSpec (doc 14 §3, C1)', () => {
       },
     });
 
-    const common = { childId: cid, twin, gaps, knowledgeBase: kb, parentGoal: 'hsg_thi_chuyen' as ParentGoal, availableMinutes: 25, asOf };
+    const common = { childId: cid, gradeContext: 7 as const, twin, gaps, knowledgeBase: kb, parentGoal: 'hsg_thi_chuyen' as ParentGoal, availableMinutes: 25, asOf };
     const verified = buildExerciseGenerationSpec({ ...common, context: verifiedCtx });
     const estimated = buildExerciseGenerationSpec({ ...common, context: estimatedCtx });
 

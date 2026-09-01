@@ -5,6 +5,7 @@ import {
   asProblemTypeId,
   type ChildId,
   type ChildLearningTwin,
+  type GradeContext,
   type ExerciseDistribution,
   type ExerciseGenerationSpec,
   type KnowledgeLevel,
@@ -29,6 +30,8 @@ const MAX_QUESTIONS = 16;
 
 export interface ExerciseSpecInput {
   readonly childId: ChildId;
+  /** The child's school grade — context for above-grade checks. */
+  readonly gradeContext: GradeContext;
   readonly twin: ChildLearningTwin;
   readonly gaps: GapEngineResult;
   readonly context: LearningContext;
@@ -164,6 +167,7 @@ export function buildExerciseGenerationSpec(input: ExerciseSpecInput): ExerciseG
     generationSpecId: `egs_${newId()}`,
     childId: input.childId,
     createdAt: asOf.toISOString(),
+    schoolGrade: input.gradeContext,
     learningContext: {
       curriculum: input.context.expected?.curriculum ?? 'KET_NOI_TRI_THUC',
       expectedLessonId: input.context.expected?.lessonId ?? null,

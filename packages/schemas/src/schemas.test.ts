@@ -3,6 +3,7 @@ import { validate } from './validate.js';
 import { evidenceInputSchema } from './evidence.schema.js';
 import { classificationSchemaV1 } from './ai-classification.schema.js';
 import { exerciseGenerationSpecSchema } from './exercise-generation.schema.js';
+import { generatedExerciseSchema } from './generated-exercise.schema.js';
 
 describe('evidence boundary validation', () => {
   const base = {
@@ -61,6 +62,7 @@ describe('ExerciseGenerationSpec schema (doc 14 §3)', () => {
     generationSpecId: 'egs_1',
     childId: 'c1',
     createdAt: '2027-01-25T09:00:00.000Z',
+    schoolGrade: 7,
     learningContext: {
       curriculum: 'KET_NOI_TRI_THUC',
       expectedLessonId: 'C.G7.6.21',
@@ -111,5 +113,33 @@ describe('ExerciseGenerationSpec schema (doc 14 §3)', () => {
   it('rejects an empty target skill list', () => {
     const bad = { ...base, targets: { skillIds: [], problemTypeIds: [] } };
     expect(validate(exerciseGenerationSpecSchema, bad).ok).toBe(false);
+  });
+});
+
+describe('GeneratedExercise schema (doc 14 §6/§7)', () => {
+  const item = {
+    id: 'gx_1',
+    generationSpecId: 'egs_1',
+    skillId: 'M7.RATIO.EQUAL_CHAIN',
+    bucket: 'currentSkill',
+    knowledgeLevel: 'K2',
+    thinkingLevel: 'T2',
+    prompt: 'Cho dãy tỉ số bằng nhau, tính x.',
+    answerSpec: { kind: 'numeric', value: 6, tolerance: 0 },
+    hints: ['a', 'b', 'c', 'd', 'e', 'f'],
+    workedSolution: 'x = 6',
+    origin: 'ai_generated',
+  };
+
+  it('accepts a well-formed generated item', () => {
+    expect(validate(generatedExerciseSchema, item).ok).toBe(true);
+  });
+
+  it('rejects origin other than ai_generated', () => {
+    expect(validate(generatedExerciseSchema, { ...item, origin: 'authored' }).ok).toBe(false);
+  });
+
+  it('rejects an unknown extra field (strict)', () => {
+    expect(validate(generatedExerciseSchema, { ...item, answerKey: '6' }).ok).toBe(false);
   });
 });

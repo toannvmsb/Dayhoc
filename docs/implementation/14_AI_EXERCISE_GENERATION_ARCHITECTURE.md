@@ -194,10 +194,10 @@ present a stale set as a fresh AI diagnosis (v1.1 §6 FREE policy).
 | `@copilot/domain` (new) | `ExerciseGenerationSpec`, `GeneratedExercise`, `GenerationMode`, `NextBestMove` |
 | `@copilot/schemas` (new) | `exerciseGenerationSpecSchema`, `generatedExerciseSchema`, `generatedBatchSchema` |
 | `@copilot/planning` (new) | `buildExerciseGenerationSpec(input)` — deterministic |
-| `@copilot/exercise-gen` (new package) | `GeneratedExerciseValidator`, `nextBestMove(policy)`, cached-set fallback |
-| `@copilot/ai` (new) | `ExerciseGenerator` (uses `AiOrchestrator.runBatchGeneration`) |
-| `@copilot/practice` | keep hint-ladder / submission / offline-queue; drop `assignment.ts` bank path; `stretch-zone` demoted to tie-breaker |
-| `@copilot/reference-library` (renamed from question-bank) | `loadReferenceLibrary()`, `groundingExamplesFor(skillId, problemType)` |
+| `@copilot/exercise-gen` (new package) | **C3 ✅** `validateGeneratedBatch(batch, spec, kb)` → `BatchValidationResult`. C4/C6: `nextBestMove(policy)`, cached-set fallback |
+| `@copilot/ai` (new) | C4: `ExerciseGenerator` (uses `AiOrchestrator.runBatchGeneration`) — **not started** |
+| `@copilot/practice` | **C2 ✅** kept hint-ladder / submission / offline-queue; `assignment.ts` now reads `@copilot/reference-library` and is marked LEGACY (C5 deletes it) |
+| `@copilot/reference-library` (renamed from question-bank) | **C2 ✅** `loadReferenceLibrary()`, `examplesForSkill()`, `groundingExamplesFor({skillId, problemTypeId?, K?, T?, limit})`, `calibrationRangeFor()` |
 
 ---
 

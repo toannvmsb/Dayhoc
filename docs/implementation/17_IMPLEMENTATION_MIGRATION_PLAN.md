@@ -160,16 +160,15 @@ then the default flips and the old path is deleted in a later step.
 - **Golden:** `golden/mapping.test.ts` unchanged (still the skill-id gate).
 - **Acceptance:** `@copilot/practice` no longer exports `loadQuestionBank`; the corpus is grounding/calibration only. Legacy `buildAssignment` still works via the library shim until C5.
 
-### C3 — `GeneratedExerciseValidator` (`@copilot/exercise-gen`)
-- **Goal:** deterministic gate: schema, known IDs, K/T range, prereq safety, answerability, uniqueness, hint ladder, safety.
-- **Files:** new `packages/exercise-gen/`, `generated-validator.test.ts`.
+### C3 — `GeneratedExerciseValidator` (`@copilot/exercise-gen`) — ✅ DONE (2026-09-01)
+- **Goal:** deterministic gate: schema, known IDs, K/T range, prereq safety, above-grade rule, answerability, uniqueness, hint ladder, safety/age/language, batch distribution.
+- **Files:** new `packages/exercise-gen/` (`validator.ts` `validateGeneratedBatch`); `@copilot/domain` gains `GeneratedExercise`, `GeneratedExerciseBatch`, `ValidationOutcome`, `EXERCISE_VALIDATION_REASON_CODES`, `ExerciseFinding`, `BatchValidationResult` + `schoolGrade` on the spec; `@copilot/schemas` gains `generatedExerciseSchema` / `generatedExerciseBatchSchema`; `exercise-spec.ts` takes `gradeContext`.
 - **Deps:** C1 (spec), C2 (KB access).
-- **DB:** none.
-- **API:** none.
-- **Tests:** TEST 8 (unknown `skill_id` → item rejected, batch still delivers valid ones), range/prereq/uniqueness/hint-ladder rejection cases, `reasoning` rubric required.
-- **Golden:** feed the 120 golden questions through the validator → all pass (they are valid by construction) — regression fixture.
-- **Rollback:** additive.
-- **Acceptance:** no invalid item can reach an `Assignment`.
+- **DB / API:** none.
+- **Outcome model:** per finding → `PASS | REPAIRABLE | REGENERATE | BLOCK` (worst wins). Result carries `reasonCodes[]`, `findings[]` (each with `questionIds`, `detail`, optional `repairInstruction`), `acceptedItems` (zero-finding items only — the sole ones that may reach an `Assignment`), `shortfall`, `validatorVersion`.
+- **Reason codes → default outcome:** `UNKNOWN_SKILL_ID` / `UNLEARNED_REQUIRED_KNOWLEDGE` / `ABOVE_GRADE_KNOWLEDGE_NOT_ALLOWED` / `UNSAFE_CONTENT` / `NOT_AGE_APPROPRIATE` / `SCHEMA_INVALID` → **BLOCK**; `OUTSIDE_K_RANGE` / `OUTSIDE_T_RANGE` / `CHALLENGE_EXCEEDS_SPEC` / `SKILL_NOT_IN_SPEC` / `ANSWER_INCONSISTENT` / `DUPLICATE_VARIANT` / `DISTRIBUTION_MISMATCH` → **REGENERATE**; `MISSING_RUBRIC` / `HINT_LADDER_MALFORMED` / `UNKNOWN_PROBLEM_TYPE` / `PROBLEM_TYPE_SKILL_MISMATCH` / `ANSWER_UNVERIFIABLE` / `LANGUAGE_MISMATCH` → **REPAIRABLE**.
+- **Tests:** `validator.test.ts` — TEST 8 (unknown skill BLOCKs its item, the batch still delivers the rest), K-range, blocking-prereq, prereq-repair exemption, near-duplicate, hint-ladder, reasoning rubric, choice inconsistency, above-grade allow/deny, distribution mismatch, unknown problem type, purity. `golden/generated-validator.test.ts` — every reference-library item is accepted (no false positives); every golden-question skill id resolves; an invented id always BLOCKs.
+- **Acceptance:** no item with any finding is in `acceptedItems`; `validateGeneratedBatch` is pure over (batch, spec, KB). No live generator — validated against deterministic fixtures.
 
 ### C4 — `ExerciseGenerator` + `AiOrchestrator.runBatchGeneration` (mock first)
 - **Goal:** `spec → 1 batch call → N items`; `MockExerciseGenerator` for CI/demo.

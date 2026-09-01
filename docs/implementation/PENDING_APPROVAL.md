@@ -7,8 +7,8 @@
 > Cập nhật lần cuối: 2026-09-01 (Architecture Migration v1.1 — AI-Generation-First).
 >
 > **Tình trạng:** Vertical slice P0–P10 xong, web PWA test được trên iPhone.
-> Migration v1.1: **Group A ✅ · Group B1+B2+B3 ✅ (305 test xanh)**.
-> **⚠ ĐANG CHỜ ANH DUYỆT B3** trước khi bắt đầu **Group C (Exercise Generation)**.
+> Migration v1.1: **Group A ✅ · B1+B2+B3 ✅ · pace policy ✅ · C1+C2+C3 ✅ (357 test xanh)**.
+> **⚠ ĐANG CHỜ ANH DUYỆT C1–C3** trước khi bắt đầu **C4 (live generator)** trở đi.
 
 ---
 
@@ -45,7 +45,11 @@ Mọi thứ LOCKED trong prompt v1.1 = đã quyết, không hỏi lại.
 - **Group A ✅** — `packages/ai` (margin/budget/routing/usage-event) v1.1, migration `1756857600000_ai_cost_v1_1.js`, benchmark harness. APPROVED.
 - **Group B1+B2 ✅** — `@copilot/curriculum-clock`, `resolveLearningContext`, calendars G4/G7. APPROVED.
 - **Group B3 ✅ — CHỜ ANH DUYỆT.** Clock + resolver wired vào runtime + API (`GET /children/:id/learning-context`, `POST .../confirm-lesson`) + web card. `expectedWindow` (range, không phải 1 bài), guardrail A–F, calendar provenance metadata, confirm-lesson append-only. 305 test. Demo 3 trẻ: [`B3_DEMO_OUTPUT.md`](B3_DEMO_OUTPUT.md). Chi tiết trong [17 §B3](17_IMPLEMENTATION_MIGRATION_PLAN.md).
-- **Group C ⏸ — CHƯA BẮT ĐẦU.** `ExerciseGenerationSpec` / `ExerciseGenerator` / `GeneratedExerciseValidator` — đợi anh APPROVE B3.
+- **Pace policy ✅ commit `6c2b3dc`** — `packages/learning-context/src/pace.ts` `evaluatePace` (doc 13 §4 LOCKED): ≥3 obs → hypothesis; ≥5 obs / ≥2 school weeks → auto-apply LOW; confirmation ≥2 lessons off → floor drops to 3; bounded (hyp ±0.35, auto ±0.25); decays on stale/conflicting evidence; applied pace only shifts FUTURE estimate, never `resolved` confidence.
+- **Group C1 ✅ commit `1d4caae`** — `ExerciseGenerationSpec` (domain) + schema + `buildExerciseGenerationSpec` (deterministic, `@copilot/planning`). CASE A–D tests + 48-profile golden.
+- **Group C2 ✅ commit `5065452`** — `@copilot/reference-library` (repurposed question bank: grounding/calibration/evaluation only, NOT delivery). `@copilot/practice` no longer exports `loadQuestionBank`; `buildAssignment` = LEGACY shim until C5.
+- **Group C3 ✅ commit (this)** — `@copilot/exercise-gen` `validateGeneratedBatch` — deterministic gate, PASS/REPAIRABLE/REGENERATE/BLOCK + reason codes. No live generator (fixtures only).
+- **C4+ ⏸ — CHƯA BẮT ĐẦU** (đợi anh APPROVE C1–C3): live AI provider, flip practice runtime, xoá bank path cũ, Interactive Adaptive Mode, Next Best Question production.
 
 ---
 

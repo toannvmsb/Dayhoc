@@ -5,9 +5,10 @@
 > [14 Generation](14_AI_EXERCISE_GENERATION_ARCHITECTURE.md), [15 Cost/Routing](15_AI_COST_AND_MODEL_ROUTING.md).
 > Implementation sequencing is in [17](17_IMPLEMENTATION_MIGRATION_PLAN.md).
 >
-> **Progress:** Group A (cost/routing v1.1) ✅ · Group B1+B2+B3 (Curriculum Clock +
-> Context Resolver, wired into runtime + API + web) ✅ (2026-09-01, 305 tests).
-> Group C (Exercise Generation) not started — awaiting anh's approval of B3.
+> **Progress (2026-09-01):** Group A ✅ · B1+B2+B3 ✅ · pace policy ✅ (doc 13 §4)
+> · **C1** `ExerciseGenerationSpec` + builder ✅ · **C2** reference library ✅ ·
+> **C3** `GeneratedExerciseValidator` ✅. 357 tests. C4+ (live generator, runtime
+> flip, adaptive mode) not started — awaiting anh's approval of C1–C3.
 
 ---
 

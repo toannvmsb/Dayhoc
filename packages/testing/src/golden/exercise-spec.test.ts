@@ -18,6 +18,7 @@ const runs: TwinPlannerRun[] = profiles.map((p) => runTwinPlanner(p, events));
 function specFor(run: TwinPlannerRun) {
   return buildExerciseGenerationSpec({
     childId: run.childId,
+    gradeContext: run.profile.grade_context,
     twin: run.twin,
     gaps: run.gaps,
     context: run.context,
