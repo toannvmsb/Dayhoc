@@ -1,8 +1,8 @@
-@import '@copilot/design-tokens/css';
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 html,
 body {
@@ -14,10 +14,22 @@ body {
   color: var(--c-text-body);
   font-family: var(--font-family);
   -webkit-font-smoothing: antialiased;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior-y: none;
 }
 a {
   color: var(--c-primary-strong);
   text-decoration: none;
+}
+a:active {
+  opacity: 0.6;
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
 }
 
 /* --- primitives (Hướng 1A) --- */
@@ -25,13 +37,14 @@ a {
   max-width: 430px;
   margin: 0 auto;
   min-height: 100vh;
+  min-height: 100dvh; /* mobile Safari: excludes the dynamic toolbar */
   display: flex;
   flex-direction: column;
   background: var(--c-bg);
 }
 .screen__body {
   flex: 1;
-  padding: var(--sp-sm) var(--sp-xl) var(--sp-2xl);
+  padding: calc(var(--sp-sm) + env(safe-area-inset-top)) var(--sp-xl) var(--sp-2xl);
   display: flex;
   flex-direction: column;
   gap: var(--sp-md);
@@ -120,9 +133,12 @@ a {
   gap: 2px;
 }
 .bottomnav {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
   display: flex;
   gap: 2px;
-  padding: 10px 12px 22px;
+  padding: 10px 12px calc(14px + env(safe-area-inset-bottom));
   background: var(--c-surface);
   border-top: 1px solid var(--c-border);
 }

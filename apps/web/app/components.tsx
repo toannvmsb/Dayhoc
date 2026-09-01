@@ -153,7 +153,10 @@ export function AttentionCard({ items }: { items: ParentHomeView['attention'] })
   );
 }
 
-export function InsightsRow({ insights, challenge }: Pick<ParentHomeView, 'progressInsights' | 'thinkingChallenge'>) {
+export function InsightsRow({
+  progressInsights: insights,
+  thinkingChallenge: challenge,
+}: Pick<ParentHomeView, 'progressInsights' | 'thinkingChallenge'>) {
   return (
     <div style={{ display: 'flex', gap: 10 }}>
       <div className="card" style={{ flex: 1, gap: 5, padding: 14 }}>
@@ -179,9 +182,21 @@ export function InsightsRow({ insights, challenge }: Pick<ParentHomeView, 'progr
 export function ProgressRow({ row }: { row: SkillProgressRow }) {
   return (
     <div className="progressrow">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--c-text-heading)' }}>{row.name}</span>
-        <span style={{ fontSize: 12, fontWeight: 700, color: STATUS_COLOR[row.status] }}>{STATUS_TEXT[row.status]}</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
+        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--c-text-heading)', minWidth: 0, flex: 1 }}>
+          {row.name}
+        </span>
+        <span
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            color: STATUS_COLOR[row.status],
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
+          }}
+        >
+          {STATUS_TEXT[row.status]}
+        </span>
       </div>
       <div className="progressrow__track">
         <div
@@ -200,10 +215,10 @@ export function ProgressRow({ row }: { row: SkillProgressRow }) {
 export function BottomNav({ active }: { active: 'home' | 'child' | 'update' | 'progress' | 'more' }) {
   const items: { key: typeof active; label: string; glyph: string; href: string }[] = [
     { key: 'home', label: 'Hôm nay', glyph: '◉', href: '/' },
-    { key: 'child', label: 'Con', glyph: '◍', href: '/' },
-    { key: 'update', label: 'Cập nhật', glyph: '⌗', href: '/' },
+    { key: 'child', label: 'Con', glyph: '◍', href: '/child' },
+    { key: 'update', label: 'Cập nhật', glyph: '⌗', href: '/teacher/update' },
     { key: 'progress', label: 'Tiến bộ', glyph: '◔', href: '/progress' },
-    { key: 'more', label: 'Thêm', glyph: '⋯', href: '/' },
+    { key: 'more', label: 'Thêm', glyph: '⋯', href: '/more' },
   ];
   return (
     <nav className="bottomnav">

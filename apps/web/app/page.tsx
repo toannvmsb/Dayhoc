@@ -20,7 +20,10 @@ export default function ParentHome() {
       <LearningContextCard ctx={home.learningContext} />
       <TodayPlanCard plan={home.todayPlan} />
       <AttentionCard items={home.attention} />
-      <InsightsRow insights={home.progressInsights} challenge={home.thinkingChallenge} />
+      <InsightsRow
+        progressInsights={home.progressInsights}
+        thinkingChallenge={home.thinkingChallenge}
+      />
     </Screen>
   );
 }
