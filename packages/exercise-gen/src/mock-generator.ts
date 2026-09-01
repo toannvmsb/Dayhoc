@@ -33,6 +33,18 @@ const kIdx = (k: KnowledgeLevel): number => KNOWLEDGE_LEVELS.indexOf(k);
 const tIdx = (t: ThinkingLevel): number => THINKING_LEVELS.indexOf(t);
 const clamp = (n: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, n));
 
+/** Bijective base-26 (1→a, 26→z, 27→aa …) — an alphabetic, digit-free marker. */
+function letters(n: number): string {
+  let x = Math.max(1, Math.floor(n));
+  let s = '';
+  while (x > 0) {
+    const r = (x - 1) % 26;
+    s = String.fromCharCode(97 + r) + s;
+    x = Math.floor((x - 1) / 26);
+  }
+  return s;
+}
+
 export function createMockExerciseGenerator(opts: MockGeneratorOptions = {}): ExerciseGenerator {
   return {
     name: opts.name ?? 'mock-exercise-generator',
@@ -54,23 +66,24 @@ function runMock(request: GenerationRequest, seed: number): GenerationOutcome {
   }
 
   const items: GeneratedExercise[] = [];
-  let counter = seed;
   const isRegen = !!request.regenerate && request.regenerate.length > 0;
+  // a per-run marker offset so regenerated items never share a variant token /
+  // prompt with the batch's kept items.
+  let variant = seed + (isRegen ? 500 : 0);
 
   const slots: Array<{ bucket: keyof ExerciseDistribution; skillId: SkillId; replaces: readonly string[] }> = isRegen
     ? request.regenerate!.map((s: SlotRequest) => ({ bucket: s.bucket, skillId: s.skillId, replaces: s.replaces }))
-    : expandBuckets(grounding.plan.distribution, grounding.targetSkills);
+    : expandBuckets(grounding.plan.distribution, grounding.targetSkills, grounding.forbiddenRequiredSkillIds);
 
   const unfilled: Partial<Record<keyof ExerciseDistribution, number>> = {};
 
-  slots.forEach((slot, idx) => {
+  slots.forEach((slot) => {
     const skill = grounding.targetSkills.find((s) => s.skillId === slot.skillId) ?? grounding.targetSkills[0]!;
-    // regenerated items get fresh ids derived from what they replace, so they
-    // never collide with the kept items.
+    variant += 1;
     const id = isRegen
-      ? `gx-mock-r${(counter += 1).toString(36)}-${(slot.replaces[0] ?? `fill${idx}`).replace(/[^a-z0-9]/gi, '')}`
-      : `gx-mock-${(counter += 1).toString(36).padStart(4, '0')}`;
-    const built = buildItem(grounding, skill, slot.bucket, id, seed + counter * 7 + idx);
+      ? `gx-mock-r-${letters(variant)}-${(slot.replaces[0] ?? 'fill').replace(/[^a-z0-9]/gi, '')}`
+      : `gx-mock-${letters(variant)}`;
+    const built = buildItem(grounding, skill, slot.bucket, id, variant);
     if (!built) {
       unfilled[slot.bucket] = (unfilled[slot.bucket] ?? 0) + 1;
       return;
@@ -102,16 +115,22 @@ function runMock(request: GenerationRequest, seed: number): GenerationOutcome {
 function expandBuckets(
   dist: ExerciseDistribution,
   targetSkills: readonly GroundingSkill[],
+  forbidden: readonly SkillId[],
 ): Array<{ bucket: keyof ExerciseDistribution; skillId: SkillId; replaces: readonly string[] }> {
+  const forbiddenSet = new Set<string>(forbidden);
+  // a target skill is "clean" for a K2+ non-repair item when none of its weak
+  // prerequisites is forbidden (blocking).
+  const clean = targetSkills.filter((s) => !s.weakPrerequisites.some((p) => forbiddenSet.has(p)));
   const out: Array<{ bucket: keyof ExerciseDistribution; skillId: SkillId; replaces: readonly string[] }> = [];
   let rr = 0;
   for (const bucket of DISTRIBUTION_BUCKETS) {
     for (let i = 0; i < dist[bucket]; i++) {
-      // prerequisite repair prefers a skill that HAS a weak prerequisite
       const skill =
         bucket === 'prerequisiteRepair'
           ? (targetSkills.find((s) => s.weakPrerequisites.length > 0) ?? targetSkills[rr++ % targetSkills.length]!)
-          : targetSkills[rr++ % targetSkills.length]!;
+          : bucket === 'advanced'
+            ? (clean[rr++ % Math.max(1, clean.length)] ?? targetSkills[rr % targetSkills.length]!)
+            : ((clean.length > 0 ? clean : targetSkills)[rr++ % (clean.length > 0 ? clean.length : targetSkills.length)]!);
       out.push({ bucket, skillId: skill.skillId, replaces: [] });
     }
   }
@@ -171,8 +190,9 @@ function buildItem(
 
   const supportingSkillIds = skill.satisfiedPrerequisites.slice(0, 2);
   const label = BUCKET_LABEL[bucket];
-  // a rotating scenario so same-skill same-bucket items are not near-duplicates
+  // a rotating scenario + a unique alphabetic marker so no two prompts collide
   const scenario = SCENARIOS[variantIndex % SCENARIOS.length]!;
+  const marker = letters(variantIndex);
 
   return {
     id,
@@ -184,7 +204,7 @@ function buildItem(
     bucket,
     knowledgeLevel,
     thinkingLevel,
-    prompt: `[${label}] ${scenario} Vận dụng kỹ năng "${skill.name}" để giải bài và trình bày lời giải theo từng bước.`,
+    prompt: `[${label}] ${scenario} Vận dụng kỹ năng "${skill.name}" (biến thể ${marker}) để giải và trình bày lời giải theo từng bước.`,
     answerSpec: { kind: 'numeric', value: 42, tolerance: 0 },
     hints: [
       'Đọc kỹ đề và xác định dữ kiện đã cho.',

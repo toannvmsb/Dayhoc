@@ -148,6 +148,7 @@ export function buildExerciseGenerationSpec(input: ExerciseSpecInput): ExerciseG
     readiness: readinessRec,
     goalIsAdvanced,
     allowAdvanced: anyAboveGrade || goalIsAdvanced || primaryMastery >= config.strongStudentMastery,
+    aboveGradeFrontier: anyAboveGrade,
     strongThinking,
   });
 
@@ -248,6 +249,8 @@ interface AllocInput {
   readonly readiness: 'ready' | 'parallel_repair' | 'repair_first';
   readonly goalIsAdvanced: boolean;
   readonly allowAdvanced: boolean;
+  /** A real above-grade frontier exists — advanced work has somewhere safe to run. */
+  readonly aboveGradeFrontier: boolean;
   /** Demonstrated ≥ T3 with real evidence — guarantees a thinking-challenge slot. */
   readonly strongThinking: boolean;
 }
@@ -268,15 +271,18 @@ export function allocateDistribution(input: AllocInput): ExerciseDistribution {
   const schoolApplication = 1 - schoolCurrent - schoolVariation;
 
   const gapRepairShare = input.hasPrereqGap ? mix.gapRepair : 0;
+  // a blocking prerequisite gap suppresses advanced work UNLESS the child has a
+  // real above-grade frontier to run advanced items on (Parallel Gap Repair).
+  const advancedAllowed = input.allowAdvanced && (!input.prereqBlocking || input.aboveGradeFrontier);
   const weights: Record<keyof ExerciseDistribution, number> = {
     prerequisiteRepair: gapRepairShare,
     currentSkill: mix.school * schoolCurrent + (input.hasPrereqGap ? 0 : mix.gapRepair),
     variation: mix.school * schoolVariation,
     application: mix.school * schoolApplication,
-    advanced: input.allowAdvanced ? mix.advanced : 0,
+    advanced: advancedAllowed ? mix.advanced : 0,
     thinkingChallenge: mix.thinking,
   };
-  if (!input.allowAdvanced) weights.currentSkill += mix.advanced;
+  if (!advancedAllowed) weights.currentSkill += mix.advanced;
 
   let dist = largestRemainder(weights, total);
 
@@ -284,7 +290,13 @@ export function allocateDistribution(input: AllocInput): ExerciseDistribution {
   if ((input.readiness !== 'ready' || input.prereqBlocking) && input.hasPrereqGap && dist.prerequisiteRepair < 1) {
     dist = moveOne(dist, biggestDonor(dist, 'prerequisiteRepair'), 'prerequisiteRepair');
   }
-  if (input.allowAdvanced && input.goalIsAdvanced && input.readiness !== 'repair_first' && dist.advanced < 1) {
+  if (
+    input.allowAdvanced &&
+    input.goalIsAdvanced &&
+    input.readiness !== 'repair_first' &&
+    (!input.prereqBlocking || input.aboveGradeFrontier) &&
+    dist.advanced < 1
+  ) {
     dist = moveOne(dist, biggestDonor(dist, 'advanced'), 'advanced');
   }
   // strong demonstrated thinking + ready → always at least one thinking challenge
