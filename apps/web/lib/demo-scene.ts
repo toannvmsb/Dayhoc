@@ -3,6 +3,7 @@ import { loadKnowledgeBase } from '@copilot/math-data';
 import { buildLearningTwin } from '@copilot/learning-twin';
 import { runGapEngine } from '@copilot/gap-engine';
 import { buildLearningContext } from '@copilot/learning-context';
+import { CurriculumClockService, toExpectedLearningContext } from '@copilot/curriculum-clock';
 import { buildDailyPlan } from '@copilot/planning';
 import { buildParentHome, buildParentProgress, type ParentViewInput } from '@copilot/projections';
 
@@ -13,7 +14,7 @@ import { buildParentHome, buildParentProgress, type ParentViewInput } from '@cop
  * thức & dãy tỉ số bằng nhau, gap ở quy đồng mẫu số).
  */
 const CHILD = asChildId('demo_minh_anh');
-const AS_OF = new Date('2026-08-31T09:00:00Z');
+const AS_OF = new Date('2027-01-25T09:00:00Z');
 
 const PROFILE = {
   childId: CHILD as string,
@@ -44,11 +45,11 @@ function seedEvidence(): Evidence[] {
   });
 
   return [
-    mk(1, 'M7.RATIO.PROPORTION', 26, true, { confidenceTier: 'A' }),
-    mk(2, 'M7.RATIO.PROPORTION', 18, true, { confidenceTier: 'A' }),
+    mk(1, 'M7.RATIO.PROPORTION', 26, true),
+    mk(2, 'M7.RATIO.PROPORTION', 18, true),
     mk(3, 'M7.RATIO.EQUAL_CHAIN', 9, true, { problemTypeId: undefined }),
     mk(4, 'M7.RATIO.EQUAL_CHAIN', 4, true),
-    mk(5, 'M7.ALG.IDENTITY', 12, true, { confidenceTier: 'A' }),
+    mk(5, 'M7.ALG.IDENTITY', 12, true),
     mk(6, 'M7.ALG.IDENTITY', 5, true),
     mk(7, 'M4.FRAC.EQUIVALENT', 24, true, { confidenceTier: 'A' }),
     mk(8, 'M4.FRAC.COMMON_DENOM', 10, false, { reasoningQuality: 'weak', source: 'school_homework', provenance: 'scan' }),
@@ -70,6 +71,10 @@ export function demoScene() {
     parentGoal: 'kha_gioi',
     asOf: AS_OF,
   });
+  const clockCtx = new CurriculumClockService().positionFor(
+    { curriculum: 'KET_NOI_TRI_THUC', grade: 7, academicYear: '2026-2027' },
+    AS_OF,
+  );
   const context = buildLearningContext({
     childId: CHILD,
     gradeContext: 7,
@@ -80,19 +85,20 @@ export function demoScene() {
         childId: CHILD,
         contributedAs: 'teacher',
         actorUserId: 'teacher_hang',
-        occurredOn: '2026-08-24',
-        recordedAt: '2026-08-24T12:00:00Z',
+        occurredOn: '2027-01-19',
+        recordedAt: '2027-01-19T12:00:00Z',
         taughtSkillIds: [asSkillId('M7.RATIO.EQUAL_CHAIN')],
         problemTypeIds: [],
         homeworkRefs: ['SGK tr.12 bài 1-4'],
       },
     ],
+    expectedContext: clockCtx ? toExpectedLearningContext(clockCtx) : null,
     knowledgeBase: kb,
     asOf: AS_OF,
   });
   const plan = buildDailyPlan({
     childId: CHILD,
-    planDate: '2026-08-31',
+    planDate: '2027-01-25',
     availableMinutes: 25,
     twin,
     gaps,

@@ -3,7 +3,11 @@
 > Precise "what changes" record for the v1.0 → v1.1 migration. Companion to
 > [12 Audit](12_ARCHITECTURE_MIGRATION_AUDIT.md), [13 Clock/Resolver](13_CURRICULUM_CLOCK_AND_CONTEXT_RESOLVER.md),
 > [14 Generation](14_AI_EXERCISE_GENERATION_ARCHITECTURE.md), [15 Cost/Routing](15_AI_COST_AND_MODEL_ROUTING.md).
-> Implementation sequencing is in [17](17_IMPLEMENTATION_MIGRATION_PLAN.md). **Nothing here is coded yet.**
+> Implementation sequencing is in [17](17_IMPLEMENTATION_MIGRATION_PLAN.md).
+>
+> **Progress:** Group A (cost/routing v1.1) ✅ · Group B1+B2+B3 (Curriculum Clock +
+> Context Resolver, wired into runtime + API + web) ✅ (2026-09-01, 305 tests).
+> Group C (Exercise Generation) not started — awaiting anh's approval of B3.
 
 ---
 

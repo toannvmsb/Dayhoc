@@ -67,4 +67,35 @@ describe('CurriculumClockService (Pricing v1.1 §2)', () => {
   it('returns null for an unknown calendar', () => {
     expect(clock.positionFor({ ...G7, academicYear: '2099-2100' }, new Date())).toBeNull();
   });
+
+  it('B3-1 — with no evidence the clock returns an expectedWindow, not a single lesson', () => {
+    const ctx = clock.positionFor(G4, new Date('2026-10-01'))!;
+    expect(ctx.confidence).toBe('ESTIMATED');
+    expect(ctx.expectedWindow.lessonIds.length).toBeGreaterThan(1);
+    expect(ctx.expectedWindow.fromLessonId).not.toBe(ctx.expectedWindow.toLessonId);
+    expect(ctx.expectedWindow.lessonIds).toContain(ctx.primaryLessonId);
+  });
+
+  it('the window is wider early in the year and just after a holiday', () => {
+    const early = clock.positionFor(G7, new Date('2026-09-12'))!; // week ~2
+    const midYearNoHoliday = clock.positionFor(G7, new Date('2026-11-20'))!;
+    const postTet = clock.positionFor(G7, new Date('2027-02-25'))!; // ~1w after Tết ends
+    expect(early.expectedWindow.widthLessons).toBeGreaterThan(midYearNoHoliday.expectedWindow.widthLessons);
+    expect(postTet.expectedWindow.widthLessons).toBeGreaterThan(midYearNoHoliday.expectedWindow.widthLessons);
+  });
+
+  it('B3-7 — the estimate carries calendar provenance (id, version, PROVISIONAL, source)', () => {
+    const ctx = clock.positionFor(G7, new Date('2026-11-01'))!;
+    expect(ctx.calendar.calendarId).toBe('cal.KNTT.G7.2026-2027.v1');
+    expect(ctx.calendar.version).toBe(1);
+    expect(ctx.calendar.status).toBe('PROVISIONAL');
+    expect(ctx.calendar.source).toContain('SGK');
+  });
+
+  it('B3-8 — a school-override calendar id is honoured with no code change', () => {
+    // the clock reads config: an unknown override id → null, a known id → that calendar
+    expect(clock.positionFor({ ...G7, calendarId: 'cal.does-not-exist' }, new Date('2026-11-01'))).toBeNull();
+    const byId = clock.positionFor({ ...G7, calendarId: 'cal.KNTT.G7.2026-2027.v1' }, new Date('2026-11-01'));
+    expect(byId?.calendar.calendarId).toBe('cal.KNTT.G7.2026-2027.v1');
+  });
 });

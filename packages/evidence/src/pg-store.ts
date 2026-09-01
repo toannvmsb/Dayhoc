@@ -5,6 +5,7 @@ import {
   asSkillId,
   type ChildId,
   type Evidence,
+  type LessonConfirmationEvent,
   type SkillId,
   type TeacherContribution,
 } from '@copilot/domain';
@@ -96,6 +97,34 @@ export class PgLedgerStore implements LedgerStore {
       [childId],
     );
     return Number(rows[0]?.count ?? '0');
+  }
+
+  async appendLessonConfirmation(r: LessonConfirmationEvent): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO lesson_confirmations
+         (id, child_id, lesson_id, topic_note, source, confidence, confirmed_by, confirmed_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [r.id, r.childId, r.lessonId, r.topicNote ?? null, r.source, r.confidence, r.confirmedBy, r.confirmedAt],
+    );
+  }
+
+  async listLessonConfirmations(childId: ChildId): Promise<readonly LessonConfirmationEvent[]> {
+    const { rows } = await this.pool.query(
+      `SELECT * FROM lesson_confirmations WHERE child_id = $1 ORDER BY confirmed_at ASC`,
+      [childId],
+    );
+    return rows.map(
+      (row: Record<string, unknown>): LessonConfirmationEvent => ({
+        id: row.id as string,
+        childId: asChildId(row.child_id as string),
+        lessonId: row.lesson_id as string,
+        ...(row.topic_note ? { topicNote: row.topic_note as string } : {}),
+        source: row.source as LessonConfirmationEvent['source'],
+        confidence: row.confidence as LessonConfirmationEvent['confidence'],
+        confirmedBy: row.confirmed_by as string,
+        confirmedAt: new Date(row.confirmed_at as string).toISOString(),
+      }),
+    );
   }
 }
 

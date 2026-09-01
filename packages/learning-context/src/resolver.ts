@@ -1,16 +1,17 @@
 /**
- * LearningContextResolver (Pricing/AI Cost/Routing v1.1 §2, doc 13 §3).
+ * LearningContextResolver (Pricing/AI Cost/Routing v1.1 §2, doc 13 §3 + B3 §2).
  *
- * Merges the Curriculum Clock estimate with every observed context signal
- * (teacher / parent update, homework / notebook / test scan, teacher message,
- * app practice) by SOURCE RELIABILITY × confidence × recency × consistency ×
- * repetition — NOT "latest record wins". Pure and deterministic.
+ * Merges the Curriculum Clock estimate with every observed context signal by
+ *   reliability × confidence × recency × consistency × repetition
+ * for scoring — but that is NEVER the only rule. Deterministic guardrails (A–F)
+ * decide the outcome in the cases that matter. Pure and idempotent.
  */
 import type {
   Evidence,
   ExpectedLearningContext,
   LearningContextConfidence,
   LearningContextSource,
+  LessonConfirmationEvent,
   ResolvedLearningContext,
   SkillId,
   TeacherContribution,
@@ -18,10 +19,12 @@ import type {
 import type { KnowledgeBase } from '@copilot/math-data';
 
 const DAY_MS = 86_400_000;
-/** Recency half-life for context signals. */
 const RECENCY_HALF_LIFE_DAYS = 14;
+/** A VERIFIED/STRONG context this recent is authoritative vs a bare estimate (invariant A). */
+const RECENT_VERIFIED_DAYS = 21;
+/** A VERIFIED signal older than this is "stale" — kept in history, weaker for scoring (invariant E). */
+const STALE_VERIFIED_DAYS = 35;
 
-/** Base reliability by signal type (doc 13 §3.1). */
 const RELIABILITY: Record<string, number> = {
   teacher_update: 0.95,
   verified_test: 0.9,
@@ -39,38 +42,61 @@ const CONFIDENCE_WEIGHT: Record<LearningContextConfidence, number> = {
   SUPPORTING: 0.6,
   ESTIMATED: 0.4,
 };
+const CONFIDENCE_RANK: Record<LearningContextConfidence, number> = {
+  ESTIMATED: 0,
+  SUPPORTING: 1,
+  STRONG: 2,
+  VERIFIED: 3,
+};
 
 interface Signal {
   readonly lessonId: string;
   readonly reliability: number;
+  /** As reported by the signal. */
   readonly confidence: LearningContextConfidence;
   readonly source: LearningContextSource;
   readonly at: number; // epoch ms
   readonly typeKey: string;
+  /** Is this an explicit human confirmation (vs observed schoolwork)? — invariant F. */
+  readonly isConfirmation: boolean;
 }
 
 export interface ResolveInput {
   readonly expected: ExpectedLearningContext | null;
   readonly contributions: readonly TeacherContribution[];
+  readonly lessonConfirmations?: readonly LessonConfirmationEvent[];
   readonly evidence: readonly Evidence[];
   readonly knowledgeBase: KnowledgeBase;
   readonly asOf: Date;
-  /** Recent-evidence window (days). */
   readonly recencyDays?: number;
+  /**
+   * The child's school grade. The "current class lesson" is a lesson of THIS
+   * grade — cross-grade remediation work still feeds the twin/gap engine, but it
+   * does not move the resolved learning context.
+   */
+  readonly gradeContext?: number;
+}
+
+export interface PaceDeltaHypothesis {
+  /** −0.35..0.35 suggested adjustment; 0 = no hypothesis. */
+  readonly value: number;
+  readonly observationCount: number;
+  readonly rationale: string;
 }
 
 export interface ResolveResult {
   readonly resolved: ResolvedLearningContext;
-  /** Candidate lessons that materially disagreed → parent review. */
+  /** Candidate lessons that materially disagreed at VERIFIED/STRONG strength. */
   readonly conflictLessonIds: readonly string[];
+  /** From repeated consistent schoolwork evidence (invariant C) — a HYPOTHESIS, not applied. */
+  readonly paceDeltaHypothesis: PaceDeltaHypothesis;
 }
 
 function lessonIdOfSkill(kb: KnowledgeBase, skillId: SkillId): string | null {
-  const skill = kb.skills.get(skillId);
-  return skill?.curriculumNodeId ?? null;
+  return kb.skills.get(skillId)?.curriculumNodeId ?? null;
 }
 
-function evidenceReliabilityKey(e: Evidence): string {
+function evidenceTypeKey(e: Evidence): string {
   switch (e.source) {
     case 'teacher_feedback':
       return 'teacher_update';
@@ -107,29 +133,64 @@ function sourceOf(typeKey: string): LearningContextSource {
   return 'SCHOOLWORK_EVIDENCE';
 }
 
+function skillsForLesson(kb: KnowledgeBase, lessonId: string): SkillId[] {
+  const out: SkillId[] = [];
+  for (const s of kb.skills.values()) if (s.curriculumNodeId === lessonId) out.push(s.id as SkillId);
+  return out;
+}
+
+function chapterIdOfLesson(lessonId: string, expected: ExpectedLearningContext | null): number | null {
+  const m = /^C\.G\d+\.(\d+)\./.exec(lessonId);
+  return m ? Number(m[1]) : (expected?.chapterId ?? null);
+}
+
 export function resolveLearningContext(input: ResolveInput): ResolveResult {
   const { expected, contributions, evidence, knowledgeBase: kb, asOf } = input;
   const now = asOf.getTime();
   const recencyDays = input.recencyDays ?? 45;
   const cutoff = now - recencyDays * DAY_MS;
+  // the current class lesson is a lesson of the child's own grade
+  const gradePrefix =
+    input.gradeContext !== undefined
+      ? `C.G${input.gradeContext}.`
+      : (/^(C\.G\d+)\./.exec(expected?.lessonId ?? '')?.[1] ?? null);
+  const inGrade = (lessonId: string): boolean => !gradePrefix || lessonId.startsWith(gradePrefix);
 
   const signals: Signal[] = [];
 
-  // teacher / parent context updates
+  // explicit lesson confirmations (parent/teacher) — invariant F: `isConfirmation`.
+  // A teacher confirming the current lesson is VERIFIED context; a parent, STRONG.
+  for (const c of input.lessonConfirmations ?? []) {
+    const at = Date.parse(c.confirmedAt);
+    if (Number.isNaN(at) || at < cutoff) continue;
+    const typeKey = c.source === 'TEACHER_UPDATE' ? 'teacher_update' : 'parent_update';
+    signals.push({
+      lessonId: c.lessonId,
+      reliability: RELIABILITY[typeKey]!,
+      confidence: c.confidence,
+      source: c.source,
+      at,
+      typeKey,
+      isConfirmation: true,
+    });
+  }
+
+  // teacher / parent "what was taught" contributions
   for (const c of contributions) {
     const at = Date.parse(`${c.occurredOn}T00:00:00Z`);
     if (at < cutoff) continue;
     const typeKey = c.contributedAs === 'teacher' ? 'teacher_update' : 'parent_update';
     for (const sid of c.taughtSkillIds) {
       const lessonId = lessonIdOfSkill(kb, sid);
-      if (!lessonId) continue;
+      if (!lessonId || !inGrade(lessonId)) continue;
       signals.push({
         lessonId,
         reliability: RELIABILITY[typeKey]!,
-        confidence: c.contributedAs === 'teacher' ? 'STRONG' : 'SUPPORTING',
+        confidence: c.contributedAs === 'teacher' ? 'VERIFIED' : 'STRONG',
         source: sourceOf(typeKey),
         at,
         typeKey,
+        isConfirmation: true,
       });
     }
   }
@@ -140,8 +201,8 @@ export function resolveLearningContext(input: ResolveInput): ResolveResult {
     const at = Date.parse(e.occurredAt);
     if (Number.isNaN(at) || at < cutoff) continue;
     const lessonId = lessonIdOfSkill(kb, e.skillId);
-    if (!lessonId) continue;
-    const typeKey = evidenceReliabilityKey(e);
+    if (!lessonId || !inGrade(lessonId)) continue; // cross-grade remediation ≠ current class lesson
+    const typeKey = evidenceTypeKey(e);
     signals.push({
       lessonId,
       reliability: RELIABILITY[typeKey]!,
@@ -149,10 +210,11 @@ export function resolveLearningContext(input: ResolveInput): ResolveResult {
       source: sourceOf(typeKey),
       at,
       typeKey,
+      isConfirmation: false,
     });
   }
 
-  // the calendar estimate is one more (weak) signal
+  // the calendar estimate is one more (weak) signal — its own primary lesson
   if (expected) {
     signals.push({
       lessonId: expected.lessonId,
@@ -161,10 +223,15 @@ export function resolveLearningContext(input: ResolveInput): ResolveResult {
       source: 'CURRICULUM_TIMELINE',
       at: Date.parse(`${expected.asOfDate}T00:00:00Z`),
       typeKey: 'curriculum_timeline',
+      isConfirmation: false,
     });
   }
 
-  if (signals.length === 0) {
+  const emptyPace: PaceDeltaHypothesis = { value: 0, observationCount: 0, rationale: 'not enough consistent evidence' };
+
+  // --- no real signal: the estimate stands, ESTIMATED ---
+  const observed = signals.filter((s) => s.typeKey !== 'curriculum_timeline');
+  if (observed.length === 0) {
     return {
       resolved: {
         chapterId: expected?.chapterId ?? null,
@@ -173,12 +240,19 @@ export function resolveLearningContext(input: ResolveInput): ResolveResult {
         source: 'CURRICULUM_TIMELINE',
         confidence: 'ESTIMATED',
         lastVerifiedAt: null,
+        window: expected ? [...expected.window.lessonIds] : [],
+        guardrailApplied: 'no_observed_evidence_estimate_only',
       },
       conflictLessonIds: [],
+      paceDeltaHypothesis: emptyPace,
     };
   }
 
-  // score each candidate lesson
+  // effective confidence for scoring — invariant E: stale VERIFIED → STRONG
+  const effConf = (s: Signal): LearningContextConfidence =>
+    s.confidence === 'VERIFIED' && now - s.at > STALE_VERIFIED_DAYS * DAY_MS ? 'STRONG' : s.confidence;
+
+  // --- score candidate lessons ---
   const byLesson = new Map<string, { score: number; signals: Signal[] }>();
   const countByType = new Map<string, number>();
   for (const s of signals) countByType.set(s.typeKey, (countByType.get(s.typeKey) ?? 0) + 1);
@@ -186,78 +260,183 @@ export function resolveLearningContext(input: ResolveInput): ResolveResult {
   for (const s of signals) {
     const recency = Math.pow(0.5, (now - s.at) / (RECENCY_HALF_LIFE_DAYS * DAY_MS));
     const repetition = 1 + 0.1 * Math.min((countByType.get(s.typeKey) ?? 1) - 1, 3);
-    const contribution = s.reliability * CONFIDENCE_WEIGHT[s.confidence] * recency * repetition;
+    const contribution = s.reliability * CONFIDENCE_WEIGHT[effConf(s)] * recency * repetition;
     const rec = byLesson.get(s.lessonId) ?? { score: 0, signals: [] };
     rec.score += contribution;
     rec.signals.push(s);
     byLesson.set(s.lessonId, rec);
   }
-
-  // consistency bonus: ≥2 independent signal types agree on a lesson
   for (const rec of byLesson.values()) {
-    const types = new Set(rec.signals.map((s) => s.typeKey));
-    if (types.size >= 2) rec.score *= 1.15;
+    if (new Set(rec.signals.map((s) => s.typeKey)).size >= 2) rec.score *= 1.15; // consistency
   }
 
   const ranked = [...byLesson.entries()].sort((a, b) => b[1].score - a[1].score);
-  const [topLessonId, top] = ranked[0]!;
+  let [chosenLessonId, chosen] = ranked[0]!;
+  let guardrail: string | null = null;
 
-  // guardrail: a lone ESTIMATE never overrides a ≤21-day-old VERIFIED/STRONG signal
-  const recentVerified = signals
-    .filter((s) => (s.confidence === 'VERIFIED' || s.confidence === 'STRONG') && now - s.at <= 21 * DAY_MS)
-    .sort((a, b) => b.at - a.at)[0];
-  let chosenLessonId = topLessonId;
-  let chosenSignals = top.signals;
-  if (recentVerified && byLesson.get(topLessonId)!.signals.every((s) => s.typeKey === 'curriculum_timeline')) {
-    chosenLessonId = recentVerified.lessonId;
-    chosenSignals = byLesson.get(recentVerified.lessonId)?.signals ?? [recentVerified];
+  // --- invariant D: conflicting VERIFIED sources on different lessons ---
+  const verifiedByLesson = new Map<string, Signal[]>();
+  for (const s of signals) {
+    if (effConf(s) === 'VERIFIED') {
+      const arr = verifiedByLesson.get(s.lessonId) ?? [];
+      arr.push(s);
+      verifiedByLesson.set(s.lessonId, arr);
+    }
   }
-
-  // conflict: runner-up within 15% from a different source
   const conflictLessonIds: string[] = [];
-  if (ranked[1]) {
-    const [runnerId, runner] = ranked[1];
-    const topSources = new Set(top.signals.map((s) => s.source));
-    const runnerSources = new Set(runner.signals.map((s) => s.source));
-    const disjoint = ![...runnerSources].some((s) => topSources.has(s));
-    if (runner.score >= top.score * 0.85 && disjoint) conflictLessonIds.push(runnerId);
+  if (verifiedByLesson.size >= 2) {
+    // deterministic policy: the most recent VERIFIED wins; the others are a conflict
+    const mostRecentVerified = [...verifiedByLesson.entries()]
+      .map(([lid, ss]) => ({ lid, at: Math.max(...ss.map((s) => s.at)) }))
+      .sort((a, b) => b.at - a.at)[0]!;
+    chosenLessonId = mostRecentVerified.lid;
+    chosen = byLesson.get(chosenLessonId)!;
+    guardrail = 'D_conflicting_verified_most_recent_wins';
+    for (const lid of verifiedByLesson.keys()) if (lid !== chosenLessonId) conflictLessonIds.push(lid);
+  } else {
+    // --- invariant A: a recent VERIFIED is never overridden by CURRICULUM_TIMELINE,
+    //     nor by a top candidate whose signals are ALL the weakest (ESTIMATED) tier
+    //     (B3-4: many low-confidence observations can't beat one recent VERIFIED). ---
+    const recentVerified = signals
+      .filter(
+        (s) =>
+          effConf(s) === 'VERIFIED' &&
+          s.typeKey !== 'curriculum_timeline' &&
+          now - s.at <= RECENT_VERIFIED_DAYS * DAY_MS,
+      )
+      .sort((a, b) => b.at - a.at)[0];
+    const chosenIsWeak = chosen.signals.every(
+      (s) => s.typeKey === 'curriculum_timeline' || effConf(s) === 'ESTIMATED',
+    );
+    const chosenHasVerified = chosen.signals.some((s) => effConf(s) === 'VERIFIED');
+    if (recentVerified && chosenIsWeak && !chosenHasVerified) {
+      chosenLessonId = recentVerified.lessonId;
+      chosen = byLesson.get(chosenLessonId) ?? { score: 0, signals: [recentVerified] };
+      guardrail = chosen.signals.every((s) => s.typeKey === 'curriculum_timeline')
+        ? 'A_recent_verified_not_overridden_by_timeline'
+        : 'A_recent_verified_beats_low_confidence_majority';
+    }
+
+    // soft conflict: a runner-up within 15% from a disjoint source set
+    if (!guardrail && ranked[1]) {
+      const [runnerId, runner] = ranked[1];
+      const topSources = new Set(chosen.signals.map((s) => s.source));
+      const runnerSources = new Set(runner.signals.map((s) => s.source));
+      const disjoint = ![...runnerSources].some((x) => topSources.has(x));
+      if (runner.score >= chosen.score * 0.85 && disjoint) {
+        conflictLessonIds.push(runnerId);
+        guardrail = 'soft_conflict_provisional_pick_more_advanced';
+        // provisionally take the more advanced lesson (planner checks prereqs anyway)
+        const order = expected?.window.lessonIds ?? [];
+        if (order.indexOf(runnerId) > order.indexOf(chosenLessonId)) {
+          chosenLessonId = runnerId;
+          chosen = runner;
+        }
+      }
+    }
   }
 
-  // the "source of record" for the resolved lesson: the most authoritative signal
-  // pointing at it (reliability × confidence), then most recent.
-  const authority = (s: Signal): number => s.reliability * CONFIDENCE_WEIGHT[s.confidence];
+  // --- resolved confidence — invariant B: repetition can't manufacture VERIFIED ---
+  const chosenSignals = chosen.signals.length > 0 ? chosen.signals : signals.filter((s) => s.lessonId === chosenLessonId);
+  const maxReportedConf = chosenSignals.reduce<LearningContextConfidence>(
+    (acc, s) => (CONFIDENCE_RANK[effConf(s)] > CONFIDENCE_RANK[acc] ? effConf(s) : acc),
+    'ESTIMATED',
+  );
+  let resolvedConfidence = maxReportedConf;
+  // invariant C: ≥3 consistent SUPPORTING signals may promote SUPPORTING → STRONG (one tier only)
+  const supportingHere = chosenSignals.filter((s) => effConf(s) === 'SUPPORTING' && !s.isConfirmation);
+  if (maxReportedConf === 'SUPPORTING' && supportingHere.length >= 3) resolvedConfidence = 'STRONG';
+
+  // "source of record": the most authoritative signal pointing at the chosen lesson
+  const authority = (s: Signal): number => s.reliability * CONFIDENCE_WEIGHT[effConf(s)];
   const strongest = [...chosenSignals].sort((a, b) => authority(b) - authority(a) || b.at - a.at)[0]!;
 
-  const chapterId = chapterIdOfLesson(chosenLessonId, expected);
-  const activeSkillIds = skillsForLesson(kb, chosenLessonId);
+  const confirmingAts = chosenSignals
+    .filter((s) => effConf(s) === 'VERIFIED' || effConf(s) === 'STRONG')
+    .map((s) => s.at);
+  const lastVerifiedAt =
+    (resolvedConfidence === 'VERIFIED' || resolvedConfidence === 'STRONG') && confirmingAts.length > 0
+      ? new Date(Math.max(...confirmingAts)).toISOString()
+      : null;
+
+  // --- narrow the window around the resolved lesson ---
+  //   VERIFIED / a confirmation → exactly the resolved lesson;
+  //   STRONG → ±1 lesson;  weaker → the clock window ∩ ±1 (or ±1 in grade order).
+  const chosenGradePrefix = /^(C\.G\d+)\./.exec(chosenLessonId)?.[1] ?? '';
+  const gradeOrder = chosenGradePrefix ? curriculumNodeOrder(kb, chosenGradePrefix) : [];
+  const gi2 = gradeOrder.indexOf(chosenLessonId);
+  let narrowed: string[];
+  if (resolvedConfidence === 'VERIFIED' || strongest.isConfirmation) {
+    narrowed = [chosenLessonId];
+  } else if (resolvedConfidence === 'STRONG') {
+    narrowed = gi2 >= 0 ? gradeOrder.slice(Math.max(0, gi2 - 1), gi2 + 2) : [chosenLessonId];
+  } else {
+    const clockWindow = new Set(expected?.window.lessonIds ?? []);
+    const near = gi2 >= 0 ? gradeOrder.slice(Math.max(0, gi2 - 2), gi2 + 3) : [chosenLessonId];
+    narrowed = clockWindow.size > 0 ? near.filter((l) => clockWindow.has(l) || l === chosenLessonId) : near;
+  }
+
+  // --- invariant C: pace_delta hypothesis from repeated consistent schoolwork ahead/behind ---
+  const paceDeltaHypothesis = computePaceHypothesis(observed, expected, kb, now);
 
   return {
     resolved: {
-      chapterId,
+      chapterId: chapterIdOfLesson(chosenLessonId, expected),
       lessonId: chosenLessonId,
-      activeSkillIds,
+      activeSkillIds: skillsForLesson(kb, chosenLessonId),
       source: strongest.source,
-      confidence: strongest.confidence,
-      lastVerifiedAt:
-        strongest.confidence === 'VERIFIED' || strongest.confidence === 'STRONG'
-          ? new Date(strongest.at).toISOString()
-          : null,
+      confidence: resolvedConfidence,
+      lastVerifiedAt,
+      window: narrowed,
+      guardrailApplied: guardrail,
     },
     conflictLessonIds,
+    paceDeltaHypothesis,
   };
 }
 
-function chapterIdOfLesson(lessonId: string, expected: ExpectedLearningContext | null): number | null {
-  // node id shape: C.G<grade>.<chapter>.<lesson>
-  const m = /^C\.G\d+\.(\d+)\./.exec(lessonId);
-  if (m) return Number(m[1]);
-  return expected?.chapterId ?? null;
+/** Curriculum node ids for one grade, in teaching order (C.G<g>.<chapter>.<lesson>). */
+function curriculumNodeOrder(kb: KnowledgeBase, gradePrefix: string): string[] {
+  return [...kb.curriculum.keys()]
+    .filter((id) => id.startsWith(gradePrefix) && /\.\d+\.\d+$/.test(id))
+    .sort((a, b) => {
+      const [, ac, al] = /\.(\d+)\.(\d+)$/.exec(a)!;
+      const [, bc, bl] = /\.(\d+)\.(\d+)$/.exec(b)!;
+      return Number(ac) - Number(bc) || Number(al) - Number(bl);
+    });
 }
 
-function skillsForLesson(kb: KnowledgeBase, lessonId: string): SkillId[] {
-  const out: SkillId[] = [];
-  for (const s of kb.skills.values()) {
-    if (s.curriculumNodeId === lessonId) out.push(s.id as SkillId);
-  }
-  return out;
+function computePaceHypothesis(
+  observed: readonly Signal[],
+  expected: ExpectedLearningContext | null,
+  kb: KnowledgeBase,
+  now: number,
+): PaceDeltaHypothesis {
+  const none: PaceDeltaHypothesis = { value: 0, observationCount: 0, rationale: 'not enough consistent evidence' };
+  if (!expected) return none;
+  const gradePrefix = /^(C\.G\d+)\./.exec(expected.lessonId)?.[1];
+  if (!gradePrefix) return none;
+  const order = curriculumNodeOrder(kb, gradePrefix);
+  const expectedIdx = order.indexOf(expected.lessonId);
+  if (expectedIdx < 0) return none;
+
+  const recent = observed
+    .filter((s) => (s.typeKey === 'homework_scan' || s.typeKey === 'notebook_scan' || s.typeKey === 'verified_test') && now - s.at <= 28 * DAY_MS)
+    .map((s) => order.indexOf(s.lessonId))
+    .filter((i) => i >= 0);
+  if (recent.length < 3) return none;
+
+  const lag = recent.map((i) => i - expectedIdx);
+  const allAhead = lag.every((l) => l >= 1);
+  const allBehind = lag.every((l) => l <= -1);
+  if (!allAhead && !allBehind) return none;
+
+  const meanLag = lag.reduce((a, b) => a + b, 0) / lag.length;
+  // relative to lessons taught so far — a 2-lesson lead after 20 lessons ≈ +10% pace
+  const value = Math.max(-0.35, Math.min(0.35, meanLag / Math.max(4, expectedIdx)));
+  return {
+    value: Number(value.toFixed(3)),
+    observationCount: recent.length,
+    rationale: `${recent.length} recent schoolwork observations consistently ${allAhead ? 'ahead of' : 'behind'} the calendar (mean lag ${meanLag.toFixed(1)} lessons)`,
+  };
 }

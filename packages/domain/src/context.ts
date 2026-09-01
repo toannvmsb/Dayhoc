@@ -31,16 +31,37 @@ export type LearningContextSource = (typeof LEARNING_CONTEXT_SOURCES)[number];
 export const LEARNING_CONTEXT_CONFIDENCE = ['VERIFIED', 'STRONG', 'SUPPORTING', 'ESTIMATED'] as const;
 export type LearningContextConfidence = (typeof LEARNING_CONTEXT_CONFIDENCE)[number];
 
+/** A range of plausible lessons (Curriculum Clock — doc 13 §1). */
+export interface ExpectedLessonWindow {
+  readonly fromLessonId: string;
+  readonly toLessonId: string;
+  readonly widthLessons: number;
+  readonly lessonIds: readonly string[];
+}
+
+/** Which calendar row produced an estimate, and how trustworthy it is (doc 13 §3). */
+export interface CalendarProvenance {
+  readonly calendarId: string;
+  readonly version: number;
+  readonly status: 'PROVISIONAL' | 'VERIFIED';
+  readonly source: string;
+  readonly academicYear: string;
+}
+
 /** The calendar-based estimate of where the class *should* be (Curriculum Clock). */
 export interface ExpectedLearningContext {
   readonly curriculum: string;
   readonly chapterId: number;
-  /** KB curriculum-node id, e.g. C.G7.6.21. */
+  /** Most likely single lesson — NOT authoritative alone (never shown as fact). */
   readonly lessonId: string;
   readonly alsoPlausibleLessonIds: readonly string[];
+  /** The plausible range; the resolver narrows this as evidence arrives. */
+  readonly window: ExpectedLessonWindow;
   readonly source: 'CURRICULUM_TIMELINE';
   readonly confidence: 'ESTIMATED';
   readonly asOfDate: string; // ISO date
+  readonly paceDeltaApplied: number;
+  readonly calendar: CalendarProvenance;
 }
 
 /** The single resolved answer the planner uses (LearningContextResolver). */
@@ -52,6 +73,29 @@ export interface ResolvedLearningContext {
   readonly confidence: LearningContextConfidence;
   /** Timestamp of the strongest confirming signal; null when only an estimate. */
   readonly lastVerifiedAt: string | null;
+  /**
+   * Narrowed window the class is in — starts as the clock window, tightens
+   * around confirmed/observed lessons (doc 13 §1).
+   */
+  readonly window: readonly string[];
+  /** Which deterministic guardrail (if any) decided the outcome (doc 13 §2 A–F). */
+  readonly guardrailApplied: string | null;
+}
+
+/**
+ * An explicit context event — a parent/teacher confirming or correcting the
+ * current lesson. Appended, never destructive; flows through the resolver like
+ * any other signal (doc 13 §5, B3 requirement 5).
+ */
+export interface LessonConfirmationEvent {
+  readonly id: string;
+  readonly childId: ChildId;
+  readonly lessonId: string;
+  readonly topicNote?: string;
+  readonly source: 'TEACHER_UPDATE' | 'PARENT_UPDATE';
+  readonly confidence: LearningContextConfidence;
+  readonly confirmedBy: string; // user id
+  readonly confirmedAt: string; // ISO
 }
 
 /**
@@ -66,8 +110,17 @@ export interface LearningContext {
   readonly expected: ExpectedLearningContext | null;
   /** Reliability-weighted merge of estimate + all observed evidence (Context Resolver). */
   readonly resolved: ResolvedLearningContext;
-  /** Learned class-pace adjustment, −0.35..0.35 (0 = on the calendar mean). */
+  /** Learned class-pace adjustment currently APPLIED to the clock, −0.35..0.35. */
   readonly paceDelta: number;
+  /**
+   * A pace adjustment the resolver SUGGESTS from repeated consistent evidence
+   * (invariant C). Not applied until confirmed / persisted — surfaced for review.
+   */
+  readonly paceDeltaHypothesis: {
+    readonly value: number;
+    readonly observationCount: number;
+    readonly rationale: string;
+  };
   /**
    * @deprecated migration alias for `expected` — whole-grade scope.
    * Removed once all consumers read `expected`/`resolved` (doc 17 Group B/C).

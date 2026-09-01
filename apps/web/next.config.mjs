@@ -4,6 +4,7 @@ const nextConfig = {
   // workspace packages ship TS source; let Next transpile them
   transpilePackages: [
     '@copilot/api-contract',
+    '@copilot/curriculum-clock',
     '@copilot/design-tokens',
     '@copilot/domain',
     '@copilot/education-core',

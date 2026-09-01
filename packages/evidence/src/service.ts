@@ -5,6 +5,7 @@ import {
   asSkillId,
   type ChildId,
   type Evidence,
+  type LessonConfirmationEvent,
   type SkillId,
   type TeacherContribution,
 } from '@copilot/domain';
@@ -126,6 +127,38 @@ export class EvidenceService {
     return record;
   }
 
+  /**
+   * Record a parent/teacher lesson confirmation (doc 13 §5). Append-only — it
+   * NEVER overwrites context history; it is one more signal for the resolver.
+   */
+  async recordLessonConfirmation(input: {
+    childId: string;
+    lessonId: string;
+    topicNote?: string;
+    source: 'TEACHER_UPDATE' | 'PARENT_UPDATE';
+    confidence?: 'VERIFIED' | 'STRONG' | 'SUPPORTING';
+    confirmedBy: string;
+  }): Promise<LessonConfirmationEvent> {
+    const record: LessonConfirmationEvent = {
+      id: `lc_${this.#newId()}`,
+      childId: asChildId(input.childId),
+      lessonId: input.lessonId,
+      ...(input.topicNote !== undefined ? { topicNote: input.topicNote } : {}),
+      source: input.source,
+      confidence: input.confidence ?? (input.source === 'TEACHER_UPDATE' ? 'STRONG' : 'SUPPORTING'),
+      confirmedBy: input.confirmedBy,
+      confirmedAt: this.#now().toISOString(),
+    };
+    await this.#store.appendLessonConfirmation(record);
+    this.#logger?.info('lesson_confirmation.recorded', {
+      confirmationId: record.id,
+      childId: record.childId,
+      lessonId: record.lessonId,
+      source: record.source,
+    });
+    return record;
+  }
+
   history(childId: string): Promise<readonly Evidence[]> {
     return this.#store.listEvidence(asChildId(childId));
   }
@@ -136,6 +169,10 @@ export class EvidenceService {
 
   teacherContributions(childId: string): Promise<readonly TeacherContribution[]> {
     return this.#store.listTeacherContributions(asChildId(childId));
+  }
+
+  lessonConfirmations(childId: string): Promise<readonly LessonConfirmationEvent[]> {
+    return this.#store.listLessonConfirmations(asChildId(childId));
   }
 }
 

@@ -79,15 +79,25 @@ then the default flips and the old path is deleted in a later step.
 
 ## Group B — Curriculum Clock & Context Resolver
 
-> **B1 + B2 ✅ DONE (2026-09-01).** New `@copilot/curriculum-clock`
+> **B1 + B2 + B3 ✅ DONE (2026-09-01).** New `@copilot/curriculum-clock`
 > (`CurriculumClockService`), provisional calendars for G4+G7 KNTT 2026–2027
 > (`packages/math-data/data/calendars/`, built into `calendars.json`).
-> `@copilot/learning-context` gains `resolveLearningContext` (reliability-weighted,
-> not latest-wins). `LearningContext` type extended with `expected` / `resolved`
-> / `paceDelta`; `standardPosition` / `actualTaughtPosition` kept as deprecated
-> aliases. `buildLearningContext` accepts an optional `expectedContext` and calls
-> the resolver. **No behaviour change until B3 wires the clock in.** 285 tests green.
-> **B3 (wiring + API + web) not started** — next.
+> `@copilot/learning-context` gains `resolveLearningContext` (reliability-weighted
+> scoring **plus** deterministic guardrails A–F, not latest-wins). `LearningContext`
+> type extended with `expected` / `resolved` / `paceDelta` / `paceDeltaHypothesis`;
+> `standardPosition` / `actualTaughtPosition` kept as deprecated aliases.
+> `buildLearningContext` calls clock + resolver. **B3 wired the clock into the
+> runtime** — API `GET /children/:id/learning-context` + `POST .../confirm-lesson`
+> (append-only, routed through the resolver), projection `contextStatus`, web
+> `LearningContextCard` (Expected vs Confirmed/Resolved), 3-child functional demo
+> (`packages/testing/src/demo/b3-context-demo.ts` → `docs/implementation/B3_DEMO_OUTPUT.md`).
+> 305 tests green.
+>
+> **Clock now emits `expectedWindow` (range, never a single "actual" lesson).**
+> ESTIMATED is never presented as fact in any surface. Calendars carry provenance
+> metadata (`calendar_id`, `curriculum_id`, `grade`, `academic_year`, `version`,
+> `status: PROVISIONAL|VERIFIED`, `effective_from/to`, `source`) — a new school
+> year is a new calendar file, no business-logic edit.
 
 
 ### B1 — calendar reference data + `@copilot/curriculum-clock`
@@ -113,16 +123,18 @@ then the default flips and the old path is deleted in a later step.
 - **Rollback:** `buildLearningContext` keeps its old body behind a flag; resolver additive.
 - **Acceptance:** all downstream consumers (`planning`, `projections`, `revision`, `api`, `web`) compile against the extended type unchanged; new fields populated.
 
-### B3 — wire clock+resolver into `buildLearningContext` + API + web
+### B3 — wire clock+resolver into `buildLearningContext` + API + web — ✅ DONE (2026-09-01)
 - **Goal:** the app resolves context with zero parent/teacher input.
-- **Files:** `packages/learning-context/src/build.ts` (call clock + resolver), `services/api/src/api.ts` (`GET /learning-context`, `POST /confirm-lesson`), `packages/projections` (parent card), `apps/web` LearningContextCard + demo scenes.
+- **Files:** `packages/domain/src/context.ts` (`ExpectedLessonWindow`, `CalendarProvenance`, `ExpectedLearningContext`, `ResolvedLearningContext`, `LessonConfirmationEvent`), `packages/curriculum-clock/src/clock.ts` (`expectedWindow`, `CalendarProvenance`), `packages/math-data/{data/calendars/*.yaml,src/calendars.ts}` (provenance metadata), `packages/learning-context/src/{resolver.ts,build.ts}` (guardrails A–F, grade filter, pace hypothesis), `packages/evidence/src/{store,service,pg-store}.ts` (`recordLessonConfirmation`, append-only), `services/api/src/api.ts` (`learningContext`, `confirmLesson`), `packages/projections/src/parent.ts` (`contextStatus`), `packages/api-contract/src/view-models.ts`, `apps/web/app/components.tsx` (`LearningContextCard`), `apps/web/lib/demo-scene.ts`, `packages/testing/src/demo/b3-context-demo.ts` + `scripts/b3-demo-report.mjs`.
 - **Deps:** B1, B2.
-- **DB:** none new.
-- **API:** `GET /children/:id/learning-context`, `POST /children/:id/confirm-lesson`.
-- **Tests:** `api.test.ts` — new routes role-gated; child token cannot confirm. TEST 1 end-to-end (new child → estimated context → plan produced).
-- **Golden:** E2E Family Journey — add TEST 1 as a journey variant; existing checkpoints unchanged.
-- **Rollback:** feature flag `USE_CURRICULUM_CLOCK` (default off → on after green).
-- **Acceptance:** demo shows "App nghĩ con đang ở Bài X (ước tính) — xác nhận?".
+- **DB:** migration `1756944000000_curriculum_context.js` — `child_school_enrollment`, `lesson_confirmations` (⊕ append-only trigger), `learning_context_snapshots` (⊕), `curriculum_calendars`. Verified up/down/up.
+- **API:** `GET /children/:id/learning-context` (returns `expected`, `resolved`, `paceDelta`, `paceDeltaHypothesis`, `conflicts`, `calendar`; rejects child role) · `POST /children/:id/confirm-lesson` (`{lessonId, topicNote?, confidence?}` → appends a `LessonConfirmationEvent` via `EvidenceService`, re-scenes, returns `{event, resolved, expected}`; parent/teacher/admin only).
+- **Guardrails (deterministic, not just the score):** A recent VERIFIED never overridden by CURRICULUM_TIMELINE or a low-confidence majority · B repetition raises score, never the confidence tier · C ≥3 consistent SUPPORTING → one-tier promote + `paceDeltaHypothesis` · D conflicting VERIFIED on different lessons → conflict state, most-recent-VERIFIED wins (no silent numeric pick) · E stale VERIFIED (>35d) downgraded for scoring, kept in history · F human confirmation vs observed schoolwork are distinct source types.
+- **expectedWindow:** `{fromLessonId, toLessonId, widthLessons, lessonIds}` — width = `pace_uncertainty_lessons` (+1 if school week ≤3, +1 if a holiday just ended). Never collapsed to a single "actual" lesson.
+- **Tests:** `clock.test.ts` (12), `resolver.test.ts` (13, incl. B3-1..B3-6 + invariants A–F), `build.test.ts` (5), `api.test.ts` B3 block (B3-1/2/3/7/9/10 + confirm-lesson role gates), `b3-context-demo.test.ts` (4). 305 pass / 2 skip overall.
+- **Golden:** E2E Family Journey checkpoints unchanged (context shape is a superset).
+- **Feature flag:** `enrollment` on the child profile / demo scene is what activates the clock path — absent ⇒ `expected` is `null` and the resolver falls back to observed evidence (old behaviour). No child in production has enrollment yet, so the runtime path is dark until a calendar is marked `VERIFIED` and enrollment is populated.
+- **Acceptance:** demo home shows "CON ĐANG HỌC · Tính chất dãy tỉ số bằng nhau · ● Giáo viên đã xác nhận · Lịch chương trình dự kiến: Đại lượng tỉ lệ thuận" — Expected vs Confirmed both visible, ESTIMATED never shown as fact.
 
 ---
 

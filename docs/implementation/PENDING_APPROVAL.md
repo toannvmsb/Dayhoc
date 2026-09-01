@@ -6,8 +6,9 @@
 >
 > Cập nhật lần cuối: 2026-09-01 (Architecture Migration v1.1 — AI-Generation-First).
 >
-> **Tình trạng:** Vertical slice P0–P10 xong, **263 test xanh**, web PWA test được trên iPhone.
-> **⚠ ĐANG CHỜ ANH DUYỆT ARCHITECTURE MIGRATION** (mục 0 dưới) — chưa implement.
+> **Tình trạng:** Vertical slice P0–P10 xong, web PWA test được trên iPhone.
+> Migration v1.1: **Group A ✅ · Group B1+B2+B3 ✅ (305 test xanh)**.
+> **⚠ ĐANG CHỜ ANH DUYỆT B3** trước khi bắt đầu **Group C (Exercise Generation)**.
 
 ---
 
@@ -39,6 +40,12 @@ Em đã hoàn thành Phase 1–3 (audit + spec + migration plan), **chưa code f
 
 → **`17_IMPLEMENTATION_MIGRATION_PLAN.md` được duyệt.** Em bắt đầu Group A (cost/routing v1.1 — an toàn nhất, additive), rồi Group B/C/D theo thứ tự.
 Mọi thứ LOCKED trong prompt v1.1 = đã quyết, không hỏi lại.
+
+**Tiến độ (2026-09-01):**
+- **Group A ✅** — `packages/ai` (margin/budget/routing/usage-event) v1.1, migration `1756857600000_ai_cost_v1_1.js`, benchmark harness. APPROVED.
+- **Group B1+B2 ✅** — `@copilot/curriculum-clock`, `resolveLearningContext`, calendars G4/G7. APPROVED.
+- **Group B3 ✅ — CHỜ ANH DUYỆT.** Clock + resolver wired vào runtime + API (`GET /children/:id/learning-context`, `POST .../confirm-lesson`) + web card. `expectedWindow` (range, không phải 1 bài), guardrail A–F, calendar provenance metadata, confirm-lesson append-only. 305 test. Demo 3 trẻ: [`B3_DEMO_OUTPUT.md`](B3_DEMO_OUTPUT.md). Chi tiết trong [17 §B3](17_IMPLEMENTATION_MIGRATION_PLAN.md).
+- **Group C ⏸ — CHƯA BẮT ĐẦU.** `ExerciseGenerationSpec` / `ExerciseGenerator` / `GeneratedExerciseValidator` — đợi anh APPROVE B3.
 
 ---
 

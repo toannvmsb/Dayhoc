@@ -1,19 +1,28 @@
-import type { ChildId, Evidence, SkillId, TeacherContribution } from '@copilot/domain';
+import type {
+  ChildId,
+  Evidence,
+  LessonConfirmationEvent,
+  SkillId,
+  TeacherContribution,
+} from '@copilot/domain';
 
 /**
  * The ledger port. By construction it exposes **no update and no delete** — the
- * only mutation is `appendEvidence` / `appendTeacherContribution`. Any storage
- * backend implementing this interface inherits the append-only guarantee; the
- * Postgres backend additionally enforces it with triggers (defense in depth).
+ * only mutations are `append*`. Any storage backend implementing this interface
+ * inherits the append-only guarantee; the Postgres backend additionally enforces
+ * it with triggers (defense in depth).
  */
 export interface LedgerStore {
   appendEvidence(record: Evidence): Promise<void>;
   appendTeacherContribution(record: TeacherContribution): Promise<void>;
+  /** Parent/teacher confirming or correcting the current lesson (doc 13 §5). Append-only. */
+  appendLessonConfirmation(record: LessonConfirmationEvent): Promise<void>;
 
   /** All evidence for a child, oldest first (the ordered stream mastery is derived from). */
   listEvidence(childId: ChildId): Promise<readonly Evidence[]>;
   listEvidenceForSkill(childId: ChildId, skillId: SkillId): Promise<readonly Evidence[]>;
   listTeacherContributions(childId: ChildId): Promise<readonly TeacherContribution[]>;
+  listLessonConfirmations(childId: ChildId): Promise<readonly LessonConfirmationEvent[]>;
   countEvidence(childId: ChildId): Promise<number>;
 }
 
@@ -21,6 +30,7 @@ export interface LedgerStore {
 export class InMemoryLedgerStore implements LedgerStore {
   readonly #evidence: Evidence[] = [];
   readonly #contributions: TeacherContribution[] = [];
+  readonly #confirmations: LessonConfirmationEvent[] = [];
 
   appendEvidence(record: Evidence): Promise<void> {
     if (this.#evidence.some((e) => e.id === record.id)) {
@@ -36,6 +46,22 @@ export class InMemoryLedgerStore implements LedgerStore {
     }
     this.#contributions.push(record);
     return Promise.resolve();
+  }
+
+  appendLessonConfirmation(record: LessonConfirmationEvent): Promise<void> {
+    if (this.#confirmations.some((c) => c.id === record.id)) {
+      return Promise.reject(new Error(`lesson confirmation ${record.id} already exists (append-only)`));
+    }
+    this.#confirmations.push(record);
+    return Promise.resolve();
+  }
+
+  listLessonConfirmations(childId: ChildId): Promise<readonly LessonConfirmationEvent[]> {
+    return Promise.resolve(
+      this.#confirmations
+        .filter((c) => c.childId === childId)
+        .sort((a, b) => a.confirmedAt.localeCompare(b.confirmedAt)),
+    );
   }
 
   listEvidence(childId: ChildId): Promise<readonly Evidence[]> {

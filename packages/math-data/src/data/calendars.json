@@ -1,10 +1,25 @@
 [
   {
+    "meta": {
+      "calendar_id": "cal.KNTT.G4.2026-2027.v1",
+      "curriculum_id": "KET_NOI_TRI_THUC",
+      "grade": 4,
+      "academic_year": "2026-2027",
+      "version": 1,
+      "status": "PROVISIONAL",
+      "effective_from": "2026-08-01",
+      "effective_to": "2027-07-31",
+      "source": "MOET typical school-year dates + SGK Toán 4 KNTT phân phối chương trình",
+      "region": null,
+      "school_override_id": null,
+      "created_at": "2026-09-01"
+    },
     "curriculum": "KET_NOI_TRI_THUC",
     "grade": 4,
     "academic_year": "2026-2027",
     "school_start_date": "2026-09-05",
     "teaching_weeks": 35,
+    "pace_uncertainty_lessons": 2,
     "holidays": [
       {
         "name": "Nghỉ Tết Nguyên đán",
@@ -210,11 +225,26 @@
     ]
   },
   {
+    "meta": {
+      "calendar_id": "cal.KNTT.G7.2026-2027.v1",
+      "curriculum_id": "KET_NOI_TRI_THUC",
+      "grade": 7,
+      "academic_year": "2026-2027",
+      "version": 1,
+      "status": "PROVISIONAL",
+      "effective_from": "2026-08-01",
+      "effective_to": "2027-07-31",
+      "source": "MOET typical school-year dates + SGK Toán 7 KNTT phân phối chương trình (P-01)",
+      "region": null,
+      "school_override_id": null,
+      "created_at": "2026-09-01"
+    },
     "curriculum": "KET_NOI_TRI_THUC",
     "grade": 7,
     "academic_year": "2026-2027",
     "school_start_date": "2026-09-05",
     "teaching_weeks": 35,
+    "pace_uncertainty_lessons": 2,
     "holidays": [
       {
         "name": "Nghỉ Tết Nguyên đán",

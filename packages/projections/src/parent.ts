@@ -101,6 +101,7 @@ export function buildParentHome(input: ParentViewInput): ParentHomeView {
       ),
       sources: contextSources(context),
       needsUpdate: !context.teacherParticipated && context.activeSkillIds.length === 0,
+      ...contextStatus(context, kb),
     },
     todayPlan: todayPlanView(plan),
     attention,
@@ -201,6 +202,50 @@ function contextSources(context: LearningContext): string[] {
   if (context.activeSkillIds.length > 0 && !context.teacherParticipated) out.push('Từ bài con đã làm');
   if (context.conflicts.length > 0) out.push('Có nguồn chưa khớp — cần xem lại');
   return out.length > 0 ? out : ['Chưa có cập nhật'];
+}
+
+/** Expected-vs-resolved status for the parent (doc 13, B3 §4). Never "fact" for an estimate. */
+function contextStatus(
+  context: LearningContext,
+  kb: KnowledgeBase,
+): Pick<ParentHomeView['learningContext'], 'status' | 'statusLabel' | 'estimatedLessonName' | 'hasConflict'> {
+  const src = context.resolved.source;
+  const status =
+    src === 'TEACHER_UPDATE'
+      ? ('CONFIRMED_BY_TEACHER' as const)
+      : src === 'PARENT_UPDATE'
+        ? ('CONFIRMED_BY_PARENT' as const)
+        : src === 'SCHOOLWORK_EVIDENCE'
+          ? ('OBSERVED_FROM_SCHOOLWORK' as const)
+          : ('ESTIMATED_FROM_CALENDAR' as const);
+  const statusLabel =
+    status === 'CONFIRMED_BY_TEACHER'
+      ? 'Giáo viên đã xác nhận'
+      : status === 'CONFIRMED_BY_PARENT'
+        ? 'Bố mẹ đã xác nhận'
+        : status === 'OBSERVED_FROM_SCHOOLWORK'
+          ? 'Suy ra từ bài con đã làm'
+          : 'Dự kiến theo lịch chương trình (ước tính — bố mẹ xác nhận giúp)';
+
+  const estLesson =
+    context.expected && context.expected.lessonId !== context.resolved.lessonId
+      ? (curriculumLessonName(kb, context.expected.lessonId) ?? null)
+      : null;
+
+  return {
+    status,
+    statusLabel,
+    estimatedLessonName: estLesson,
+    hasConflict: context.conflicts.length > 0,
+  };
+}
+
+function curriculumLessonName(kb: KnowledgeBase, lessonId: string): string | undefined {
+  try {
+    return kb.getCurriculumNode(lessonId).lesson;
+  } catch {
+    return undefined;
+  }
 }
 
 function recentEvidenceRows(input: ParentViewInput): ParentProgressView['recentEvidence'] {

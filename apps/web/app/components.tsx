@@ -49,17 +49,48 @@ export function ChildSwitcher({ name, sub }: { name: string; sub: string }) {
 }
 
 export function LearningContextCard({ ctx }: { ctx: ParentHomeView['learningContext'] }) {
+  const estimated = ctx.status === 'ESTIMATED_FROM_CALENDAR';
   return (
     <div className="card">
-      <span className="overline">Con đang học</span>
+      <span className="overline">{estimated ? 'Dự kiến con đang học' : 'Con đang học'}</span>
       <span className="h2">{ctx.headline}</span>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
-        {ctx.sources.map((s) => (
-          <span key={s} className="chip">
-            {s}
-          </span>
-        ))}
+      <div
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          marginTop: 2,
+          fontSize: 12.5,
+          fontWeight: 600,
+          color: estimated ? 'var(--c-text-faint)' : 'var(--c-primary-strong)',
+        }}
+      >
+        <span
+          aria-hidden
+          style={{
+            width: 7,
+            height: 7,
+            borderRadius: '50%',
+            background: estimated ? 'var(--c-text-faint)' : 'var(--c-primary)',
+          }}
+        />
+        {ctx.statusLabel}
       </div>
+      {ctx.estimatedLessonName ? (
+        <span style={{ fontSize: 12.5, color: 'var(--c-text-faint)', marginTop: 2 }}>
+          Lịch chương trình dự kiến: {ctx.estimatedLessonName}
+        </span>
+      ) : null}
+      {ctx.hasConflict ? (
+        <span style={{ fontSize: 12.5, color: 'var(--c-attention-text)', fontWeight: 600, marginTop: 2 }}>
+          Có nguồn chưa khớp — bố mẹ xác nhận giúp
+        </span>
+      ) : null}
+      {estimated ? (
+        <a href="/more" className="chip" style={{ marginTop: 6, alignSelf: 'flex-start' }}>
+          Xác nhận bài học ›
+        </a>
+      ) : null}
     </div>
   );
 }

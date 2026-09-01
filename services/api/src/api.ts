@@ -4,6 +4,7 @@ import { loadKnowledgeBase, type KnowledgeBase } from '@copilot/math-data';
 import { buildLearningTwin } from '@copilot/learning-twin';
 import { runGapEngine } from '@copilot/gap-engine';
 import { buildLearningContext } from '@copilot/learning-context';
+import { CurriculumClockService, toExpectedLearningContext } from '@copilot/curriculum-clock';
 import { buildDailyPlan } from '@copilot/planning';
 import { buildAssignmentsForPlan } from '@copilot/practice';
 import {
@@ -45,8 +46,16 @@ export interface ApiDeps {
       readonly familyUserIds: readonly string[];
       readonly seedEvidence?: readonly Evidence[];
       readonly seedContributions?: readonly TeacherContribution[];
+      /** School enrollment — the Curriculum Clock's input (doc 13). */
+      readonly enrollment?: {
+        readonly curriculum: string; // KET_NOI_TRI_THUC
+        readonly academicYear: string; // 2026-2027
+        readonly calendarId?: string;
+      };
     }
   >;
+  /** Persisted per-child applied pace_delta (doc 13 §4). Default 0. */
+  readonly appliedPaceDeltaFor?: (childId: string) => number;
 }
 
 /**
@@ -63,7 +72,7 @@ export function createApi(deps: ApiDeps) {
   const ledger = deps.ledger ?? new InMemoryLedgerStore();
   const logger = deps.logger ?? createLogger({ level: 'warn' });
   const now = deps.now ?? (() => new Date());
-  const evidenceService = new EvidenceService({ store: ledger, logger });
+  const evidenceService = new EvidenceService({ store: ledger, logger, now });
 
   function requireChildAccess(ctx: RequestContext, childId: string): void {
     const rec = deps.childProfiles[childId];
@@ -80,6 +89,8 @@ export function createApi(deps: ApiDeps) {
     throw new AuthzError('role not permitted');
   }
 
+  const clock = new CurriculumClockService((child) => deps.appliedPaceDeltaFor?.(child.curriculum) ?? 0);
+
   async function scene(childId: string) {
     const rec = deps.childProfiles[childId]!;
     const stored = await evidenceService.history(childId);
@@ -88,10 +99,34 @@ export function createApi(deps: ApiDeps) {
       ...(rec.seedContributions ?? []),
       ...(await evidenceService.teacherContributions(childId)),
     ];
+    const lessonConfirmations = await evidenceService.lessonConfirmations(childId);
     const asOf = now();
+
+    // Curriculum Clock estimate (works with zero parent/teacher input) — doc 13.
+    const enroll = rec.enrollment;
+    const gradeNum = rec.gradeContext === 7 ? 7 : 4;
+    const clockCtx = enroll
+      ? clock.positionFor(
+          { curriculum: enroll.curriculum, grade: gradeNum, academicYear: enroll.academicYear, ...(enroll.calendarId ? { calendarId: enroll.calendarId } : {}) },
+          asOf,
+        )
+      : null;
+    const expectedContext = clockCtx ? toExpectedLearningContext(clockCtx) : null;
+    const appliedPaceDelta = deps.appliedPaceDeltaFor?.(childId) ?? 0;
+
     const twin = buildLearningTwin({ childId: asChildId(childId), gradeContext: rec.gradeContext, evidence, knowledgeBase: kb, asOf });
     const gaps = runGapEngine({ childId: asChildId(childId), gradeContext: rec.gradeContext, twin, evidence, knowledgeBase: kb, asOf });
-    const context = buildLearningContext({ childId: asChildId(childId), gradeContext: rec.gradeContext, evidence, teacherContributions: contributions, knowledgeBase: kb, asOf });
+    const context = buildLearningContext({
+      childId: asChildId(childId),
+      gradeContext: rec.gradeContext,
+      evidence,
+      teacherContributions: contributions,
+      lessonConfirmations,
+      expectedContext,
+      appliedPaceDelta,
+      knowledgeBase: kb,
+      asOf,
+    });
     const plan = buildDailyPlan({ childId: asChildId(childId), planDate: asOf.toISOString().slice(0, 10), availableMinutes: 25, twin, gaps, context, knowledgeBase: kb, asOf });
     return { rec, twin, gaps, context, plan, asOf };
   }
@@ -153,6 +188,52 @@ export function createApi(deps: ApiDeps) {
       if (ctx.role !== 'teacher' && ctx.role !== 'parent' && ctx.role !== 'admin') throw new AuthzError('not permitted');
       requireChildAccess(ctx, childId);
       return evidenceService.recordTeacherContribution({ ...input, childId });
+    },
+
+    /**
+     * GET /children/:id/learning-context — parent/teacher. Returns the calendar
+     * ESTIMATE and the RESOLVED context as clearly separate things. ESTIMATED is
+     * never presented as fact.
+     */
+    async learningContext(ctx: RequestContext, childId: string) {
+      if (ctx.role === 'child') throw new AuthzError('child token cannot read learning context');
+      requireChildAccess(ctx, childId);
+      const s = await scene(childId);
+      return {
+        childId,
+        builtAt: s.context.builtAt,
+        expected: s.context.expected, // dự kiến theo chương trình (ESTIMATED) — hoặc null
+        resolved: s.context.resolved, // đã xác nhận / quan sát thực tế
+        paceDelta: s.context.paceDelta,
+        paceDeltaHypothesis: s.context.paceDeltaHypothesis,
+        conflicts: s.context.conflicts,
+        calendar: s.context.expected?.calendar ?? null,
+      };
+    },
+
+    /**
+     * POST /children/:id/confirm-lesson — parent/teacher confirm or correct the
+     * current lesson. APPENDS a `LessonConfirmationEvent` (never overwrites
+     * history) and returns the re-resolved context.
+     */
+    async confirmLesson(
+      ctx: RequestContext,
+      childId: string,
+      input: { lessonId: string; topicNote?: string; confidence?: 'VERIFIED' | 'STRONG' | 'SUPPORTING' },
+    ) {
+      if (ctx.role !== 'teacher' && ctx.role !== 'parent' && ctx.role !== 'admin') throw new AuthzError('not permitted');
+      requireChildAccess(ctx, childId);
+      if (!kb.curriculum.has(input.lessonId)) throw new NotFoundError(`unknown lesson ${input.lessonId}`);
+      const event = await evidenceService.recordLessonConfirmation({
+        childId,
+        lessonId: input.lessonId,
+        ...(input.topicNote !== undefined ? { topicNote: input.topicNote } : {}),
+        source: ctx.role === 'teacher' ? 'TEACHER_UPDATE' : 'PARENT_UPDATE',
+        ...(input.confidence !== undefined ? { confidence: input.confidence } : {}),
+        confirmedBy: ctx.userId,
+      });
+      const s = await scene(childId);
+      return { event, resolved: s.context.resolved, expected: s.context.expected };
     },
   };
 }

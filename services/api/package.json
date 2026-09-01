@@ -9,6 +9,7 @@
   "scripts": { "build": "tsc -b" },
   "dependencies": {
     "@copilot/api-contract": "0.1.0",
+    "@copilot/curriculum-clock": "0.1.0",
     "@copilot/domain": "0.1.0",
     "@copilot/evidence": "0.1.0",
     "@copilot/gap-engine": "0.1.0",

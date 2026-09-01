@@ -2,7 +2,25 @@
 
 > **Authority:** Pricing/AI Cost/Routing **v1.1** §2 (LOCKED). Part of the
 > AI-Generation-First migration — see [12_ARCHITECTURE_MIGRATION_AUDIT.md](12_ARCHITECTURE_MIGRATION_AUDIT.md).
-> **Spec only. Not implemented yet** (Phase 3, [17](17_IMPLEMENTATION_MIGRATION_PLAN.md)).
+> **✅ IMPLEMENTED (2026-09-01, Group B1+B2+B3 of [17](17_IMPLEMENTATION_MIGRATION_PLAN.md)).**
+> Code: `@copilot/curriculum-clock`, `@copilot/learning-context`
+> (`resolveLearningContext`), `packages/math-data/data/calendars/`. Runtime path is
+> dark until a child has `enrollment` + a `VERIFIED` calendar. Deviations from the
+> original spec, all tightening it:
+> - **`expectedWindow`** — the clock returns a *range* `{fromLessonId, toLessonId,
+>   widthLessons, lessonIds}`, never a single "actual" lesson. Width grows early in
+>   the year and just after a holiday. `primaryLessonId` + `alsoPlausibleLessonIds`
+>   are for display ordering only.
+> - **Guardrails A–F** (§3.2) are deterministic and override the numeric score;
+>   the score alone is never the decision.
+> - **Calendars carry provenance metadata** (`meta:` block — `calendar_id`,
+>   `curriculum_id`, `grade`, `academic_year`, `version`, `status:
+>   PROVISIONAL|VERIFIED`, `effective_from/to`, `source`, `region`,
+>   `school_override_id`) + `pace_uncertainty_lessons`. A new school year is a new
+>   calendar file — no service-logic change.
+> - **`confirm-lesson` is append-only** — writes a `LessonConfirmationEvent` that
+>   flows through the resolver; it never overwrites context history.
+> - Functional demo output: [`B3_DEMO_OUTPUT.md`](B3_DEMO_OUTPUT.md).
 
 ---
 
@@ -116,14 +134,24 @@ score(L) = Σ over signals s pointing at L:
 
 `resolved_lesson = argmax score(L)`.
 
-**Guardrails:**
-- A single `ESTIMATED` calendar signal never overrides a `VERIFIED`/`STRONG`
-  signal that is ≤ 21 days old (v1.1 §2: *"Do not blindly overwrite a recent
-  verified context with a calendar estimate."*).
-- If the top two candidates are within 15% score and from different sources → emit
-  a `conflict` (surfaced to the parent as *"xác nhận giúp: Bài 6 hay Bài 7?"*),
-  and provisionally take the more advanced lesson (safer for the planner —
-  prerequisites are checked downstream anyway).
+**Guardrails (deterministic — `guardrailApplied` names the one that fired; the score alone is never the decision):**
+
+| # | Rule | Implementation |
+|---|---|---|
+| **A** | A recent VERIFIED context is never overridden by `CURRICULUM_TIMELINE`, nor by a top candidate whose signals are *all* the weakest (ESTIMATED) tier. | `recentVerified` (≤21d) wins when the argmax lesson `chosenIsWeak && !chosenHasVerified` → `A_recent_verified_not_overridden_by_timeline` / `A_recent_verified_beats_low_confidence_majority` |
+| **B** | Repeated supporting evidence raises the *score*, never the confidence *tier*. | resolved confidence capped at `max(effConf)` of the chosen lesson's signals; `repetitionBonus` only multiplies score |
+| **C** | ≥3 consistent SUPPORTING (non-confirmation) signals → promote SUPPORTING→STRONG (one tier only) **and** emit a `paceDeltaHypothesis` (not applied). | `supportingHere.length >= 3`; `computePaceHypothesis` needs ≥3 recent (≤28d) homework/notebook/test obs, all same sign, value clamped ±0.35 |
+| **D** | Conflicting VERIFIED signals on *different* lessons → `conflict` state + deterministic policy (most-recent VERIFIED wins), never a silent numeric pick. | `verifiedByLesson.size >= 2` → `D_conflicting_verified_most_recent_wins`, others → `conflictLessonIds` |
+| **E** | A VERIFIED signal older than 35 days is "stale" — downgraded to STRONG for scoring, but kept in history. | `effConf(s)` downgrades; the raw signal stays in `signals[]` |
+| **F** | Human confirmation (`TEACHER_UPDATE`/`PARENT_UPDATE`, `isConfirmation: true`) and observed schoolwork (`SCHOOLWORK_EVIDENCE`) are distinct source types. | `Signal.isConfirmation`; a teacher contribution is VERIFIED, a parent contribution STRONG |
+
+Plus the original soft-conflict rule: top two candidates within 15% score from
+disjoint sources → `soft_conflict_provisional_pick_more_advanced` (surfaced to the
+parent; planner checks prerequisites downstream anyway).
+
+**Grade scope:** the "current class lesson" is a lesson of the child's *own*
+grade. Cross-grade remediation work still feeds the twin / gap engine but does not
+move the resolved context (`inGrade` filter on `gradeContext`).
 
 ### 3.3 Output — `LearningContext` (extended)
 

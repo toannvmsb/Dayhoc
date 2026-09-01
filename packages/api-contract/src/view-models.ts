@@ -28,6 +28,18 @@ export interface ParentHomeView {
     readonly headline: string; // "Tỉ lệ thức & dãy tỉ số bằng nhau"
     readonly sources: readonly string[]; // ["Ảnh vở 15/8", "Giáo viên xác nhận"]
     readonly needsUpdate: boolean;
+    /**
+     * How the current lesson was established — the Parent must see the difference
+     * between an estimate and a confirmation (doc 13, B3 §4). Never show
+     * ESTIMATED as fact.
+     */
+    readonly status: 'ESTIMATED_FROM_CALENDAR' | 'OBSERVED_FROM_SCHOOLWORK' | 'CONFIRMED_BY_PARENT' | 'CONFIRMED_BY_TEACHER';
+    /** Parent-facing sentence for that status. */
+    readonly statusLabel: string;
+    /** The calendar's estimated lesson name, when different from the resolved one. */
+    readonly estimatedLessonName: string | null;
+    /** True when the resolver flagged conflicting sources. */
+    readonly hasConflict: boolean;
   };
   readonly todayPlan: TodayPlanView | { readonly kind: 'no_plan_needed'; readonly reason: string };
   readonly attention: readonly AttentionItem[];

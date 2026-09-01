@@ -6,6 +6,7 @@ import {
   type ExpectedLearningContext,
   type GradeContext,
   type LearningContext,
+  type LessonConfirmationEvent,
   type SkillId,
   type TeacherContribution,
 } from '@copilot/domain';
@@ -20,10 +21,13 @@ export interface BuildContextInput {
   readonly knowledgeBase: KnowledgeBase;
   /**
    * Curriculum Clock estimate (doc 13). When absent, `expected` is null and the
-   * resolver falls back to observed evidence / whole-grade scope. Wired in at
-   * doc 17 Group B3.
+   * resolver falls back to observed evidence.
    */
   readonly expectedContext?: ExpectedLearningContext | null;
+  /** Parent/teacher lesson confirmations — append-only context events (doc 13 §5). */
+  readonly lessonConfirmations?: readonly LessonConfirmationEvent[];
+  /** Pace adjustment already applied to the clock estimate (persisted). */
+  readonly appliedPaceDelta?: number;
   /** "Now" for recency windows. Injectable for tests. */
   readonly asOf?: Date;
   /** How many days back counts as "actively being learned". */
@@ -84,11 +88,13 @@ export function buildLearningContext(input: BuildContextInput): LearningContext 
       : [];
 
   const expected = input.expectedContext ?? null;
-  const { resolved, conflictLessonIds } = resolveLearningContext({
+  const { resolved, conflictLessonIds, paceDeltaHypothesis } = resolveLearningContext({
     expected,
     contributions: teacherContributions,
+    lessonConfirmations: input.lessonConfirmations ?? [],
     evidence,
     knowledgeBase: kb,
+    gradeContext,
     asOf,
     ...(input.recencyDays !== undefined ? { recencyDays: input.recencyDays } : {}),
   });
@@ -111,7 +117,8 @@ export function buildLearningContext(input: BuildContextInput): LearningContext 
     builtAt: asOf.toISOString(),
     expected,
     resolved,
-    paceDelta: 0, // pace learning wired in at doc 17 Group B3
+    paceDelta: input.appliedPaceDelta ?? 0,
+    paceDeltaHypothesis,
     standardPosition: {
       skillIds: standardSkillIds,
       note: 'Phạm vi chuẩn theo lớp.',

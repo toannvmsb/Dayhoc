@@ -3,6 +3,7 @@
   "compilerOptions": { "rootDir": "./src", "outDir": "./dist" },
   "references": [
     { "path": "../../packages/api-contract" },
+    { "path": "../../packages/curriculum-clock" },
     { "path": "../../packages/domain" },
     { "path": "../../packages/evidence" },
     { "path": "../../packages/gap-engine" },

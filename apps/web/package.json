@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@copilot/api-contract": "0.1.0",
+    "@copilot/curriculum-clock": "0.1.0",
     "@copilot/design-tokens": "0.1.0",
     "@copilot/gap-engine": "0.1.0",
     "@copilot/learning-context": "0.1.0",

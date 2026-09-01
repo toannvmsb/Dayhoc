@@ -28,14 +28,28 @@ function ev(skillId: string, daysAgo: number, over: Partial<Evidence> = {}): Evi
   };
 }
 
-const clockAt = (lessonId: string): ExpectedLearningContext => ({
+const clockAt = (lessonId: string, windowIds: string[] = [lessonId]): ExpectedLearningContext => ({
   curriculum: 'KET_NOI_TRI_THUC',
   chapterId: Number(/C\.G7\.(\d+)\./.exec(lessonId)![1]),
   lessonId,
   alsoPlausibleLessonIds: [],
+  window: {
+    fromLessonId: windowIds[0]!,
+    toLessonId: windowIds[windowIds.length - 1]!,
+    widthLessons: 2,
+    lessonIds: windowIds,
+  },
   source: 'CURRICULUM_TIMELINE',
   confidence: 'ESTIMATED',
   asOfDate: '2027-02-01',
+  paceDeltaApplied: 0,
+  calendar: {
+    calendarId: 'cal.KNTT.G7.2026-2027.v1',
+    version: 1,
+    status: 'PROVISIONAL',
+    source: 'test',
+    academicYear: '2026-2027',
+  },
 });
 
 describe('LearningContextResolver (doc 13 §3)', () => {
@@ -103,5 +117,125 @@ describe('LearningContextResolver (doc 13 §3)', () => {
       asOf,
     };
     expect(resolveLearningContext(input)).toEqual(resolveLearningContext(input));
+  });
+});
+
+describe('Context Resolver hard invariants (doc 13 §2 A–F)', () => {
+  it('A — a recent VERIFIED context is not overridden by CURRICULUM_TIMELINE', () => {
+    const r = resolveLearningContext({
+      expected: clockAt(nodeOf(SK_CH7)),
+      contributions: [],
+      evidence: [ev(SK_CH6, 4, { source: 'school_test', provenance: 'assessment', confidenceTier: 'A' })],
+      knowledgeBase: kb,
+      asOf,
+    });
+    expect(r.resolved.lessonId).toBe(nodeOf(SK_CH6));
+    expect(r.resolved.source).not.toBe('CURRICULUM_TIMELINE');
+  });
+
+  it('B3-4 — 10 low-confidence observations do not silently override a recent VERIFIED', () => {
+    const noise = Array.from({ length: 10 }, (_, i) => ev(SK_CH7, 2 + i, { confidenceTier: 'D' }));
+    const r = resolveLearningContext({
+      expected: null,
+      contributions: [],
+      evidence: [ev(SK_CH6, 3, { source: 'school_test', provenance: 'assessment', confidenceTier: 'A' }), ...noise],
+      knowledgeBase: kb,
+      asOf,
+    });
+    expect(r.resolved.lessonId).toBe(nodeOf(SK_CH6));
+    expect(r.resolved.confidence).toBe('VERIFIED');
+  });
+
+  it('B — ESTIMATED evidence is never promoted to VERIFIED by repetition', () => {
+    const many = Array.from({ length: 6 }, (_, i) => ev(SK_CH7, 2 + i, { confidenceTier: 'D' }));
+    const r = resolveLearningContext({ expected: null, contributions: [], evidence: many, knowledgeBase: kb, asOf });
+    expect(r.resolved.lessonId).toBe(nodeOf(SK_CH7));
+    expect(['ESTIMATED', 'SUPPORTING']).toContain(r.resolved.confidence);
+    expect(r.resolved.confidence).not.toBe('VERIFIED');
+  });
+
+  it('C / B3-5 — repeated consistent schoolwork AHEAD of the calendar yields a paceDelta hypothesis', () => {
+    const window = ['a', 'b', 'c', nodeOf(SK_CH6), 'e', 'f', nodeOf(SK_CH7), 'h'];
+    const expected = { ...clockAt(nodeOf(SK_CH6), window), lessonId: nodeOf(SK_CH6) };
+    const r = resolveLearningContext({
+      expected,
+      contributions: [],
+      evidence: [
+        ev(SK_CH7, 5, { source: 'school_homework', provenance: 'scan', confidenceTier: 'C' }),
+        ev(SK_CH7, 12, { source: 'school_homework', provenance: 'scan', confidenceTier: 'C' }),
+        ev(SK_CH7, 19, { source: 'school_homework', provenance: 'scan', confidenceTier: 'C' }),
+      ],
+      knowledgeBase: kb,
+      asOf,
+    });
+    expect(r.paceDeltaHypothesis.value).toBeGreaterThan(0);
+    expect(r.paceDeltaHypothesis.observationCount).toBeGreaterThanOrEqual(3);
+  });
+
+  it('C — a single supporting observation does NOT raise confidence to STRONG', () => {
+    const r = resolveLearningContext({
+      expected: null,
+      contributions: [],
+      evidence: [ev(SK_CH6, 3, { source: 'school_homework', provenance: 'scan', confidenceTier: 'C' })],
+      knowledgeBase: kb,
+      asOf,
+    });
+    expect(r.resolved.confidence).toBe('SUPPORTING');
+  });
+
+  it('D / B3-6 — conflicting VERIFIED sources → conflict state + deterministic (most-recent) resolution', () => {
+    const r = resolveLearningContext({
+      expected: null,
+      contributions: [],
+      evidence: [
+        ev(SK_CH6, 10, { source: 'school_test', provenance: 'assessment', confidenceTier: 'A' }),
+        ev(SK_CH7, 2, { source: 'school_exam', provenance: 'assessment', confidenceTier: 'A' }),
+      ],
+      knowledgeBase: kb,
+      asOf,
+    });
+    expect(r.resolved.guardrailApplied).toContain('conflicting_verified');
+    expect(r.conflictLessonIds).toContain(nodeOf(SK_CH6)); // the older one is the conflict
+    expect(r.resolved.lessonId).toBe(nodeOf(SK_CH7)); // most recent wins
+  });
+
+  it('E — an old VERIFIED is weighted down but its evidence is still in the input (history kept)', () => {
+    // stale verified (60 days) on CH6 vs recent homework on CH7
+    const r = resolveLearningContext({
+      expected: null,
+      contributions: [],
+      evidence: [
+        ev(SK_CH6, 60, { source: 'school_test', provenance: 'assessment', confidenceTier: 'A' }),
+        ev(SK_CH7, 3, { source: 'school_homework', provenance: 'scan', confidenceTier: 'C' }),
+        ev(SK_CH7, 6, { source: 'school_homework', provenance: 'scan', confidenceTier: 'C' }),
+      ],
+      knowledgeBase: kb,
+      recencyDays: 90,
+      asOf,
+    });
+    expect(r.resolved.lessonId).toBe(nodeOf(SK_CH7)); // stale verified no longer dominates
+  });
+
+  it('F — parent/teacher confirmation and observed schoolwork are distinct source types', () => {
+    const confirmed = resolveLearningContext({
+      expected: null,
+      contributions: [],
+      lessonConfirmations: [
+        { id: 'lc1', childId, lessonId: nodeOf(SK_CH7), source: 'PARENT_UPDATE', confidence: 'STRONG', confirmedBy: 'u', confirmedAt: new Date(asOf.getTime() - 2 * 86_400_000).toISOString() },
+      ],
+      evidence: [ev(SK_CH6, 3)],
+      knowledgeBase: kb,
+      asOf,
+    });
+    expect(confirmed.resolved.source).toBe('PARENT_UPDATE');
+
+    const observed = resolveLearningContext({
+      expected: null,
+      contributions: [],
+      evidence: [ev(SK_CH7, 2, { source: 'school_homework', provenance: 'scan', confidenceTier: 'C' })],
+      knowledgeBase: kb,
+      asOf,
+    });
+    expect(observed.resolved.source).toBe('SCHOOLWORK_EVIDENCE');
   });
 });
