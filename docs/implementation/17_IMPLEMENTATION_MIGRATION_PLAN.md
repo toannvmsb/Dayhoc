@@ -140,16 +140,15 @@ then the default flips and the old path is deleted in a later step.
 
 ## Group C — Exercise Generation
 
-### C1 — `ExerciseGenerationSpec` type + schema + `buildExerciseGenerationSpec`
+### C1 — `ExerciseGenerationSpec` type + schema + `buildExerciseGenerationSpec` — ✅ DONE (2026-09-01)
 - **Goal:** deterministic spec from context + graphs + twin + gaps + readiness + thinking + frontier + goal + time.
-- **Files:** `packages/domain/src/exercise-gen.ts` (new), `packages/schemas/src/exercise-generation.schema.ts` (new), `packages/planning/src/exercise-spec.ts` (new), new `exercise-spec.test.ts`.
+- **Files:** `packages/domain/src/exercise-gen.ts`, `packages/schemas/src/exercise-generation.schema.ts`, `packages/planning/src/{exercise-spec.ts,exercise-spec.test.ts}`, `packages/testing/src/golden/exercise-spec.test.ts` (+`context`/`parentGoal` on `TwinPlannerRun`).
 - **Deps:** B2 (resolved context).
-- **DB:** none.
-- **API:** none.
-- **Tests:** TEST 4 (two golden Twin/Planner profiles, same lesson → different specs), TEST 5 (Grade-7 at Grade-9 algebra + prereq gap → `prerequisite_repair ≥ 1` and `advanced ≥ 1`, no global downgrade), spec is a pure function (idempotent).
-- **Golden:** run over all 48 Twin/Planner profiles → 48 specs; assert per-profile invariants (no expected edit).
-- **Rollback:** additive; nothing consumes the spec yet.
-- **Acceptance:** `distribution` sums to `total_questions`; K/T ranges consistent with twin+frontier; constraints set.
+- **DB / API:** none.
+- **Tests:** CASE A (weak-prereq vs strong+HSG at the same lesson → materially different specs), CASE B (above-grade frontier + prereq weakness → `prerequisiteRepair ≥ 1` **and** `advanced ≥ 1`, no global downgrade), CASE C (parent goal changes allocation/K/T, never mastery), CASE D (ESTIMATED context → more conservative than VERIFIED), pure function, distribution reconciles. Golden: 48 profiles → 48 schema-valid specs, no expected-output edits.
+- **Rollback:** additive; nothing consumes the spec yet (C4 is not started).
+- **Acceptance:** `distribution` sums to `totalQuestions`; K/T ranges ordered & tied to twin+frontier; constraints set; every target id resolves in the KB.
+- **Determinism:** `buildExerciseGenerationSpec` is a pure fn of (context, KB, twin, gaps, readiness, frontier, goal, time). `plannerVersion` = `exercise-spec.v1`.
 
 ### C2 — `@copilot/reference-library` (repurpose the bank)
 - **Goal:** `questions*.json` → grounding/examples/validation, not delivery.

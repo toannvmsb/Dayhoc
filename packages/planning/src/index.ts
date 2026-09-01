@@ -10,3 +10,4 @@ export * from './config.js';
 export * from './learning-mix.js';
 export * from './nbla.js';
 export * from './daily-plan.js';
+export * from './exercise-spec.js';

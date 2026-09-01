@@ -3,7 +3,16 @@
 > **Authority:** Pricing/AI Cost/Routing **v1.1** §1, §3, §4, §8 (LOCKED —
 > `AI_GENERATION_FIRST`). Part of the migration — see
 > [12_ARCHITECTURE_MIGRATION_AUDIT.md](12_ARCHITECTURE_MIGRATION_AUDIT.md).
-> **Spec only. Not implemented yet** (Phase 3).
+>
+> **Implementation status (Group C, scope-limited to C1–C3 per anh 2026-09-01):**
+> - **C1 ✅** — `ExerciseGenerationSpec` (`@copilot/domain/exercise-gen.ts`),
+>   `exerciseGenerationSpecSchema` (`@copilot/schemas`), deterministic
+>   `buildExerciseGenerationSpec` (`@copilot/planning/exercise-spec.ts`).
+> - **C2 ✅** — reference library (repurposed question bank).
+> - **C3 ✅** — `GeneratedExerciseValidator` (`@copilot/exercise-gen`).
+> - **C4–C7 NOT STARTED** — no live AI provider, practice runtime NOT flipped,
+>   old bank path still in place, no Interactive Adaptive Mode, no NBQ production
+>   flow. Awaiting anh's approval of C1–C3.
 
 ---
 

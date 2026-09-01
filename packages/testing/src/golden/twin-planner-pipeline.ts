@@ -113,6 +113,8 @@ export interface TwinPlannerRun {
   readonly evidence: Evidence[];
   readonly twin: ReturnType<typeof buildLearningTwin>;
   readonly gaps: GapEngineResult;
+  readonly context: ReturnType<typeof buildLearningContext>;
+  readonly parentGoal: string;
   readonly mix: ReturnType<typeof computeLearningMix>;
   readonly plan: ReturnType<typeof buildDailyPlan>;
   readonly planExam: ReturnType<typeof buildDailyPlan>;
@@ -162,7 +164,7 @@ export function runTwinPlanner(
   const plan = buildDailyPlan(base);
   const planExam = buildDailyPlan({ ...base, daysToExam: 2 });
 
-  return { profile, childId, evidence, twin, gaps, mix, plan, planExam };
+  return { profile, childId, evidence, twin, gaps, context, parentGoal, mix, plan, planExam };
 }
 
 /** Total minutes a plan schedules (0 when no plan is needed). */
