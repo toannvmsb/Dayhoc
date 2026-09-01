@@ -349,7 +349,9 @@ export const EXERCISE_VALIDATION_REASON_CODES = [
   'ANSWER_INCONSISTENT',
   // batch / surface
   'DUPLICATE_VARIANT',
-  /** Too close to a Reference Library grounding example (doc 14 C5 §7) — regenerate, never deliver verbatim. */
+  /** Byte-identical to a Reference Library grounding example (doc 14 C5.2 §D) — hard gate, rate must be 0. */
+  'REFERENCE_EXACT_COPY',
+  /** Same template as a grounding example, only numbers/casing changed (doc 14 C5 §7 / C5.2 §D) — regenerate. */
   'REFERENCE_EXAMPLE_COPY',
   'UNSAFE_CONTENT',
   'NOT_AGE_APPROPRIATE',
@@ -417,20 +419,33 @@ export type AiGenerationMode = (typeof AI_GENERATION_MODES)[number];
  *     — no deterministic path exists for this answer kind (reasoning/proof, or
  *       the math verifier could not parse the problem); a second-pass AI or a
  *       human must confirm it before it can be trusted.
+ *   AI_CROSSCHECK_PASSED / AI_CROSSCHECK_FAILED
+ *     — RESERVED (doc 14 C5.2 §E). NOT produced in C5.1/C5.2 — a second-pass AI
+ *       verifier is not implemented. When it is, an AI cross-check outcome MUST
+ *       use these DISTINCT states; it must NEVER be reported as
+ *       `DETERMINISTIC_CORRECTNESS_VERIFIED`. Only independent deterministic
+ *       verification or `HUMAN_GOLDEN_VERIFIED` may back a true
+ *       correctness-ground-truth metric.
  *   HUMAN_GOLDEN_VERIFIED
  *     — a human reviewer confirmed this exact item.
  *   UNVERIFIED
  *     — the answer key is malformed, OR the deterministic checker proved it
  *       WRONG, OR nothing has run yet.
  *
- * INVARIANT: FORMAT_VERIFIED ≠ DETERMINISTIC_CORRECTNESS_VERIFIED. Schema
- * validity alone never counts as answer verification.
+ * LOCKED INVARIANT (C5.2 §E): FORMAT_VERIFIED ≠ DETERMINISTIC_CORRECTNESS_VERIFIED.
+ * Schema validity alone never counts as answer verification. An AI cross-check
+ * is never deterministic correctness.
  */
 export const ANSWER_VERIFICATION_LEVELS = [
   'FORMAT_VERIFIED',
   'DETERMINISTIC_CORRECTNESS_VERIFIED',
   'AI_CROSSCHECK_REQUIRED',
+  'AI_CROSSCHECK_PASSED',
+  'AI_CROSSCHECK_FAILED',
   'HUMAN_GOLDEN_VERIFIED',
   'UNVERIFIED',
 ] as const;
 export type AnswerVerificationLevel = (typeof ANSWER_VERIFICATION_LEVELS)[number];
+
+/** Levels that may back a TRUE correctness-ground-truth metric (C5.2 §E). AI cross-check is NOT one. */
+export const CORRECTNESS_GROUND_TRUTH_LEVELS = ['DETERMINISTIC_CORRECTNESS_VERIFIED', 'HUMAN_GOLDEN_VERIFIED'] as const;

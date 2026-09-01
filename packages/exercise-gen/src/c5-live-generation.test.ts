@@ -393,21 +393,23 @@ describe('C5.1 §5/§10 — reference-example copy detection precision', () => {
     items: [item({ id: 'gx_ref_1', prompt })],
   });
 
-  it('9. an exact copy of a reference example is rejected', () => {
+  it('9. a byte-identical copy of a reference example → REFERENCE_EXACT_COPY', () => {
     const v = validateGeneratedBatch(batchWith(refPrompt), spec, kb, g.referenceExamples);
-    expect(v.reasonCodes).toContain('REFERENCE_EXAMPLE_COPY');
+    expect(v.reasonCodes).toContain('REFERENCE_EXACT_COPY');
   });
 
-  it('10. a number-only mutation of the same template is rejected (normalization masks digits)', () => {
+  it('10. a number-only mutation of the same template → REFERENCE_EXAMPLE_COPY (near)', () => {
     const mutated = refPrompt.replace(/\d+/g, (d) => String(Number(d) + 1));
     const v = validateGeneratedBatch(batchWith(mutated), spec, kb, g.referenceExamples);
     expect(v.reasonCodes).toContain('REFERENCE_EXAMPLE_COPY');
+    expect(v.reasonCodes).not.toContain('REFERENCE_EXACT_COPY');
   });
 
   it('11. a structurally different same-skill question is accepted', () => {
     const different = 'Một đội công nhân sửa 3/8 quãng đường trong ngày đầu, ngày sau sửa thêm 1/4. Hỏi còn lại bao nhiêu phần quãng đường?';
     const v = validateGeneratedBatch(batchWith(different), spec, kb, g.referenceExamples);
     expect(v.reasonCodes).not.toContain('REFERENCE_EXAMPLE_COPY');
+    expect(v.reasonCodes).not.toContain('REFERENCE_EXACT_COPY');
   });
 });
 

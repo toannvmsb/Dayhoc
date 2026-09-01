@@ -18,8 +18,29 @@ import {
   manifestCoverage,
   type BenchmarkCase,
 } from './luna-benchmark-manifest.js';
+import { buildHardCaseManifest, HARDCASE_MANIFEST_VERSION, type HardCase } from './luna-hardcase-manifest.js';
+import {
+  assessBenchmarkReadiness,
+  computeCoverageMatrix,
+  probeAnswerCoverage,
+  type BenchmarkReadiness,
+  type CoverageCase,
+  type CoverageMatrix,
+} from './luna-benchmark-coverage.js';
 
-export { buildBenchmarkManifest, manifestCoverage, BENCHMARK_MANIFEST_VERSION, type BenchmarkCase };
+export {
+  buildBenchmarkManifest,
+  buildHardCaseManifest,
+  manifestCoverage,
+  computeCoverageMatrix,
+  assessBenchmarkReadiness,
+  BENCHMARK_MANIFEST_VERSION,
+  HARDCASE_MANIFEST_VERSION,
+  type BenchmarkCase,
+  type HardCase,
+  type CoverageMatrix,
+  type BenchmarkReadiness,
+};
 
 /**
  * Luna generation benchmark (doc 14 C5 §19 / C5.1 §6-§9). Runs the FROZEN
@@ -35,6 +56,7 @@ export const BENCHMARK_VERSION = 'luna-generation-benchmark.v1';
 export interface RunBenchmarkInput {
   readonly adapter: AIProviderAdapter;
   readonly cases: readonly BenchmarkCase[];
+  readonly hardCases?: readonly HardCase[];
   readonly structuredOutputMode: StructuredOutputMode;
   readonly knowledgeBase?: KnowledgeBase;
   readonly referenceLibrary?: readonly ReferenceExample[];
@@ -42,6 +64,10 @@ export interface RunBenchmarkInput {
   readonly maxBatches: number;
   readonly maxCostUsd: number;
   readonly pricingConfigVersion?: string;
+  /** Whether every local build/golden/lint/typecheck/web-build gate is green (doc 14 C5.2 §G). */
+  readonly buildGatesGreen?: boolean;
+  /** Whether the adversarial validator suite passed (doc 14 C5.2 §C/§G). */
+  readonly adversarialTestsPassed?: boolean;
 }
 
 export interface BenchmarkReport {
@@ -60,13 +86,18 @@ export interface BenchmarkReport {
   readonly questionCount: number;
   readonly stoppedEarly: boolean;
   readonly stopReason: string | null;
+  readonly hardCaseCount: number;
+  readonly baseCaseCount: number;
   readonly quality: {
     readonly schemaSuccessRate: number;
     readonly firstPassValidatorRate: number;
     readonly finalDeliverableRate: number;
     readonly quarantineRate: number;
     readonly regenerationRate: number;
+    /** @deprecated see exact/near */
     readonly referenceCopyRate: number;
+    readonly exactReferenceCopyRate: number;
+    readonly nearReferenceCopyRate: number;
     readonly skillAdherenceRate: number;
     readonly roleAdherenceRate: number;
     readonly kAdherenceRate: number;
@@ -88,7 +119,8 @@ export interface BenchmarkReport {
   };
   readonly failures: Readonly<Record<string, number>>;
   readonly perCase: readonly { benchmarkCaseId: string; label: string; status: string; reason?: string }[];
-  readonly coverage: ReturnType<typeof manifestCoverage>;
+  readonly coverage: CoverageMatrix;
+  readonly readiness: BenchmarkReadiness;
   readonly gates: readonly { name: string; label: string; pass: boolean; value: number }[];
 }
 
@@ -99,12 +131,18 @@ export async function runLunaBenchmark(input: RunBenchmarkInput): Promise<{ repo
   const records: ShadowMetricRecord[] = [];
   const perCase: BenchmarkReport['perCase'][number][] = [];
 
+  const hardCases = input.hardCases ?? [];
+  const allCases: { benchmarkCaseId: string; label: string; spec: BenchmarkCase['spec'] }[] = [
+    ...input.cases,
+    ...hardCases.map((h) => ({ benchmarkCaseId: h.hardCaseId, label: h.label, spec: h.spec })),
+  ];
+
   let cumulativeUsd = 0;
   let stoppedEarly = false;
   let stopReason: string | null = null;
   let structuredOutputModeUsed: string | null = null;
 
-  for (const c of input.cases) {
+  for (const c of allCases) {
     if (records.length >= input.maxBatches) {
       stoppedEarly = true;
       stopReason = `reached maxBatches=${input.maxBatches}`;
@@ -135,6 +173,21 @@ export async function runLunaBenchmark(input: RunBenchmarkInput): Promise<{ repo
   }
 
   const m = aggregateShadowMetrics(records);
+
+  // coverage matrix over ALL cases (base + hard), probed for answer coverage on
+  // whatever batches were actually produced (mock or live).
+  const coverageCases: CoverageCase[] = [
+    ...input.cases.map((c) => ({ id: c.benchmarkCaseId, kind: 'base' as const, spec: c.spec })),
+    ...hardCases.map((h) => ({ id: h.hardCaseId, kind: 'hardcase' as const, spec: h.spec })),
+  ];
+  const producedBatches = records.filter((r) => r.result.status === 'delivered').map((r) => (r.result.status === 'delivered' ? r.result.batch : null)).filter((b): b is NonNullable<typeof b> => b !== null);
+  const coverage = probeAnswerCoverage(computeCoverageMatrix(coverageCases), producedBatches);
+  const readiness = assessBenchmarkReadiness({
+    matrix: coverage,
+    adversarialTestsPassed: input.adversarialTestsPassed ?? false,
+    buildGatesGreen: input.buildGatesGreen ?? false,
+  });
+
   const questionCount = records
     .filter((r) => r.result.status === 'delivered')
     .reduce((s, r) => s + r.spec.generationPlan.totalQuestions, 0);
@@ -161,6 +214,8 @@ export async function runLunaBenchmark(input: RunBenchmarkInput): Promise<{ repo
     structuredOutputModeUsed,
     pricingConfigVersion: input.pricingConfigVersion ?? null,
     caseCount: records.length,
+    hardCaseCount: hardCases.length,
+    baseCaseCount: input.cases.length,
     questionCount,
     stoppedEarly,
     stopReason,
@@ -171,6 +226,8 @@ export async function runLunaBenchmark(input: RunBenchmarkInput): Promise<{ repo
       quarantineRate: m.quarantineRate,
       regenerationRate: m.regenerationRate,
       referenceCopyRate: m.referenceCopyRate,
+      exactReferenceCopyRate: m.exactReferenceCopyRate,
+      nearReferenceCopyRate: m.nearReferenceCopyRate,
       skillAdherenceRate: m.skillAdherenceRate,
       roleAdherenceRate: m.bucketAdherenceRate,
       kAdherenceRate: m.kAdherenceRate,
@@ -196,7 +253,8 @@ export async function runLunaBenchmark(input: RunBenchmarkInput): Promise<{ repo
     },
     failures: m.failuresByReasonCode,
     perCase,
-    coverage: manifestCoverage(input.cases),
+    coverage,
+    readiness,
     gates: evaluateGates(m),
   };
   return { report, records };
@@ -209,7 +267,8 @@ export function evaluateGates(m: ShadowMetrics): { name: string; label: string; 
     g('schemaSuccessRate', m.firstPassSchemaRate, m.firstPassSchemaRate >= 0.99, 'schema success >= 99%'),
     g('noInventedSkillIdRate', m.noInventedSkillIdRate, m.noInventedSkillIdRate >= 1, 'no invented production skill ids = 100%'),
     g('noForbiddenKnowledgeRate', m.noForbiddenKnowledgeRate, m.noForbiddenKnowledgeRate >= 1, 'no forbidden required knowledge = 100%'),
-    g('referenceCopyRate', m.referenceCopyRate, m.referenceCopyRate <= 0.01, 'reference example copy <= 1%'),
+    g('exactReferenceCopyRate', m.exactReferenceCopyRate, m.exactReferenceCopyRate === 0, 'exact reference-example copy = 0 (HARD GATE)'),
+    g('nearReferenceCopyRate', m.nearReferenceCopyRate, m.nearReferenceCopyRate <= 0.01, 'near (number/casing-only) reference copy <= 1%'),
     g('finalDeliverableRate', m.finalDeliverableRate, m.finalDeliverableRate >= 0.95, 'final deliverable >= 95%'),
     // C5.1 §1: this gate is now CORRECTNESS, not format. A well-formed key is not enough.
     g('answerFormatValidRate', m.answerFormatValidRate, m.answerFormatValidRate >= 0.99, 'answer key well-formed >= 99%'),
@@ -225,8 +284,9 @@ export function evaluateGates(m: ShadowMetrics): { name: string; label: string; 
 
 export function formatBenchmarkReport(r: BenchmarkReport): string {
   const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
+  const rec = (o: Readonly<Record<string, number>>) => Object.entries(o).map(([k, v]) => `${k}:${v}`).join(' ');
   return [
-    `Luna generation benchmark ${r.benchmarkVersion} — ${r.caseCount} batches / ${r.questionCount} questions`,
+    `Luna generation benchmark ${r.benchmarkVersion} — ${r.caseCount} batches (${r.baseCaseCount} base + ${r.hardCaseCount} hard) / ${r.questionCount} questions`,
     `  manifest:      ${r.manifestVersion}`,
     `  model:         ${r.provider}/${r.model} (${r.modelVersion ?? 'no version'})`,
     `  prompt:        ${r.promptVersion}`,
@@ -240,7 +300,7 @@ export function formatBenchmarkReport(r: BenchmarkReport): string {
     `  validator first-pass:     ${pct(r.quality.firstPassValidatorRate)}`,
     `  final deliverable:        ${pct(r.quality.finalDeliverableRate)}`,
     `  quarantine / regen:       ${pct(r.quality.quarantineRate)} / ${pct(r.quality.regenerationRate)}`,
-    `  reference-copy:           ${pct(r.quality.referenceCopyRate)}`,
+    `  reference-copy exact/near:${pct(r.quality.exactReferenceCopyRate)} / ${pct(r.quality.nearReferenceCopyRate)}`,
     `  skill / role adherence:   ${pct(r.quality.skillAdherenceRate)} / ${pct(r.quality.roleAdherenceRate)}`,
     `  K / T adherence:          ${pct(r.quality.kAdherenceRate)} / ${pct(r.quality.tAdherenceRate)}`,
     '',
@@ -257,8 +317,22 @@ export function formatBenchmarkReport(r: BenchmarkReport): string {
     `  cost VND per batch / q:   ${r.cost.costPerBatchVnd.toFixed(0)} / ${r.cost.costPerQuestionVnd.toFixed(1)}`,
     `  failures:                 ${JSON.stringify(r.failures)}`,
     '',
-    `coverage: grades ${r.coverage.grades.join('+')}, K ${r.coverage.kRange.min}-${r.coverage.kRange.max}, T ${r.coverage.tRange.min}-${r.coverage.tRange.max}, prereq-repair ${r.coverage.withPrerequisiteRepair}, frontier ${r.coverage.withFrontier}, thinking ${r.coverage.withThinkingChallenge}`,
-    r.coverage.gaps.length > 0 ? `coverage gaps: ${r.coverage.gaps.join(' | ')}` : 'coverage gaps: none',
+    'coverage matrix (base + hard cases):',
+    `  grade:           ${rec(r.coverage.grade)}`,
+    `  target role:     ${rec(r.coverage.targetRole)}`,
+    `  knowledge:       ${rec(r.coverage.knowledgeLevel)}`,
+    `  thinking:        ${rec(r.coverage.thinkingLevel)}`,
+    `  context conf:    ${rec(r.coverage.contextConfidence)}`,
+    `  parent goal:     ${rec(r.coverage.parentGoal)}`,
+    `  parallel gap repair: ${r.coverage.parallelGapRepair}   above-grade frontier: ${r.coverage.aboveGradeFrontier}   grade-level T4/T5: ${r.coverage.gradeLevelT4T5}`,
+    `  answer format:   ${rec(r.coverage.answerFormatType)}`,
+    `  answer verification: ${rec(r.coverage.answerVerificationLevel)}`,
+    r.coverage.uncovered.length > 0 ? `  UNCOVERED: ${r.coverage.uncovered.join(' | ')}` : '  UNCOVERED: none',
+    '',
+    `benchmarkReady: ${r.readiness.benchmarkReady}`,
+    `  base / hard / total cases: ${r.readiness.baseCaseCount} / ${r.readiness.hardCaseCount} / ${r.readiness.totalCaseCount}`,
+    r.readiness.blockingCoverageGaps.length > 0 ? `  blocking gaps: ${r.readiness.blockingCoverageGaps.join(' | ')}` : '  blocking gaps: none',
+    r.readiness.nonBlockingCoverageGaps.length > 0 ? `  non-blocking gaps: ${r.readiness.nonBlockingCoverageGaps.join(' | ')}` : '  non-blocking gaps: none',
     '',
     'gates (provisional — human review, never an auto-flip):',
     ...r.gates.map((x) => `  [${x.pass ? 'PASS' : 'FAIL'}] ${x.label} = ${x.value.toFixed(3)}`),

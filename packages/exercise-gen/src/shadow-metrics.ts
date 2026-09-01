@@ -37,7 +37,12 @@ export interface ShadowMetrics {
   readonly bucketAdherenceRate: number;
   readonly kAdherenceRate: number;
   readonly tAdherenceRate: number;
+  /** @deprecated use exact/near split. Share of batches with ANY reference-copy finding. */
   readonly referenceCopyRate: number;
+  /** Share of batches with a byte-identical reference copy (doc 14 C5.2 §D) — HARD GATE, must be 0. */
+  readonly exactReferenceCopyRate: number;
+  /** Share of batches with a same-template (number/casing-only) reference copy. */
+  readonly nearReferenceCopyRate: number;
   readonly noInventedSkillIdRate: number;
   readonly noForbiddenKnowledgeRate: number;
   readonly averageLatencyMs: number;
@@ -79,6 +84,8 @@ export function aggregateShadowMetrics(records: readonly ShadowMetricRecord[]): 
   let genAttempts = 0;
   let repairAttempts = 0;
   let referenceCopy = 0;
+  let exactRefCopy = 0;
+  let nearRefCopy = 0;
   let inventedId = 0;
   let forbiddenKnowledge = 0;
 
@@ -122,7 +129,11 @@ export function aggregateShadowMetrics(records: readonly ShadowMetricRecord[]): 
       for (const code of validation.reasonCodes) {
         failuresByReasonCode[code] = (failuresByReasonCode[code] ?? 0) + 1;
       }
-      if (validation.reasonCodes.includes('REFERENCE_EXAMPLE_COPY')) referenceCopy += 1;
+      const hasExact = validation.reasonCodes.includes('REFERENCE_EXACT_COPY');
+      const hasNear = validation.reasonCodes.includes('REFERENCE_EXAMPLE_COPY');
+      if (hasExact) exactRefCopy += 1;
+      if (hasNear) nearRefCopy += 1;
+      if (hasExact || hasNear) referenceCopy += 1;
       if (validation.reasonCodes.some((c) => INVENTED_ID_CODES.has(c))) inventedId += 1;
       if (validation.reasonCodes.some((c) => FORBIDDEN_KNOWLEDGE_CODES.has(c))) forbiddenKnowledge += 1;
     }
@@ -173,6 +184,8 @@ export function aggregateShadowMetrics(records: readonly ShadowMetricRecord[]): 
     kAdherenceRate: acceptedItems > 0 ? kOk / acceptedItems : 0,
     tAdherenceRate: acceptedItems > 0 ? tOk / acceptedItems : 0,
     referenceCopyRate: referenceCopy / n,
+    exactReferenceCopyRate: exactRefCopy / n,
+    nearReferenceCopyRate: nearRefCopy / n,
     noInventedSkillIdRate: (n - inventedId) / n,
     noForbiddenKnowledgeRate: (n - forbiddenKnowledge) / n,
     averageLatencyMs: sortedLat.length > 0 ? sortedLat.reduce((s, x) => s + x, 0) / sortedLat.length : 0,
@@ -205,6 +218,8 @@ const EMPTY: ShadowMetrics = {
   kAdherenceRate: 0,
   tAdherenceRate: 0,
   referenceCopyRate: 0,
+  exactReferenceCopyRate: 0,
+  nearReferenceCopyRate: 0,
   noInventedSkillIdRate: 0,
   noForbiddenKnowledgeRate: 0,
   averageLatencyMs: 0,

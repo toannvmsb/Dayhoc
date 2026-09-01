@@ -146,6 +146,19 @@
 >     `outputSchemaVersion`. Frozen `BENCHMARK_MANIFEST_VERSION` + coverage
 >     (gaps exposed). Spend guardrail (`LIVE_BENCHMARK_MAX_BATCHES` /
 >     `_MAX_COST_USD`). Machine-readable `BenchmarkReport`.
+> - **C5.2 ✅ — benchmark COVERAGE hardening** (anh 2026-09-02) — doc 18 §21–§27:
+>   - `luna-hardcase-manifest.ts` HC01–HC08 (grade-level T4/T5, real above-grade
+>     FRONTIER, Parallel Gap Repair, safe frontier progression, no-frontier HSG,
+>     conservative-under-uncertainty) — each spec built through the real
+>     pipeline with a machine-checkable `expect` block. HC05→HC06 paired.
+>   - `c5-adversarial.test.ts` — 15 contract-violation cases the validator must
+>     catch; the validator is NOT weakened.
+>   - `classifyReferenceCopy` EXACT/NEAR; `REFERENCE_EXACT_COPY` code;
+>     `exactReferenceCopyRate` HARD GATE == 0.
+>   - `FORMAT_VERIFIED ≠ DETERMINISTIC_CORRECTNESS_VERIFIED` LOCKED;
+>     `AI_CROSSCHECK_PASSED/FAILED` reserved; `CORRECTNESS_GROUND_TRUTH_LEVELS`.
+>   - `computeCoverageMatrix` + `assessBenchmarkReadiness` → `benchmarkReady`
+>     (currently **true**; blocking gaps: none). No hidden GAP.
 > - **C6–C7 NOT STARTED** — no LIVE mode, no Interactive Adaptive Mode, no NBQ.
 
 ---

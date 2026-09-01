@@ -18,6 +18,7 @@ import {
 import type { KnowledgeBase } from '@copilot/math-data';
 import { generatedExerciseSchema } from '@copilot/schemas';
 import { verifyMathAnswer } from './math-verifier.js';
+import { classifyReferenceCopy } from './reference-similarity.js';
 
 export const VALIDATOR_VERSION = 'generated-exercise-validator.v1';
 
@@ -46,6 +47,7 @@ const DEFAULT_OUTCOME: Record<ExerciseValidationReasonCode, ItemValidationOutcom
   ANSWER_UNVERIFIABLE: 'REPAIRABLE',
   ANSWER_INCONSISTENT: 'REGENERATE',
   DUPLICATE_VARIANT: 'REGENERATE',
+  REFERENCE_EXACT_COPY: 'REGENERATE',
   REFERENCE_EXAMPLE_COPY: 'REGENERATE',
   UNSAFE_CONTENT: 'BLOCK',
   NOT_AGE_APPROPRIATE: 'BLOCK',
@@ -63,7 +65,8 @@ const REPAIR_HINT: Partial<Record<ExerciseValidationReasonCode, string>> = {
   CHALLENGE_EXCEEDS_SPEC: 'prerequisite-repair items must stay at standard knowledge (≤ K2)',
   ANSWER_INCONSISTENT: 'make the answer key consistent with the options / prompt',
   DUPLICATE_VARIANT: 'regenerate a structurally different variant',
-  REFERENCE_EXAMPLE_COPY: 'regenerate — too close to a grounding reference example, write an original variant',
+  REFERENCE_EXACT_COPY: 'regenerate — this is a verbatim copy of a grounding reference example; write an original item',
+  REFERENCE_EXAMPLE_COPY: 'regenerate — same template as a grounding reference example, write a structurally different item',
   LANGUAGE_MISMATCH: 'write the prompt and solution in Vietnamese with SGK notation',
   TARGET_ROLE_MISMATCH: 'use a skill whose selected target allows this bucket',
   REQUIRED_SKILL_OUT_OF_BOUNDS: 'keep requiredSkillIds within the prerequisite closure of the item target',
@@ -104,7 +107,6 @@ export function validateGeneratedBatch(
 ): BatchValidationResult {
   const findings: ExerciseFinding[] = [];
   const rejected = new Set<string>();
-  const referenceNorms = new Set(referenceExamples.map((r) => normalizePrompt(r.prompt)));
 
   const add = (
     code: ExerciseValidationReasonCode,
@@ -318,10 +320,13 @@ export function validateGeneratedBatch(
       const first = seenNorm.get(norm);
       if (first) add('DUPLICATE_VARIANT', [item.id], `near-duplicate of ${first}`);
       else seenNorm.set(norm, item.id);
-      // a live generator must not reproduce a grounding reference example verbatim
-      // (doc 14 C5 §7) — this is a DATA comparison, never a prompt instruction alone.
-      if (referenceNorms.has(norm)) {
-        add('REFERENCE_EXAMPLE_COPY', [item.id], 'near-identical to a Reference Library grounding example');
+      // a live generator must not reproduce a grounding reference example (doc 14
+      // C5 §7 / C5.2 §D) — DATA comparison, never a prompt instruction alone.
+      const refCopy = classifyReferenceCopy(item.prompt, referenceExamples);
+      if (refCopy === 'EXACT') {
+        add('REFERENCE_EXACT_COPY', [item.id], 'byte-identical to a Reference Library grounding example');
+      } else if (refCopy === 'NEAR') {
+        add('REFERENCE_EXAMPLE_COPY', [item.id], 'same template as a grounding example (only numbers/casing differ)');
       }
     }
   }

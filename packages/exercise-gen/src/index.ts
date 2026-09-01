@@ -11,6 +11,7 @@
  * `pg` out of the default import graph for pure/test consumers).
  */
 export * from './validator.js';
+export * from './reference-similarity.js';
 export * from './grounding.js';
 export * from './generator.js';
 export * from './mock-generator.js';

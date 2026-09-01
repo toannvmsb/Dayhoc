@@ -208,3 +208,100 @@ crosscheckRequiredRate, unverifiedRate}`, `performance{…}`, `usage{…}`,
 ## 20. What C5.1 did NOT do
 
 Same list as §13 — plus: no live benchmark run (still no key), no Terra/Sonnet.
+
+---
+
+# C5.2 — Benchmark coverage hardening (anh 2026-09-02)
+
+## 21. Hard-case manifest (HC01–HC08)
+
+`luna-hardcase-manifest.ts` (`HARDCASE_MANIFEST_VERSION`) — a SEPARATE 8-case
+manifest, each spec built through the REAL deterministic pipeline (crafted
+synthetic evidence → twin → gaps → context → `buildExerciseGenerationSpec`),
+each with a machine-checkable `expect` block:
+
+| id | what it proves |
+|---|---|
+| HC01 | G4 grade-level K + strong thinking → T4, K stays ≤ K3, no FRONTIER |
+| HC02 | G4 repeated strong thinking → T5 without above-grade knowledge |
+| HC03 | G7 HSG + strong thinking, no frontier → thinkingChallenge>0, T5, K≤K3, **advanced bucket = 0**, no FRONTIER invented |
+| HC04 | G7 verified Grade-8 frontier, prereqs OK → FRONTIER selected, advanced>0, K4, current lesson is real G7 CORE_CURRICULUM |
+| HC05 | G7 Grade-9 traction + **blocking** Grade-8 bridge → Parallel Gap Repair, the unsafe Grade-9 skill is NOT a frontier target |
+| HC06 | HC05 child after the bridge is mastered → a next-safe frontier becomes eligible, repair drops to 0, no manual grade switch |
+| HC07 | G7 HSG goal, no frontier evidence → HSG alone does NOT unlock above-grade K, advanced=0, no auto T4/T5 |
+| HC08 | weak/uncertain context + borderline frontier confidence → conservative, no unsafe above-grade jump, context confidence < VERIFIED |
+
+HC05→HC06 is a paired state transition the benchmark verifies.
+
+## 22. Adversarial generator / validator cases
+
+`c5-adversarial.test.ts` — 15 deterministic fake-generator cases that break the
+contract; the validator must catch each with the right reason code + disposition
+(the validator is NOT weakened):
+math-wrong→`ANSWER_INCONSISTENT` · invented skill/required id→`UNKNOWN_*` +
+QUARANTINE · required outside closure→`REQUIRED_SKILL_OUT_OF_BOUNDS` · exact
+copy→`REFERENCE_EXACT_COPY` · near copy→`REFERENCE_EXAMPLE_COPY` ·
+K/T out of range→`OUTSIDE_K_RANGE`/`OUTSIDE_T_RANGE` · advanced bucket on a
+CURRENT skill→`TARGET_ROLE_MISMATCH` · T5 needing unsupported above-grade
+knowledge→`FRONTIER_SKILL_NOT_SELECTED`/`ABOVE_GRADE_KNOWLEDGE_NOT_ALLOWED` +
+QUARANTINE · reasoning missing rubric→`MISSING_RUBRIC` ·
+duplicates→`DUPLICATE_VARIANT` · shortfall→not deliverable ·
+malformed output→no delivery · unsafe content→`UNSAFE_CONTENT` + QUARANTINE.
+
+## 23. Reference-copy metrics (exact vs near)
+
+`reference-similarity.ts` `classifyReferenceCopy` → `EXACT | NEAR | NONE`,
+DETERMINISTIC (no fuzzy score):
+
+- **EXACT** = `collapseWhitespace(prompt) === collapseWhitespace(example)`.
+  `exactReferenceCopyRate` is a **HARD GATE — must be 0**.
+- **NEAR** = not exact, but `normalize(prompt) === normalize(example)` where
+  `normalize` lowercases, replaces digit runs with `#`, and non-(letter|digit|`#`)
+  runs with a space, then trims. `nearReferenceCopyRate` gate ≤ 1% (still exact
+  equality, on a normalized form). New reason code `REFERENCE_EXACT_COPY`.
+- Comparison is against the SPECIFIC few examples the generator was shown for
+  this batch, not the whole library. **False-positive risk**: a very short
+  heavily-templated legitimate question could normalize to the same string —
+  low, and reported as an open item.
+
+## 24. Answer-verification semantics — LOCKED
+
+`FORMAT_VERIFIED ≠ DETERMINISTIC_CORRECTNESS_VERIFIED` is a locked invariant.
+`ANSWER_VERIFICATION_LEVELS` reserves `AI_CROSSCHECK_PASSED` /
+`AI_CROSSCHECK_FAILED` for a future second-pass verifier — an AI cross-check
+outcome must use these DISTINCT states and may NEVER be reported as
+`DETERMINISTIC_CORRECTNESS_VERIFIED`. `CORRECTNESS_GROUND_TRUTH_LEVELS`
+(= deterministic + human-golden only) is the allow-list for any true
+correctness metric. No paid second-pass call in C5.2.
+
+## 25. Coverage matrix + live-readiness decision
+
+`luna-benchmark-coverage.ts`:
+- `computeCoverageMatrix(cases)` → counts for grade, target role, K1–K5,
+  T1–T5, context confidence, parent goal, Parallel Gap Repair, above-grade
+  FRONTIER, grade-level T4/T5. `probeAnswerCoverage` adds answer-format and
+  answer-verification-level counts from MOCK-generated batches (deterministic,
+  no network). Every uncovered cell is listed in `coverage.uncovered` — **no
+  hidden GAP**.
+- `assessBenchmarkReadiness` → `{ benchmarkReady, blockingCoverageGaps[],
+  nonBlockingCoverageGaps[], hardCaseCount, baseCaseCount, totalCaseCount }`.
+  `benchmarkReady` is true only if FRONTIER, T4/T5, grade-level T4/T5, Parallel
+  Gap Repair, no-frontier HSG, and uncertain-context (SUPPORTING or ESTIMATED)
+  are all covered, AND the adversarial suite passed, AND the local
+  build/golden/lint/typecheck/web-build gates are green.
+- The `BenchmarkReport` now carries `coverage`, `readiness`, `hardCaseCount`,
+  `baseCaseCount`, and the exact/near reference-copy split.
+
+## 26. Current readiness (mock probe)
+
+`benchmarkReady: true`. Blocking gaps: none. Non-blocking gaps (documented):
+`knowledge K5`, `context confidence ESTIMATED`, `parent goal kha_gioi`,
+`answer format choice`, `answer format exact`,
+`deterministic-correctness-supported answer item` — the last three are MOCK
+artifacts (the mock only emits numeric/fraction/reasoning word problems); they
+will be measured on the first real Luna run.
+
+## 27. What C5.2 did NOT do
+
+Same list as §13/§20 — plus: no paid/live benchmark run, no Terra/Sonnet, no
+second-pass AI verifier call.

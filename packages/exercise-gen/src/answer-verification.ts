@@ -84,6 +84,8 @@ export function summarizeAnswerVerification(batch: GeneratedExerciseBatch): Answ
     FORMAT_VERIFIED: 0,
     DETERMINISTIC_CORRECTNESS_VERIFIED: 0,
     AI_CROSSCHECK_REQUIRED: 0,
+    AI_CROSSCHECK_PASSED: 0,
+    AI_CROSSCHECK_FAILED: 0,
     HUMAN_GOLDEN_VERIFIED: 0,
     UNVERIFIED: 0,
   };
