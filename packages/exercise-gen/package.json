@@ -8,8 +8,10 @@
   "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
   "scripts": { "build": "tsc -b" },
   "dependencies": {
+    "@copilot/ai": "0.1.0",
     "@copilot/domain": "0.1.0",
     "@copilot/math-data": "0.1.0",
+    "@copilot/reference-library": "0.1.0",
     "@copilot/schemas": "0.1.0"
   }
 }

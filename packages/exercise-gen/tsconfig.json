@@ -1,7 +1,13 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": { "rootDir": "./src", "outDir": "./dist" },
-  "references": [{ "path": "../domain" }, { "path": "../math-data" }, { "path": "../schemas" }],
+  "references": [
+    { "path": "../domain" },
+    { "path": "../math-data" },
+    { "path": "../schemas" },
+    { "path": "../reference-library" },
+    { "path": "../ai" }
+  ],
   "include": ["src/**/*.ts"],
-  "exclude": ["**/*.test.ts"]
+  "exclude": ["**/*.test.ts", "**/_*.ts"]
 }

@@ -6,9 +6,12 @@
 > Implementation sequencing is in [17](17_IMPLEMENTATION_MIGRATION_PLAN.md).
 >
 > **Progress (2026-09-01):** Group A ✅ · B1+B2+B3 ✅ · pace policy ✅ (doc 13 §4)
-> · **C1** `ExerciseGenerationSpec` + builder ✅ · **C2** reference library ✅ ·
-> **C3** `GeneratedExerciseValidator` ✅. 357 tests. C4+ (live generator, runtime
-> flip, adaptive mode) not started — awaiting anh's approval of C1–C3.
+> · **C1** spec+builder ✅ · **C2** reference library ✅ · **C3** validator ✅ ·
+> **C3.1** hardening (thinking-level policy, `requiredSkillIds`, item-vs-batch
+> outcome, KB provenance) ✅ · **C4** generator contract + grounding + Mock
+> generator + bounded orchestrator + persistence schema ✅. 388 tests. **No live
+> AI provider.** C5+ (runtime flip, adaptive mode, production NBQ) not started —
+> awaiting anh's approval of C3.1 + C4.
 
 ---
 

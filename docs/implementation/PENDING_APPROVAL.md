@@ -7,8 +7,8 @@
 > Cập nhật lần cuối: 2026-09-01 (Architecture Migration v1.1 — AI-Generation-First).
 >
 > **Tình trạng:** Vertical slice P0–P10 xong, web PWA test được trên iPhone.
-> Migration v1.1: **Group A ✅ · B1+B2+B3 ✅ · pace policy ✅ · C1+C2+C3 ✅ (357 test xanh)**.
-> **⚠ ĐANG CHỜ ANH DUYỆT C1–C3** trước khi bắt đầu **C4 (live generator)** trở đi.
+> Migration v1.1: **A ✅ · B1+B2+B3 ✅ · pace policy ✅ · C1+C2+C3 ✅ · C3.1 ✅ · C4 ✅ (388 test xanh, KHÔNG có live AI)**.
+> **⚠ ĐANG CHỜ ANH DUYỆT C3.1 + C4** trước khi bắt đầu **C5 (flip practice runtime)** trở đi.
 
 ---
 
@@ -48,8 +48,10 @@ Mọi thứ LOCKED trong prompt v1.1 = đã quyết, không hỏi lại.
 - **Pace policy ✅ commit `6c2b3dc`** — `packages/learning-context/src/pace.ts` `evaluatePace` (doc 13 §4 LOCKED): ≥3 obs → hypothesis; ≥5 obs / ≥2 school weeks → auto-apply LOW; confirmation ≥2 lessons off → floor drops to 3; bounded (hyp ±0.35, auto ±0.25); decays on stale/conflicting evidence; applied pace only shifts FUTURE estimate, never `resolved` confidence.
 - **Group C1 ✅ commit `1d4caae`** — `ExerciseGenerationSpec` (domain) + schema + `buildExerciseGenerationSpec` (deterministic, `@copilot/planning`). CASE A–D tests + 48-profile golden.
 - **Group C2 ✅ commit `5065452`** — `@copilot/reference-library` (repurposed question bank: grounding/calibration/evaluation only, NOT delivery). `@copilot/practice` no longer exports `loadQuestionBank`; `buildAssignment` = LEGACY shim until C5.
-- **Group C3 ✅ commit (this)** — `@copilot/exercise-gen` `validateGeneratedBatch` — deterministic gate, PASS/REPAIRABLE/REGENERATE/BLOCK + reason codes. No live generator (fixtures only).
-- **C4+ ⏸ — CHƯA BẮT ĐẦU** (đợi anh APPROVE C1–C3): live AI provider, flip practice runtime, xoá bank path cũ, Interactive Adaptive Mode, Next Best Question production.
+- **Group C3 ✅ commit `32ca44d`** — `@copilot/exercise-gen` `validateGeneratedBatch` — deterministic gate.
+- **Group C3.1 ✅ commit `3d3c757`** — Thinking-Level policy (T từ demonstrated evidence + goal + readiness; HSG+ready+strong→T4/T5; HSG+weak→không tự nâng T5). `GeneratedExercise.requiredSkillIds` + prereq safety theo required-closure. `ItemValidationOutcome` vs `BatchDisposition` (DELIVER/REPAIR/REGENERATE_SLOTS/QUARANTINE), `deliverable` chỉ khi đủ câu — KHÔNG giao worksheet thiếu âm thầm. Bỏ hard-code version → `KnowledgeBase.provenance` (datasetRevision + contentHash).
+- **Group C4 ✅ commit (this)** — `ExerciseGenerator` interface (education-dumb, no PII/twin), `buildGenerationGrounding` (deterministic), `MockExerciseGenerator` (no network, không bypass validator), `orchestrateGeneration` (bounded: maxGenerationAttempts=2, maxRepairAttempts=2), repair policy (reasonCode → instruction xác định), telemetry (`worksheet_batch_generation`/mock/cost 0), persistence schema (migration `1757030400000`, ⊕). **KHÔNG có live provider.**
+- **C5+ ⏸ — CHƯA BẮT ĐẦU** (đợi anh APPROVE C3.1+C4): `LunaExerciseGenerator` live, flip practice runtime, xoá bank path cũ, Interactive Adaptive Mode, Next Best Question production.
 
 ---
 

@@ -170,16 +170,24 @@ then the default flips and the old path is deleted in a later step.
 - **Tests:** `validator.test.ts` — TEST 8 (unknown skill BLOCKs its item, the batch still delivers the rest), K-range, blocking-prereq, prereq-repair exemption, near-duplicate, hint-ladder, reasoning rubric, choice inconsistency, above-grade allow/deny, distribution mismatch, unknown problem type, purity. `golden/generated-validator.test.ts` — every reference-library item is accepted (no false positives); every golden-question skill id resolves; an invented id always BLOCKs.
 - **Acceptance:** no item with any finding is in `acceptedItems`; `validateGeneratedBatch` is pure over (batch, spec, KB). No live generator — validated against deterministic fixtures.
 
-### C4 — `ExerciseGenerator` + `AiOrchestrator.runBatchGeneration` (mock first)
-- **Goal:** `spec → 1 batch call → N items`; `MockExerciseGenerator` for CI/demo.
-- **Files:** `packages/ai/src/{exercise-generator.ts, orchestrator.ts}`, `packages/ai/src/providers/mock.ts` (mock generator), tests.
-- **Deps:** C1, C3, A3 (router), A4 (ledger).
-- **DB:** migration `..._generated_exercises.js` — `generation_specs` (⊕), `generated_exercise_sets`.
-- **API:** none yet.
-- **Tests:** TEST 6 (10-q worksheet → generator called once → 10 items → validator → assignment); cost ledger row with `operation_type: WORKSHEET_BATCH_GENERATION`, `generation_spec_id`.
-- **Golden:** none (mock output is deterministic).
-- **Rollback:** generator behind flag; mock only in CI.
-- **Acceptance:** batch path produces a validated `Assignment{questions[]}` from a spec.
+### C3.1 — validator / spec hardening — ✅ DONE (2026-09-01)
+- **Thinking Level** — `assessThinking()`; T range from demonstrated level + evidence, then goal + readiness. HSG + ready + strong thinking → controlled 2-step stretch (T4/T5 reachable, T5 ≠ above-grade K). HSG + weak thinking → no auto T5. Strong thinking + school goal → thinking-challenge slot, T capped T4.
+- **`requiredSkillIds`** — `GeneratedExercise` gains it (+ optional `supportingSkillIds`); validator checks identity + closure of the *required* set; a weak unrelated prerequisite no longer blocks. `UNKNOWN_REQUIRED_SKILL_ID` → BLOCK.
+- **Item vs batch** — `ItemValidationOutcome` vs `BatchDisposition` (`DELIVER | REPAIR | REGENERATE_SLOTS | QUARANTINE`); contract violations quarantine; `deliverable` only when every slot valid AND count === `totalQuestions` (no silent partial). `itemOutcomes` map.
+- **Provenance** — removed hard-coded version. `KnowledgeBase.provenance` (`datasetRevision` + deterministic `contentHash`); spec records `curriculumRevision` + `curriculumContentHash`. `build-kb.mjs` emits `meta`.
+
+### C4 — `ExerciseGenerator` contract + Grounding + Mock generator + Orchestrator — ✅ DONE (2026-09-01)
+- **Goal:** `spec → grounding → 1 batch call → N items → validate → repair/regenerate (bounded) → FinalValidatedBatch OR structured failure`. **No live AI.**
+- **Files (all `@copilot/exercise-gen`):** `generator.ts` (`ExerciseGenerator` interface, `GenerationRequest`, `GenerationOutcome`, `GenerationInability`, `SlotRequest`), `grounding.ts` (`GenerationGrounding` + deterministic `buildGenerationGrounding`), `mock-generator.ts` (`createMockExerciseGenerator`), `repair.ts` (reason code → deterministic instruction; `slotRequestsFor`), `telemetry.ts` (`GenerationOperation` + `generationOperationToUsageEvent`), `orchestrator.ts` (`orchestrateGeneration`, bounded state machine), `persistence.ts` (`GenerationStore` port + `InMemoryGenerationStore` + `toGenerationRecords`). Package deps += `@copilot/ai`, `@copilot/reference-library`.
+- **§F education-dumb** — the generator receives only a `GenerationGrounding`; it cannot change skills/targets/problem types/K-T/distribution/gap-repair/advanced/goal/readiness/frontier. On inability → structured `GenerationInability`, never an altered spec.
+- **§G privacy** — grounding carries NO child/parent/school name, no twin, no learning history, no evidence; only `generationSpecId`, grade, target skill defs + problem types, prereq context, K/T semantics, ≤3 reference examples (metadata only), forbidden skills, output schema name.
+- **§J bounded** — `maxGenerationAttempts` (default 2) fresh batches after QUARANTINE/inability; `maxRepairAttempts` (default 2) slot rounds per batch. Never infinite retry.
+- **§K repair policy** — validator reason code → deterministic instruction (`repair.ts`); the validator's free-text `detail` is never piped to the generator.
+- **§L persistence** — migration `1757030400000_generated_exercises.js` — `generation_specs` (⊕) + `generated_exercise_sets` (⊕, append-only triggers). up/down/up verified. `toGenerationRecords()` maps an orchestration run to the rows; every set traces back to its spec. `cost_event_ref` nullable.
+- **§M cost** — every generator call (Mock included) emits a `GenerationOperation` with `operationType: 'worksheet_batch_generation'`, provider `mock`, model `mock`, cost 0; `generationOperationToUsageEvent()` maps it to `AiUsageEvent` unchanged. C5 swaps the generator for Luna with no orchestrator rewrite.
+- **Tests:** `grounding.test.ts` (§11 no PII, §12 only-relevant, §13 no verbatim, forbidden-skills), `mock-generator.test.ts` (validator-clean batch, deterministic, no verbatim, K/T in range, inability), `orchestrator.test.ts` (happy path, §9 count after regen, §10 bounded failure + inability, §14 traceable, §16 telemetry, §L records). 388 pass / 2 skip.
+- **Feature flag / rollback:** nothing in the runtime calls `orchestrateGeneration` yet (C5). The Mock generator is the only implementation; `@copilot/ai` `LunaExerciseGenerator` is C5.
+- **Acceptance:** `orchestrateGeneration` produces a validated `GeneratedExerciseBatch` from a spec via the Mock generator, or a structured failure; the Mock does not bypass the validator.
 
 ### C5 — flip the practice path: plan → spec → generate → validate → assignment
 - **Goal:** `buildDailyPlan` also emits spec(s); `generateWorksheet(plan)` replaces `buildAssignmentsForPlan`.

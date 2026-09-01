@@ -186,10 +186,14 @@ export function validateGeneratedBatch(
       }
       // noUnlearnedRequiredKnowledge (doc 14 C3.1 §B): a blocking prerequisite
       // gap only blocks the item when it is ACTUALLY required — i.e. it is one of
-      // requiredSkillIds, or a prerequisite of one. A weak but UNRELATED
-      // prerequisite must not block the item. The prerequisite-repair bucket is
-      // exempt (repairing that gap is its job).
-      if (spec.constraints.noUnlearnedRequiredKnowledge && item.bucket !== 'prerequisiteRepair') {
+      // requiredSkillIds or in their prerequisite closure. A weak but UNRELATED
+      // prerequisite must not block the item. K0/K1 concept-intro items and the
+      // prerequisite-repair bucket are exempt (they don't assume prereq fluency).
+      if (
+        spec.constraints.noUnlearnedRequiredKnowledge &&
+        item.bucket !== 'prerequisiteRepair' &&
+        kIdx(item.knowledgeLevel) >= kIdx('K2')
+      ) {
         const requiredClosure = new Set<string>(item.requiredSkillIds as readonly string[]);
         for (const rs of item.requiredSkillIds) {
           if (kb.skills.has(rs)) for (const p of kb.prerequisiteClosure(rs)) requiredClosure.add(p);
@@ -199,7 +203,7 @@ export function validateGeneratedBatch(
           add(
             'UNLEARNED_REQUIRED_KNOWLEDGE',
             [item.id],
-            `actually requires ${blockedBy.join(', ')} — a blocking prerequisite gap not scheduled for repair in this item`,
+            `actually requires ${blockedBy.join(', ')} — a blocking prerequisite gap, and this K2+ item is not prerequisite repair`,
           );
       }
     }
