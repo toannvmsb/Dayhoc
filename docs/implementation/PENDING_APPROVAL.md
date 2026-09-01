@@ -52,7 +52,7 @@
 |---|---|---|---|
 | S-01 | Scan → AI confirmation flow (P05/P06) | 6 | Cần LLM/OCR provider (P-04). Projection + evidence path đã sẵn; chỉ thiếu adapter + UI. |
 | S-02 | Teaching Session live (P09), Teach Me 3' (P08) | 6 | Content generation — authored-first, cần question bank rộng (D-03). |
-| S-03 | Mobile app (Expo/RN) parity | 6–7 | Web đã có Parent Home/Progress/Gap. Mobile scaffold sẽ làm ở phase sau, dùng chung `@copilot/projections` + `@copilot/design-tokens`. |
+| S-03 | Mobile app (Expo/RN) parity | 6–7 | **Test tạm trên iPhone qua web PWA đã sẵn sàng** (`docs/implementation/DEVICE_TESTING.md`): `npm run dev --workspace @copilot/web` → Safari iPhone mở `http://<IP-máy>:3100` → Add to Home Screen. Đủ 11 màn hình, có manifest + icon + safe-area. App native Expo/RN vẫn là bước sau. |
 | S-04 | Weekly Report (P14), Notifications (P15) | 9 | |
 
 ## C. Golden cases đang `todo` (thiếu dữ liệu D-01)
