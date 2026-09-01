@@ -73,12 +73,21 @@ export function selectLearningTargets(input: SelectTargetsInput): LearningTarget
     return { skillId, role, domain: s.domain, curriculumOrigin: s.curriculumOrigin, buckets, knowledgeCeiling: knowledgeCeiling as TargetSkill['knowledgeCeiling'] };
   };
 
-  // --- CURRENT ---
+  // --- CURRENT (grade-level knowledge only; above-grade lesson skills are
+  //     handled as FRONTIER candidates, never as "the current lesson") ---
   const lessonSkills = input.resolvedLessonId
     ? [...kb.skills.values()].filter((s) => s.curriculumNodeId === input.resolvedLessonId).map((s) => s.id as SkillId)
     : [];
-  const currentIds = dedupe((lessonSkills.length > 0 ? lessonSkills : [...input.activeSkillIds]).filter(known));
-  const current = currentIds.map((id) => mk(id, 'CURRENT', ['currentSkill', 'variation', 'application'], GRADE_K_CEILING));
+  const rawCurrent = dedupe((lessonSkills.length > 0 ? lessonSkills : [...input.activeSkillIds]).filter(known));
+  let currentIds = rawCurrent.filter((id) => kb.getSkill(id).curriculumOrigin <= gradeContext);
+  if (currentIds.length === 0 && rawCurrent.length > 0) {
+    // the whole lesson is above grade — keep only the least-advanced skill so the
+    // session still has a grounded "current" anchor.
+    currentIds = [[...rawCurrent].sort((a, b) => kb.getSkill(a).curriculumOrigin - kb.getSkill(b).curriculumOrigin)[0]!];
+  }
+  const current = currentIds.map((id) =>
+    mk(id, 'CURRENT', ['currentSkill', 'variation', 'application'], GRADE_K_CEILING),
+  );
 
   // --- PREREQUISITE_REPAIR ---
   const currentClosure = new Set<string>();
@@ -104,6 +113,13 @@ export function selectLearningTargets(input: SelectTargetsInput): LearningTarget
 
   // --- FRONTIER (evidence-driven; §4/§10) ---
   const frontier: TargetSkill[] = [];
+  // a fallback CURRENT skill that is itself above grade is also a FRONTIER target
+  // (so the validator accepts above-grade content the planner deliberately kept).
+  for (const id of currentIds) {
+    if (kb.getSkill(id).curriculumOrigin > gradeContext && input.readiness !== 'repair_first') {
+      frontier.push(mk(id, 'FRONTIER', ['advanced'], 'K4'));
+    }
+  }
   if (input.readiness !== 'repair_first') {
     const maxFrontier = goalIsAdvanced ? 2 : input.parentGoal === 'kha_gioi' ? 1 : 1;
     for (const df of input.twin.frontier) {

@@ -128,6 +128,7 @@ export function validateGeneratedBatch(
   );
   // target-role bindings (doc 14 C4.1 §6/§8)
   const selectedFrontierSkills = new Set(spec.targets.skills.filter((t) => t.role === 'FRONTIER').map((t) => t.skillId));
+  const anySelectedSkill = new Set(spec.targets.skills.map((t) => t.skillId));
   const targetFor = (skillId: string, bucket: string) =>
     spec.targets.skills.find((t) => t.skillId === skillId && t.buckets.includes(bucket as never));
 
@@ -174,12 +175,26 @@ export function validateGeneratedBatch(
           `bucket "${item.bucket}" is not bound to skill ${item.skillId} — no selected target with this skill allows this bucket`,
         );
       }
-      // an above-grade skill the planner did NOT select as a FRONTIER target
-      if (skill.curriculumOrigin > spec.schoolGrade && !selectedFrontierSkills.has(item.skillId)) {
+      // an above-grade skill the planner did NOT select as ANY target — the
+      // generator cannot expand the curriculum boundary on its own (§8).
+      if (skill.curriculumOrigin > spec.schoolGrade && !anySelectedSkill.has(item.skillId)) {
         add(
           'FRONTIER_SKILL_NOT_SELECTED',
           [item.id],
-          `${item.skillId} originates at grade ${skill.curriculumOrigin} but was not selected as a FRONTIER target — the generator cannot expand the curriculum boundary`,
+          `${item.skillId} originates at grade ${skill.curriculumOrigin} but the planner selected no target for it`,
+        );
+      }
+      // an above-grade skill used in the FRONTIER (advanced) bucket must have been
+      // selected specifically as a FRONTIER target.
+      if (
+        skill.curriculumOrigin > spec.schoolGrade &&
+        item.bucket === 'advanced' &&
+        !selectedFrontierSkills.has(item.skillId)
+      ) {
+        add(
+          'FRONTIER_SKILL_NOT_SELECTED',
+          [item.id],
+          `${item.skillId} is used in the advanced bucket but is not a selected FRONTIER target`,
         );
       }
       // requiredSkillIds must stay inside the allowed closure of the item's target

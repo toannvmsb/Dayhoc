@@ -134,7 +134,7 @@ export function buildGenerationGrounding(
       .filter(([, m]) => m >= 50)
       .map(([id]) => id),
   );
-  const selectedFrontier = new Set(spec.targets.skills.filter((t) => t.role === 'FRONTIER').map((t) => t.skillId));
+  const anySelected = new Set(spec.targets.skills.map((t) => t.skillId));
 
   const targetSkills: GroundingSkill[] = spec.targets.skills
     .filter((t) => kb.skills.has(t.skillId))
@@ -173,11 +173,12 @@ export function buildGenerationGrounding(
     };
   }
 
-  // forbidden as a REQUIRED skill for non-repair items: blocking gaps + any
-  // above-grade skill NOT selected as a frontier target.
+  // forbidden as a REQUIRED skill: blocking gaps + any above-grade skill the
+  // planner selected NO target for. A selected PREREQUISITE_REPAIR / THINKING
+  // target that happens to be above grade is fine — the planner chose it.
   const forbidden = new Set<string>(blockingSet);
   for (const s of kb.skills.values()) {
-    if (s.curriculumOrigin > spec.schoolGrade && !selectedFrontier.has(s.id as SkillId)) forbidden.add(s.id);
+    if (s.curriculumOrigin > spec.schoolGrade && !anySelected.has(s.id as SkillId)) forbidden.add(s.id);
   }
 
   const kAnchor = KNOWLEDGE_LEVELS.indexOf(spec.difficulty.kMax);
