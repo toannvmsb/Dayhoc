@@ -8,3 +8,4 @@
  */
 export * from './build.js';
 export * from './resolver.js';
+export * from './pace.js';

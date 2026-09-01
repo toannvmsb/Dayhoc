@@ -20,6 +20,10 @@
 >   calendar file — no service-logic change.
 > - **`confirm-lesson` is append-only** — writes a `LessonConfirmationEvent` that
 >   flows through the resolver; it never overwrites context history.
+> - **Pace policy (§4) LOCKED + implemented** (`pace.ts` `evaluatePace`): ≥3 obs →
+>   hypothesis; ≥5 obs over ≥2 school weeks → LOW-confidence auto-apply; bounded;
+>   decays on stale/conflicting evidence; an applied pace shifts only the FUTURE
+>   estimate, never `resolved` confidence.
 > - Functional demo output: [`B3_DEMO_OUTPUT.md`](B3_DEMO_OUTPUT.md).
 
 ---
@@ -179,28 +183,70 @@ consumers don't break in one step.
 
 ---
 
-## 4. Pace learning (`pace_delta`)
+## 4. Pace policy (`pace_delta`) — LOCKED 2026-09-01
 
-If **repeated** observed evidence consistently lands ahead of / behind the clock
-estimate, the class is pacing off the mean.
+Implemented in `packages/learning-context/src/pace.ts` (`evaluatePace`). Two ideas
+are kept **strictly separate**:
+
+| | Who decides | What it is |
+|---|---|---|
+| **confirmed current learning context** | parent / teacher | "we are on Bài X" — a `LessonConfirmationEvent`, goes through the resolver |
+| **system-inferred curriculum pace** | the system | the class is drifting ahead/behind the calendar mean, learned from observed schoolwork |
+
+The parent is **never** asked to understand or confirm a numeric `pace_delta`.
+
+### Observations
 
 ```
-observations = [(evidence.at, clock.lesson_at(evidence.at), resolved.lesson_at(evidence.at))]
-lag_weeks(o)  = lessonIndex(o.resolved) − lessonIndex(o.expected)   # in "lessons"
+POSITION_SOURCES = { school_homework, notebook_scan, school_test, school_exam }
+obs        = evidence with skillId, source ∈ POSITION_SOURCES, ≤28 days old,
+             whose lesson is in the grade's teaching order
+lag(o)     = lessonIndex(o.lesson) − lessonIndex(expected.lesson)   # in "lessons", vs the UNADJUSTED calendar
 ```
 
-After ≥ 3 observations spanning ≥ 3 weeks, all with the same sign and |lag| ≥ 1:
+### Thresholds
+
+| observations | span | action |
+|---|---|---|
+| 1–2 consistent | — | **no adjustment** |
+| ≥3 consistent, same sign, \|lag\|≥1 | any | `paceDeltaHypothesis` — surfaced, **not applied** |
+| ≥5 consistent | ≥2 distinct school weeks | system **auto-applies a LOW-confidence `pace_delta`** |
+| ≥3 consistent **+** a recent (≤28d) lesson confirmation ≥2 lessons off in the same direction | ≥2 weeks | auto-apply floor drops to 3 (confirmation recalibrates faster) |
+| conflicting direction / all stale | — | **decays**: pure recompute over current evidence returns 0 |
 
 ```
-pace_delta ← clamp(mean(lag_weeks) / effective_weeks_elapsed, −0.35, +0.35)
+pace_delta ← clamp(mean(lag) / max(4, expectedIndex), −0.35, +0.35)   # hypothesis
+auto value ← clamp(hypothesis, −0.25, +0.25)                          # tighter bound for auto-apply
 ```
 
-Stored on `learning_context_snapshots` and fed back into the clock. **Never**
-destroys verified history — it only shifts future *estimates*.
+Decay is automatic: `evaluatePace` is pure over the *current* evidence, so when
+observations age out of the 28-day window or stop agreeing, the value recomputes
+toward 0 on the next cycle.
 
-Example (v1.1 §2): timeline says Bài 6, three homework scans over 3 weeks show
-Bài 8 / Bài 9 / Bài 10 → class is ~2 lessons ahead → `pace_delta ≈ +0.2` → next
-week's estimate moves forward.
+### Application (two-pass, in the orchestrator)
+
+```
+base      = clock.positionFor(child, asOf)                      # pace_delta = 0
+pace      = evaluatePace({ expected: base, evidence, confirmations, asOf })
+applied   = externalOverride ?? (pace.autoApply.applied ? pace.autoApply.value : 0)
+effective = applied ≠ 0 ? clock.positionFor(child, asOf, { paceDeltaOverride: applied }) : base
+context   = buildLearningContext({ expectedContext: effective, appliedPaceDelta: applied, paceEvaluation: pace, … })
+```
+
+The hypothesis is always computed against the **unadjusted** calendar so it keeps
+reading "the class is ~N lessons ahead" even after a pace has been applied.
+
+### CRITICAL invariant
+
+An applied `pace_delta` **only shifts the FUTURE `expected` context / window**. It
+**never** turns an observed lesson into `VERIFIED` actual context — `resolved`
+still carries only the confidence its evidence earns (homework scans → `SUPPORTING`
+at best). Tests: `pace.test.ts`, `b3-context-demo.test.ts` ("CRITICAL: an
+auto-applied paceDelta never becomes VERIFIED actual context").
+
+Example: calendar says Bài 22, five homework scans over 4 weeks land on Bài 25–27
+→ `pace_delta ≈ +0.2` auto-applied (LOW) → next week's *estimate* moves to
+chapter 7; `resolved` stays `SCHOOLWORK_EVIDENCE / SUPPORTING`.
 
 ---
 

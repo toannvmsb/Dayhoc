@@ -3,7 +3,7 @@ import { EvidenceService, InMemoryLedgerStore, type LedgerStore } from '@copilot
 import { loadKnowledgeBase, type KnowledgeBase } from '@copilot/math-data';
 import { buildLearningTwin } from '@copilot/learning-twin';
 import { runGapEngine } from '@copilot/gap-engine';
-import { buildLearningContext } from '@copilot/learning-context';
+import { buildLearningContext, evaluatePace } from '@copilot/learning-context';
 import { CurriculumClockService, toExpectedLearningContext } from '@copilot/curriculum-clock';
 import { buildDailyPlan } from '@copilot/planning';
 import { buildAssignmentsForPlan } from '@copilot/practice';
@@ -105,14 +105,28 @@ export function createApi(deps: ApiDeps) {
     // Curriculum Clock estimate (works with zero parent/teacher input) — doc 13.
     const enroll = rec.enrollment;
     const gradeNum = rec.gradeContext === 7 ? 7 : 4;
-    const clockCtx = enroll
-      ? clock.positionFor(
-          { curriculum: enroll.curriculum, grade: gradeNum, academicYear: enroll.academicYear, ...(enroll.calendarId ? { calendarId: enroll.calendarId } : {}) },
-          asOf,
-        )
+    const clockChild = enroll
+      ? { curriculum: enroll.curriculum, grade: gradeNum as 4 | 7, academicYear: enroll.academicYear, ...(enroll.calendarId ? { calendarId: enroll.calendarId } : {}) }
       : null;
-    const expectedContext = clockCtx ? toExpectedLearningContext(clockCtx) : null;
-    const appliedPaceDelta = deps.appliedPaceDeltaFor?.(childId) ?? 0;
+    const baseClock = clockChild ? clock.positionFor(clockChild, asOf) : null;
+
+    // Curriculum-pace policy (doc 13 §4): an explicit override wins; otherwise the
+    // system may auto-apply a LOW-confidence pace once evidence is consistent
+    // enough. Only shifts the FUTURE estimate — never verified actual context.
+    const externalPace = deps.appliedPaceDeltaFor?.(childId) ?? 0;
+    const pace = evaluatePace({
+      expected: baseClock ? toExpectedLearningContext(baseClock) : null,
+      evidence,
+      lessonConfirmations,
+      knowledgeBase: kb,
+      asOf,
+    });
+    const appliedPaceDelta = externalPace !== 0 ? externalPace : pace.autoApply.applied ? pace.autoApply.value : 0;
+    const effectiveClock =
+      clockChild && appliedPaceDelta !== 0
+        ? clock.positionFor(clockChild, asOf, { paceDeltaOverride: appliedPaceDelta })
+        : baseClock;
+    const expectedContext = effectiveClock ? toExpectedLearningContext(effectiveClock) : null;
 
     const twin = buildLearningTwin({ childId: asChildId(childId), gradeContext: rec.gradeContext, evidence, knowledgeBase: kb, asOf });
     const gaps = runGapEngine({ childId: asChildId(childId), gradeContext: rec.gradeContext, twin, evidence, knowledgeBase: kb, asOf });
@@ -124,6 +138,7 @@ export function createApi(deps: ApiDeps) {
       lessonConfirmations,
       expectedContext,
       appliedPaceDelta,
+      paceEvaluation: pace,
       knowledgeBase: kb,
       asOf,
     });

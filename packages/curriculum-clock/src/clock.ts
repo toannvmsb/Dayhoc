@@ -106,11 +106,22 @@ export class CurriculumClockService {
     return getCurriculumCalendar(child.curriculum, child.grade, child.academicYear);
   }
 
-  positionFor(child: ClockChild, asOf: Date): ExpectedContext | null {
+  /**
+   * @param opts.paceDeltaOverride when set, use this learned pace adjustment
+   *   instead of the constructor's `paceDeltaFor` — used for the second pass
+   *   after the resolver auto-applies a pace (doc 13 §4). Only shifts the FUTURE
+   *   estimate/window; it never becomes verified actual context.
+   */
+  positionFor(
+    child: ClockChild,
+    asOf: Date,
+    opts: { paceDeltaOverride?: number } = {},
+  ): ExpectedContext | null {
     const cal = this.#calendarFor(child);
     if (!cal) return null;
 
-    const paceDelta = clamp(this.paceDeltaFor(child), -0.35, 0.35);
+    const rawPace = opts.paceDeltaOverride ?? this.paceDeltaFor(child);
+    const paceDelta = clamp(rawPace, -0.35, 0.35);
     const week = effectiveSchoolWeek(cal, asOf);
     const adjustedWeek = Math.max(1, Math.round(week * (1 + paceDelta)));
 

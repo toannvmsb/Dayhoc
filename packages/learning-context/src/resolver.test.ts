@@ -154,24 +154,6 @@ describe('Context Resolver hard invariants (doc 13 §2 A–F)', () => {
     expect(r.resolved.confidence).not.toBe('VERIFIED');
   });
 
-  it('C / B3-5 — repeated consistent schoolwork AHEAD of the calendar yields a paceDelta hypothesis', () => {
-    const window = ['a', 'b', 'c', nodeOf(SK_CH6), 'e', 'f', nodeOf(SK_CH7), 'h'];
-    const expected = { ...clockAt(nodeOf(SK_CH6), window), lessonId: nodeOf(SK_CH6) };
-    const r = resolveLearningContext({
-      expected,
-      contributions: [],
-      evidence: [
-        ev(SK_CH7, 5, { source: 'school_homework', provenance: 'scan', confidenceTier: 'C' }),
-        ev(SK_CH7, 12, { source: 'school_homework', provenance: 'scan', confidenceTier: 'C' }),
-        ev(SK_CH7, 19, { source: 'school_homework', provenance: 'scan', confidenceTier: 'C' }),
-      ],
-      knowledgeBase: kb,
-      asOf,
-    });
-    expect(r.paceDeltaHypothesis.value).toBeGreaterThan(0);
-    expect(r.paceDeltaHypothesis.observationCount).toBeGreaterThanOrEqual(3);
-  });
-
   it('C — a single supporting observation does NOT raise confidence to STRONG', () => {
     const r = resolveLearningContext({
       expected: null,

@@ -16,9 +16,20 @@ describe('B3 functional demo — 3 children (doc 17 §7)', () => {
     expect((b!.expected as { lessonId: string }).lessonId).not.toBe('C.G4.8.5'); // estimate is different + still there
   });
 
-  it('CHILD C — repeated homework ahead of the calendar yields a positive paceDelta hypothesis', () => {
-    expect((c!.paceDeltaHypothesis as { value: number }).value).toBeGreaterThan(0);
-    expect(c!.paceDelta).toBe(0); // hypothesis only — not applied
+  it('CHILD C — 5 consistent homework scans over ≥2 weeks → LOW paceDelta auto-applied', () => {
+    expect((c!.paceDeltaHypothesis as { value: number; spanWeeks: number }).value).toBeGreaterThan(0);
+    expect((c!.paceDeltaHypothesis as { spanWeeks: number }).spanWeeks).toBeGreaterThanOrEqual(2);
+    expect(c!.paceDelta).toBeGreaterThan(0); // auto-applied (LOW confidence)
+    expect(Math.abs(c!.paceDelta)).toBeLessThanOrEqual(0.25);
+  });
+
+  it('CHILD C — CRITICAL: an auto-applied paceDelta never becomes VERIFIED actual context', () => {
+    // pace only shifts the FUTURE estimate; the resolved lesson is still only as
+    // strong as the evidence behind it (homework scans → SUPPORTING at best).
+    const resolved = c!.resolved as { source: string; confidence: string };
+    expect(resolved.confidence).not.toBe('VERIFIED');
+    expect(resolved.source).not.toBe('TEACHER_UPDATE');
+    expect(resolved.source).not.toBe('PARENT_UPDATE');
   });
 
   it('prints the report (visible with --reporter=verbose)', () => {

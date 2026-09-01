@@ -119,6 +119,8 @@ export interface LearningContext {
   readonly paceDeltaHypothesis: {
     readonly value: number;
     readonly observationCount: number;
+    /** Distinct school weeks the observations span. */
+    readonly spanWeeks: number;
     readonly rationale: string;
   };
   /**

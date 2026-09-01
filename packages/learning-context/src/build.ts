@@ -12,6 +12,7 @@ import {
 } from '@copilot/domain';
 import type { KnowledgeBase } from '@copilot/math-data';
 import { resolveLearningContext } from './resolver.js';
+import { evaluatePace, type PaceEvaluation } from './pace.js';
 
 export interface BuildContextInput {
   readonly childId: ChildId;
@@ -28,6 +29,12 @@ export interface BuildContextInput {
   readonly lessonConfirmations?: readonly LessonConfirmationEvent[];
   /** Pace adjustment already applied to the clock estimate (persisted). */
   readonly appliedPaceDelta?: number;
+  /**
+   * Curriculum-pace evaluation (doc 13 §4) from the orchestrator, computed
+   * against the UNADJUSTED calendar. When absent, a best-effort evaluation is
+   * run against `expectedContext` (correct only when no pace was applied).
+   */
+  readonly paceEvaluation?: PaceEvaluation;
   /** "Now" for recency windows. Injectable for tests. */
   readonly asOf?: Date;
   /** How many days back counts as "actively being learned". */
@@ -88,7 +95,7 @@ export function buildLearningContext(input: BuildContextInput): LearningContext 
       : [];
 
   const expected = input.expectedContext ?? null;
-  const { resolved, conflictLessonIds, paceDeltaHypothesis } = resolveLearningContext({
+  const { resolved, conflictLessonIds } = resolveLearningContext({
     expected,
     contributions: teacherContributions,
     lessonConfirmations: input.lessonConfirmations ?? [],
@@ -98,6 +105,19 @@ export function buildLearningContext(input: BuildContextInput): LearningContext 
     asOf,
     ...(input.recencyDays !== undefined ? { recencyDays: input.recencyDays } : {}),
   });
+
+  // Curriculum-pace (doc 13 §4): the orchestrator computes this against the
+  // unadjusted calendar and also feeds `appliedPaceDelta`. Fallback keeps direct
+  // callers working (hypothesis is only exact when no pace has been applied).
+  const paceEval =
+    input.paceEvaluation ??
+    evaluatePace({
+      expected,
+      evidence,
+      lessonConfirmations: input.lessonConfirmations ?? [],
+      knowledgeBase: kb,
+      asOf,
+    });
 
   const resolvedSkillIds =
     resolved.activeSkillIds.length > 0
@@ -117,8 +137,11 @@ export function buildLearningContext(input: BuildContextInput): LearningContext 
     builtAt: asOf.toISOString(),
     expected,
     resolved,
+    // `paceDelta` is what the ORCHESTRATOR applied to the clock (it also shifts
+    // `expected`). build never applies it on its own — an unshifted estimate with
+    // a non-zero delta would be incoherent.
     paceDelta: input.appliedPaceDelta ?? 0,
-    paceDeltaHypothesis,
+    paceDeltaHypothesis: paceEval.hypothesis,
     standardPosition: {
       skillIds: standardSkillIds,
       note: 'Phạm vi chuẩn theo lớp.',

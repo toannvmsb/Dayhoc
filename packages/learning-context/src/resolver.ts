@@ -17,6 +17,7 @@ import type {
   TeacherContribution,
 } from '@copilot/domain';
 import type { KnowledgeBase } from '@copilot/math-data';
+import { curriculumNodeOrder } from './pace.js';
 
 const DAY_MS = 86_400_000;
 const RECENCY_HALF_LIFE_DAYS = 14;
@@ -77,19 +78,10 @@ export interface ResolveInput {
   readonly gradeContext?: number;
 }
 
-export interface PaceDeltaHypothesis {
-  /** −0.35..0.35 suggested adjustment; 0 = no hypothesis. */
-  readonly value: number;
-  readonly observationCount: number;
-  readonly rationale: string;
-}
-
 export interface ResolveResult {
   readonly resolved: ResolvedLearningContext;
   /** Candidate lessons that materially disagreed at VERIFIED/STRONG strength. */
   readonly conflictLessonIds: readonly string[];
-  /** From repeated consistent schoolwork evidence (invariant C) — a HYPOTHESIS, not applied. */
-  readonly paceDeltaHypothesis: PaceDeltaHypothesis;
 }
 
 function lessonIdOfSkill(kb: KnowledgeBase, skillId: SkillId): string | null {
@@ -227,8 +219,6 @@ export function resolveLearningContext(input: ResolveInput): ResolveResult {
     });
   }
 
-  const emptyPace: PaceDeltaHypothesis = { value: 0, observationCount: 0, rationale: 'not enough consistent evidence' };
-
   // --- no real signal: the estimate stands, ESTIMATED ---
   const observed = signals.filter((s) => s.typeKey !== 'curriculum_timeline');
   if (observed.length === 0) {
@@ -244,7 +234,6 @@ export function resolveLearningContext(input: ResolveInput): ResolveResult {
         guardrailApplied: 'no_observed_evidence_estimate_only',
       },
       conflictLessonIds: [],
-      paceDeltaHypothesis: emptyPace,
     };
   }
 
@@ -376,9 +365,6 @@ export function resolveLearningContext(input: ResolveInput): ResolveResult {
     narrowed = clockWindow.size > 0 ? near.filter((l) => clockWindow.has(l) || l === chosenLessonId) : near;
   }
 
-  // --- invariant C: pace_delta hypothesis from repeated consistent schoolwork ahead/behind ---
-  const paceDeltaHypothesis = computePaceHypothesis(observed, expected, kb, now);
-
   return {
     resolved: {
       chapterId: chapterIdOfLesson(chosenLessonId, expected),
@@ -391,52 +377,6 @@ export function resolveLearningContext(input: ResolveInput): ResolveResult {
       guardrailApplied: guardrail,
     },
     conflictLessonIds,
-    paceDeltaHypothesis,
   };
 }
 
-/** Curriculum node ids for one grade, in teaching order (C.G<g>.<chapter>.<lesson>). */
-function curriculumNodeOrder(kb: KnowledgeBase, gradePrefix: string): string[] {
-  return [...kb.curriculum.keys()]
-    .filter((id) => id.startsWith(gradePrefix) && /\.\d+\.\d+$/.test(id))
-    .sort((a, b) => {
-      const [, ac, al] = /\.(\d+)\.(\d+)$/.exec(a)!;
-      const [, bc, bl] = /\.(\d+)\.(\d+)$/.exec(b)!;
-      return Number(ac) - Number(bc) || Number(al) - Number(bl);
-    });
-}
-
-function computePaceHypothesis(
-  observed: readonly Signal[],
-  expected: ExpectedLearningContext | null,
-  kb: KnowledgeBase,
-  now: number,
-): PaceDeltaHypothesis {
-  const none: PaceDeltaHypothesis = { value: 0, observationCount: 0, rationale: 'not enough consistent evidence' };
-  if (!expected) return none;
-  const gradePrefix = /^(C\.G\d+)\./.exec(expected.lessonId)?.[1];
-  if (!gradePrefix) return none;
-  const order = curriculumNodeOrder(kb, gradePrefix);
-  const expectedIdx = order.indexOf(expected.lessonId);
-  if (expectedIdx < 0) return none;
-
-  const recent = observed
-    .filter((s) => (s.typeKey === 'homework_scan' || s.typeKey === 'notebook_scan' || s.typeKey === 'verified_test') && now - s.at <= 28 * DAY_MS)
-    .map((s) => order.indexOf(s.lessonId))
-    .filter((i) => i >= 0);
-  if (recent.length < 3) return none;
-
-  const lag = recent.map((i) => i - expectedIdx);
-  const allAhead = lag.every((l) => l >= 1);
-  const allBehind = lag.every((l) => l <= -1);
-  if (!allAhead && !allBehind) return none;
-
-  const meanLag = lag.reduce((a, b) => a + b, 0) / lag.length;
-  // relative to lessons taught so far — a 2-lesson lead after 20 lessons ≈ +10% pace
-  const value = Math.max(-0.35, Math.min(0.35, meanLag / Math.max(4, expectedIdx)));
-  return {
-    value: Number(value.toFixed(3)),
-    observationCount: recent.length,
-    rationale: `${recent.length} recent schoolwork observations consistently ${allAhead ? 'ahead of' : 'behind'} the calendar (mean lag ${meanLag.toFixed(1)} lessons)`,
-  };
-}

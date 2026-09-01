@@ -36,7 +36,11 @@ for (const d of runB3Demo()) {
       (r.lastVerifiedAt ? ` · lastVerifiedAt ${r.lastVerifiedAt}` : ''),
   );
   lines.push(
-    `  paceDelta applied   : ${d.paceDelta} · hypothesis ${h.value} (${h.rationale}; n=${h.observationCount})`,
+    `  paceDelta applied   : ${d.paceDelta}` +
+      (d.paceDelta !== 0 ? ' (LOW-confidence auto — shifts FUTURE estimate only, not verified context)' : ''),
+  );
+  lines.push(
+    `  pace hypothesis     : ${h.value} over ${h.spanWeeks} school week(s), n=${h.observationCount} — ${h.rationale}`,
   );
   lines.push(`  conflicts           : ${JSON.stringify(d.conflicts)}`);
   lines.push('');

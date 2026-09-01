@@ -2,7 +2,7 @@ import { asChildId, asSkillId, type Evidence } from '@copilot/domain';
 import { loadKnowledgeBase } from '@copilot/math-data';
 import { buildLearningTwin } from '@copilot/learning-twin';
 import { runGapEngine } from '@copilot/gap-engine';
-import { buildLearningContext } from '@copilot/learning-context';
+import { buildLearningContext, evaluatePace } from '@copilot/learning-context';
 import { CurriculumClockService, toExpectedLearningContext } from '@copilot/curriculum-clock';
 import { buildDailyPlan } from '@copilot/planning';
 import { buildParentHome, buildParentProgress, type ParentViewInput } from '@copilot/projections';
@@ -71,10 +71,19 @@ export function demoScene() {
     parentGoal: 'kha_gioi',
     asOf: AS_OF,
   });
-  const clockCtx = new CurriculumClockService().positionFor(
-    { curriculum: 'KET_NOI_TRI_THUC', grade: 7, academicYear: '2026-2027' },
-    AS_OF,
-  );
+  const clock = new CurriculumClockService();
+  const clockChild = { curriculum: 'KET_NOI_TRI_THUC', grade: 7 as const, academicYear: '2026-2027' };
+  const baseClock = clock.positionFor(clockChild, AS_OF);
+  // curriculum-pace policy (doc 13 §4) — auto-apply only when evidence is consistent enough
+  const pace = evaluatePace({
+    expected: baseClock ? toExpectedLearningContext(baseClock) : null,
+    evidence,
+    knowledgeBase: kb,
+    asOf: AS_OF,
+  });
+  const appliedPaceDelta = pace.autoApply.applied ? pace.autoApply.value : 0;
+  const clockCtx =
+    appliedPaceDelta !== 0 ? clock.positionFor(clockChild, AS_OF, { paceDeltaOverride: appliedPaceDelta }) : baseClock;
   const context = buildLearningContext({
     childId: CHILD,
     gradeContext: 7,
@@ -93,6 +102,8 @@ export function demoScene() {
       },
     ],
     expectedContext: clockCtx ? toExpectedLearningContext(clockCtx) : null,
+    appliedPaceDelta,
+    paceEvaluation: pace,
     knowledgeBase: kb,
     asOf: AS_OF,
   });
