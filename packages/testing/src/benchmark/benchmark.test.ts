@@ -195,30 +195,28 @@ describe('Benchmark kit — scoring + hard gates', () => {
   });
 });
 
-describe('Benchmark kit — cost → margin guardrail (§6, §10.9)', () => {
+describe('Benchmark kit — cost → margin guardrail (Pricing v1.1 §5, §11)', () => {
   it('the published margin tables still hold (no drift in the model)', () => {
-    for (const r of marginTable().atCeiling) expect(r.marginPct, r.plan).toBeGreaterThanOrEqual(0.5);
+    for (const r of marginTable().atOperationalCeiling) expect(r.marginPct, r.plan).toBeGreaterThanOrEqual(0.5);
   });
 
-  it('a measured per-case cost projected to plan usage is checked against the hard ceiling', () => {
-    // simulate a "Luna default" measured cost from token telemetry
+  it('a measured per-case cost projected to plan usage is checked against the operational ceiling', () => {
     const reg = new PricingRegistry();
     const perExtractionUsd = tokenCostUsd(reg.priceAt('gpt-5.6-luna'), { inputTokens: 1_800, outputTokens: 500 });
     const perExtractionVnd = usdToVnd(perExtractionUsd);
 
     // BASIC: 8 worksheets + 8 scan pages/month, ~2 AI ops each → ~32 metered ops
     const basicMonthlyVnd = perExtractionVnd * 32;
-    expect(basicMonthlyVnd).toBeLessThan(PLAN_COMMERCIALS.basic.aiCeilingVnd);
+    expect(basicMonthlyVnd).toBeLessThan(PLAN_COMMERCIALS.basic.aiOperationalCeilingVnd);
     expect(contributionMargin('basic', basicMonthlyVnd).meetsFloor).toBe(true);
 
-    // a pathological 10× cost blows the ceiling → the guardrail must flag it
-    const blownVnd = basicMonthlyVnd * 12;
-    const blocked = blownVnd > PLAN_COMMERCIALS.basic.aiCeilingVnd;
-    expect(blocked).toBe(true);
+    // a pathological retry storm (e.g. 30× the Luna baseline) blows the ceiling
+    const blownVnd = basicMonthlyVnd * 30;
+    expect(blownVnd).toBeGreaterThan(PLAN_COMMERCIALS.basic.aiOperationalCeilingVnd);
   });
 
-  it('FREE is judged against its AI ceiling (2,000đ), not a margin', () => {
+  it('FREE is judged against its operational ceiling (3,000đ), not a margin', () => {
     expect(PLAN_COMMERCIALS.free.priceVnd).toBeNull();
-    expect(PLAN_COMMERCIALS.free.aiCeilingVnd).toBe(2_000);
+    expect(PLAN_COMMERCIALS.free.aiOperationalCeilingVnd).toBe(3_000);
   });
 });

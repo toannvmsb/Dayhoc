@@ -1,42 +1,54 @@
 /**
- * Commercial margin model (Pricing + AI Cost Guardrails v1.0 §6).
+ * Commercial margin model (Pricing + AI Cost Guardrails **v1.1** §5).
+ * Source: `File du an/AI_Parent_Learning_Copilot_Pricing_AI_Cost_Routing_v1.1.zip`
+ * → `pricing_guardrails_v1.1.yaml`. See docs/implementation/15_AI_COST_AND_MODEL_ROUTING.md.
  *
- *   Contribution = 0.75 × Price − 30,000đ − AI_COGS
+ *   Modeled Profit = Price × 75% − 30,000đ − AI_COGS
  *
- * where 30,000đ = 10,000đ server/data + 20,000đ HR/marketing allocation, and
- * the 0.75 factor absorbs 15% store/payment + 10% tax assumption on revenue.
+ * where 30,000đ = 10,000đ server/data + 20,000đ HR/marketing allocation, and the
+ * 0.75 factor absorbs 15% store/payment + 10% tax reserve on revenue.
  *
- * Hard business rule: modeled contribution margin must stay ≥ 50% of revenue —
- * even at the AI hard ceiling. Prices are LOCKED (§11); do not lower a price just
- * because measured AI COGS came in below target (§6).
+ * `Max AI COGS at the 50% modeled-margin floor = Price × 25% − 30,000đ`.
+ *
+ * v1.1 has THREE thresholds per plan: `aiTargetVnd` < `aiOperationalCeilingVnd` <
+ * `absoluteBoundaryVnd` (the 50%-floor line). Operational ceilings sit
+ * deliberately below the absolute boundary. Prices are LOCKED — do not lower a
+ * price because measured AI COGS came in low (v1.1 §5).
+ *
+ * Contribution-style planning model, NOT final accounting profit.
  */
 
 import type { Plan } from '@copilot/domain';
 
-/** Fixed non-AI allocation per user per month, VND (§6). */
+/** Fixed non-AI allocation per paid user per month, VND (v1.1 §5). */
 export const FIXED_ALLOCATION_VND = 30_000;
-/** Revenue kept after 15% store/payment + 10% tax assumption (§6). */
+/** Revenue kept after 15% store/payment + 10% tax reserve (v1.1 §5). */
 export const REVENUE_RETENTION_FACTOR = 0.75;
-/** The floor the model must never breach (§1, §6). */
+/** The modeled-margin floor the paid plans must never breach. */
 export const CONTRIBUTION_MARGIN_FLOOR = 0.5;
 
 export interface PlanCommercials {
   readonly plan: Plan;
-  /** Monthly list price, VND. `null` for FREE. LOCKED §11. */
+  /** Monthly list price, VND. `null` for FREE. LOCKED (v1.1 §5). */
   readonly priceVnd: number | null;
+  /** Soft budget — GREEN below this. */
   readonly aiTargetVnd: number;
-  readonly aiCeilingVnd: number;
+  /** Operational ceiling — YELLOW between target and this; RED above. */
+  readonly aiOperationalCeilingVnd: number;
+  /**
+   * Absolute AI COGS at which the modeled margin hits 50% — crossing it (in
+   * projection) is a BLOCKER. `null` for FREE (judged against its ceiling only).
+   */
+  readonly absoluteBoundaryVnd: number | null;
 }
 
-/** §1 pricing table + §5 AI budgets. LOCK NOW (§11). */
+/** v1.1 `pricing_guardrails_v1.1.yaml` — LOCKED. */
 export const PLAN_COMMERCIALS: Readonly<Record<Plan, PlanCommercials>> = {
-  free: { plan: 'free', priceVnd: null, aiTargetVnd: 1_500, aiCeilingVnd: 2_000 },
-  basic: { plan: 'basic', priceVnd: 169_000, aiTargetVnd: 6_000, aiCeilingVnd: 8_000 },
-  plus: { plan: 'plus', priceVnd: 229_000, aiTargetVnd: 14_000, aiCeilingVnd: 18_000 },
-  pro: { plan: 'pro', priceVnd: 329_000, aiTargetVnd: 28_000, aiCeilingVnd: 35_000 },
+  free: { plan: 'free', priceVnd: null, aiTargetVnd: 2_000, aiOperationalCeilingVnd: 3_000, absoluteBoundaryVnd: null },
+  basic: { plan: 'basic', priceVnd: 169_000, aiTargetVnd: 8_000, aiOperationalCeilingVnd: 10_000, absoluteBoundaryVnd: 12_250 },
+  plus: { plan: 'plus', priceVnd: 229_000, aiTargetVnd: 15_000, aiOperationalCeilingVnd: 22_000, absoluteBoundaryVnd: 27_250 },
+  pro: { plan: 'pro', priceVnd: 329_000, aiTargetVnd: 28_000, aiOperationalCeilingVnd: 40_000, absoluteBoundaryVnd: 52_250 },
 };
-
-export type MarginLight = 'GREEN' | 'YELLOW' | 'RED';
 
 export interface MarginResult {
   readonly plan: Plan;
@@ -44,15 +56,14 @@ export interface MarginResult {
   readonly aiCogsVnd: number;
   readonly contributionVnd: number;
   readonly marginPct: number; // 0..1 of revenue
-  readonly light: MarginLight;
   readonly meetsFloor: boolean;
 }
 
-/** Contribution + margin for a plan at a given AI COGS. Throws for FREE (no price). */
+/** Contribution + modeled margin for a plan at a given AI COGS. Throws for FREE (no price). */
 export function contributionMargin(plan: Plan, aiCogsVnd: number): MarginResult {
   const c = PLAN_COMMERCIALS[plan];
   if (c.priceVnd === null) {
-    throw new Error('FREE has no price — evaluate FREE against its AI ceiling, not margin');
+    throw new Error('FREE has no price — evaluate FREE against its operational ceiling, not margin');
   }
   const contributionVnd = REVENUE_RETENTION_FACTOR * c.priceVnd - FIXED_ALLOCATION_VND - aiCogsVnd;
   const marginPct = contributionVnd / c.priceVnd;
@@ -62,31 +73,33 @@ export function contributionMargin(plan: Plan, aiCogsVnd: number): MarginResult 
     aiCogsVnd,
     contributionVnd,
     marginPct,
-    light: marginLight(marginPct),
     meetsFloor: marginPct >= CONTRIBUTION_MARGIN_FLOOR,
   };
 }
 
-/** Traffic light (§6): GREEN > 55%, YELLOW 50–55%, RED < 50%. */
-export function marginLight(marginPct: number): MarginLight {
-  if (marginPct < 0.5) return 'RED';
-  if (marginPct <= 0.55) return 'YELLOW';
-  return 'GREEN';
+/**
+ * The AI COGS at which `plan` hits the 50% modeled-margin floor.
+ * `Price × 75% − 30K − COGS = Price × 50%  ⇒  COGS = Price × 25% − 30K`.
+ */
+export function absoluteBoundaryVnd(plan: Plan): number {
+  const c = PLAN_COMMERCIALS[plan];
+  if (c.priceVnd === null) throw new Error('FREE has no margin boundary');
+  return c.priceVnd * (REVENUE_RETENTION_FACTOR - CONTRIBUTION_MARGIN_FLOOR) - FIXED_ALLOCATION_VND;
 }
 
-/** Minimum list price that holds the 50% floor at a given AI COGS (§6). */
+/** Minimum list price that holds the 50% floor at a given AI COGS: `4 × (30K + AI_COGS)`. */
 export function minimumPriceForFloor(aiCogsVnd: number): number {
   return 4 * (FIXED_ALLOCATION_VND + aiCogsVnd);
 }
 
-/** Evaluate every paid plan at target AND ceiling; used by cost reports + guardrail tests. */
+/** Evaluate every paid plan at target AND operational ceiling — for cost reports + guardrail tests. */
 export function marginTable(): {
   readonly atTarget: readonly MarginResult[];
-  readonly atCeiling: readonly MarginResult[];
+  readonly atOperationalCeiling: readonly MarginResult[];
 } {
   const paid: Plan[] = ['basic', 'plus', 'pro'];
   return {
     atTarget: paid.map((p) => contributionMargin(p, PLAN_COMMERCIALS[p].aiTargetVnd)),
-    atCeiling: paid.map((p) => contributionMargin(p, PLAN_COMMERCIALS[p].aiCeilingVnd)),
+    atOperationalCeiling: paid.map((p) => contributionMargin(p, PLAN_COMMERCIALS[p].aiOperationalCeilingVnd)),
   };
 }

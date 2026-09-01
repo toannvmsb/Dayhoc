@@ -1,9 +1,10 @@
 /**
- * AI cost telemetry (Pricing + AI Cost Guardrails v1.0 §7).
+ * AI cost telemetry — `AICostLedger` (Pricing/AI Cost/Routing **v1.1** §10, §12).
+ * See docs/implementation/15_AI_COST_AND_MODEL_ROUTING.md.
  *
  * Every AI / OCR call emits one `AiUsageEvent`. Ids are pseudonymous (never the
- * raw user/child id — Privacy Architecture). The persisted copy is table
- * `ai_usage_events`; dashboards roll these up by plan / cohort (§7).
+ * raw user/child id). The persisted copy is table `ai_usage_events`. Cost is
+ * forecast BY OPERATION, not by tokens/user (v1.1 §12).
  */
 
 import type { Plan } from '@copilot/domain';
@@ -19,6 +20,8 @@ export interface AiUsageEvent {
   readonly operationType: AiOperation;
   readonly provider: UsageProvider;
   readonly model: string;
+  readonly modelVersion: string | null; // v1.1
+  readonly priceConfigEffectiveDate: string | null; // v1.1 — ISO date of the price row used
   readonly inputTokens: number | null;
   readonly cachedInputTokens: number | null;
   readonly outputTokens: number | null;
@@ -28,7 +31,13 @@ export interface AiUsageEvent {
   readonly estimatedCostVnd: number;
   readonly latencyMs: number;
   readonly confidence: number | null;
+  readonly retryCount: number; // v1.1
+  readonly escalatedFrom: string | null; // v1.1 — primary tier when an escalation fired
   readonly escalationReason: string | null;
+  readonly generationSpecId: string | null; // v1.1 — links a call to its ExerciseGenerationSpec
+  readonly learningContextSource: string | null; // v1.1 — TEACHER_UPDATE | ... | CURRICULUM_TIMELINE
+  readonly kTarget: string | null; // v1.1
+  readonly tTarget: string | null; // v1.1
   readonly schemaValid: boolean;
   readonly requestId: string;
   readonly createdAt: string; // ISO
@@ -43,6 +52,8 @@ export interface BuildUsageEventInput {
   readonly operationType: AiOperation;
   readonly provider: UsageProvider;
   readonly model: string;
+  readonly modelVersion?: string | null;
+  readonly priceConfigEffectiveDate?: string | null;
   readonly inputTokens?: number | null;
   readonly cachedInputTokens?: number | null;
   readonly outputTokens?: number | null;
@@ -52,7 +63,13 @@ export interface BuildUsageEventInput {
   readonly fxVndPerUsd?: number;
   readonly latencyMs: number;
   readonly confidence?: number | null;
+  readonly retryCount?: number;
+  readonly escalatedFrom?: string | null;
   readonly escalationReason?: string | null;
+  readonly generationSpecId?: string | null;
+  readonly learningContextSource?: string | null;
+  readonly kTarget?: string | null;
+  readonly tTarget?: string | null;
   readonly schemaValid: boolean;
   readonly requestId: string;
   readonly now?: () => Date;
@@ -67,6 +84,8 @@ export function buildUsageEvent(input: BuildUsageEventInput): AiUsageEvent {
     operationType: input.operationType,
     provider: input.provider,
     model: input.model,
+    modelVersion: input.modelVersion ?? null,
+    priceConfigEffectiveDate: input.priceConfigEffectiveDate ?? null,
     inputTokens: input.inputTokens ?? null,
     cachedInputTokens: input.cachedInputTokens ?? null,
     outputTokens: input.outputTokens ?? null,
@@ -76,38 +95,47 @@ export function buildUsageEvent(input: BuildUsageEventInput): AiUsageEvent {
     estimatedCostVnd: usdToVnd(input.estimatedCostUsd, fx),
     latencyMs: input.latencyMs,
     confidence: input.confidence ?? null,
+    retryCount: input.retryCount ?? 0,
+    escalatedFrom: input.escalatedFrom ?? null,
     escalationReason: input.escalationReason ?? null,
+    generationSpecId: input.generationSpecId ?? null,
+    learningContextSource: input.learningContextSource ?? null,
+    kTarget: input.kTarget ?? null,
+    tTarget: input.tTarget ?? null,
     schemaValid: input.schemaValid,
     requestId: input.requestId,
     createdAt: (input.now ?? (() => new Date()))().toISOString(),
   };
 }
 
-/* ---- dashboard rollups (§7) ---- */
+/* ---- dashboard rollups (v1.1 §10) ---- */
 
 export interface CostRollup {
   readonly events: number;
   readonly totalVnd: number;
   readonly totalUsd: number;
-  readonly cheapPathShare: number; // deterministic/bank/cache/luna share
+  readonly cheapPathShare: number; // luna/internal/mock share
   readonly advancedShare: number;
   readonly escalationRate: number;
   readonly ocrFallbackRate: number;
   readonly schemaValidRate: number;
+  readonly retryRate: number;
 }
 
 const CHEAP_MODELS = /luna|internal|mock/i;
+const ADVANCED_MODELS = /terra|sonnet|sol/i;
 
 export function rollup(events: readonly AiUsageEvent[]): CostRollup {
   const n = events.length;
   if (n === 0) {
-    return { events: 0, totalVnd: 0, totalUsd: 0, cheapPathShare: 1, advancedShare: 0, escalationRate: 0, ocrFallbackRate: 0, schemaValidRate: 1 };
+    return { events: 0, totalVnd: 0, totalUsd: 0, cheapPathShare: 1, advancedShare: 0, escalationRate: 0, ocrFallbackRate: 0, schemaValidRate: 1, retryRate: 0 };
   }
   const cheap = events.filter((e) => CHEAP_MODELS.test(e.model)).length;
-  const advanced = events.filter((e) => /terra|sonnet|sol/i.test(e.model)).length;
-  const escalated = events.filter((e) => e.escalationReason !== null).length;
+  const advanced = events.filter((e) => ADVANCED_MODELS.test(e.model)).length;
+  const escalated = events.filter((e) => e.escalationReason !== null || e.escalatedFrom !== null).length;
   const ocr = events.filter((e) => (e.ocrPages ?? 0) > 0).length;
   const valid = events.filter((e) => e.schemaValid).length;
+  const retried = events.filter((e) => e.retryCount > 0).length;
   return {
     events: n,
     totalVnd: events.reduce((s, e) => s + e.estimatedCostVnd, 0),
@@ -117,12 +145,57 @@ export function rollup(events: readonly AiUsageEvent[]): CostRollup {
     escalationRate: escalated / n,
     ocrFallbackRate: ocr / n,
     schemaValidRate: valid / n,
+    retryRate: retried / n,
   };
 }
 
-/** Per-plan AI COGS per active user for the traffic-light dashboard (§7). */
+/** Per-plan AI COGS per active user — feeds the guardrail. */
 export function cogsPerUser(events: readonly AiUsageEvent[], plan: Plan, activeUsers: number): number {
   if (activeUsers <= 0) return 0;
   const planVnd = events.filter((e) => e.plan === plan).reduce((s, e) => s + e.estimatedCostVnd, 0);
   return planVnd / activeUsers;
+}
+
+/* ---- operation-dimension forecast (v1.1 §12) ---- */
+
+export interface OperationUnitCost {
+  readonly operation: AiOperation;
+  /** Measured mean VND per operation (from telemetry). */
+  readonly unitCostVnd: number;
+  /** Projected monthly volume per active user. */
+  readonly monthlyVolumePerUser: number;
+  /** ×(1 + retry rate + escalation uplift). */
+  readonly retryEscalationFactor: number;
+}
+
+/**
+ * `Monthly AI COGS per active user = Σ(volume × unit cost × retry/escalation factor)`.
+ * NOT a tokens/user estimate (v1.1 §12).
+ */
+export function forecastByOperation(lines: readonly OperationUnitCost[]): number {
+  return lines.reduce(
+    (sum, l) => sum + l.monthlyVolumePerUser * l.unitCostVnd * l.retryEscalationFactor,
+    0,
+  );
+}
+
+/** Derive per-operation mean unit cost + retry factor from a telemetry window. */
+export function measuredUnitCosts(events: readonly AiUsageEvent[]): Map<AiOperation, { unitCostVnd: number; retryEscalationFactor: number; n: number }> {
+  const by = new Map<AiOperation, { cost: number; n: number; retriesOrEsc: number }>();
+  for (const e of events) {
+    const rec = by.get(e.operationType) ?? { cost: 0, n: 0, retriesOrEsc: 0 };
+    rec.cost += e.estimatedCostVnd;
+    rec.n += 1;
+    if (e.retryCount > 0 || e.escalatedFrom !== null) rec.retriesOrEsc += 1;
+    by.set(e.operationType, rec);
+  }
+  const out = new Map<AiOperation, { unitCostVnd: number; retryEscalationFactor: number; n: number }>();
+  for (const [op, r] of by) {
+    out.set(op, {
+      unitCostVnd: r.cost / r.n,
+      retryEscalationFactor: 1 + r.retriesOrEsc / r.n,
+      n: r.n,
+    });
+  }
+  return out;
 }

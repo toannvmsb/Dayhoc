@@ -27,17 +27,18 @@ Em đã hoàn thành Phase 1–3 (audit + spec + migration plan), **chưa code f
 | `16_ARCHITECTURE_MIGRATION_CHANGELOG.md` | Danh sách chính xác doc/package/DB/API/test thay đổi |
 | `17_IMPLEMENTATION_MIGRATION_PLAN.md` | Atomic steps (Group A/B/C/D), rollback, acceptance, thứ tự |
 
-**Open questions cần anh quyết** (những cái KHÔNG suy ra được từ tài liệu):
+**Open questions — ✅ ANH ĐÃ CHỐT 5/5 (2026-09-01):**
 
-| # | Câu hỏi | Gợi ý |
-|---|---|---|
-| **O-1** | Lịch năm học nào seed cho pilot (ngày khai giảng + Tết + hè 2026–2027, phân phối chương trình SGK G4/G7)? | Em suy được từ nguồn MOET/SGK công khai; anh xác nhận trường pilot có lịch riêng không. Không chặn. |
-| **O-2** | `@copilot/practice` có tách làm 2 (`practice` loop + `exercise-gen`) hay giữ 1 package? | Em đề xuất tách — sạch hơn. |
-| **O-3** | Reference/Grounding Library: 22 câu nháp hiện tại đủ làm few-shot, hay anh muốn bổ sung trước khi bật generation? | Đủ để bắt đầu; bổ sung song song. |
-| **O-4** | Có bật **Interactive Adaptive Mode** (Next-Best-Question) ngay ở pilot, hay chỉ Worksheet Mode trước? | Em đề xuất Worksheet Mode trước (Group C5), Adaptive sau (C6). |
-| **O-5** | Migration làm **cuốn chiếu trong nhánh chính** (feature flags) hay 1 nhánh migration lớn? | Em đề xuất cuốn chiếu + flags (đã thiết kế trong doc 17). |
+| # | Quyết định |
+|---|---|
+| **O-1** | Em seed lịch năm học từ nguồn MOET/SGK công khai (2026–2027: khai giảng, Tết, hè, phân phối chương trình G4/G7). Anh xác nhận trường pilot có lịch riêng sau — không chặn. |
+| **O-2** | **Tách** `@copilot/practice` → `@copilot/practice` (loop/hint/submission) + `@copilot/exercise-gen`. |
+| **O-3** | 22 câu nháp đủ làm few-shot grounding để bắt đầu; bổ sung song song. |
+| **O-4** | **Worksheet Mode trước** (Group C5), Interactive Adaptive Mode sau (C6). |
+| **O-5** | **Cuốn chiếu trong `main` + feature flags** (không nhánh migration lớn). |
 
-Còn lại: mọi thứ LOCKED trong prompt v1.1 → em coi là đã quyết, không hỏi lại.
+→ **`17_IMPLEMENTATION_MIGRATION_PLAN.md` được duyệt.** Em bắt đầu Group A (cost/routing v1.1 — an toàn nhất, additive), rồi Group B/C/D theo thứ tự.
+Mọi thứ LOCKED trong prompt v1.1 = đã quyết, không hỏi lại.
 
 ---
 

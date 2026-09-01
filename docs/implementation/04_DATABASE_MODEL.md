@@ -61,7 +61,14 @@ rights_requests(id PK, child_id FK, requested_by FK→users, kind,          -- �
 `purged_at`. Every upload row is private — access is via signed expiring URLs
 scoped to family + role; there is no public URL column.
 
-### 1c. AI cost, pricing & budget (Pricing + AI Cost Guardrails v1.0 §2, §5, §7)
+### 1c. AI cost, pricing & budget (Pricing/AI Cost/Routing **v1.1** — migration `1756857600000_ai_cost_v1_1`)
+
+> v1.1 additions: `ai_usage_events` +`model_version` +`price_config_effective_date`
+> +`retry_count` +`escalated_from` +`generation_spec_id` +`learning_context_source`
+> +`k_target` +`t_target`. New `ai_operation_cost_rollup` (forecast by operation, §12).
+> New `plan_budget_config` (target / operational ceiling / absolute-50%-boundary as
+> effective-dated config, not code). `plan_budget_ledger` unchanged. Below is the
+> v1.0 baseline for reference:
 
 ```
 ai_pricing_registry(id PK, model, provider,                 -- external config, effective-dated

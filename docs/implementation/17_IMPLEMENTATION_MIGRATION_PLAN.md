@@ -1,7 +1,12 @@
 # 17 — Implementation Migration Plan (AI-Generation-First)
 
 > Phase 3 of the migration. Atomic steps, ordered so the running app/demo never
-> breaks. **Do not start until anh approves** (per the v1.1 prompt §Q).
+> breaks.
+> **✅ APPROVED by anh 2026-09-01** with the 5 open-question answers locked:
+> O-2 split `@copilot/practice` + `@copilot/exercise-gen` · O-3 22 draft questions
+> are enough grounding to start · O-4 Worksheet Mode first, Adaptive later ·
+> O-5 incremental on `main` + feature flags · O-1 seed the academic calendar from
+> public MOET/SGK sources.
 > Context: [12](12_ARCHITECTURE_MIGRATION_AUDIT.md) · [13](13_CURRICULUM_CLOCK_AND_CONTEXT_RESOLVER.md) · [14](14_AI_EXERCISE_GENERATION_ARCHITECTURE.md) · [15](15_AI_COST_AND_MODEL_ROUTING.md) · [16](16_ARCHITECTURE_MIGRATION_CHANGELOG.md).
 
 **Invariants for every step:** typecheck + lint + full test suite green; Golden
@@ -10,7 +15,17 @@ then the default flips and the old path is deleted in a later step.
 
 ---
 
-## Group A — Cost/Routing v1.1 (independent, low risk, do first)
+## Group A — Cost/Routing v1.1 (independent, low risk) — ✅ DONE (2026-09-01)
+
+> Landed: `margin.ts` (v1.1 numbers + `absoluteBoundaryVnd`), `budget.ts`
+> (`AIBudgetGuardrail` 4-state + `checkBudget` on operational ceiling), `routing.ts`
+> (v1.1 operation taxonomy, `AIModelRouter`, no `question_bank` tier, plan≠model),
+> `usage-event.ts` (`AICostLedger` fields + `forecastByOperation`). Migration
+> `1756857600000_ai_cost_v1_1` (verified up/down/up). Test files rewritten to v1.1.
+> `PRICING_AND_COST_GUARDRAILS.md` stubbed → `15`; CLAUDE.md updated. 270 tests green.
+> **`@copilot/ai` code still callable by the current (v1.0-shaped) pipeline** — the
+> operation names changed but no v1.0 *runtime* path consumed them yet.
+
 
 ### A1 — `PLAN_COMMERCIALS` → v1.1 numbers
 - **Goal:** `margin.ts` reflects v1.1 targets/ceilings/absolute boundaries.
