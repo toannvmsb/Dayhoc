@@ -29,6 +29,7 @@ function asGenerated(q: ReferenceExample, i: number): GeneratedExercise {
     id: `gx_ref_${i}`,
     generationSpecId: 'egs_ref',
     skillId: q.skillId,
+    requiredSkillIds: [q.skillId],
     bucket: 'currentSkill',
     knowledgeLevel: q.knowledgeLevel,
     thinkingLevel: q.thinkingLevel,
@@ -76,7 +77,7 @@ function permissiveSpec(skillId: string): ExerciseGenerationSpec {
       ageAppropriate: true,
       maxSolutionComplexity: 'high',
     },
-    provenance: { plannerVersion: 'exercise-spec.v1', curriculumVersion: 'dev-core.v1', twinVersion: 't', gapSnapshotVersion: 'g' },
+    provenance: { plannerVersion: 'exercise-spec.v1', curriculumRevision: 'math-dev-core-1.0', curriculumContentHash: 'testhash01234567', twinVersion: 't', gapSnapshotVersion: 'g' },
   };
 }
 

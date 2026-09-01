@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   asChildId,
+  asProblemTypeId,
   asSkillId,
   distributionTotal,
   KNOWLEDGE_LEVELS,
@@ -100,6 +101,31 @@ const strongChild = (id: string) => [
   ev(id, ADV, 6, true, { confidenceTier: 'A' }),
 ];
 
+// high-T problem types on the lesson skill (C3.1 §A)
+const PT_T4 = 'M7.PT.RATIO.RATIO_PRODUCT_CONSTRAINT'; // K2 T4
+const PT_T5 = 'M7.PT.RATIO.TRANSFORMED_DENOMINATORS'; // K3 T5
+const pt = (id: string, skillId: string, daysAgo: number, correct: boolean, ptId: string): Evidence => ({
+  ...ev(id, skillId, daysAgo, correct, { confidenceTier: 'A' }),
+  problemTypeId: asProblemTypeId(ptId),
+});
+
+// demonstrated strong thinking: repeated correct answers on T4/T5 problem types
+const strongThinkingChild = (id: string) => [
+  ev(id, LESSON_SKILL, 20, true, { confidenceTier: 'A' }),
+  ev(id, PREREQ, 22, true, { confidenceTier: 'A' }),
+  pt(id, LESSON_SKILL, 14, true, PT_T4),
+  pt(id, LESSON_SKILL, 9, true, PT_T5),
+  pt(id, LESSON_SKILL, 4, true, PT_T5),
+];
+// same skill mastery, only low-T problem types → weak demonstrated thinking
+const weakThinkingChild = (id: string) => [
+  ev(id, LESSON_SKILL, 20, true, { confidenceTier: 'A' }),
+  ev(id, PREREQ, 22, true, { confidenceTier: 'A' }),
+  pt(id, LESSON_SKILL, 14, true, 'M7.PT.RATIO.DIRECT_RATIO'), // T2
+  pt(id, LESSON_SKILL, 9, true, 'M7.PT.RATIO.EQUAL_RATIO'), // T2
+  pt(id, LESSON_SKILL, 4, true, 'M7.PT.RATIO.DIRECT_RATIO'), // T2
+];
+
 describe('buildExerciseGenerationSpec (doc 14 §3, C1)', () => {
   it('is a pure function — identical inputs give identical specs (modulo id/createdAt)', () => {
     const a = spec('c_pure', weakChild('c_pure'), 'theo_sat_chuong_trinh');
@@ -121,6 +147,15 @@ describe('buildExerciseGenerationSpec (doc 14 §3, C1)', () => {
     const s = spec('c_ids', strongChild('c_ids'), 'kha_gioi');
     for (const id of s.targets.skillIds) expect(kb.skills.has(id)).toBe(true);
     for (const pt of s.targets.problemTypeIds) expect(kb.problemTypes.some((p) => p.id === pt)).toBe(true);
+  });
+
+  it('provenance traces the spec back to the exact KB revision + content hash (doc 14 C3.1 §D)', () => {
+    const s = spec('c_prov', strongChild('c_prov'), 'kha_gioi');
+    expect(s.provenance.curriculumRevision).toBe(kb.provenance.datasetRevision);
+    expect(s.provenance.curriculumContentHash).toBe(kb.provenance.contentHash);
+    expect(s.provenance.plannerVersion).toBe('exercise-spec.v1');
+    expect(s.provenance.twinVersion).toBeTruthy();
+    expect(s.provenance.gapSnapshotVersion).toBeTruthy();
   });
 
   // CASE A — two Grade-7 children, same lesson & textbook, different state → different specs
@@ -208,6 +243,43 @@ describe('buildExerciseGenerationSpec (doc 14 §3, C1)', () => {
     expect(verified.learningContext.isEstimated).toBe(false);
     expect(KNOWLEDGE_LEVELS.indexOf(estimated.difficulty.kMax)).toBeLessThanOrEqual(
       KNOWLEDGE_LEVELS.indexOf(verified.difficulty.kMax),
+    );
+  });
+});
+
+describe('Thinking Level policy (doc 14 C3.1 §A)', () => {
+  const tIdx = (t: string) => THINKING_LEVELS.indexOf(t as never);
+
+  it('same knowledge range, different thinking evidence → different T range', () => {
+    const strong = spec('c_ts', strongThinkingChild('c_ts'), 'phat_trien_tu_duy');
+    const weak = spec('c_tw', weakThinkingChild('c_tw'), 'phat_trien_tu_duy');
+    expect(strong.difficulty.kMax).toBe(weak.difficulty.kMax); // K unchanged
+    expect(tIdx(strong.difficulty.tMax)).toBeGreaterThan(tIdx(weak.difficulty.tMax));
+  });
+
+  it('HSG goal + strong demonstrated thinking + ready → T4 or T5 reachable', () => {
+    const s = spec('c_hsg_strong', strongThinkingChild('c_hsg_strong'), 'hsg_thi_chuyen');
+    expect(tIdx(s.difficulty.tMax)).toBeGreaterThanOrEqual(tIdx('T4'));
+    // T5 does not imply above-grade knowledge — K can stay within grade
+    expect(KNOWLEDGE_LEVELS.indexOf(s.difficulty.kMax)).toBeLessThanOrEqual(KNOWLEDGE_LEVELS.indexOf('K5'));
+  });
+
+  it('HSG goal but WEAK thinking evidence → T is NOT auto-raised to T5', () => {
+    const s = spec('c_hsg_weak', weakThinkingChild('c_hsg_weak'), 'hsg_thi_chuyen');
+    expect(tIdx(s.difficulty.tMax)).toBeLessThan(tIdx('T5'));
+  });
+
+  it('strong thinking + plain school goal → a thinking-challenge slot exists, but allocation differs from HSG', () => {
+    const school = spec('c_sch', strongThinkingChild('c_sch'), 'theo_sat_chuong_trinh');
+    const hsg = spec('c_hsg', strongThinkingChild('c_hsg'), 'hsg_thi_chuyen');
+    expect(school.generationPlan.distribution.thinkingChallenge).toBeGreaterThanOrEqual(1);
+    // school goal caps T at T4; HSG can go further
+    expect(tIdx(school.difficulty.tMax)).toBeLessThanOrEqual(tIdx('T4'));
+    expect(tIdx(hsg.difficulty.tMax)).toBeGreaterThanOrEqual(tIdx(school.difficulty.tMax));
+    // and HSG allocates more of the advanced/thinking budget
+    const advPlusThink = (d: typeof school.generationPlan.distribution) => d.advanced + d.thinkingChallenge;
+    expect(advPlusThink(hsg.generationPlan.distribution)).toBeGreaterThanOrEqual(
+      advPlusThink(school.generationPlan.distribution),
     );
   });
 });

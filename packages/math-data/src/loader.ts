@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { asSkillId, type SkillId } from '@copilot/domain';
 import { checkAcyclic, type PrerequisiteEdge } from '@copilot/education-core';
 import { gradeDatasetSchema, type CurriculumNode, type GradeDataset, type ProblemType, type Skill } from './schema.js';
@@ -11,8 +12,25 @@ export class MathDataError extends Error {
   }
 }
 
+/**
+ * Provenance of the loaded knowledge base (doc 14 C3.1 §D). `contentHash` is a
+ * deterministic fingerprint of the actual KB content — it changes iff a skill /
+ * curriculum node / prerequisite edge / problem type changes, with no manual
+ * bump. `datasetRevision` is the human tag from the data files.
+ */
+export interface KbProvenance {
+  readonly datasetRevision: string;
+  readonly source: string;
+  readonly contentHash: string; // 16 hex chars of sha256 over the normalized datasets
+  readonly skillCount: number;
+  readonly curriculumNodeCount: number;
+  readonly prerequisiteCount: number;
+  readonly problemTypeCount: number;
+}
+
 /** Validated, indexed, cross-checked knowledge base spanning all loaded grades. */
 export interface KnowledgeBase {
+  readonly provenance: KbProvenance;
   readonly skills: ReadonlyMap<SkillId, Skill>;
   readonly curriculum: ReadonlyMap<string, CurriculumNode>;
   readonly problemTypes: readonly ProblemType[];
@@ -43,7 +61,34 @@ function validateDatasets(raw: readonly unknown[]): GradeDataset[] {
   });
 }
 
+/** Deterministic fingerprint of the KB content (order-independent). */
+function computeProvenance(datasets: readonly GradeDataset[]): KbProvenance {
+  const sortById = <T extends { id: string }>(xs: readonly T[]): T[] => [...xs].sort((a, b) => a.id.localeCompare(b.id));
+  const norm = datasets
+    .slice()
+    .sort((a, b) => a.gradeContext - b.gradeContext)
+    .map((d) => ({
+      gradeContext: d.gradeContext,
+      curriculum: sortById(d.curriculum),
+      skills: sortById(d.skills),
+      problemTypes: sortById(d.problemTypes),
+      prerequisites: [...d.prerequisites].sort((a, b) => `${a.from}->${a.to}`.localeCompare(`${b.from}->${b.to}`)),
+    }));
+  const contentHash = createHash('sha256').update(JSON.stringify(norm)).digest('hex').slice(0, 16);
+  const revisions = datasets.map((d) => d.meta?.datasetRevision).filter((r): r is string => !!r);
+  return {
+    datasetRevision: revisions.length > 0 ? [...new Set(revisions)].sort().join('+') : 'unversioned',
+    source: datasets.find((d) => d.meta?.source)?.meta?.source ?? 'math-dev-core',
+    contentHash,
+    skillCount: norm.reduce((n, d) => n + d.skills.length, 0),
+    curriculumNodeCount: norm.reduce((n, d) => n + d.curriculum.length, 0),
+    prerequisiteCount: norm.reduce((n, d) => n + d.prerequisites.length, 0),
+    problemTypeCount: norm.reduce((n, d) => n + d.problemTypes.length, 0),
+  };
+}
+
 function buildKnowledgeBase(datasets: readonly GradeDataset[]): KnowledgeBase {
+  const provenance = computeProvenance(datasets);
   const skills = new Map<SkillId, Skill>();
   const curriculum = new Map<string, CurriculumNode>();
   const problemTypes: ProblemType[] = [];
@@ -161,6 +206,7 @@ function buildKnowledgeBase(datasets: readonly GradeDataset[]): KnowledgeBase {
   };
 
   return {
+    provenance,
     skills,
     curriculum,
     problemTypes,

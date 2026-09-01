@@ -4,15 +4,32 @@
 > `AI_GENERATION_FIRST`). Part of the migration — see
 > [12_ARCHITECTURE_MIGRATION_AUDIT.md](12_ARCHITECTURE_MIGRATION_AUDIT.md).
 >
-> **Implementation status (Group C, scope-limited to C1–C3 per anh 2026-09-01):**
-> - **C1 ✅** — `ExerciseGenerationSpec` (`@copilot/domain/exercise-gen.ts`),
->   `exerciseGenerationSpecSchema` (`@copilot/schemas`), deterministic
->   `buildExerciseGenerationSpec` (`@copilot/planning/exercise-spec.ts`).
+> **Implementation status (Group C):**
+> - **C1 ✅** — `ExerciseGenerationSpec` + `exerciseGenerationSpecSchema` +
+>   deterministic `buildExerciseGenerationSpec`.
 > - **C2 ✅** — reference library (repurposed question bank).
 > - **C3 ✅** — `GeneratedExerciseValidator` (`@copilot/exercise-gen`).
-> - **C4–C7 NOT STARTED** — no live AI provider, practice runtime NOT flipped,
->   old bank path still in place, no Interactive Adaptive Mode, no NBQ production
->   flow. Awaiting anh's approval of C1–C3.
+> - **C3.1 ✅** (hardening, anh 2026-09-01):
+>   - **Thinking Level policy** — T range driven by demonstrated thinking level +
+>     evidence, then goal + readiness. HSG + `ready` + strong thinking evidence →
+>     controlled 2-step stretch, **T4/T5 reachable** (T5 ≠ above-grade knowledge).
+>     HSG + weak thinking evidence → **no auto T5**. Strong thinking + school goal
+>     → a thinking-challenge slot, different allocation.
+>   - **`GeneratedExercise.requiredSkillIds`** (what a solution actually needs) +
+>     optional `supportingSkillIds`. Validator checks identity + prereq closure of
+>     the *required* set; a weak but unrelated prerequisite no longer blocks.
+>   - **Item vs batch outcome** — `ItemValidationOutcome` (per item) vs
+>     `BatchDisposition` (`DELIVER | REPAIR | REGENERATE_SLOTS | QUARANTINE`).
+>     Contract violations quarantine the whole batch; `deliverable` is true only
+>     when every slot is valid AND the count equals `spec.totalQuestions` (**no
+>     silent partial worksheet**).
+>   - **Curriculum provenance** — no hard-coded version. `KnowledgeBase.provenance`
+>     ( `datasetRevision` + deterministic `contentHash` ); the spec records
+>     `curriculumRevision` + `curriculumContentHash`.
+> - **C4** — Generator contract + Grounding builder + Mock generator + Orchestrator
+>   (see §§below). No live AI provider.
+> - **C5–C7 NOT STARTED** — practice runtime NOT flipped, legacy bank path still
+>   in place, no Interactive Adaptive Mode, no production NBQ.
 
 ---
 

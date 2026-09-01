@@ -20,6 +20,8 @@ export const generatedExerciseSchema = z
     id: z.string().min(1),
     generationSpecId: z.string().min(1),
     skillId: z.string().min(1),
+    requiredSkillIds: z.array(z.string().min(1)).min(1),
+    supportingSkillIds: z.array(z.string().min(1)).optional(),
     problemTypeId: z.string().min(1).optional(),
     bucket: z.enum(DISTRIBUTION_BUCKETS),
     knowledgeLevel: z.enum(KNOWLEDGE_LEVELS),

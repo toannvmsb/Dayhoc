@@ -59,14 +59,24 @@ export const prerequisiteEdgeSchema = z.object({
   crossGrade: z.boolean(),
 });
 
+/** Provenance for one built grade dataset (doc 14 C3.1 §D — no hard-coded versions). */
+export const datasetMetaSchema = z.object({
+  /** Human-readable revision tag, bumped when curriculum semantics change. */
+  datasetRevision: z.string().min(1),
+  /** Which source the KB JSON was generated from. */
+  source: z.string().min(1).default('math-dev-core'),
+});
+
 export const gradeDatasetSchema = z.object({
   gradeContext: gradeContextSchema,
+  meta: datasetMetaSchema.optional(),
   curriculum: z.array(curriculumNodeSchema),
   skills: z.array(skillSchema),
   prerequisites: z.array(prerequisiteEdgeSchema),
   problemTypes: z.array(problemTypeSchema),
 });
 
+export type DatasetMeta = z.infer<typeof datasetMetaSchema>;
 export type CurriculumNode = z.infer<typeof curriculumNodeSchema>;
 export type ProblemType = z.infer<typeof problemTypeSchema>;
 export type Skill = z.infer<typeof skillSchema>;

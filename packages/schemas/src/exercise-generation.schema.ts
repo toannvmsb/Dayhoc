@@ -115,7 +115,8 @@ export const exerciseGenerationSpecSchema = z
     provenance: z
       .object({
         plannerVersion: z.string().min(1),
-        curriculumVersion: z.string().min(1),
+        curriculumRevision: z.string().min(1),
+        curriculumContentHash: z.string().min(1),
         twinVersion: z.string().min(1),
         gapSnapshotVersion: z.string().min(1),
       })

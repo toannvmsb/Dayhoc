@@ -18,6 +18,14 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DEV = join(ROOT, 'data', 'dev-core');
 const OUT = join(ROOT, 'src', 'data');
 
+/**
+ * Human-readable revision tag for the curriculum / skill-graph SEMANTICS.
+ * Bump when the meaning changes (new chapters, re-scoped skills, DAG rewrites).
+ * The loader also computes a content hash, so an accidental data edit is still
+ * detectable even without bumping this.
+ */
+const DATASET_REVISION = 'math-dev-core-1.0';
+
 const readYaml = (p) => YAML.parse(readFileSync(p, 'utf8'));
 
 /** dev-core domain slug → the loader's Domain enum (coarser, stable). */
@@ -237,7 +245,14 @@ function buildGrade(gradeContext) {
     }
   }
 
-  return { gradeContext, curriculum, skills, prerequisites, problemTypes };
+  return {
+    gradeContext,
+    meta: { datasetRevision: DATASET_REVISION, source: 'math-dev-core' },
+    curriculum,
+    skills,
+    prerequisites,
+    problemTypes,
+  };
 }
 
 /** Best-effort family → representative skill mapping for grade 7 problem-type families. */

@@ -93,7 +93,7 @@ describe('ExerciseGenerationSpec schema (doc 14 §3)', () => {
       ageAppropriate: true,
       maxSolutionComplexity: 'standard',
     },
-    provenance: { plannerVersion: 'exercise-spec.v1', curriculumVersion: 'dev-core.v1', twinVersion: 't', gapSnapshotVersion: 'g' },
+    provenance: { plannerVersion: 'exercise-spec.v1', curriculumRevision: 'math-dev-core-1.0', curriculumContentHash: 'testhash01234567', twinVersion: 't', gapSnapshotVersion: 'g' },
   };
 
   it('accepts a well-formed spec', () => {
@@ -121,6 +121,7 @@ describe('GeneratedExercise schema (doc 14 §6/§7)', () => {
     id: 'gx_1',
     generationSpecId: 'egs_1',
     skillId: 'M7.RATIO.EQUAL_CHAIN',
+    requiredSkillIds: ['M7.RATIO.EQUAL_CHAIN'],
     bucket: 'currentSkill',
     knowledgeLevel: 'K2',
     thinkingLevel: 'T2',

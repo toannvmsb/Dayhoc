@@ -45,6 +45,17 @@ describe('Math Dev Core v1.0 — data integrity', () => {
       expect(edge.crossGrade).toBe(from.gradeContext !== to.gradeContext);
     }
   });
+
+  it('exposes provenance — a human revision tag and a deterministic content hash (doc 14 C3.1 §D)', () => {
+    const p = kb.provenance;
+    expect(p.datasetRevision).toBe('math-dev-core-1.0');
+    expect(p.source).toBe('math-dev-core');
+    expect(p.contentHash).toMatch(/^[0-9a-f]{16}$/);
+    expect(p.skillCount).toBe(kb.skills.size);
+    expect(p.prerequisiteCount).toBe(kb.prerequisites.length);
+    // stable across reloads (cache) and deterministic
+    expect(loadKnowledgeBase().provenance.contentHash).toBe(p.contentHash);
+  });
 });
 
 describe('education-model invariants encoded in the data', () => {

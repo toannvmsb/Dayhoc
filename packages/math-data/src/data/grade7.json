@@ -1,5 +1,9 @@
 {
   "gradeContext": 7,
+  "meta": {
+    "datasetRevision": "math-dev-core-1.0",
+    "source": "math-dev-core"
+  },
   "curriculum": [
     {
       "id": "C.G7.1.1",

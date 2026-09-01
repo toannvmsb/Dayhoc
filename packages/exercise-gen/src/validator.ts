@@ -1,8 +1,11 @@
 import {
+  BATCH_DISPOSITIONS,
+  CONTRACT_VIOLATION_CODES,
   DISTRIBUTION_BUCKETS,
   KNOWLEDGE_LEVELS,
   OUTCOME_SEVERITY,
   THINKING_LEVELS,
+  type BatchDisposition,
   type BatchValidationResult,
   type ExerciseDistribution,
   type ExerciseFinding,
@@ -10,21 +13,24 @@ import {
   type ExerciseValidationReasonCode,
   type GeneratedExercise,
   type GeneratedExerciseBatch,
-  type ValidationOutcome,
+  type ItemValidationOutcome,
 } from '@copilot/domain';
 import type { KnowledgeBase } from '@copilot/math-data';
 import { generatedExerciseSchema } from '@copilot/schemas';
 
 export const VALIDATOR_VERSION = 'generated-exercise-validator.v1';
 
+const CONTRACT_VIOLATIONS = new Set<string>(CONTRACT_VIOLATION_CODES);
+
 /** Default outcome for each reason code (a finding may override per-context). */
-const DEFAULT_OUTCOME: Record<ExerciseValidationReasonCode, ValidationOutcome> = {
+const DEFAULT_OUTCOME: Record<ExerciseValidationReasonCode, ItemValidationOutcome> = {
   SCHEMA_INVALID: 'BLOCK',
   MISSING_ANSWER: 'REPAIRABLE',
   MISSING_SOLUTION: 'REPAIRABLE',
   MISSING_RUBRIC: 'REPAIRABLE',
   HINT_LADDER_MALFORMED: 'REPAIRABLE',
   UNKNOWN_SKILL_ID: 'BLOCK',
+  UNKNOWN_REQUIRED_SKILL_ID: 'BLOCK',
   SKILL_NOT_IN_SPEC: 'REGENERATE',
   UNKNOWN_PROBLEM_TYPE: 'REPAIRABLE',
   PROBLEM_TYPE_SKILL_MISMATCH: 'REPAIRABLE',
@@ -89,7 +95,7 @@ export function validateGeneratedBatch(
     code: ExerciseValidationReasonCode,
     questionIds: readonly string[],
     detail: string,
-    outcome: ValidationOutcome = DEFAULT_OUTCOME[code],
+    outcome: ItemValidationOutcome = DEFAULT_OUTCOME[code],
   ): void => {
     const finding: ExerciseFinding = {
       code,
@@ -141,6 +147,13 @@ export function validateGeneratedBatch(
     } else if (!targetSkills.has(item.skillId)) {
       add('SKILL_NOT_IN_SPEC', [item.id], `skill ${item.skillId} is not a target of this spec`);
     }
+    // every declared requiredSkillId must be a real production skill (doc 14 C3.1 §B)
+    const unknownRequired = [...item.requiredSkillIds, ...(item.supportingSkillIds ?? [])].filter(
+      (s) => !kb.skills.has(s),
+    );
+    if (unknownRequired.length > 0) {
+      add('UNKNOWN_REQUIRED_SKILL_ID', [item.id], `invented / unknown skill id(s): ${unknownRequired.join(', ')}`);
+    }
 
     // 4. problem type
     if (item.problemTypeId) {
@@ -171,16 +184,22 @@ export function validateGeneratedBatch(
             `${item.skillId} originates at grade ${skill.curriculumOrigin}; the child's ${skill.domain} frontier / readiness does not support above-grade knowledge`,
           );
       }
-      // a K2+ item assumes its DIRECT prerequisites are solid; a blocking gap
-      // there means the child cannot yet do this item. K0/K1 concept-intro items
-      // and the prerequisite-repair bucket are exempt.
-      if (item.bucket !== 'prerequisiteRepair' && kIdx(item.knowledgeLevel) >= kIdx('K2')) {
-        const needsUnlearned = kb.directPrerequisites(item.skillId).filter((p) => blockingPrereqs.has(p));
-        if (needsUnlearned.length > 0)
+      // noUnlearnedRequiredKnowledge (doc 14 C3.1 §B): a blocking prerequisite
+      // gap only blocks the item when it is ACTUALLY required — i.e. it is one of
+      // requiredSkillIds, or a prerequisite of one. A weak but UNRELATED
+      // prerequisite must not block the item. The prerequisite-repair bucket is
+      // exempt (repairing that gap is its job).
+      if (spec.constraints.noUnlearnedRequiredKnowledge && item.bucket !== 'prerequisiteRepair') {
+        const requiredClosure = new Set<string>(item.requiredSkillIds as readonly string[]);
+        for (const rs of item.requiredSkillIds) {
+          if (kb.skills.has(rs)) for (const p of kb.prerequisiteClosure(rs)) requiredClosure.add(p);
+        }
+        const blockedBy = [...blockingPrereqs].filter((g) => requiredClosure.has(g));
+        if (blockedBy.length > 0)
           add(
             'UNLEARNED_REQUIRED_KNOWLEDGE',
             [item.id],
-            `requires ${needsUnlearned.join(', ')} — a blocking prerequisite gap, and this item is not prerequisite repair`,
+            `actually requires ${blockedBy.join(', ')} — a blocking prerequisite gap not scheduled for repair in this item`,
           );
       }
     }
@@ -230,21 +249,54 @@ export function validateGeneratedBatch(
   }
 
   const acceptedItems = batch.items.filter((i) => !rejected.has(i.id));
-  const outcome = findings.reduce<ValidationOutcome>(
+  const outcome = findings.reduce<ItemValidationOutcome>(
     (worst, f) => (OUTCOME_SEVERITY[f.outcome] > OUTCOME_SEVERITY[worst] ? f.outcome : worst),
     'PASS',
   );
   const reasonCodes = [...new Set(findings.map((f) => f.code))];
 
+  // per-item worst outcome
+  const itemOutcomes: Record<string, ItemValidationOutcome> = {};
+  for (const i of batch.items) itemOutcomes[i.id] = 'PASS';
+  for (const f of findings)
+    for (const id of f.questionIds)
+      if (OUTCOME_SEVERITY[f.outcome] > OUTCOME_SEVERITY[itemOutcomes[id] ?? 'PASS']) itemOutcomes[id] = f.outcome;
+
+  // --- batch disposition (doc 14 C3.1 §C) ---
+  //   a single local finding does not poison the batch; a generator-contract
+  //   violation does. We never deliver a partial worksheet.
+  const shortfall = Math.max(0, spec.generationPlan.totalQuestions - acceptedItems.length);
+  const outcomeCounts = Object.values(itemOutcomes).reduce<Record<ItemValidationOutcome, number>>(
+    (acc, o) => ((acc[o] += 1), acc),
+    { PASS: 0, REPAIRABLE: 0, REGENERATE: 0, BLOCK: 0 },
+  );
+  const hasContractViolation = findings.some((f) => CONTRACT_VIOLATIONS.has(f.code));
+  const hasBatchRegenerate = findings.some((f) => f.questionIds.length === 0 && f.outcome === 'REGENERATE');
+  const missingBeyondRepair = shortfall > outcomeCounts.REPAIRABLE;
+  let batchDisposition: BatchDisposition;
+  if (hasContractViolation) batchDisposition = 'QUARANTINE';
+  else if (outcomeCounts.REGENERATE > 0 || hasBatchRegenerate || missingBeyondRepair) batchDisposition = 'REGENERATE_SLOTS';
+  else if (outcomeCounts.REPAIRABLE > 0) batchDisposition = 'REPAIR';
+  else batchDisposition = 'DELIVER';
+
+  const deliverable =
+    batchDisposition === 'DELIVER' && acceptedItems.length === spec.generationPlan.totalQuestions;
+
   return {
-    outcome,
+    batchDisposition,
+    deliverable,
+    itemOutcomes,
     validatorVersion: VALIDATOR_VERSION,
     acceptedItems,
     findings,
     reasonCodes,
-    shortfall: Math.max(0, spec.generationPlan.totalQuestions - acceptedItems.length),
+    shortfall,
+    outcome,
   };
 }
+
+/** All batch dispositions, for exhaustiveness in consumers. */
+export const ALL_BATCH_DISPOSITIONS = BATCH_DISPOSITIONS;
 
 function countBuckets(items: readonly GeneratedExercise[]): ExerciseDistribution {
   const out: ExerciseDistribution = {

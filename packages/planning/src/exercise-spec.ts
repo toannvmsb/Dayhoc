@@ -23,7 +23,6 @@ import { DEFAULT_PLANNING_CONFIG, type PlanningConfig } from './config.js';
 import { computeLearningMix } from './learning-mix.js';
 
 export const PLANNER_VERSION = 'exercise-spec.v1';
-export const CURRICULUM_VERSION = 'dev-core.v1';
 
 const MIN_QUESTIONS = 4;
 const MAX_QUESTIONS = 16;
@@ -133,6 +132,8 @@ export function buildExerciseGenerationSpec(input: ExerciseSpecInput): ExerciseG
     Math.min(MAX_QUESTIONS, Math.round(input.availableMinutes / config.minutesPerItem)),
   );
 
+  const { strongThinking } = assessThinking(input.twin.thinkingProfile);
+
   // --- distribution: learning mix → 6 buckets → integer counts ---
   const { mix } = computeLearningMix(
     { twin: input.twin, gaps: input.gaps, parentGoal, asOf, ...(input.daysToExam !== undefined ? { daysToExam: input.daysToExam } : {}) },
@@ -147,6 +148,7 @@ export function buildExerciseGenerationSpec(input: ExerciseSpecInput): ExerciseG
     readiness: readinessRec,
     goalIsAdvanced,
     allowAdvanced: anyAboveGrade || goalIsAdvanced || primaryMastery >= config.strongStudentMastery,
+    strongThinking,
   });
 
   const isEstimated = resolved.confidence === 'ESTIMATED';
@@ -197,7 +199,8 @@ export function buildExerciseGenerationSpec(input: ExerciseSpecInput): ExerciseG
     },
     provenance: {
       plannerVersion: PLANNER_VERSION,
-      curriculumVersion: CURRICULUM_VERSION,
+      curriculumRevision: kb.provenance.datasetRevision,
+      curriculumContentHash: kb.provenance.contentHash,
       twinVersion: input.twin.computedAt,
       gapSnapshotVersion: input.gaps.computedAt,
     },
@@ -245,6 +248,8 @@ interface AllocInput {
   readonly readiness: 'ready' | 'parallel_repair' | 'repair_first';
   readonly goalIsAdvanced: boolean;
   readonly allowAdvanced: boolean;
+  /** Demonstrated ≥ T3 with real evidence — guarantees a thinking-challenge slot. */
+  readonly strongThinking: boolean;
 }
 
 /**
@@ -281,6 +286,11 @@ export function allocateDistribution(input: AllocInput): ExerciseDistribution {
   }
   if (input.allowAdvanced && input.goalIsAdvanced && input.readiness !== 'repair_first' && dist.advanced < 1) {
     dist = moveOne(dist, biggestDonor(dist, 'advanced'), 'advanced');
+  }
+  // strong demonstrated thinking + ready → always at least one thinking challenge
+  // (the slot exists for any goal; HSG just allocates more of them via the mix).
+  if (input.strongThinking && input.readiness !== 'repair_first' && dist.thinkingChallenge < 1) {
+    dist = moveOne(dist, biggestDonor(dist, 'thinkingChallenge'), 'thinkingChallenge');
   }
   if (dist.currentSkill < 1) {
     dist = moveOne(dist, biggestDonor(dist, 'currentSkill'), 'currentSkill');
@@ -334,6 +344,21 @@ interface DiffInput {
   readonly isEstimated: boolean;
 }
 
+/**
+ * Demonstrated thinking level + whether the child has "strong thinking" evidence
+ * (demonstrated ≥ T3 backed by more than one observation). Used for both the T
+ * range and the thinking-challenge allocation floor.
+ */
+export function assessThinking(
+  thinkingProfile: ChildLearningTwin['thinkingProfile'],
+): { demoMax: number; thinkingEvidence: number; strongThinking: boolean } {
+  const dims = [...thinkingProfile.values()];
+  const demoLevels = dims.map((s) => (s.demonstratedLevel ? tIdx(s.demonstratedLevel) : -1)).filter((i) => i >= 0);
+  const demoMax = demoLevels.length > 0 ? Math.max(...demoLevels) : tIdx('T2');
+  const thinkingEvidence = dims.reduce((n, s) => n + s.evidenceCount, 0);
+  return { demoMax, thinkingEvidence, strongThinking: demoMax >= tIdx('T3') && thinkingEvidence >= 3 };
+}
+
 function deriveDifficulty(input: DiffInput): SpecDifficulty {
   // K: floor drops when we schedule prerequisite repair; ceiling rises with
   // mastery + goal + a real above-grade frontier (never past K5).
@@ -346,14 +371,22 @@ function deriveDifficulty(input: DiffInput): SpecDifficulty {
   if (input.isEstimated) kMaxIdx = Math.min(kMaxIdx, kIdx('K3'));
   kMaxIdx = Math.max(kMaxIdx, kMinIdx);
 
-  // T: from the demonstrated thinking level (+1 stretch), capped by goal.
-  const demoLevels = [...input.thinkingProfile.values()]
-    .map((s) => (s.demonstratedLevel ? tIdx(s.demonstratedLevel) : -1))
-    .filter((i) => i >= 0);
-  const demoMax = demoLevels.length > 0 ? Math.max(...demoLevels) : tIdx('T2');
-  let tMaxIdx = demoMax + 1;
+  // T: driven by the DEMONSTRATED thinking level + evidence, then parent goal +
+  // readiness — never raised just because the parent picked HSG (doc 14 C3.1 §A).
+  //   demonstrated level → CONTROLLED next stretch, no arbitrary jump.
+  //   T5 ≠ above-grade knowledge — a Grade-7-knowledge item can still be T5.
+  const { demoMax, strongThinking } = assessThinking(input.thinkingProfile);
+
+  let tMaxIdx = demoMax + 1; // controlled +1 stretch is the default
+  if (input.readiness === 'ready' && strongThinking) {
+    // HSG + ready + strong thinking → controlled 2-step stretch, T5 reachable;
+    // other advanced goals → +1 but T5 still reachable.
+    tMaxIdx = input.goalIsHsg ? Math.min(demoMax + 2, tIdx('T5')) : input.goalIsAdvanced ? Math.min(demoMax + 1, tIdx('T5')) : tMaxIdx;
+  }
+  // a plain school goal caps at T4 (Thinking Challenge still allowed, allocation differs)
   if (!input.goalIsAdvanced) tMaxIdx = Math.min(tMaxIdx, tIdx('T4'));
   if (input.readiness === 'repair_first') tMaxIdx = Math.min(tMaxIdx, tIdx('T3'));
+  if (input.isEstimated) tMaxIdx = Math.min(tMaxIdx, tIdx('T4'));
   const tMinIdx = input.hasPrereqRepair ? tIdx('T1') : tIdx('T2');
   tMaxIdx = Math.max(tMaxIdx, tMinIdx);
 

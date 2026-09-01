@@ -148,7 +148,10 @@ export interface SpecConstraints {
 
 export interface SpecProvenance {
   readonly plannerVersion: string;
-  readonly curriculumVersion: string;
+  /** Human revision tag of the curriculum / skill graph the spec was built on. */
+  readonly curriculumRevision: string;
+  /** Deterministic content fingerprint of that KB — answers "which skill graph exactly?". */
+  readonly curriculumContentHash: string;
   /** twin.computedAt — ties the spec to the learner state it was built from. */
   readonly twinVersion: string;
   /** gapEngineResult.computedAt. */
@@ -165,7 +168,16 @@ export interface SpecProvenance {
 export interface GeneratedExercise {
   readonly id: string; // ULID assigned by the generator
   readonly generationSpecId: string;
+  /** The skill this item PRACTISES (the spec target it was generated for). */
   readonly skillId: SkillId;
+  /**
+   * The skills ACTUALLY required to solve the item — not everything related.
+   * The validator checks these against the prereq DAG and the blocking gaps
+   * (doc 14 C3.1 §B). AI must not invent a production skill id here.
+   */
+  readonly requiredSkillIds: readonly SkillId[];
+  /** Helpful-but-not-required context skills (optional). */
+  readonly supportingSkillIds?: readonly SkillId[];
   readonly problemTypeId?: ProblemTypeId;
   /** Which `ExerciseDistribution` bucket this item fills. */
   readonly bucket: keyof ExerciseDistribution;
@@ -189,16 +201,44 @@ export interface GeneratedExerciseBatch {
   readonly items: readonly GeneratedExercise[];
 }
 
-export const VALIDATION_OUTCOMES = ['PASS', 'REPAIRABLE', 'REGENERATE', 'BLOCK'] as const;
-export type ValidationOutcome = (typeof VALIDATION_OUTCOMES)[number];
+/** Per-ITEM outcome (doc 14 C3.1 §C). */
+export const ITEM_VALIDATION_OUTCOMES = ['PASS', 'REPAIRABLE', 'REGENERATE', 'BLOCK'] as const;
+export type ItemValidationOutcome = (typeof ITEM_VALIDATION_OUTCOMES)[number];
+/** @deprecated use `ItemValidationOutcome`. */
+export type ValidationOutcome = ItemValidationOutcome;
+export const VALIDATION_OUTCOMES = ITEM_VALIDATION_OUTCOMES;
 
-/** Worst-wins ordering. */
-export const OUTCOME_SEVERITY: Record<ValidationOutcome, number> = {
+/** Worst-wins ordering for item outcomes. */
+export const OUTCOME_SEVERITY: Record<ItemValidationOutcome, number> = {
   PASS: 0,
   REPAIRABLE: 1,
   REGENERATE: 2,
   BLOCK: 3,
 };
+
+/**
+ * BATCH-level disposition (doc 14 C3.1 §C). A single item failing does NOT by
+ * default poison the batch — but a serious generator-contract violation does.
+ *   DELIVER          — every slot valid, deliver as is.
+ *   REPAIR           — only local, safe-to-repair findings (missing solution / rubric).
+ *   REGENERATE_SLOTS — regenerate the affected / missing slots, keep the good ones.
+ *   QUARANTINE       — contract violated (invented id, unsafe, schema corruption,
+ *                      forbidden knowledge); reject the whole batch, regenerate fresh.
+ */
+export const BATCH_DISPOSITIONS = ['DELIVER', 'REPAIR', 'REGENERATE_SLOTS', 'QUARANTINE'] as const;
+export type BatchDisposition = (typeof BATCH_DISPOSITIONS)[number];
+
+/** Reason codes that mean the generator broke its contract → QUARANTINE the batch. */
+export const CONTRACT_VIOLATION_CODES = [
+  'SCHEMA_INVALID',
+  'UNKNOWN_SKILL_ID',
+  'UNKNOWN_REQUIRED_SKILL_ID',
+  'SKILL_NOT_IN_SPEC',
+  'UNLEARNED_REQUIRED_KNOWLEDGE',
+  'ABOVE_GRADE_KNOWLEDGE_NOT_ALLOWED',
+  'UNSAFE_CONTENT',
+  'NOT_AGE_APPROPRIATE',
+] as const;
 
 export const EXERCISE_VALIDATION_REASON_CODES = [
   // schema / completeness
@@ -209,6 +249,7 @@ export const EXERCISE_VALIDATION_REASON_CODES = [
   'HINT_LADDER_MALFORMED',
   // identity (non-negotiable — AI may not invent IDs)
   'UNKNOWN_SKILL_ID',
+  'UNKNOWN_REQUIRED_SKILL_ID',
   'SKILL_NOT_IN_SPEC',
   'UNKNOWN_PROBLEM_TYPE',
   'PROBLEM_TYPE_SKILL_MISMATCH',
@@ -233,7 +274,7 @@ export type ExerciseValidationReasonCode = (typeof EXERCISE_VALIDATION_REASON_CO
 
 export interface ExerciseFinding {
   readonly code: ExerciseValidationReasonCode;
-  readonly outcome: ValidationOutcome;
+  readonly outcome: ItemValidationOutcome;
   /** Item ids this finding is about (empty for batch-level findings). */
   readonly questionIds: readonly string[];
   readonly detail: string;
@@ -241,8 +282,15 @@ export interface ExerciseFinding {
 }
 
 export interface BatchValidationResult {
-  /** Worst finding outcome (PASS when there are no findings). */
-  readonly outcome: ValidationOutcome;
+  /** Batch-level disposition (doc 14 C3.1 §C). */
+  readonly batchDisposition: BatchDisposition;
+  /**
+   * TRUE only when every slot is valid AND the count matches the spec — the app
+   * does NOT deliver a partial worksheet silently.
+   */
+  readonly deliverable: boolean;
+  /** Per-item worst outcome, keyed by item id. */
+  readonly itemOutcomes: Readonly<Record<string, ItemValidationOutcome>>;
   readonly validatorVersion: string;
   /** Items that passed EVERY check — the only ones that may reach an Assignment. */
   readonly acceptedItems: readonly GeneratedExercise[];
@@ -250,4 +298,6 @@ export interface BatchValidationResult {
   readonly reasonCodes: readonly ExerciseValidationReasonCode[];
   /** How many more items the caller should regenerate to honour the spec. */
   readonly shortfall: number;
+  /** @deprecated worst item outcome; use `batchDisposition`. */
+  readonly outcome: ItemValidationOutcome;
 }

@@ -50,16 +50,18 @@ const baseSpec: ExerciseGenerationSpec = {
     ageAppropriate: true,
     maxSolutionComplexity: 'standard',
   },
-  provenance: { plannerVersion: 'exercise-spec.v1', curriculumVersion: 'dev-core.v1', twinVersion: 't', gapSnapshotVersion: 'g' },
+  provenance: { plannerVersion: 'exercise-spec.v1', curriculumRevision: 'math-dev-core-1.0', curriculumContentHash: 'testhash01234567', twinVersion: 't', gapSnapshotVersion: 'g' },
 };
 
 let idc = 0;
 function item(over: Partial<GeneratedExercise> = {}): GeneratedExercise {
   const seq = ++idc;
+  const skillId = over.skillId ?? asSkillId(SKILL);
   return {
     id: `gx_${seq}`,
     generationSpecId: SPEC_ID,
-    skillId: asSkillId(SKILL),
+    skillId,
+    requiredSkillIds: over.requiredSkillIds ?? [skillId],
     bucket: 'currentSkill',
     knowledgeLevel: 'K2',
     thinkingLevel: 'T2',
@@ -218,5 +220,82 @@ describe('GeneratedExerciseValidator (doc 14 §6, C3)', () => {
   it('is pure — same inputs, same result', () => {
     const b = batch(cleanBatch());
     expect(validateGeneratedBatch(b, baseSpec, kb)).toEqual(validateGeneratedBatch(b, baseSpec, kb));
+  });
+});
+
+describe('required-skill / prerequisite safety (doc 14 C3.1 §B)', () => {
+  const blockedSpec: ExerciseGenerationSpec = {
+    ...baseSpec,
+    generationPlan: { totalQuestions: 4, distribution: { prerequisiteRepair: 1, currentSkill: 2, variation: 1, application: 0, advanced: 0, thinkingChallenge: 0 } },
+    childState: { ...baseSpec.childState, prerequisiteGaps: [{ skillId: asSkillId('M4.FRAC.CONCEPT'), severity: 0.8, blocking: true }] },
+  };
+
+  it('an invented requiredSkillId → BLOCK + batch QUARANTINE', () => {
+    const items = cleanBatch();
+    items[1] = item({ bucket: 'currentSkill', requiredSkillIds: [asSkillId(SKILL), asSkillId('M7.MADE.UP_REQ')] });
+    const r = validateGeneratedBatch(batch(items), baseSpec, kb);
+    expect(r.reasonCodes).toContain('UNKNOWN_REQUIRED_SKILL_ID');
+    expect(r.itemOutcomes[items[1]!.id]).toBe('BLOCK');
+    expect(r.batchDisposition).toBe('QUARANTINE');
+    expect(r.deliverable).toBe(false);
+  });
+
+  it('an indirect blocking prerequisite that the item ACTUALLY requires → blocked', () => {
+    // EQUAL_CHAIN's prereq closure includes M4.FRAC.CONCEPT (blocking in blockedSpec)
+    const items = cleanBatch();
+    items[1] = item({ bucket: 'currentSkill', knowledgeLevel: 'K2', requiredSkillIds: [asSkillId(SKILL)] });
+    const r = validateGeneratedBatch(batch(items), blockedSpec, kb);
+    expect(r.reasonCodes).toContain('UNLEARNED_REQUIRED_KNOWLEDGE');
+    expect(r.itemOutcomes[items[1]!.id]).toBe('BLOCK');
+  });
+
+  it('a weak but UNRELATED prerequisite does not block the item', () => {
+    const unrelatedBlocked: ExerciseGenerationSpec = {
+      ...baseSpec,
+      childState: { ...baseSpec.childState, prerequisiteGaps: [{ skillId: asSkillId('M7.GEO.PARALLEL_CRITERIA'), severity: 0.9, blocking: true }] },
+    };
+    const items = cleanBatch(); // all ratio items — geometry gap is irrelevant
+    const r = validateGeneratedBatch(batch(items), unrelatedBlocked, kb);
+    expect(r.reasonCodes).not.toContain('UNLEARNED_REQUIRED_KNOWLEDGE');
+    expect(r.batchDisposition).toBe('DELIVER');
+  });
+});
+
+describe('item vs batch outcome + no partial delivery (doc 14 C3.1 §C)', () => {
+  it('one contract violation → QUARANTINE, deliverable false, no partial batch', () => {
+    const items = cleanBatch();
+    items[2] = item({ bucket: 'currentSkill', skillId: asSkillId('M7.MADE.UP_SKILL') });
+    const r = validateGeneratedBatch(batch(items), baseSpec, kb);
+    expect(r.batchDisposition).toBe('QUARANTINE');
+    expect(r.deliverable).toBe(false);
+    expect(r.acceptedItems.length).toBeLessThan(baseSpec.generationPlan.totalQuestions);
+  });
+
+  it('one missing solution → REPAIR disposition (not quarantine)', () => {
+    const items = cleanBatch();
+    items[3] = item({ bucket: 'variation', answerSpec: { kind: 'reasoning' } }); // MISSING_RUBRIC → REPAIRABLE
+    const r = validateGeneratedBatch(batch(items), baseSpec, kb);
+    expect(r.batchDisposition).toBe('REPAIR');
+    expect(r.itemOutcomes[items[3]!.id]).toBe('REPAIRABLE');
+    expect(r.deliverable).toBe(false);
+  });
+
+  it('a duplicate item → REGENERATE_SLOTS (only the affected slot)', () => {
+    const items = cleanBatch();
+    items[2] = item({ bucket: 'currentSkill', prompt: items[1]!.prompt });
+    const r = validateGeneratedBatch(batch(items), baseSpec, kb);
+    expect(r.batchDisposition).toBe('REGENERATE_SLOTS');
+    expect(r.itemOutcomes[items[1]!.id]).toBe('PASS');
+    expect(r.shortfall).toBe(1);
+  });
+
+  it('DELIVER + deliverable only when accepted count === spec.totalQuestions', () => {
+    const full = validateGeneratedBatch(batch(cleanBatch()), baseSpec, kb);
+    expect(full.batchDisposition).toBe('DELIVER');
+    expect(full.deliverable).toBe(true);
+
+    const short = validateGeneratedBatch(batch(cleanBatch().slice(0, 3)), baseSpec, kb);
+    expect(short.deliverable).toBe(false);
+    expect(short.batchDisposition).not.toBe('DELIVER');
   });
 });
