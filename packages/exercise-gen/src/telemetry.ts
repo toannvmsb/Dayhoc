@@ -18,7 +18,10 @@ export interface GenerationOperation {
   readonly tTarget: string | null;
   readonly retryCount: number;
   readonly schemaValid: boolean;
+  /** FORECAST from unit economics — budget projection only, not the ledger (§12). */
   readonly estimatedCostUsd: number;
+  /** ACTUAL cost computed from the provider response; `null` for a failed call. Mock → 0. */
+  readonly actualCostUsd: number | null;
   readonly latencyMs: number;
   readonly requestId: string;
   readonly createdAt: string;
@@ -47,6 +50,7 @@ export function generationOperationToUsageEvent(
     model: op.model,
     modelVersion: op.modelVersion,
     estimatedCostUsd: op.estimatedCostUsd,
+    actualCostUsd: op.actualCostUsd,
     ...(ctx.fxVndPerUsd !== undefined ? { fxVndPerUsd: ctx.fxVndPerUsd } : {}),
     latencyMs: op.latencyMs,
     retryCount: op.retryCount,

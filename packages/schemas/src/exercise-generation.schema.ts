@@ -6,6 +6,7 @@ import {
   LEARNING_CONTEXT_SOURCES,
   PARENT_GOALS,
   SESSION_GOALS,
+  TARGET_ROLES,
   THINKING_DIMENSIONS,
   THINKING_LEVELS,
 } from '@copilot/domain';
@@ -55,10 +56,28 @@ export const exerciseGenerationSpecSchema = z
 
     targets: z
       .object({
-        skillIds: z.array(z.string().min(1)).min(1),
+        skills: z
+          .array(
+            z
+              .object({
+                skillId: z.string().min(1),
+                role: z.enum(TARGET_ROLES),
+                domain: z.string().min(1),
+                curriculumOrigin: z.number().int().min(1).max(12),
+                buckets: z.array(z.enum(DISTRIBUTION_BUCKETS)).min(1),
+                knowledgeCeiling: z.enum(KNOWLEDGE_LEVELS),
+              })
+              .strict(),
+          )
+          .min(1),
         problemTypeIds: z.array(z.string().min(1)),
+        skillIds: z.array(z.string().min(1)).min(1),
       })
-      .strict(),
+      .strict()
+      .refine(
+        (t) => t.skills.every((s) => t.skillIds.includes(s.skillId)),
+        { message: 'targets.skillIds must be the union of targets.skills ids', path: ['skillIds'] },
+      ),
 
     childState: z
       .object({
@@ -68,7 +87,20 @@ export const exerciseGenerationSpecSchema = z
         ),
         readiness: z.enum(['ready', 'parallel_repair', 'repair_first']),
         thinkingProfile: z.record(z.enum(THINKING_DIMENSIONS), z.enum(THINKING_LEVELS)),
-        actualLearningFrontier: z.record(z.string(), z.string()),
+        actualLearningFrontier: z.record(
+          z.string(),
+          z
+            .object({
+              reachedCurriculumOrigin: z.number().int().min(1).max(12),
+              aboveGrade: z.boolean(),
+              confidence: z.number().min(0).max(1),
+              evidenceCount: z.number().int().min(0),
+              masteredSkillIds: z.array(z.string().min(1)),
+              readyNextSkillIds: z.array(z.string().min(1)),
+              exposureSkillIds: z.array(z.string().min(1)),
+            })
+            .strict(),
+        ),
       })
       .strict(),
 
@@ -115,6 +147,7 @@ export const exerciseGenerationSpecSchema = z
     provenance: z
       .object({
         plannerVersion: z.string().min(1),
+        targetSelectorVersion: z.string().min(1),
         curriculumRevision: z.string().min(1),
         curriculumContentHash: z.string().min(1),
         twinVersion: z.string().min(1),

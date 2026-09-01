@@ -191,9 +191,13 @@ describe('buildExerciseGenerationSpec (doc 14 §3, C1)', () => {
       ev('c_b', LESSON_SKILL, 3, true),
     ];
     const s = spec('c_b', evidence, 'hsg_thi_chuyen');
-    expect(s.childState.actualLearningFrontier['algebraic_thinking']).toMatch(/above_grade/);
+    expect(s.childState.actualLearningFrontier['algebraic_thinking']?.aboveGrade).toBe(true);
     expect(s.generationPlan.distribution.prerequisiteRepair).toBeGreaterThanOrEqual(1);
-    expect(s.generationPlan.distribution.advanced).toBeGreaterThanOrEqual(1);
+    expect(s.generationPlan.distribution.advanced).toBeGreaterThanOrEqual(1); // Parallel Gap Repair
+    // a FRONTIER target was selected — an above-grade skill, role FRONTIER
+    const frontierTargets = s.targets.skills.filter((t) => t.role === 'FRONTIER');
+    expect(frontierTargets.length).toBeGreaterThanOrEqual(1);
+    expect(frontierTargets.every((t) => t.curriculumOrigin > 7)).toBe(true);
     // not collapsed to a single low grade level
     expect(KNOWLEDGE_LEVELS.indexOf(s.difficulty.kMax)).toBeGreaterThanOrEqual(KNOWLEDGE_LEVELS.indexOf('K3'));
   });
@@ -204,7 +208,12 @@ describe('buildExerciseGenerationSpec (doc 14 §3, C1)', () => {
     const school = spec('c_c', evidence, 'theo_sat_chuong_trinh');
     const hsg = spec('c_c', evidence, 'hsg_thi_chuyen');
 
-    expect(school.childState.relevantMastery).toEqual(hsg.childState.relevantMastery); // mastery is truth, goal-independent
+    // mastery is truth, goal-independent — every skill in BOTH specs has the same value
+    for (const k of Object.keys(school.childState.relevantMastery)) {
+      if (k in hsg.childState.relevantMastery) {
+        expect(hsg.childState.relevantMastery[k]).toBe(school.childState.relevantMastery[k]);
+      }
+    }
     const changed =
       JSON.stringify(school.generationPlan.distribution) !== JSON.stringify(hsg.generationPlan.distribution) ||
       school.difficulty.kMax !== hsg.difficulty.kMax ||
@@ -257,11 +266,14 @@ describe('Thinking Level policy (doc 14 C3.1 §A)', () => {
     expect(tIdx(strong.difficulty.tMax)).toBeGreaterThan(tIdx(weak.difficulty.tMax));
   });
 
-  it('HSG goal + strong demonstrated thinking + ready → T4 or T5 reachable', () => {
+  it('§7 — strong T evidence, NO above-grade knowledge → T4/T5 on grade-level K (no frontier target)', () => {
     const s = spec('c_hsg_strong', strongThinkingChild('c_hsg_strong'), 'hsg_thi_chuyen');
     expect(tIdx(s.difficulty.tMax)).toBeGreaterThanOrEqual(tIdx('T4'));
-    // T5 does not imply above-grade knowledge — K can stay within grade
-    expect(KNOWLEDGE_LEVELS.indexOf(s.difficulty.kMax)).toBeLessThanOrEqual(KNOWLEDGE_LEVELS.indexOf('K5'));
+    // no above-grade skill mastery → no FRONTIER target → K ceiling stays grade-level
+    expect(s.targets.skills.filter((t) => t.role === 'FRONTIER')).toEqual([]);
+    expect(KNOWLEDGE_LEVELS.indexOf(s.difficulty.kMax)).toBeLessThanOrEqual(KNOWLEDGE_LEVELS.indexOf('K3'));
+    expect(s.generationPlan.distribution.advanced).toBe(0); // no ADVANCED KNOWLEDGE bucket
+    expect(s.generationPlan.distribution.thinkingChallenge).toBeGreaterThanOrEqual(1); // ADVANCED THINKING only
   });
 
   it('HSG goal but WEAK thinking evidence → T is NOT auto-raised to T5', () => {

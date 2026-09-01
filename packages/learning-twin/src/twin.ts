@@ -212,43 +212,82 @@ function computeFrontier(
   gradeContext: GradeContext,
   config: MasteryConfig,
 ): DomainFrontier[] {
-  const perDomain = new Map<
-    Domain,
-    { reached: number; evidenceCount: number; masterySum: number; masteryN: number }
-  >();
+  interface Acc {
+    reached: number;
+    evidenceCount: number;
+    masterySum: number;
+    masteryN: number;
+    /** confidence of the mastered skills AT the reached origin — "how sure is the frontier". */
+    frontierConf: Array<{ origin: number; confidence: number }>;
+    mastered: SkillId[]; // sorted later
+    exposure: SkillId[];
+  }
+  const perDomain = new Map<Domain, Acc>();
+  const masteredSet = new Set<SkillId>();
 
   for (const [skillId, state] of skillMastery) {
     const skill = kb.skills.get(skillId);
     if (!skill) continue;
-    const entry = perDomain.get(skill.domain) ?? {
-      reached: 0,
-      evidenceCount: 0,
-      masterySum: 0,
-      masteryN: 0,
-    };
+    const entry: Acc =
+      perDomain.get(skill.domain) ??
+      { reached: 0, evidenceCount: 0, masterySum: 0, masteryN: 0, frontierConf: [], mastered: [], exposure: [] };
     entry.evidenceCount += state.evidenceCount;
     entry.masterySum += state.mastery;
     entry.masteryN += 1;
     if (state.mastery >= config.frontierMasteryThreshold) {
       entry.reached = Math.max(entry.reached, skill.curriculumOrigin);
+      entry.frontierConf.push({ origin: skill.curriculumOrigin, confidence: state.confidence });
+      entry.mastered.push(skillId);
+      masteredSet.add(skillId);
+    } else if (state.evidenceCount > 0 && state.mastery > 0) {
+      entry.exposure.push(skillId);
     }
     perDomain.set(skill.domain, entry);
   }
 
+  // a skill is "ready next" when it is a dependent of a mastered skill and all
+  // of ITS prerequisites are mastered (deterministic, prereq-DAG driven).
+  const readyNextFor = (mastered: readonly SkillId[]): SkillId[] => {
+    const out = new Set<SkillId>();
+    for (const m of mastered) {
+      for (const dep of kb.dependents(m)) {
+        if (masteredSet.has(dep)) continue;
+        const prereqsOk = kb.directPrerequisites(dep).every((p) => masteredSet.has(p));
+        if (prereqsOk) out.add(dep);
+      }
+    }
+    return [...out];
+  };
+
+  const byOrigin = (a: SkillId, b: SkillId): number =>
+    (kb.skills.get(b)?.curriculumOrigin ?? 0) - (kb.skills.get(a)?.curriculumOrigin ?? 0) || a.localeCompare(b);
+
   return [...perDomain.entries()]
     .filter(([, v]) => v.masteryN > 0)
-    .map(([domain, v]) => {
+    .map(([domain, v]): DomainFrontier => {
       const aboveGrade = v.reached > gradeContext;
       const avg = v.masterySum / v.masteryN;
       const band = avg >= 75 ? 'strong' : avg >= 50 ? 'standard' : 'emerging';
+      const mastered = [...v.mastered].sort(byOrigin);
+      // confidence OF THE FRONTIER = the mastered skills sitting at the reached
+      // origin (not diluted by lower-grade skills in the same domain).
+      const atFrontier = v.frontierConf.filter((c) => c.origin === v.reached);
+      const frontierConfidence =
+        atFrontier.length > 0
+          ? atFrontier.reduce((s, c) => s + c.confidence, 0) / atFrontier.length
+          : v.frontierConf.length > 0
+            ? v.frontierConf.reduce((s, c) => s + c.confidence, 0) / v.frontierConf.length
+            : 0;
       return {
         domain,
-        frontierLabel: aboveGrade
-          ? `above_grade_G${v.reached}_exposure`
-          : `grade_${gradeContext}_${band}`,
+        frontierLabel: aboveGrade ? `above_grade_G${v.reached}_exposure` : `grade_${gradeContext}_${band}`,
         reachedCurriculumOrigin: v.reached || gradeContext,
         aboveGrade,
         evidenceCount: v.evidenceCount,
+        confidence: round(clamp01(frontierConfidence), 3),
+        masteredSkillIds: mastered,
+        readyNextSkillIds: readyNextFor(mastered).sort(byOrigin),
+        exposureSkillIds: [...v.exposure].sort(byOrigin),
       };
     })
     .sort((a, b) => a.domain.localeCompare(b.domain));

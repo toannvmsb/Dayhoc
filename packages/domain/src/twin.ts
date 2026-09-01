@@ -47,10 +47,18 @@ export interface ThinkingDimensionState {
 
 export interface DomainFrontier {
   readonly domain: Domain;
-  /** e.g. "grade_7_standard", "above_grade_G8_exposure" — never a single global grade. */
+  /** e.g. "grade_7_standard", "above_grade_G8_exposure" — DISPLAY ONLY, never parsed by logic. */
   readonly frontierLabel: string;
   /** Grade origin of the most advanced skill the child shows real traction on. */
   readonly reachedCurriculumOrigin: number;
   readonly aboveGrade: boolean;
   readonly evidenceCount: number;
+  /** 0..1 — how much to trust this frontier (mastery consistency × evidence weight). */
+  readonly confidence: number;
+  /** Skills in this domain the child has mastered, most curriculum-advanced first. */
+  readonly masteredSkillIds: readonly SkillId[];
+  /** Mastered skills whose dependents' other prerequisites are also satisfied — the safe "next step". */
+  readonly readyNextSkillIds: readonly SkillId[];
+  /** Skills with some positive evidence but not yet mastered (exposure, not traction). */
+  readonly exposureSkillIds: readonly SkillId[];
 }

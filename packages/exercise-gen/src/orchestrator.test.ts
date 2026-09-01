@@ -141,6 +141,48 @@ describe('ExerciseGenerationOrchestrator (doc 14 C4 §J)', () => {
     expect(event.generationSpecId).toBe(spec.generationSpecId);
   });
 
+  it('§15 — estimatedCost (forecast) and actualCost (ledger) are DISTINCT telemetry fields', async () => {
+    const res = await orchestrateGeneration({ spec, generator: createMockExerciseGenerator(), referenceLibrary: lib, knowledgeBase: kb });
+    if (res.status !== 'delivered') throw new Error('expected delivery');
+    const op = res.trace.operations[0]!;
+    expect(op).toHaveProperty('estimatedCostUsd');
+    expect(op).toHaveProperty('actualCostUsd');
+    expect(op.actualCostUsd).toBe(0); // mock is free (measured), not merely forecast 0
+    const event = generationOperationToUsageEvent(op, { plan: 'basic', userRef: 'u', childRef: 'c' });
+    expect(event.estimatedCostUsd).toBe(0);
+    expect(event.actualCostUsd).toBe(0);
+    expect(event).toHaveProperty('actualCostVnd');
+  });
+
+  it('§11/§12/§13 — the E2E path covers numeric, fraction and reasoning-with-rubric items', async () => {
+    // a bigger session so the mock's answer-format rotation surfaces all three
+    const big = makeSpec({
+      generationPlan: {
+        totalQuestions: 12,
+        distribution: { prerequisiteRepair: 2, currentSkill: 5, variation: 2, application: 2, advanced: 0, thinkingChallenge: 1 },
+      },
+    });
+    const res = await orchestrateGeneration({ spec: big, generator: createMockExerciseGenerator(), referenceLibrary: lib, knowledgeBase: kb });
+    if (res.status !== 'delivered') throw new Error('expected delivery: ' + JSON.stringify((res as { reason?: string }).reason));
+    const kinds = new Set(res.batch.items.map((i) => i.answerSpec.kind));
+    expect(kinds.has('numeric')).toBe(true);
+    expect(kinds.has('fraction')).toBe(true);
+    expect(kinds.has('reasoning')).toBe(true);
+    // every reasoning item carries a rubric and passes validation
+    for (const it of res.batch.items) if (it.answerSpec.kind === 'reasoning') expect(it.rubric).toBeTruthy();
+    expect(res.validation.reasonCodes).toEqual([]);
+  });
+
+  it('§13/§14 — the run’s persisted records carry the full target-selection provenance', async () => {
+    const { InMemoryGenerationStore, toGenerationRecords } = await import('./persistence.js');
+    const res = await orchestrateGeneration({ spec, generator: createMockExerciseGenerator(), referenceLibrary: lib, knowledgeBase: kb });
+    const { specRecord } = toGenerationRecords(spec, res, { setId: 'ges_prov' });
+    expect(specRecord.targetSelectorVersion).toBe(spec.provenance.targetSelectorVersion);
+    expect(specRecord.targetSelectorVersion).toBe('target-selector.v1');
+    expect(specRecord.curriculumContentHash).toBe(spec.provenance.curriculumContentHash);
+    void InMemoryGenerationStore;
+  });
+
   it('the Mock generator does NOT bypass the validator (a mock item that violates the spec is still caught)', async () => {
     // shrink the K range so the mock's mid-range items fall outside it
     const tight = makeSpec({ difficulty: { kMin: 'K0', kMax: 'K0', tMin: 'T1', tMax: 'T1', stretchRatio: 0.1 } });

@@ -71,17 +71,56 @@ export interface SpecGoal {
   readonly sessionGoal: SessionGoal;
 }
 
+/**
+ * The role a target skill plays in the session (doc 14 C4.1 §2). The generation
+ * bucket a skill may serve is derived from its role — the generator NEVER maps a
+ * bucket to an arbitrary skill.
+ */
+export const TARGET_ROLES = ['CURRENT', 'PREREQUISITE_REPAIR', 'FRONTIER', 'THINKING'] as const;
+export type TargetRole = (typeof TARGET_ROLES)[number];
+
+export interface TargetSkill {
+  readonly skillId: SkillId;
+  readonly role: TargetRole;
+  readonly domain: string;
+  /** Grade origin of this skill's knowledge (may exceed the school grade for FRONTIER). */
+  readonly curriculumOrigin: number;
+  /** Which generation buckets may draw on this skill. */
+  readonly buckets: readonly (keyof ExerciseDistribution)[];
+  /** Highest K a FRONTIER/CURRENT target permits (a THINKING target stays at grade K). */
+  readonly knowledgeCeiling: KnowledgeLevel;
+}
+
 export interface SpecTargets {
-  /** Production skill IDs — AI may not add to or change this set (invariant 1/2). */
-  readonly skillIds: readonly SkillId[];
-  /** Problem types that belong to the target skills (invariant 3). May be empty. */
+  /** Typed targets by role (doc 14 C4.1). AI may not add to or change this set. */
+  readonly skills: readonly TargetSkill[];
+  /** Problem types that belong to the target skills. May be empty. */
   readonly problemTypeIds: readonly ProblemTypeId[];
+  /**
+   * @deprecated flat union of every target skill id — kept so C1–C4 consumers
+   * that read `targets.skillIds` keep working. Derive from `skills`.
+   */
+  readonly skillIds: readonly SkillId[];
 }
 
 export interface SpecPrerequisiteGap {
   readonly skillId: SkillId;
   readonly severity: number; // 0..1
   readonly blocking: boolean; // blocks the current lesson
+}
+
+/**
+ * Machine-readable per-domain frontier (doc 14 C4.1 §9). No magic strings — the
+ * planner selects real frontier skills from `readyNextSkillIds` etc.
+ */
+export interface DomainFrontierView {
+  readonly reachedCurriculumOrigin: number;
+  readonly aboveGrade: boolean;
+  readonly confidence: number; // 0..1
+  readonly evidenceCount: number;
+  readonly masteredSkillIds: readonly SkillId[];
+  readonly readyNextSkillIds: readonly SkillId[];
+  readonly exposureSkillIds: readonly SkillId[];
 }
 
 export interface SpecChildState {
@@ -91,22 +130,40 @@ export interface SpecChildState {
   readonly readiness: 'ready' | 'parallel_repair' | 'repair_first';
   /** thinking dimension → demonstrated level (only dimensions with evidence). */
   readonly thinkingProfile: Readonly<Partial<Record<ThinkingDimension, ThinkingLevel>>>;
-  /** domain → frontier label, e.g. "above_grade_G9_exposure". NEVER one global grade. */
-  readonly actualLearningFrontier: Readonly<Record<string, string>>;
+  /** domain → structured frontier (doc 14 C4.1 §9). NEVER a single global grade. */
+  readonly actualLearningFrontier: Readonly<Record<string, DomainFrontierView>>;
 }
 
 /**
  * Question buckets. Maps 1:1 to the pedagogical intent; the sum MUST equal
- * `totalQuestions` (checked by the schema and the builder).
+ * `totalQuestions`. Each bucket binds to a TARGET ROLE (doc 14 C4.1 §6/§7) —
+ * ADVANCED KNOWLEDGE and ADVANCED THINKING are NOT one flag:
+ *   prerequisiteRepair → PREREQUISITE_REPAIR targets, K ≤ K2
+ *   currentSkill / variation / application → CURRENT targets, K within grade
+ *   advanced          → FRONTIER targets — ADVANCED KNOWLEDGE (K4/K5 / above-grade)
+ *   thinkingChallenge → THINKING targets — ADVANCED THINKING (T4/T5) on
+ *                       grade-level knowledge; does NOT imply above-grade K
  */
 export interface ExerciseDistribution {
   readonly prerequisiteRepair: number;
   readonly currentSkill: number;
   readonly variation: number;
   readonly application: number;
+  /** ADVANCED KNOWLEDGE — bound to FRONTIER targets. `> 0` ⟺ a FRONTIER target exists. */
   readonly advanced: number;
+  /** ADVANCED THINKING — bound to THINKING targets (high T, grade-level K). */
   readonly thinkingChallenge: number;
 }
+
+/** Which target role a generation bucket must draw on (doc 14 C4.1 §6). */
+export const BUCKET_ROLE: Record<keyof ExerciseDistribution, TargetRole> = {
+  prerequisiteRepair: 'PREREQUISITE_REPAIR',
+  currentSkill: 'CURRENT',
+  variation: 'CURRENT',
+  application: 'CURRENT',
+  advanced: 'FRONTIER',
+  thinkingChallenge: 'THINKING',
+};
 
 export const DISTRIBUTION_BUCKETS = [
   'prerequisiteRepair',
@@ -148,6 +205,8 @@ export interface SpecConstraints {
 
 export interface SpecProvenance {
   readonly plannerVersion: string;
+  /** Version of the deterministic target selector (doc 14 C4.1 §13). */
+  readonly targetSelectorVersion: string;
   /** Human revision tag of the curriculum / skill graph the spec was built on. */
   readonly curriculumRevision: string;
   /** Deterministic content fingerprint of that KB — answers "which skill graph exactly?". */
@@ -238,6 +297,9 @@ export const CONTRACT_VIOLATION_CODES = [
   'ABOVE_GRADE_KNOWLEDGE_NOT_ALLOWED',
   'UNSAFE_CONTENT',
   'NOT_AGE_APPROPRIATE',
+  'TARGET_ROLE_MISMATCH',
+  'FRONTIER_SKILL_NOT_SELECTED',
+  'REQUIRED_SKILL_OUT_OF_BOUNDS',
 ] as const;
 
 export const EXERCISE_VALIDATION_REASON_CODES = [
@@ -253,6 +315,10 @@ export const EXERCISE_VALIDATION_REASON_CODES = [
   'SKILL_NOT_IN_SPEC',
   'UNKNOWN_PROBLEM_TYPE',
   'PROBLEM_TYPE_SKILL_MISMATCH',
+  // target-role consistency (doc 14 C4.1 §8)
+  'TARGET_ROLE_MISMATCH',
+  'FRONTIER_SKILL_NOT_SELECTED',
+  'REQUIRED_SKILL_OUT_OF_BOUNDS',
   // difficulty
   'OUTSIDE_K_RANGE',
   'OUTSIDE_T_RANGE',

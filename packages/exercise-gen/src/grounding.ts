@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import {
+  DISTRIBUTION_BUCKETS,
   KNOWLEDGE_LEVEL_MEANING,
   KNOWLEDGE_LEVELS,
   THINKING_LEVEL_MEANING,
@@ -12,6 +13,7 @@ import {
   type SpecConstraints,
   type SpecDifficulty,
   type SpecGenerationPlan,
+  type TargetRole,
   type ThinkingLevel,
 } from '@copilot/domain';
 import type { KnowledgeBase } from '@copilot/math-data';
@@ -37,6 +39,11 @@ export interface GenerationGrounding {
   readonly difficulty: SpecDifficulty;
   readonly constraints: SpecConstraints;
   readonly targetSkills: readonly GroundingSkill[];
+  /**
+   * Which skills + K ceiling each generation bucket may use (doc 14 C4.1 §6).
+   * The generator NEVER maps a bucket to an arbitrary skill.
+   */
+  readonly bucketBindings: Readonly<Record<keyof ExerciseDistribution, BucketBinding>>;
   readonly knowledgeLevels: Readonly<Record<KnowledgeLevel, string>>;
   readonly thinkingLevels: Readonly<Record<ThinkingLevel, string>>;
   /** GROUNDING ONLY — never copy an example verbatim into a generated item. */
@@ -54,10 +61,13 @@ export interface GenerationGrounding {
 
 export interface GroundingSkill {
   readonly skillId: SkillId;
+  readonly role: TargetRole;
   readonly name: string;
   readonly domain: string;
   readonly curriculumNodeId: string;
   readonly curriculumOrigin: number;
+  /** Highest K permitted for items on this skill. */
+  readonly knowledgeCeiling: KnowledgeLevel;
   readonly problemTypes: readonly {
     readonly id: string;
     readonly name: string;
@@ -68,6 +78,14 @@ export interface GroundingSkill {
   readonly satisfiedPrerequisites: readonly SkillId[];
   /** Prerequisites that are weak/blocking — do not require unless this is a repair item. */
   readonly weakPrerequisites: readonly SkillId[];
+}
+
+export interface BucketBinding {
+  readonly role: TargetRole;
+  readonly skillIds: readonly SkillId[];
+  readonly knowledgeCeiling: KnowledgeLevel;
+  /** True for the FRONTIER bucket — items may use above-grade knowledge. */
+  readonly allowAboveGradeKnowledge: boolean;
 }
 
 export interface GroundingExample {
@@ -83,6 +101,19 @@ export interface GroundingExample {
 
 function stableHash(payload: unknown): string {
   return createHash('sha256').update(JSON.stringify(payload)).digest('hex').slice(0, 16);
+}
+
+const BUCKET_DEFAULT_ROLE: Record<keyof ExerciseDistribution, TargetRole> = {
+  prerequisiteRepair: 'PREREQUISITE_REPAIR',
+  currentSkill: 'CURRENT',
+  variation: 'CURRENT',
+  application: 'CURRENT',
+  advanced: 'FRONTIER',
+  thinkingChallenge: 'THINKING',
+};
+
+function highestK(ks: readonly KnowledgeLevel[]): KnowledgeLevel {
+  return ks.reduce((hi, k) => (KNOWLEDGE_LEVELS.indexOf(k) > KNOWLEDGE_LEVELS.indexOf(hi) ? k : hi), 'K0' as KnowledgeLevel);
 }
 
 /**
@@ -103,24 +134,22 @@ export function buildGenerationGrounding(
       .filter(([, m]) => m >= 50)
       .map(([id]) => id),
   );
-  const frontierAboveGrade = new Set(
-    Object.entries(spec.childState.actualLearningFrontier)
-      .filter(([, label]) => /above_grade/.test(label))
-      .map(([domain]) => domain),
-  );
+  const selectedFrontier = new Set(spec.targets.skills.filter((t) => t.role === 'FRONTIER').map((t) => t.skillId));
 
-  const targetSkills: GroundingSkill[] = spec.targets.skillIds
-    .filter((id) => kb.skills.has(id))
-    .map((id) => {
-      const s = kb.getSkill(id);
-      const prereqs = kb.prerequisiteClosure(id);
+  const targetSkills: GroundingSkill[] = spec.targets.skills
+    .filter((t) => kb.skills.has(t.skillId))
+    .map((t): GroundingSkill => {
+      const s = kb.getSkill(t.skillId);
+      const prereqs = kb.prerequisiteClosure(t.skillId);
       return {
-        skillId: id,
+        skillId: t.skillId,
+        role: t.role,
         name: s.name,
         domain: s.domain,
         curriculumNodeId: s.curriculumNodeId,
         curriculumOrigin: s.curriculumOrigin,
-        problemTypes: kb.getProblemTypesForSkill(id).map((pt) => ({
+        knowledgeCeiling: t.knowledgeCeiling,
+        problemTypes: kb.getProblemTypesForSkill(t.skillId).map((pt) => ({
           id: pt.id,
           name: pt.name,
           knowledgeLevel: pt.knowledgeLevel,
@@ -131,16 +160,24 @@ export function buildGenerationGrounding(
       };
     });
 
-  // forbidden as a REQUIRED skill for non-repair items: blocking gaps + above-grade
-  // knowledge the frontier/readiness does not support.
+  // bucket → target binding (doc 14 C4.1 §6) — the generator MUST honour this
+  const bucketBindings = {} as Record<keyof ExerciseDistribution, BucketBinding>;
+  for (const bucket of DISTRIBUTION_BUCKETS) {
+    const matched = spec.targets.skills.filter((t) => t.buckets.includes(bucket));
+    const role: TargetRole = matched[0]?.role ?? BUCKET_DEFAULT_ROLE[bucket];
+    bucketBindings[bucket] = {
+      role,
+      skillIds: matched.map((t) => t.skillId),
+      knowledgeCeiling: matched.length > 0 ? highestK(matched.map((t) => t.knowledgeCeiling)) : 'K2',
+      allowAboveGradeKnowledge: role === 'FRONTIER',
+    };
+  }
+
+  // forbidden as a REQUIRED skill for non-repair items: blocking gaps + any
+  // above-grade skill NOT selected as a frontier target.
   const forbidden = new Set<string>(blockingSet);
   for (const s of kb.skills.values()) {
-    if (
-      s.curriculumOrigin > spec.schoolGrade &&
-      !(frontierAboveGrade.has(s.domain) && spec.childState.readiness !== 'repair_first')
-    ) {
-      forbidden.add(s.id);
-    }
+    if (s.curriculumOrigin > spec.schoolGrade && !selectedFrontier.has(s.id as SkillId)) forbidden.add(s.id);
   }
 
   const kAnchor = KNOWLEDGE_LEVELS.indexOf(spec.difficulty.kMax);
@@ -177,6 +214,7 @@ export function buildGenerationGrounding(
     difficulty: spec.difficulty,
     constraints: spec.constraints,
     targetSkills,
+    bucketBindings,
     knowledgeLevels: KNOWLEDGE_LEVEL_MEANING,
     thinkingLevels: THINKING_LEVEL_MEANING,
     referenceExamples,

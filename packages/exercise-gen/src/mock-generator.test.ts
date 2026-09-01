@@ -5,7 +5,8 @@ import { loadReferenceLibrary } from '@copilot/reference-library';
 import { buildGenerationGrounding } from './grounding.js';
 import { createMockExerciseGenerator } from './mock-generator.js';
 import { validateGeneratedBatch } from './validator.js';
-import { makeSpec } from './_spec-fixture.js';
+import { makeSpec, FRONTIER_SKILL, FRONTIER_TARGET, SKILL } from './_spec-fixture.js';
+import { asSkillId } from '@copilot/domain';
 
 const kb = loadKnowledgeBase();
 const lib = loadReferenceLibrary();
@@ -60,5 +61,50 @@ describe('MockExerciseGenerator (doc 14 C4 §I)', () => {
     expect(r.ok).toBe(false);
     if (r.ok) return;
     expect(r.inability.reason).toBe('insufficient_grounding');
+  });
+
+  it('§6/§10 — honours the bucket→target binding: advanced items use ONLY the FRONTIER target', async () => {
+    const frontSpec = makeSpec({
+      targets: {
+        skills: [
+          { skillId: asSkillId(SKILL), role: 'CURRENT', domain: 'algebraic_thinking', curriculumOrigin: 7, buckets: ['currentSkill', 'variation', 'application'], knowledgeCeiling: 'K3' },
+          FRONTIER_TARGET,
+        ],
+        problemTypeIds: [],
+        skillIds: [asSkillId(SKILL), asSkillId(FRONTIER_SKILL)],
+      },
+      childState: {
+        ...makeSpec().childState,
+        readiness: 'ready',
+        actualLearningFrontier: {
+          algebraic_thinking: { reachedCurriculumOrigin: 9, aboveGrade: true, confidence: 0.7, evidenceCount: 8, masteredSkillIds: [asSkillId(SKILL)], readyNextSkillIds: [asSkillId(FRONTIER_SKILL)], exposureSkillIds: [] },
+        },
+      },
+      generationPlan: { totalQuestions: 6, distribution: { prerequisiteRepair: 0, currentSkill: 4, variation: 0, application: 0, advanced: 2, thinkingChallenge: 0 } },
+      difficulty: { kMin: 'K2', kMax: 'K5', tMin: 'T2', tMax: 'T4', stretchRatio: 0.3 },
+    });
+    const g = buildGenerationGrounding(frontSpec, lib, kb);
+    const r = await createMockExerciseGenerator().generate({ grounding: g });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    for (const it of r.batch.items) {
+      if (it.bucket === 'advanced') expect(it.skillId).toBe(FRONTIER_SKILL);
+      else expect(it.skillId).toBe(SKILL);
+    }
+    // the whole batch still passes the real validator (frontier target selected)
+    expect(validateGeneratedBatch(r.batch, frontSpec, kb).reasonCodes).toEqual([]);
+  });
+
+  it('§13 — a thinking-challenge item can be high T while its K stays grade-level', async () => {
+    const tSpec = makeSpec({
+      generationPlan: { totalQuestions: 4, distribution: { prerequisiteRepair: 0, currentSkill: 3, variation: 0, application: 0, advanced: 0, thinkingChallenge: 1 } },
+      difficulty: { kMin: 'K2', kMax: 'K3', tMin: 'T2', tMax: 'T5', stretchRatio: 0.3 },
+    });
+    const g = buildGenerationGrounding(tSpec, lib, kb);
+    const r = await createMockExerciseGenerator().generate({ grounding: g });
+    if (!r.ok) return;
+    const tc = r.batch.items.find((i) => i.bucket === 'thinkingChallenge')!;
+    expect(THINKING_LEVELS.indexOf(tc.thinkingLevel)).toBeGreaterThanOrEqual(THINKING_LEVELS.indexOf('T2'));
+    expect(KNOWLEDGE_LEVELS.indexOf(tc.knowledgeLevel)).toBeLessThanOrEqual(KNOWLEDGE_LEVELS.indexOf('K3'));
   });
 });

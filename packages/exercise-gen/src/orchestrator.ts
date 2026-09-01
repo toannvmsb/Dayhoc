@@ -106,7 +106,8 @@ export async function orchestrateGeneration(input: OrchestratorInput): Promise<O
       tTarget: `${input.spec.difficulty.tMin}-${input.spec.difficulty.tMax}`,
       retryCount,
       schemaValid,
-      estimatedCostUsd: 0, // mock: cost 0; a live provider fills this in
+      estimatedCostUsd: 0, // FORECAST — a live provider fills this from unit economics
+      actualCostUsd: 0, // ACTUAL — mock is free; a live provider computes it from the response
       latencyMs,
       requestId: newRequestId(),
       createdAt: now().toISOString(),

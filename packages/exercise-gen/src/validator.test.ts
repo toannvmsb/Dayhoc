@@ -1,57 +1,38 @@
 import { describe, expect, it } from 'vitest';
 import {
-  asChildId,
   asProblemTypeId,
   asSkillId,
+  type DomainFrontierView,
   type ExerciseGenerationSpec,
   type GeneratedExercise,
   type GeneratedExerciseBatch,
+  type TargetSkill,
 } from '@copilot/domain';
 import { loadKnowledgeBase } from '@copilot/math-data';
 import { validateGeneratedBatch, VALIDATOR_VERSION } from './validator.js';
+import { makeSpec, SKILL, PREREQ, FRONTIER_SKILL, FRONTIER_TARGET } from './_spec-fixture.js';
 
 const kb = loadKnowledgeBase();
-const SKILL = 'M7.RATIO.EQUAL_CHAIN';
-const PREREQ = 'M7.RATIO.PROPORTION';
-const SPEC_ID = 'egs_test';
+const SPEC_ID = 'egs_c4_test';
 
-const baseSpec: ExerciseGenerationSpec = {
-  generationSpecId: SPEC_ID,
-  childId: asChildId('c1'),
-  createdAt: '2027-01-25T09:00:00.000Z',
-  schoolGrade: 7,
-  learningContext: {
-    curriculum: 'KET_NOI_TRI_THUC',
-    expectedLessonId: 'C.G7.6.21',
-    resolvedLessonId: 'C.G7.6.21',
-    source: 'TEACHER_UPDATE',
-    confidence: 'VERIFIED',
-    isEstimated: false,
-  },
-  goal: { parentGoal: 'kha_gioi', sessionGoal: 'lesson_practice' },
-  targets: { skillIds: [asSkillId(SKILL), asSkillId(PREREQ)], problemTypeIds: [] },
-  childState: {
-    relevantMastery: { [SKILL]: 55, [PREREQ]: 60 },
-    prerequisiteGaps: [{ skillId: asSkillId(PREREQ), severity: 0.4, blocking: false }],
-    readiness: 'parallel_repair',
-    thinkingProfile: { algebraic_thinking: 'T3' },
-    actualLearningFrontier: { algebraic_thinking: 'grade_7_standard' },
-  },
+const baseSpec: ExerciseGenerationSpec = makeSpec({
   generationPlan: {
     totalQuestions: 4,
     distribution: { prerequisiteRepair: 1, currentSkill: 2, variation: 1, application: 0, advanced: 0, thinkingChallenge: 0 },
   },
-  difficulty: { kMin: 'K1', kMax: 'K3', tMin: 'T1', tMax: 'T4', stretchRatio: 0.25 },
-  constraints: {
-    noUnlearnedRequiredKnowledge: true,
-    allowAboveGradeReasoning: true,
-    requireUniqueVariants: true,
-    language: 'vi',
-    ageAppropriate: true,
-    maxSolutionComplexity: 'standard',
-  },
-  provenance: { plannerVersion: 'exercise-spec.v1', curriculumRevision: 'math-dev-core-1.0', curriculumContentHash: 'testhash01234567', twinVersion: 't', gapSnapshotVersion: 'g' },
-};
+});
+
+const t = (skillId: string, role: TargetSkill['role'], buckets: TargetSkill['buckets'], kc: TargetSkill['knowledgeCeiling'] = 'K3'): TargetSkill => ({
+  skillId: asSkillId(skillId),
+  role,
+  domain: kb.getSkill(skillId).domain,
+  curriculumOrigin: kb.getSkill(skillId).curriculumOrigin,
+  buckets,
+  knowledgeCeiling: kc,
+});
+const aboveGradeFrontier = (): Record<string, DomainFrontierView> => ({
+  algebraic_thinking: { reachedCurriculumOrigin: 9, aboveGrade: true, confidence: 0.6, evidenceCount: 8, masteredSkillIds: [asSkillId(SKILL)], readyNextSkillIds: [asSkillId(FRONTIER_SKILL)], exposureSkillIds: [] },
+});
 
 let idc = 0;
 function item(over: Partial<GeneratedExercise> = {}): GeneratedExercise {
@@ -132,12 +113,11 @@ describe('GeneratedExerciseValidator (doc 14 §6, C3)', () => {
   });
 
   it('allows the SAME prerequisite when the item IS in the prerequisiteRepair bucket', () => {
-    const blockedSpec: ExerciseGenerationSpec = {
-      ...baseSpec,
-      targets: { skillIds: [asSkillId(PREREQ)], problemTypeIds: [] },
+    const blockedSpec: ExerciseGenerationSpec = makeSpec({
+      targets: { skills: [t(PREREQ, 'PREREQUISITE_REPAIR', ['prerequisiteRepair'], 'K2')], problemTypeIds: [], skillIds: [asSkillId(PREREQ)] },
       childState: { ...baseSpec.childState, prerequisiteGaps: [{ skillId: asSkillId(PREREQ), severity: 0.7, blocking: true }] },
       generationPlan: { totalQuestions: 3, distribution: { prerequisiteRepair: 3, currentSkill: 0, variation: 0, application: 0, advanced: 0, thinkingChallenge: 0 } },
-    };
+    });
     const items = [
       item({ bucket: 'prerequisiteRepair', skillId: asSkillId(PREREQ), knowledgeLevel: 'K1', prompt: 'Ôn tỉ lệ thức: tìm x trong a/b = x/d.' }),
       item({ bucket: 'prerequisiteRepair', skillId: asSkillId(PREREQ), knowledgeLevel: 'K2', prompt: 'Kiểm tra hai tỉ số có bằng nhau không rồi giải thích.' }),
@@ -182,24 +162,35 @@ describe('GeneratedExerciseValidator (doc 14 §6, C3)', () => {
     expect(r.reasonCodes).toContain('ANSWER_INCONSISTENT');
   });
 
-  it('blocks above-grade knowledge when the frontier / readiness does not support it', () => {
+  it('BLOCKs an above-grade skill the planner did NOT select as a FRONTIER target', () => {
     const items = cleanBatch();
-    items[2] = item({ bucket: 'currentSkill', skillId: asSkillId('M7.ALG.SYMMETRIC') }); // curriculumOrigin 9
+    items[2] = item({ bucket: 'currentSkill', skillId: asSkillId(FRONTIER_SKILL) }); // curriculumOrigin 9
     const r = validateGeneratedBatch(batch(items), baseSpec, kb);
-    expect(r.reasonCodes).toContain('ABOVE_GRADE_KNOWLEDGE_NOT_ALLOWED');
+    expect(r.reasonCodes).toContain('FRONTIER_SKILL_NOT_SELECTED');
+    expect(r.batchDisposition).toBe('QUARANTINE');
   });
 
-  it('allows above-grade knowledge when the domain frontier is above grade and readiness is not repair_first', () => {
-    const permissive: ExerciseGenerationSpec = {
-      ...baseSpec,
-      targets: { skillIds: [asSkillId(SKILL), asSkillId(PREREQ), asSkillId('M7.ALG.SYMMETRIC')], problemTypeIds: [] },
-      childState: { ...baseSpec.childState, readiness: 'ready', actualLearningFrontier: { algebraic_thinking: 'above_grade_G9_exposure' } },
+  it('allows an above-grade FRONTIER-bucket item when the planner selected that frontier target', () => {
+    const permissive: ExerciseGenerationSpec = makeSpec({
+      targets: {
+        skills: [t(SKILL, 'CURRENT', ['currentSkill', 'variation', 'application']), FRONTIER_TARGET],
+        problemTypeIds: [],
+        skillIds: [asSkillId(SKILL), asSkillId(FRONTIER_SKILL)],
+      },
+      childState: { ...baseSpec.childState, readiness: 'ready', actualLearningFrontier: aboveGradeFrontier() },
+      generationPlan: { totalQuestions: 4, distribution: { prerequisiteRepair: 0, currentSkill: 3, variation: 0, application: 0, advanced: 1, thinkingChallenge: 0 } },
       difficulty: { ...baseSpec.difficulty, kMax: 'K5' },
-    };
-    const items = cleanBatch();
-    items[2] = item({ bucket: 'currentSkill', skillId: asSkillId('M7.ALG.SYMMETRIC') });
+    });
+    const items = [
+      item({ bucket: 'currentSkill', prompt: 'A' }),
+      item({ bucket: 'currentSkill', prompt: 'B' }),
+      item({ bucket: 'currentSkill', prompt: 'C' }),
+      item({ bucket: 'advanced', skillId: asSkillId(FRONTIER_SKILL), knowledgeLevel: 'K5', thinkingLevel: 'T3', prompt: 'D frontier', requiredSkillIds: [asSkillId(FRONTIER_SKILL)] }),
+    ];
     const r = validateGeneratedBatch(batch(items), permissive, kb);
+    expect(r.reasonCodes).not.toContain('FRONTIER_SKILL_NOT_SELECTED');
     expect(r.reasonCodes).not.toContain('ABOVE_GRADE_KNOWLEDGE_NOT_ALLOWED');
+    expect(r.reasonCodes).not.toContain('TARGET_ROLE_MISMATCH');
   });
 
   it('flags a batch whose bucket counts do not match the spec distribution (batch-level REGENERATE)', () => {
@@ -258,6 +249,31 @@ describe('required-skill / prerequisite safety (doc 14 C3.1 §B)', () => {
     const r = validateGeneratedBatch(batch(items), unrelatedBlocked, kb);
     expect(r.reasonCodes).not.toContain('UNLEARNED_REQUIRED_KNOWLEDGE');
     expect(r.batchDisposition).toBe('DELIVER');
+  });
+});
+
+describe('bucket ↔ target-role binding (doc 14 C4.1 §8)', () => {
+  it('§14.9 — a bucket used with a skill outside its binding → TARGET_ROLE_MISMATCH', () => {
+    // PREREQ is bound ONLY to the prerequisiteRepair bucket in baseSpec
+    const items = cleanBatch();
+    items[1] = item({ bucket: 'currentSkill', skillId: asSkillId(PREREQ), requiredSkillIds: [asSkillId(PREREQ)] });
+    const r = validateGeneratedBatch(batch(items), baseSpec, kb);
+    expect(r.reasonCodes).toContain('TARGET_ROLE_MISMATCH');
+  });
+
+  it('§14.10 — the generator cannot introduce a frontier skill the planner did not select', () => {
+    const items = cleanBatch();
+    items[2] = item({ bucket: 'currentSkill', skillId: asSkillId(FRONTIER_SKILL), requiredSkillIds: [asSkillId(FRONTIER_SKILL)] });
+    const r = validateGeneratedBatch(batch(items), baseSpec, kb);
+    expect(r.reasonCodes).toContain('FRONTIER_SKILL_NOT_SELECTED');
+    expect(r.batchDisposition).toBe('QUARANTINE');
+  });
+
+  it('requiredSkillIds outside the item target’s prerequisite closure → REQUIRED_SKILL_OUT_OF_BOUNDS', () => {
+    const items = cleanBatch();
+    items[1] = item({ bucket: 'currentSkill', skillId: asSkillId(SKILL), requiredSkillIds: [asSkillId(SKILL), asSkillId('M7.GEO.PARALLEL_CRITERIA')] });
+    const r = validateGeneratedBatch(batch(items), baseSpec, kb);
+    expect(r.reasonCodes).toContain('REQUIRED_SKILL_OUT_OF_BOUNDS');
   });
 });
 

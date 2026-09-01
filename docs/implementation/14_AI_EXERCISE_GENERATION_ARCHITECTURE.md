@@ -26,8 +26,33 @@
 >   - **Curriculum provenance** — no hard-coded version. `KnowledgeBase.provenance`
 >     ( `datasetRevision` + deterministic `contentHash` ); the spec records
 >     `curriculumRevision` + `curriculumContentHash`.
-> - **C4** — Generator contract + Grounding builder + Mock generator + Orchestrator
->   (see §§below). No live AI provider.
+> - **C4** — Generator contract + Grounding builder + Mock generator + Orchestrator.
+> - **C4.1 ✅** (target selection + pipeline hardening, anh 2026-09-01):
+>   - **Typed target roles** — `spec.targets.skills: TargetSkill[]` with
+>     `role: CURRENT | PREREQUISITE_REPAIR | FRONTIER | THINKING`, `buckets[]`,
+>     `knowledgeCeiling`. `targets.skillIds` kept as a deprecated flat alias.
+>   - **`selectLearningTargets()`** (`@copilot/planning`) — DETERMINISTIC. Picks
+>     CURRENT (resolved lesson), PREREQUISITE_REPAIR (gap/readiness prereqs),
+>     FRONTIER (real above-grade skills the Actual Learning Frontier +
+>     prerequisite readiness + blocking-gap state support), THINKING (grade-level
+>     skills with T4/T5 problem types). AI never selects a frontier skill.
+>   - **Structured Actual Learning Frontier** — `DomainFrontierView`
+>     (`reachedCurriculumOrigin`, `aboveGrade`, `confidence`, `masteredSkillIds`,
+>     `readyNextSkillIds`, `exposureSkillIds`). No magic strings.
+>   - **ADVANCED KNOWLEDGE ≠ ADVANCED THINKING** — the `advanced` bucket binds to
+>     FRONTIER targets (K4/K5, above-grade); `thinkingChallenge` binds to THINKING
+>     targets (T4/T5, grade-level K). Parent goal affects allocation only.
+>   - **Bucket→target binding** — `grounding.bucketBindings`; the generator never
+>     maps a bucket to an arbitrary skill.
+>   - **Validator target-role checks** — `TARGET_ROLE_MISMATCH` (REGEN),
+>     `FRONTIER_SKILL_NOT_SELECTED` (BLOCK/QUARANTINE),
+>     `REQUIRED_SKILL_OUT_OF_BOUNDS` (BLOCK).
+>   - **Cost telemetry** — `AiUsageEvent` / `GenerationOperation` split
+>     `estimatedCost*` (forecast, budget only) from `actualCost*` (ledger source
+>     of truth; mock → 0). Migration `1757116800000` adds the columns +
+>     `generation_specs.target_selector_version`.
+>   - **Mock E2E** — numeric / fraction / reasoning-with-rubric answer formats.
+> - **No live AI provider.**
 > - **C5–C7 NOT STARTED** — practice runtime NOT flipped, legacy bank path still
 >   in place, no Interactive Adaptive Mode, no production NBQ.
 

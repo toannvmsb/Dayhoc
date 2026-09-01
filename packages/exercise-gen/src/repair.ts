@@ -31,6 +31,9 @@ const INSTRUCTION: Record<ExerciseValidationReasonCode, string> = {
   NOT_AGE_APPROPRIATE: 'Regenerate with age-appropriate context for a lower-secondary pupil.',
   LANGUAGE_MISMATCH: 'Write the prompt and solution in Vietnamese with SGK notation.',
   DISTRIBUTION_MISMATCH: 'Return exactly the bucket counts in the grounding plan.',
+  TARGET_ROLE_MISMATCH: 'Use a skill from this bucket’s binding in the grounding.',
+  FRONTIER_SKILL_NOT_SELECTED: 'Do not introduce an above-grade skill — use only the grounding’s FRONTIER targets.',
+  REQUIRED_SKILL_OUT_OF_BOUNDS: 'Keep requiredSkillIds inside the prerequisite closure of the item target.',
 };
 
 /** Which reason codes are repairable IN PLACE vs need a fresh slot. */

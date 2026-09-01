@@ -7,11 +7,12 @@
 >
 > **Progress (2026-09-01):** Group A ✅ · B1+B2+B3 ✅ · pace policy ✅ (doc 13 §4)
 > · **C1** spec+builder ✅ · **C2** reference library ✅ · **C3** validator ✅ ·
-> **C3.1** hardening (thinking-level policy, `requiredSkillIds`, item-vs-batch
-> outcome, KB provenance) ✅ · **C4** generator contract + grounding + Mock
-> generator + bounded orchestrator + persistence schema ✅. 388 tests. **No live
-> AI provider.** C5+ (runtime flip, adaptive mode, production NBQ) not started —
-> awaiting anh's approval of C3.1 + C4.
+> **C3.1** hardening ✅ · **C4** generator contract + grounding + Mock generator +
+> bounded orchestrator + persistence ✅ · **C4.1** target selection + pipeline
+> hardening (typed target roles, deterministic `selectLearningTargets`, structured
+> Actual Learning Frontier, advanced-knowledge vs advanced-thinking split,
+> bucket→target binding, validator role checks, estimated-vs-actual cost) ✅.
+> **403 tests. No live AI provider.** C5+ not started — awaiting anh's approval of C4.1.
 
 ---
 

@@ -57,15 +57,36 @@ function permissiveSpec(skillId: string): ExerciseGenerationSpec {
       isEstimated: false,
     },
     goal: { parentGoal: 'kha_gioi', sessionGoal: 'lesson_practice' },
-    targets: { skillIds: [asSkillId(skillId)], problemTypeIds: [] },
+    targets: {
+      skills: [
+        {
+          skillId: asSkillId(skillId),
+          role: KB.getSkill(skillId).curriculumOrigin > (KB.skills.get(asSkillId(skillId))?.gradeContext ?? 7) ? 'FRONTIER' : 'CURRENT',
+          domain: KB.getSkill(skillId).domain,
+          curriculumOrigin: KB.getSkill(skillId).curriculumOrigin,
+          buckets: ['currentSkill', 'variation', 'application', 'advanced', 'thinkingChallenge', 'prerequisiteRepair'],
+          knowledgeCeiling: KNOWLEDGE_LEVELS[KNOWLEDGE_LEVELS.length - 1]!,
+        },
+      ],
+      problemTypeIds: [],
+      skillIds: [asSkillId(skillId)],
+    },
     childState: {
       relevantMastery: { [skillId]: 70 },
       prerequisiteGaps: [],
       readiness: 'ready',
       thinkingProfile: {},
-      actualLearningFrontier: Object.fromEntries(
-        [...KB.skills.values()].map((s) => [s.domain, 'above_grade_G9_exposure'] as const),
-      ),
+      actualLearningFrontier: {
+        [KB.getSkill(skillId).domain]: {
+          reachedCurriculumOrigin: 9,
+          aboveGrade: true,
+          confidence: 1,
+          evidenceCount: 5,
+          masteredSkillIds: [asSkillId(skillId)],
+          readyNextSkillIds: [],
+          exposureSkillIds: [],
+        },
+      },
     },
     generationPlan: { totalQuestions: 1, distribution: { prerequisiteRepair: 0, currentSkill: 1, variation: 0, application: 0, advanced: 0, thinkingChallenge: 0 } },
     difficulty: { kMin: KNOWLEDGE_LEVELS[0]!, kMax: KNOWLEDGE_LEVELS[KNOWLEDGE_LEVELS.length - 1]!, tMin: THINKING_LEVELS[0]!, tMax: THINKING_LEVELS[THINKING_LEVELS.length - 1]!, stretchRatio: 0.25 },
@@ -77,7 +98,7 @@ function permissiveSpec(skillId: string): ExerciseGenerationSpec {
       ageAppropriate: true,
       maxSolutionComplexity: 'high',
     },
-    provenance: { plannerVersion: 'exercise-spec.v1', curriculumRevision: 'math-dev-core-1.0', curriculumContentHash: 'testhash01234567', twinVersion: 't', gapSnapshotVersion: 'g' },
+    provenance: { plannerVersion: 'exercise-spec.v1', targetSelectorVersion: 'target-selector.v1', curriculumRevision: 'math-dev-core-1.0', curriculumContentHash: 'testhash01234567', twinVersion: 't', gapSnapshotVersion: 'g' },
   };
 }
 

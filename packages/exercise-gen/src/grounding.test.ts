@@ -18,7 +18,7 @@ describe('buildGenerationGrounding (doc 14 C4 §H)', () => {
   });
 
   it('§12 — contains ONLY the target skills, their problem types, prereq context, K/T semantics, schema', () => {
-    expect(g.targetSkills.map((s) => s.skillId).sort()).toEqual([SKILL, PREREQ].sort());
+    expect([...new Set(g.targetSkills.map((s) => s.skillId))].sort()).toEqual([SKILL, PREREQ].sort());
     for (const ts of g.targetSkills) {
       expect(kb.skills.has(ts.skillId)).toBe(true);
       for (const pt of ts.problemTypes) expect(kb.getProblemTypesForSkill(ts.skillId).some((p) => p.id === pt.id)).toBe(true);

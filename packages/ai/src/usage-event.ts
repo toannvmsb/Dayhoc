@@ -27,8 +27,20 @@ export interface AiUsageEvent {
   readonly outputTokens: number | null;
   readonly imageCount: number | null;
   readonly ocrPages: number | null;
+  /**
+   * FORECAST cost from unit economics (routing, model choice) — used by
+   * `forecastByOperation` for budget projections, NEVER the accounting source of
+   * truth (doc 14 C4.1 §12).
+   */
   readonly estimatedCostUsd: number;
   readonly estimatedCostVnd: number;
+  /**
+   * ACTUAL cost computed from the provider response after the call (tokens ×
+   * price-config, image/OCR usage). `null` until the call returns. This is the
+   * ledger's source of truth. Mock → 0.
+   */
+  readonly actualCostUsd: number | null;
+  readonly actualCostVnd: number | null;
   readonly latencyMs: number;
   readonly confidence: number | null;
   readonly retryCount: number; // v1.1
@@ -60,6 +72,8 @@ export interface BuildUsageEventInput {
   readonly imageCount?: number | null;
   readonly ocrPages?: number | null;
   readonly estimatedCostUsd: number;
+  /** Computed from the provider response; omit / null until the call returns. Mock → 0. */
+  readonly actualCostUsd?: number | null;
   readonly fxVndPerUsd?: number;
   readonly latencyMs: number;
   readonly confidence?: number | null;
@@ -93,6 +107,11 @@ export function buildUsageEvent(input: BuildUsageEventInput): AiUsageEvent {
     ocrPages: input.ocrPages ?? null,
     estimatedCostUsd: input.estimatedCostUsd,
     estimatedCostVnd: usdToVnd(input.estimatedCostUsd, fx),
+    actualCostUsd: input.actualCostUsd ?? null,
+    actualCostVnd:
+      input.actualCostUsd === undefined || input.actualCostUsd === null
+        ? null
+        : usdToVnd(input.actualCostUsd, fx),
     latencyMs: input.latencyMs,
     confidence: input.confidence ?? null,
     retryCount: input.retryCount ?? 0,
@@ -138,8 +157,9 @@ export function rollup(events: readonly AiUsageEvent[]): CostRollup {
   const retried = events.filter((e) => e.retryCount > 0).length;
   return {
     events: n,
-    totalVnd: events.reduce((s, e) => s + e.estimatedCostVnd, 0),
-    totalUsd: events.reduce((s, e) => s + e.estimatedCostUsd, 0),
+    // accounting totals: ACTUAL cost, falling back to the forecast until a call returns
+    totalVnd: events.reduce((s, e) => s + (e.actualCostVnd ?? e.estimatedCostVnd), 0),
+    totalUsd: events.reduce((s, e) => s + (e.actualCostUsd ?? e.estimatedCostUsd), 0),
     cheapPathShare: cheap / n,
     advancedShare: advanced / n,
     escalationRate: escalated / n,
@@ -152,7 +172,9 @@ export function rollup(events: readonly AiUsageEvent[]): CostRollup {
 /** Per-plan AI COGS per active user — feeds the guardrail. */
 export function cogsPerUser(events: readonly AiUsageEvent[], plan: Plan, activeUsers: number): number {
   if (activeUsers <= 0) return 0;
-  const planVnd = events.filter((e) => e.plan === plan).reduce((s, e) => s + e.estimatedCostVnd, 0);
+  const planVnd = events
+    .filter((e) => e.plan === plan)
+    .reduce((s, e) => s + (e.actualCostVnd ?? e.estimatedCostVnd), 0);
   return planVnd / activeUsers;
 }
 
@@ -184,7 +206,7 @@ export function measuredUnitCosts(events: readonly AiUsageEvent[]): Map<AiOperat
   const by = new Map<AiOperation, { cost: number; n: number; retriesOrEsc: number }>();
   for (const e of events) {
     const rec = by.get(e.operationType) ?? { cost: 0, n: 0, retriesOrEsc: 0 };
-    rec.cost += e.estimatedCostVnd;
+    rec.cost += e.actualCostVnd ?? e.estimatedCostVnd; // measured unit economics prefer ACTUAL
     rec.n += 1;
     if (e.retryCount > 0 || e.escalatedFrom !== null) rec.retriesOrEsc += 1;
     by.set(e.operationType, rec);

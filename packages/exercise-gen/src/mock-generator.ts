@@ -73,7 +73,7 @@ function runMock(request: GenerationRequest, seed: number): GenerationOutcome {
 
   const slots: Array<{ bucket: keyof ExerciseDistribution; skillId: SkillId; replaces: readonly string[] }> = isRegen
     ? request.regenerate!.map((s: SlotRequest) => ({ bucket: s.bucket, skillId: s.skillId, replaces: s.replaces }))
-    : expandBuckets(grounding.plan.distribution, grounding.targetSkills, grounding.forbiddenRequiredSkillIds);
+    : expandBuckets(grounding);
 
   const unfilled: Partial<Record<keyof ExerciseDistribution, number>> = {};
 
@@ -111,28 +111,17 @@ function runMock(request: GenerationRequest, seed: number): GenerationOutcome {
   };
 }
 
-/** One flat slot per bucket-count, round-robin over the target skills. */
+/** One flat slot per bucket-count, honouring the grounding's bucket→target binding. */
 function expandBuckets(
-  dist: ExerciseDistribution,
-  targetSkills: readonly GroundingSkill[],
-  forbidden: readonly SkillId[],
+  grounding: GenerationGrounding,
 ): Array<{ bucket: keyof ExerciseDistribution; skillId: SkillId; replaces: readonly string[] }> {
-  const forbiddenSet = new Set<string>(forbidden);
-  // a target skill is "clean" for a K2+ non-repair item when none of its weak
-  // prerequisites is forbidden (blocking).
-  const clean = targetSkills.filter((s) => !s.weakPrerequisites.some((p) => forbiddenSet.has(p)));
   const out: Array<{ bucket: keyof ExerciseDistribution; skillId: SkillId; replaces: readonly string[] }> = [];
-  let rr = 0;
   for (const bucket of DISTRIBUTION_BUCKETS) {
-    for (let i = 0; i < dist[bucket]; i++) {
-      const skill =
-        bucket === 'prerequisiteRepair'
-          ? (targetSkills.find((s) => s.weakPrerequisites.length > 0) ?? targetSkills[rr++ % targetSkills.length]!)
-          : bucket === 'advanced'
-            ? (clean[rr++ % Math.max(1, clean.length)] ?? targetSkills[rr % targetSkills.length]!)
-            : ((clean.length > 0 ? clean : targetSkills)[rr++ % (clean.length > 0 ? clean.length : targetSkills.length)]!);
-      out.push({ bucket, skillId: skill.skillId, replaces: [] });
-    }
+    const count = grounding.plan.distribution[bucket];
+    if (count === 0) continue;
+    const bound = grounding.bucketBindings[bucket].skillIds;
+    const pool = bound.length > 0 ? bound : grounding.targetSkills.map((s) => s.skillId);
+    for (let i = 0; i < count; i++) out.push({ bucket, skillId: pool[i % pool.length]!, replaces: [] });
   }
   return out;
 }
@@ -144,43 +133,43 @@ function buildItem(
   id: string,
   variantIndex: number,
 ): GeneratedExercise | null {
+  const binding = grounding.bucketBindings[bucket];
   const kLo = kIdx(grounding.difficulty.kMin);
-  const kHi = kIdx(grounding.difficulty.kMax);
+  // per-bucket K ceiling = min(spec K max, the bucket's binding ceiling)
+  const kHi = Math.min(kIdx(grounding.difficulty.kMax), kIdx(binding.knowledgeCeiling));
   const tLo = tIdx(grounding.difficulty.tMin);
   const tHi = tIdx(grounding.difficulty.tMax);
 
-  const skillHasBlockingPath = skill.weakPrerequisites.length > 0;
-  // non-repair items on a skill with a weak/blocking prerequisite stay at the
-  // gentle (concept-intro) end so they don't assume prereq fluency.
+  const skillHasBlockingPath =
+    bucket !== 'prerequisiteRepair' &&
+    skill.weakPrerequisites.some((p) => grounding.forbiddenRequiredSkillIds.includes(p));
+
   const targetK =
     bucket === 'prerequisiteRepair'
       ? kLo
       : bucket === 'advanced'
-        ? kHi
-        : skillHasBlockingPath
-          ? clamp(kIdx('K1'), kLo, kHi)
-          : clamp(Math.round((kLo + kHi) / 2), kLo, kHi);
+        ? kHi // ADVANCED KNOWLEDGE — top of the frontier ceiling
+        : bucket === 'thinkingChallenge'
+          ? clamp(Math.round((kLo + kHi) / 2), kLo, kHi) // ADVANCED THINKING — grade-level K
+          : skillHasBlockingPath
+            ? clamp(kIdx('K1'), kLo, kHi)
+            : clamp(Math.round((kLo + kHi) / 2), kLo, kHi);
   const targetT =
     bucket === 'thinkingChallenge'
-      ? tHi
+      ? tHi // ADVANCED THINKING — top of the T range
       : bucket === 'advanced'
         ? clamp(tHi - 1, tLo, tHi)
         : bucket === 'prerequisiteRepair'
           ? tLo
           : clamp(Math.round((tLo + tHi) / 2), tLo, tHi);
 
-  // prefer a real problem type whose (K,T) sits at or below the target
   const pt = skill.problemTypes.find(
     (p) => kIdx(p.knowledgeLevel) <= targetK && tIdx(p.thinkingLevel) <= targetT,
   );
   const knowledgeLevel = pt ? pt.knowledgeLevel : (KNOWLEDGE_LEVELS[targetK] as KnowledgeLevel);
   const thinkingLevel = pt ? pt.thinkingLevel : (THINKING_LEVELS[targetT] as ThinkingLevel);
 
-  const requiredSkillIds: SkillId[] =
-    bucket === 'prerequisiteRepair' && skill.weakPrerequisites.length > 0
-      ? [skill.weakPrerequisites[0]!]
-      : [skill.skillId];
-  // never require forbidden knowledge on a non-repair item
+  const requiredSkillIds: SkillId[] = [skill.skillId];
   if (
     bucket !== 'prerequisiteRepair' &&
     requiredSkillIds.some((s) => grounding.forbiddenRequiredSkillIds.includes(s))
@@ -190,9 +179,18 @@ function buildItem(
 
   const supportingSkillIds = skill.satisfiedPrerequisites.slice(0, 2);
   const label = BUCKET_LABEL[bucket];
-  // a rotating scenario + a unique alphabetic marker so no two prompts collide
   const scenario = SCENARIOS[variantIndex % SCENARIOS.length]!;
   const marker = letters(variantIndex);
+  // rotate answer format so the E2E path covers numeric / fraction / reasoning
+  const fmt: 'numeric' | 'fraction' | 'reasoning' =
+    variantIndex % 5 === 3 ? 'reasoning' : variantIndex % 5 === 1 ? 'fraction' : 'numeric';
+
+  const answerSpec: GeneratedExercise['answerSpec'] =
+    fmt === 'fraction'
+      ? { kind: 'fraction', numerator: 3, denominator: 4 }
+      : fmt === 'reasoning'
+        ? { kind: 'reasoning' }
+        : { kind: 'numeric', value: 42, tolerance: 0 };
 
   return {
     id,
@@ -205,16 +203,23 @@ function buildItem(
     knowledgeLevel,
     thinkingLevel,
     prompt: `[${label}] ${scenario} Vận dụng kỹ năng "${skill.name}" (biến thể ${marker}) để giải và trình bày lời giải theo từng bước.`,
-    answerSpec: { kind: 'numeric', value: 42, tolerance: 0 },
+    answerSpec,
     hints: [
       'Đọc kỹ đề và xác định dữ kiện đã cho.',
       'Nhớ lại tính chất liên quan tới kỹ năng này.',
       'Viết biểu thức/phương trình phù hợp.',
       `Ví dụ đơn giản hơn: xét trường hợp số nhỏ của "${skill.name}".`,
       'Thử lại với đề gốc, kiểm tra từng bước.',
-      'Lời giải đầy đủ: áp dụng tính chất, biến đổi và tính ra kết quả 42.',
+      fmt === 'fraction'
+        ? 'Lời giải đầy đủ: rút gọn và tính ra phân số 3/4.'
+        : fmt === 'reasoning'
+          ? 'Lời giải đầy đủ: trình bày lập luận theo tính chất, kết luận rõ ràng.'
+          : 'Lời giải đầy đủ: áp dụng tính chất, biến đổi và tính ra kết quả 42.',
     ],
-    workedSolution: `Áp dụng kiến thức của bài "${skill.name}": lập biểu thức, biến đổi và tính được kết quả bằng 42.`,
+    workedSolution: `Áp dụng kiến thức của bài "${skill.name}": lập biểu thức, biến đổi và kết luận.`,
+    ...(fmt === 'reasoning'
+      ? { rubric: 'Nêu đúng tính chất (0.5đ), áp dụng và lập luận chặt chẽ (0.5đ).' }
+      : {}),
     origin: 'ai_generated',
   };
 }

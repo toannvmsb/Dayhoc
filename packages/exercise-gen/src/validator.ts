@@ -34,6 +34,9 @@ const DEFAULT_OUTCOME: Record<ExerciseValidationReasonCode, ItemValidationOutcom
   SKILL_NOT_IN_SPEC: 'REGENERATE',
   UNKNOWN_PROBLEM_TYPE: 'REPAIRABLE',
   PROBLEM_TYPE_SKILL_MISMATCH: 'REPAIRABLE',
+  TARGET_ROLE_MISMATCH: 'REGENERATE',
+  FRONTIER_SKILL_NOT_SELECTED: 'BLOCK',
+  REQUIRED_SKILL_OUT_OF_BOUNDS: 'BLOCK',
   OUTSIDE_K_RANGE: 'REGENERATE',
   OUTSIDE_T_RANGE: 'REGENERATE',
   CHALLENGE_EXCEEDS_SPEC: 'REGENERATE',
@@ -59,6 +62,8 @@ const REPAIR_HINT: Partial<Record<ExerciseValidationReasonCode, string>> = {
   ANSWER_INCONSISTENT: 'make the answer key consistent with the options / prompt',
   DUPLICATE_VARIANT: 'regenerate a structurally different variant',
   LANGUAGE_MISMATCH: 'write the prompt and solution in Vietnamese with SGK notation',
+  TARGET_ROLE_MISMATCH: 'use a skill whose selected target allows this bucket',
+  REQUIRED_SKILL_OUT_OF_BOUNDS: 'keep requiredSkillIds within the prerequisite closure of the item target',
 };
 
 const kIdx = (k: string): number => KNOWLEDGE_LEVELS.indexOf(k as never);
@@ -118,9 +123,13 @@ export function validateGeneratedBatch(
   );
   const frontierAboveGrade = new Set(
     Object.entries(spec.childState.actualLearningFrontier)
-      .filter(([, label]) => /above_grade/.test(label))
+      .filter(([, f]) => f.aboveGrade)
       .map(([domain]) => domain),
   );
+  // target-role bindings (doc 14 C4.1 §6/§8)
+  const selectedFrontierSkills = new Set(spec.targets.skills.filter((t) => t.role === 'FRONTIER').map((t) => t.skillId));
+  const targetFor = (skillId: string, bucket: string) =>
+    spec.targets.skills.find((t) => t.skillId === skillId && t.buckets.includes(bucket as never));
 
   const seenNorm = new Map<string, string>(); // normalized prompt → first item id
 
@@ -155,6 +164,40 @@ export function validateGeneratedBatch(
       add('UNKNOWN_REQUIRED_SKILL_ID', [item.id], `invented / unknown skill id(s): ${unknownRequired.join(', ')}`);
     }
 
+    // 3b. target-role consistency (doc 14 C4.1 §8)
+    if (skill) {
+      const boundTarget = targetFor(item.skillId, item.bucket);
+      if (!boundTarget) {
+        add(
+          'TARGET_ROLE_MISMATCH',
+          [item.id],
+          `bucket "${item.bucket}" is not bound to skill ${item.skillId} — no selected target with this skill allows this bucket`,
+        );
+      }
+      // an above-grade skill the planner did NOT select as a FRONTIER target
+      if (skill.curriculumOrigin > spec.schoolGrade && !selectedFrontierSkills.has(item.skillId)) {
+        add(
+          'FRONTIER_SKILL_NOT_SELECTED',
+          [item.id],
+          `${item.skillId} originates at grade ${skill.curriculumOrigin} but was not selected as a FRONTIER target — the generator cannot expand the curriculum boundary`,
+        );
+      }
+      // requiredSkillIds must stay inside the allowed closure of the item's target
+      if (boundTarget) {
+        const allowed = new Set<string>([boundTarget.skillId, ...kb.prerequisiteClosure(boundTarget.skillId)]);
+        // repair items may also require the prereq they are repairing
+        if (boundTarget.role === 'PREREQUISITE_REPAIR') allowed.add(boundTarget.skillId);
+        const outOfBounds = item.requiredSkillIds.filter((s) => kb.skills.has(s) && !allowed.has(s));
+        if (outOfBounds.length > 0) {
+          add(
+            'REQUIRED_SKILL_OUT_OF_BOUNDS',
+            [item.id],
+            `requiredSkillIds ${outOfBounds.join(', ')} are outside the prerequisite closure of the item's target ${boundTarget.skillId}`,
+          );
+        }
+      }
+    }
+
     // 4. problem type
     if (item.problemTypeId) {
       const pt = kb.problemTypes.find((p) => p.id === item.problemTypeId);
@@ -175,14 +218,19 @@ export function validateGeneratedBatch(
 
     // 6. curriculum safety
     if (skill) {
-      if (skill.curriculumOrigin > spec.schoolGrade) {
-        const supported = frontierAboveGrade.has(skill.domain) && spec.childState.readiness !== 'repair_first';
-        if (!supported)
-          add(
-            'ABOVE_GRADE_KNOWLEDGE_NOT_ALLOWED',
-            [item.id],
-            `${item.skillId} originates at grade ${skill.curriculumOrigin}; the child's ${skill.domain} frontier / readiness does not support above-grade knowledge`,
-          );
+      // a SELECTED frontier target whose domain frontier no longer supports
+      // above-grade knowledge (defends against an inconsistent spec; the
+      // not-selected case is FRONTIER_SKILL_NOT_SELECTED above).
+      if (
+        skill.curriculumOrigin > spec.schoolGrade &&
+        selectedFrontierSkills.has(item.skillId) &&
+        !(frontierAboveGrade.has(skill.domain) && spec.childState.readiness !== 'repair_first')
+      ) {
+        add(
+          'ABOVE_GRADE_KNOWLEDGE_NOT_ALLOWED',
+          [item.id],
+          `${item.skillId} originates at grade ${skill.curriculumOrigin}; the child's ${skill.domain} frontier / readiness does not support above-grade knowledge`,
+        );
       }
       // noUnlearnedRequiredKnowledge (doc 14 C3.1 §B): a blocking prerequisite
       // gap only blocks the item when it is ACTUALLY required — i.e. it is one of

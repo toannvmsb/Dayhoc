@@ -72,13 +72,21 @@ describe('ExerciseGenerationSpec schema (doc 14 §3)', () => {
       isEstimated: false,
     },
     goal: { parentGoal: 'kha_gioi', sessionGoal: 'lesson_practice' },
-    targets: { skillIds: ['M7.RATIO.EQUAL_CHAIN'], problemTypeIds: [] },
+    targets: {
+      skills: [
+        { skillId: 'M7.RATIO.EQUAL_CHAIN', role: 'CURRENT', domain: 'algebraic_thinking', curriculumOrigin: 7, buckets: ['currentSkill', 'variation', 'application'], knowledgeCeiling: 'K3' },
+      ],
+      problemTypeIds: [],
+      skillIds: ['M7.RATIO.EQUAL_CHAIN'],
+    },
     childState: {
       relevantMastery: { 'M7.RATIO.EQUAL_CHAIN': 60 },
       prerequisiteGaps: [],
       readiness: 'ready',
       thinkingProfile: { algebraic_thinking: 'T3' },
-      actualLearningFrontier: { algebraic_thinking: 'grade_7_standard' },
+      actualLearningFrontier: {
+        algebraic_thinking: { reachedCurriculumOrigin: 7, aboveGrade: false, confidence: 0.5, evidenceCount: 4, masteredSkillIds: ['M7.RATIO.EQUAL_CHAIN'], readyNextSkillIds: [], exposureSkillIds: [] },
+      },
     },
     generationPlan: {
       totalQuestions: 10,
@@ -93,7 +101,7 @@ describe('ExerciseGenerationSpec schema (doc 14 §3)', () => {
       ageAppropriate: true,
       maxSolutionComplexity: 'standard',
     },
-    provenance: { plannerVersion: 'exercise-spec.v1', curriculumRevision: 'math-dev-core-1.0', curriculumContentHash: 'testhash01234567', twinVersion: 't', gapSnapshotVersion: 'g' },
+    provenance: { plannerVersion: 'exercise-spec.v1', targetSelectorVersion: 'target-selector.v1', curriculumRevision: 'math-dev-core-1.0', curriculumContentHash: 'testhash01234567', twinVersion: 't', gapSnapshotVersion: 'g' },
   };
 
   it('accepts a well-formed spec', () => {

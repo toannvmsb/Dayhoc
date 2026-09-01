@@ -1,15 +1,51 @@
-import { asChildId, asSkillId, type ExerciseGenerationSpec } from '@copilot/domain';
+import { asChildId, asSkillId, type ExerciseGenerationSpec, type TargetSkill } from '@copilot/domain';
 
 /**
- * A hand-built `ExerciseGenerationSpec` for C4 tests (grounding / mock /
- * orchestrator). Mirrors what `buildExerciseGenerationSpec` would emit for a
- * Grade-7 child on "dãy tỉ số bằng nhau" with a weak prerequisite. Not shipped —
- * only referenced from `*.test.ts`.
+ * A hand-built `ExerciseGenerationSpec` for C4/C4.1 tests. Mirrors what
+ * `buildExerciseGenerationSpec` + `selectLearningTargets` would emit for a
+ * Grade-7 child on "dãy tỉ số bằng nhau" with a mild prerequisite weakness.
+ * Not shipped — only referenced from `*.test.ts`.
  */
 export const SKILL = 'M7.RATIO.EQUAL_CHAIN';
 export const PREREQ = 'M7.RATIO.PROPORTION';
+export const FRONTIER_SKILL = 'M7.ALG.SYMMETRIC'; // curriculumOrigin 9
+
+const current: TargetSkill = {
+  skillId: asSkillId(SKILL),
+  role: 'CURRENT',
+  domain: 'algebraic_thinking',
+  curriculumOrigin: 7,
+  buckets: ['currentSkill', 'variation', 'application'],
+  knowledgeCeiling: 'K3',
+};
+const repair: TargetSkill = {
+  skillId: asSkillId(PREREQ),
+  role: 'PREREQUISITE_REPAIR',
+  domain: 'algebraic_thinking',
+  curriculumOrigin: 7,
+  buckets: ['prerequisiteRepair'],
+  knowledgeCeiling: 'K2',
+};
+const thinking: TargetSkill = {
+  skillId: asSkillId(SKILL),
+  role: 'THINKING',
+  domain: 'algebraic_thinking',
+  curriculumOrigin: 7,
+  buckets: ['thinkingChallenge'],
+  knowledgeCeiling: 'K3',
+};
+
+export const FRONTIER_TARGET: TargetSkill = {
+  skillId: asSkillId(FRONTIER_SKILL),
+  role: 'FRONTIER',
+  domain: 'algebraic_thinking',
+  curriculumOrigin: 9,
+  buckets: ['advanced'],
+  knowledgeCeiling: 'K5',
+};
 
 export function makeSpec(over: Partial<ExerciseGenerationSpec> = {}): ExerciseGenerationSpec {
+  const skills = over.targets?.skills ?? [current, repair, thinking];
   return {
     generationSpecId: 'egs_c4_test',
     childId: asChildId('c4_child'),
@@ -24,13 +60,27 @@ export function makeSpec(over: Partial<ExerciseGenerationSpec> = {}): ExerciseGe
       isEstimated: false,
     },
     goal: { parentGoal: 'kha_gioi', sessionGoal: 'lesson_practice' },
-    targets: { skillIds: [asSkillId(SKILL), asSkillId(PREREQ)], problemTypeIds: [] },
+    targets: {
+      skills,
+      problemTypeIds: [],
+      skillIds: [...new Set(skills.map((s) => s.skillId))],
+    },
     childState: {
       relevantMastery: { [SKILL]: 58, [PREREQ]: 45 },
       prerequisiteGaps: [{ skillId: asSkillId(PREREQ), severity: 0.4, blocking: false }],
       readiness: 'parallel_repair',
       thinkingProfile: { algebraic_thinking: 'T3' },
-      actualLearningFrontier: { algebraic_thinking: 'grade_7_standard' },
+      actualLearningFrontier: {
+        algebraic_thinking: {
+          reachedCurriculumOrigin: 7,
+          aboveGrade: false,
+          confidence: 0.5,
+          evidenceCount: 6,
+          masteredSkillIds: [asSkillId(SKILL), asSkillId(PREREQ)],
+          readyNextSkillIds: [],
+          exposureSkillIds: [],
+        },
+      },
     },
     generationPlan: {
       totalQuestions: 8,
@@ -47,6 +97,7 @@ export function makeSpec(over: Partial<ExerciseGenerationSpec> = {}): ExerciseGe
     },
     provenance: {
       plannerVersion: 'exercise-spec.v1',
+      targetSelectorVersion: 'target-selector.v1',
       curriculumRevision: 'math-dev-core-1.0',
       curriculumContentHash: 'deadbeefcafe0001',
       twinVersion: '2027-01-25T09:00:00.000Z',

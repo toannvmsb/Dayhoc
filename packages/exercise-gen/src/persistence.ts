@@ -13,6 +13,7 @@ export interface GenerationSpecRecord {
   readonly id: string;
   readonly childId: string;
   readonly plannerVersion: string;
+  readonly targetSelectorVersion: string;
   readonly curriculumRevision: string;
   readonly curriculumContentHash: string;
   readonly twinVersion: string;
@@ -91,6 +92,7 @@ export function toGenerationRecords(
       id: spec.generationSpecId,
       childId: spec.childId,
       plannerVersion: spec.provenance.plannerVersion,
+      targetSelectorVersion: spec.provenance.targetSelectorVersion,
       curriculumRevision: spec.provenance.curriculumRevision,
       curriculumContentHash: spec.provenance.curriculumContentHash,
       twinVersion: spec.provenance.twinVersion,

@@ -2,10 +2,10 @@ import {
   DISTRIBUTION_BUCKETS,
   KNOWLEDGE_LEVELS,
   THINKING_LEVELS,
-  asProblemTypeId,
   type ChildId,
   type ChildLearningTwin,
   type GradeContext,
+  type DomainFrontierView,
   type ExerciseDistribution,
   type ExerciseGenerationSpec,
   type KnowledgeLevel,
@@ -21,6 +21,7 @@ import type { KnowledgeBase } from '@copilot/math-data';
 import type { GapEngineResult } from '@copilot/gap-engine';
 import { DEFAULT_PLANNING_CONFIG, type PlanningConfig } from './config.js';
 import { computeLearningMix } from './learning-mix.js';
+import { assessThinking, selectLearningTargets, TARGET_SELECTOR_VERSION } from './target-selector.js';
 
 export const PLANNER_VERSION = 'exercise-spec.v1';
 
@@ -69,7 +70,7 @@ export function buildExerciseGenerationSpec(input: ExerciseSpecInput): ExerciseG
 
   const resolved = input.context.resolved;
 
-  // --- targets: the resolved lesson's skills (fall back to active skills) ---
+  // --- primary (current) targets: the resolved lesson's skills ---
   const lessonSkillIds = resolved.lessonId
     ? [...kb.skills.values()].filter((s) => s.curriculumNodeId === resolved.lessonId).map((s) => s.id as SkillId)
     : [];
@@ -81,20 +82,30 @@ export function buildExerciseGenerationSpec(input: ExerciseSpecInput): ExerciseG
         : [...input.context.activeSkillIds],
   ).filter((id) => kb.skills.has(id));
 
+  // --- readiness for the primary target ---
+  const readinessRec =
+    input.gaps.readiness.find((r) => primaryTargets.includes(r.targetSkillId))?.recommendation ?? 'ready';
+
+  // --- deterministic target selection by role (doc 14 C4.1) ---
+  const targets = selectLearningTargets({
+    resolvedLessonId: resolved.lessonId,
+    activeSkillIds: primaryTargets.length > 0 ? primaryTargets : [...input.context.activeSkillIds],
+    gradeContext: input.gradeContext,
+    twin: input.twin,
+    gaps: input.gaps,
+    knowledgeBase: kb,
+    parentGoal,
+    readiness: readinessRec,
+  });
+
   // --- prerequisite gaps relevant to those targets ---
   const prereqGaps = collectPrereqGaps(input.gaps, primaryTargets, kb);
   const blockingPrereqs = prereqGaps.filter((g) => g.blocking);
 
-  const targetSkillIds = dedupe([...primaryTargets, ...prereqGaps.map((g) => g.skillId)]).filter((id) =>
-    kb.skills.has(id),
-  );
-  const problemTypeIds = dedupe(
-    primaryTargets.flatMap((id) => kb.getProblemTypesForSkill(id).map((pt) => pt.id)),
-  ).map(asProblemTypeId);
-
-  // --- readiness for the primary target ---
-  const readinessRec =
-    input.gaps.readiness.find((r) => primaryTargets.includes(r.targetSkillId))?.recommendation ?? 'ready';
+  const targetSkillIds = dedupe(targets.all.map((t) => t.skillId));
+  const problemTypeIds = targets.problemTypeIds;
+  const hasFrontierTarget = targets.frontier.length > 0;
+  const hasThinkingTarget = targets.thinking.length > 0;
 
   // --- session goal ---
   const activeGaps = input.gaps.gaps.filter((g) => g.type !== 'careless_error' && g.score.band !== 'low');
@@ -109,7 +120,7 @@ export function buildExerciseGenerationSpec(input: ExerciseSpecInput): ExerciseG
 
   // --- relevant mastery ---
   const relevantMastery: Record<string, number> = {};
-  for (const id of targetSkillIds) {
+  for (const id of dedupe([...targetSkillIds, ...prereqGaps.map((g) => g.skillId)])) {
     relevantMastery[id] = Math.round(input.twin.skillMastery.get(id)?.mastery ?? 0);
   }
   const primaryMastery =
@@ -117,13 +128,25 @@ export function buildExerciseGenerationSpec(input: ExerciseSpecInput): ExerciseG
       ? primaryTargets.reduce((s, id) => s + (input.twin.skillMastery.get(id)?.mastery ?? 0), 0) / primaryTargets.length
       : 0;
 
-  // --- thinking profile + frontier ---
+  // --- thinking profile ---
   const thinkingProfile: Record<string, ThinkingLevel> = {};
   for (const [dim, st] of input.twin.thinkingProfile) {
     if (st.demonstratedLevel) thinkingProfile[dim] = st.demonstratedLevel;
   }
-  const frontier: Record<string, string> = {};
-  for (const f of input.twin.frontier) frontier[f.domain] = f.frontierLabel;
+
+  // --- structured Actual Learning Frontier (doc 14 C4.1 §9 — no magic strings) ---
+  const actualLearningFrontier: Record<string, DomainFrontierView> = {};
+  for (const f of input.twin.frontier) {
+    actualLearningFrontier[f.domain] = {
+      reachedCurriculumOrigin: f.reachedCurriculumOrigin,
+      aboveGrade: f.aboveGrade,
+      confidence: f.confidence,
+      evidenceCount: f.evidenceCount,
+      masteredSkillIds: [...f.masteredSkillIds],
+      readyNextSkillIds: [...f.readyNextSkillIds],
+      exposureSkillIds: [...f.exposureSkillIds],
+    };
+  }
   const anyAboveGrade = input.twin.frontier.some((f) => f.aboveGrade);
 
   // --- total questions from available time ---
@@ -143,18 +166,25 @@ export function buildExerciseGenerationSpec(input: ExerciseSpecInput): ExerciseG
     totalQuestions,
     mix,
     sessionGoal,
-    hasPrereqGap: prereqGaps.length > 0,
+    hasPrereqGap: targets.prerequisiteRepair.length > 0,
     prereqBlocking: blockingPrereqs.length > 0,
     readiness: readinessRec,
     goalIsAdvanced,
-    allowAdvanced: anyAboveGrade || goalIsAdvanced || primaryMastery >= config.strongStudentMastery,
-    aboveGradeFrontier: anyAboveGrade,
+    // ADVANCED KNOWLEDGE only when a FRONTIER target was actually selected (§6/§7)
+    allowAdvanced: hasFrontierTarget,
+    aboveGradeFrontier: hasFrontierTarget,
+    // ADVANCED THINKING only when a THINKING target exists
+    allowThinkingChallenge: hasThinkingTarget,
     strongThinking,
   });
 
   const isEstimated = resolved.confidence === 'ESTIMATED';
 
   // --- difficulty ---
+  const frontierCeilingIdx =
+    targets.frontier.length > 0
+      ? Math.max(...targets.frontier.map((t) => KNOWLEDGE_LEVELS.indexOf(t.knowledgeCeiling)))
+      : null;
   const difficulty = deriveDifficulty({
     primaryMastery,
     hasPrereqRepair: distribution.prerequisiteRepair > 0,
@@ -163,6 +193,7 @@ export function buildExerciseGenerationSpec(input: ExerciseSpecInput): ExerciseG
     goalIsAdvanced,
     goalIsHsg,
     anyAboveGrade,
+    frontierCeilingIdx,
     isEstimated,
   });
 
@@ -180,13 +211,13 @@ export function buildExerciseGenerationSpec(input: ExerciseSpecInput): ExerciseG
       isEstimated,
     },
     goal: { parentGoal, sessionGoal },
-    targets: { skillIds: targetSkillIds, problemTypeIds },
+    targets: { skills: targets.all, skillIds: targetSkillIds, problemTypeIds },
     childState: {
       relevantMastery,
       prerequisiteGaps: prereqGaps,
       readiness: readinessRec,
       thinkingProfile,
-      actualLearningFrontier: frontier,
+      actualLearningFrontier,
     },
     generationPlan: { totalQuestions, distribution },
     difficulty,
@@ -200,6 +231,7 @@ export function buildExerciseGenerationSpec(input: ExerciseSpecInput): ExerciseG
     },
     provenance: {
       plannerVersion: PLANNER_VERSION,
+      targetSelectorVersion: TARGET_SELECTOR_VERSION,
       curriculumRevision: kb.provenance.datasetRevision,
       curriculumContentHash: kb.provenance.contentHash,
       twinVersion: input.twin.computedAt,
@@ -248,9 +280,11 @@ interface AllocInput {
   readonly prereqBlocking: boolean;
   readonly readiness: 'ready' | 'parallel_repair' | 'repair_first';
   readonly goalIsAdvanced: boolean;
+  /** A FRONTIER role target was selected — ADVANCED KNOWLEDGE has somewhere to run. */
   readonly allowAdvanced: boolean;
-  /** A real above-grade frontier exists — advanced work has somewhere safe to run. */
   readonly aboveGradeFrontier: boolean;
+  /** A THINKING role target was selected — ADVANCED THINKING has somewhere to run. */
+  readonly allowThinkingChallenge: boolean;
   /** Demonstrated ≥ T3 with real evidence — guarantees a thinking-challenge slot. */
   readonly strongThinking: boolean;
 }
@@ -271,18 +305,20 @@ export function allocateDistribution(input: AllocInput): ExerciseDistribution {
   const schoolApplication = 1 - schoolCurrent - schoolVariation;
 
   const gapRepairShare = input.hasPrereqGap ? mix.gapRepair : 0;
-  // a blocking prerequisite gap suppresses advanced work UNLESS the child has a
-  // real above-grade frontier to run advanced items on (Parallel Gap Repair).
-  const advancedAllowed = input.allowAdvanced && (!input.prereqBlocking || input.aboveGradeFrontier);
+  // ADVANCED KNOWLEDGE runs ONLY on a selected FRONTIER target (§6/§7).
+  const advancedAllowed = input.allowAdvanced;
+  const thinkingAllowed = input.allowThinkingChallenge;
   const weights: Record<keyof ExerciseDistribution, number> = {
     prerequisiteRepair: gapRepairShare,
     currentSkill: mix.school * schoolCurrent + (input.hasPrereqGap ? 0 : mix.gapRepair),
     variation: mix.school * schoolVariation,
     application: mix.school * schoolApplication,
     advanced: advancedAllowed ? mix.advanced : 0,
-    thinkingChallenge: mix.thinking,
+    thinkingChallenge: thinkingAllowed ? mix.thinking : 0,
   };
+  // budget with no target to run on falls back to current-skill work
   if (!advancedAllowed) weights.currentSkill += mix.advanced;
+  if (!thinkingAllowed) weights.currentSkill += mix.thinking;
 
   let dist = largestRemainder(weights, total);
 
@@ -290,18 +326,13 @@ export function allocateDistribution(input: AllocInput): ExerciseDistribution {
   if ((input.readiness !== 'ready' || input.prereqBlocking) && input.hasPrereqGap && dist.prerequisiteRepair < 1) {
     dist = moveOne(dist, biggestDonor(dist, 'prerequisiteRepair'), 'prerequisiteRepair');
   }
-  if (
-    input.allowAdvanced &&
-    input.goalIsAdvanced &&
-    input.readiness !== 'repair_first' &&
-    (!input.prereqBlocking || input.aboveGradeFrontier) &&
-    dist.advanced < 1
-  ) {
+  // Parallel Gap Repair — a FRONTIER target + advanced goal keeps advanced ≥ 1
+  // even while prerequisiteRepair ≥ 1.
+  if (advancedAllowed && input.goalIsAdvanced && input.readiness !== 'repair_first' && dist.advanced < 1) {
     dist = moveOne(dist, biggestDonor(dist, 'advanced'), 'advanced');
   }
-  // strong demonstrated thinking + ready → always at least one thinking challenge
-  // (the slot exists for any goal; HSG just allocates more of them via the mix).
-  if (input.strongThinking && input.readiness !== 'repair_first' && dist.thinkingChallenge < 1) {
+  // strong demonstrated thinking + a THINKING target → always ≥ 1 thinking challenge
+  if (thinkingAllowed && input.strongThinking && input.readiness !== 'repair_first' && dist.thinkingChallenge < 1) {
     dist = moveOne(dist, biggestDonor(dist, 'thinkingChallenge'), 'thinkingChallenge');
   }
   if (dist.currentSkill < 1) {
@@ -352,33 +383,23 @@ interface DiffInput {
   readonly goalIsAdvanced: boolean;
   readonly goalIsHsg: boolean;
   readonly anyAboveGrade: boolean;
+  /** Highest K a selected FRONTIER target permits (null when no frontier target). */
+  readonly frontierCeilingIdx: number | null;
   /** Context is only a calendar estimate → be more conservative (invariant 10). */
   readonly isEstimated: boolean;
 }
 
-/**
- * Demonstrated thinking level + whether the child has "strong thinking" evidence
- * (demonstrated ≥ T3 backed by more than one observation). Used for both the T
- * range and the thinking-challenge allocation floor.
- */
-export function assessThinking(
-  thinkingProfile: ChildLearningTwin['thinkingProfile'],
-): { demoMax: number; thinkingEvidence: number; strongThinking: boolean } {
-  const dims = [...thinkingProfile.values()];
-  const demoLevels = dims.map((s) => (s.demonstratedLevel ? tIdx(s.demonstratedLevel) : -1)).filter((i) => i >= 0);
-  const demoMax = demoLevels.length > 0 ? Math.max(...demoLevels) : tIdx('T2');
-  const thinkingEvidence = dims.reduce((n, s) => n + s.evidenceCount, 0);
-  return { demoMax, thinkingEvidence, strongThinking: demoMax >= tIdx('T3') && thinkingEvidence >= 3 };
-}
 
 function deriveDifficulty(input: DiffInput): SpecDifficulty {
-  // K: floor drops when we schedule prerequisite repair; ceiling rises with
-  // mastery + goal + a real above-grade frontier (never past K5).
+  // K: floor drops when we schedule prerequisite repair. The ceiling is
+  // grade-level (≤ K3) UNLESS a FRONTIER target was selected — then it rises to
+  // that target's evidence-gated ceiling (§4/§7/§10). Parent goal never lifts K
+  // on its own.
   const kMinIdx = input.hasPrereqRepair ? kIdx('K1') : kIdx('K2');
-  let kMaxIdx = kIdx('K2');
-  if (input.primaryMastery >= 70) kMaxIdx = kIdx('K3');
-  if ((input.goalIsAdvanced || input.anyAboveGrade) && input.readiness !== 'repair_first') kMaxIdx = kIdx('K4');
-  if (input.goalIsHsg && input.anyAboveGrade && input.readiness === 'ready') kMaxIdx = kIdx('K5');
+  let kMaxIdx = input.primaryMastery >= 70 ? kIdx('K3') : kIdx('K2');
+  if (input.frontierCeilingIdx !== null && input.readiness !== 'repair_first') {
+    kMaxIdx = Math.max(kMaxIdx, input.frontierCeilingIdx);
+  }
   // an estimated context is not a firm basis for pushing the knowledge ceiling
   if (input.isEstimated) kMaxIdx = Math.min(kMaxIdx, kIdx('K3'));
   kMaxIdx = Math.max(kMaxIdx, kMinIdx);
