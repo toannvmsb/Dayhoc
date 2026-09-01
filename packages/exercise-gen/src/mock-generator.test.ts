@@ -67,7 +67,7 @@ describe('MockExerciseGenerator (doc 14 C4 §I)', () => {
     const frontSpec = makeSpec({
       targets: {
         skills: [
-          { skillId: asSkillId(SKILL), role: 'CURRENT', domain: 'algebraic_thinking', curriculumOrigin: 7, buckets: ['currentSkill', 'variation', 'application'], knowledgeCeiling: 'K3' },
+          { skillId: asSkillId(SKILL), role: 'CURRENT', domain: 'algebraic_thinking', curriculumOrigin: 7, buckets: ['currentSkill', 'variation', 'application'], knowledgeCeiling: 'K3', selectionReason: 'CURRENT_CURRICULUM', selectedCurriculumOrigin: 7, selectionConfidence: 0.6 },
           FRONTIER_TARGET,
         ],
         problemTypeIds: [],

@@ -16,7 +16,7 @@ import type {
   SkillId,
   TeacherContribution,
 } from '@copilot/domain';
-import type { KnowledgeBase } from '@copilot/math-data';
+import { isEligibleForCurrentLearningContext, type KnowledgeBase } from '@copilot/math-data';
 import { curriculumNodeOrder } from './pace.js';
 
 const DAY_MS = 86_400_000;
@@ -147,6 +147,19 @@ export function resolveLearningContext(input: ResolveInput): ResolveResult {
       ? `C.G${input.gradeContext}.`
       : (/^(C\.G\d+)\./.exec(expected?.lessonId ?? '')?.[1] ?? null);
   const inGrade = (lessonId: string): boolean => !gradePrefix || lessonId.startsWith(gradePrefix);
+  /**
+   * The RESOLVED current lesson must be a node a school class actually teaches
+   * (doc 13 C4.2 §1). Advanced / HSG / enrichment / synthetic nodes still feed
+   * the twin / gaps / frontier from `evidence`, but they never become
+   * `resolved.lessonId` — not even via a confirmation.
+   */
+  const eligibleAsContext = (lessonId: string): boolean => {
+    try {
+      return isEligibleForCurrentLearningContext(kb.getCurriculumNode(lessonId));
+    } catch {
+      return false;
+    }
+  };
 
   const signals: Signal[] = [];
 
@@ -155,6 +168,7 @@ export function resolveLearningContext(input: ResolveInput): ResolveResult {
   for (const c of input.lessonConfirmations ?? []) {
     const at = Date.parse(c.confirmedAt);
     if (Number.isNaN(at) || at < cutoff) continue;
+    if (!eligibleAsContext(c.lessonId)) continue; // can't confirm a non-teaching node as the current lesson
     const typeKey = c.source === 'TEACHER_UPDATE' ? 'teacher_update' : 'parent_update';
     signals.push({
       lessonId: c.lessonId,
@@ -174,7 +188,7 @@ export function resolveLearningContext(input: ResolveInput): ResolveResult {
     const typeKey = c.contributedAs === 'teacher' ? 'teacher_update' : 'parent_update';
     for (const sid of c.taughtSkillIds) {
       const lessonId = lessonIdOfSkill(kb, sid);
-      if (!lessonId || !inGrade(lessonId)) continue;
+      if (!lessonId || !inGrade(lessonId) || !eligibleAsContext(lessonId)) continue;
       signals.push({
         lessonId,
         reliability: RELIABILITY[typeKey]!,
@@ -194,6 +208,7 @@ export function resolveLearningContext(input: ResolveInput): ResolveResult {
     if (Number.isNaN(at) || at < cutoff) continue;
     const lessonId = lessonIdOfSkill(kb, e.skillId);
     if (!lessonId || !inGrade(lessonId)) continue; // cross-grade remediation ≠ current class lesson
+    if (!eligibleAsContext(lessonId)) continue; // advanced/HSG work updates the twin, not the school lesson
     const typeKey = evidenceTypeKey(e);
     signals.push({
       lessonId,

@@ -52,6 +52,43 @@
 >     of truth; mock → 0). Migration `1757116800000` adds the columns +
 >     `generation_specs.target_selector_version`.
 >   - **Mock E2E** — numeric / fraction / reasoning-with-rubric answer formats.
+> - **C4.2 ✅** (Learning Context / Frontier separation, anh 2026-09-01):
+>   - **CURRENT LEARNING CONTEXT ≠ ACTUAL LEARNING FRONTIER.** A synthetic
+>     enrichment/HSG node (`C.G7.EXT.0`) can no longer become
+>     `resolved.lessonId` — see [13 §5](13_CURRICULUM_CLOCK_AND_CONTEXT_RESOLVER.md).
+>     Advanced/HSG evidence still updates the Twin/Frontier/Thinking Profile/Gap
+>     state; it never silently redefines the current school lesson.
+>   - **`selectLearningTargets()` v2 — NEXT SAFE FRONTIER.** A FRONTIER target is
+>     no longer just "the highest demonstrated origin". Candidates are split into
+>     `NEXT_SAFE_FRONTIER` (a `readyNextSkillIds` skill — prereqs satisfied, no
+>     blocking gap on its path — preferred nearest-origin-first) and
+>     `MASTERED_FRONTIER_STRETCH` (an already-mastered above-grade skill). A
+>     Grade-7 child who has demonstrated Grade-9 algebra may correctly be routed
+>     to a Grade-8 bridge skill first, if that bridge is itself still weak.
+>   - **`TargetSkill.selectionReason`** — one of `CURRENT_CURRICULUM |
+>     GAP_REPAIR | NEXT_SAFE_FRONTIER | MASTERED_FRONTIER_STRETCH |
+>     THINKING_STRETCH | THINKING_ADJACENT_FALLBACK`, plus
+>     `selectedCurriculumOrigin`, `selectionConfidence`, and (for FRONTIER
+>     targets) `frontierEvidenceOrigin` — the domain's highest DEMONSTRATED
+>     origin, which may differ from the selected target's own origin. Every
+>     pick is traceable back to WHY.
+>   - **No global unlock.** `reachedCurriculumOrigin = 9` never means "all
+>     Grade-8/9 skills in the domain are open" — the selector only ever offers
+>     skills the prerequisite graph (mastered set + `readyNextSkillIds`) actually
+>     supports; an unrelated above-grade skill on the same synthetic node stays
+>     rejected.
+>   - **Thinking target fallback** — if the current grade-level skill has no
+>     authored T4/T5 problem type, a strong-thinking child may get a safe
+>     adjacent grade-level skill (same domain, prerequisites satisfied,
+>     `THINKING_ADJACENT_FALLBACK`) instead of losing the Thinking Challenge
+>     slot; if no such skill exists, no target is fabricated. Above-grade
+>     knowledge is never required for T4/T5.
+>   - **`selectLearningTargets()` returns a `trace`** — per-domain candidates,
+>     rejections (with reasons), and the selected set — for debugging/telemetry.
+>     Not persisted on `ExerciseGenerationSpec` (kept `.strict()` and minimal).
+>   - `math-data`: `CurriculumNode.nodeType` (`CORE_CURRICULUM | ENRICHMENT |
+>     ADVANCED | HSG | DIAGNOSTIC | REFERENCE`, default `CORE_CURRICULUM`) +
+>     `isEligibleForCurrentLearningContext(node)`. No string-matching on `"EXT"`.
 > - **No live AI provider.**
 > - **C5–C7 NOT STARTED** — practice runtime NOT flipped, legacy bank path still
 >   in place, no Interactive Adaptive Mode, no production NBQ.

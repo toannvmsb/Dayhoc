@@ -17,6 +17,9 @@ const current: TargetSkill = {
   curriculumOrigin: 7,
   buckets: ['currentSkill', 'variation', 'application'],
   knowledgeCeiling: 'K3',
+  selectionReason: 'CURRENT_CURRICULUM',
+  selectedCurriculumOrigin: 7,
+  selectionConfidence: 0.58,
 };
 const repair: TargetSkill = {
   skillId: asSkillId(PREREQ),
@@ -25,6 +28,9 @@ const repair: TargetSkill = {
   curriculumOrigin: 7,
   buckets: ['prerequisiteRepair'],
   knowledgeCeiling: 'K2',
+  selectionReason: 'GAP_REPAIR',
+  selectedCurriculumOrigin: 7,
+  selectionConfidence: 0.9,
 };
 const thinking: TargetSkill = {
   skillId: asSkillId(SKILL),
@@ -33,6 +39,9 @@ const thinking: TargetSkill = {
   curriculumOrigin: 7,
   buckets: ['thinkingChallenge'],
   knowledgeCeiling: 'K3',
+  selectionReason: 'THINKING_STRETCH',
+  selectedCurriculumOrigin: 7,
+  selectionConfidence: 0.8,
 };
 
 export const FRONTIER_TARGET: TargetSkill = {
@@ -42,6 +51,10 @@ export const FRONTIER_TARGET: TargetSkill = {
   curriculumOrigin: 9,
   buckets: ['advanced'],
   knowledgeCeiling: 'K5',
+  selectionReason: 'MASTERED_FRONTIER_STRETCH',
+  selectedCurriculumOrigin: 9,
+  frontierEvidenceOrigin: 9,
+  selectionConfidence: 0.6,
 };
 
 export function makeSpec(over: Partial<ExerciseGenerationSpec> = {}): ExerciseGenerationSpec {
@@ -97,7 +110,7 @@ export function makeSpec(over: Partial<ExerciseGenerationSpec> = {}): ExerciseGe
     },
     provenance: {
       plannerVersion: 'exercise-spec.v1',
-      targetSelectorVersion: 'target-selector.v1',
+      targetSelectorVersion: 'target-selector.v2',
       curriculumRevision: 'math-dev-core-1.0',
       curriculumContentHash: 'deadbeefcafe0001',
       twinVersion: '2027-01-25T09:00:00.000Z',

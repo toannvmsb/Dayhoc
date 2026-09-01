@@ -19,14 +19,36 @@ const gradeContextSchema = z
   .min(1)
   .max(9) as z.ZodType<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9>;
 
+/**
+ * Curriculum node kind (doc 13 C4.2 §2). Only `CORE_CURRICULUM` nodes may become
+ * the RESOLVED current school lesson — the others are skill families / diagnostic
+ * / reference targets. Never string-match the id ("EXT"); use this.
+ */
+export const CURRICULUM_NODE_TYPES = [
+  'CORE_CURRICULUM',
+  'ENRICHMENT',
+  'ADVANCED',
+  'HSG',
+  'DIAGNOSTIC',
+  'REFERENCE',
+] as const;
+export const curriculumNodeTypeSchema = z.enum(CURRICULUM_NODE_TYPES);
+
 export const curriculumNodeSchema = z.object({
   id: z.string().regex(/^C\.[A-Z0-9]+(\.[A-Z0-9_]+)*$/),
   gradeContext: gradeContextSchema,
+  /** Defaults to CORE_CURRICULUM so pre-C4.2 data still validates + stays eligible. */
+  nodeType: curriculumNodeTypeSchema.default('CORE_CURRICULUM'),
   textbook: z.string().min(1),
   volume: z.union([z.literal(1), z.literal(2)]).optional(),
   strand: z.string().min(1), // "Chủ đề 10 — Phân số"
   lesson: z.string().min(1),
 });
+
+/** True when a node represents something a school class actually teaches. */
+export function isEligibleForCurrentLearningContext(node: { readonly nodeType?: string }): boolean {
+  return (node.nodeType ?? 'CORE_CURRICULUM') === 'CORE_CURRICULUM';
+}
 
 export const problemTypeSchema = z.object({
   id: skillIdSchema,
@@ -77,6 +99,7 @@ export const gradeDatasetSchema = z.object({
 });
 
 export type DatasetMeta = z.infer<typeof datasetMetaSchema>;
+export type CurriculumNodeType = z.infer<typeof curriculumNodeTypeSchema>;
 export type CurriculumNode = z.infer<typeof curriculumNodeSchema>;
 export type ProblemType = z.infer<typeof problemTypeSchema>;
 export type Skill = z.infer<typeof skillSchema>;

@@ -66,6 +66,12 @@ function permissiveSpec(skillId: string): ExerciseGenerationSpec {
           curriculumOrigin: KB.getSkill(skillId).curriculumOrigin,
           buckets: ['currentSkill', 'variation', 'application', 'advanced', 'thinkingChallenge', 'prerequisiteRepair'],
           knowledgeCeiling: KNOWLEDGE_LEVELS[KNOWLEDGE_LEVELS.length - 1]!,
+          selectionReason:
+            KB.getSkill(skillId).curriculumOrigin > (KB.skills.get(asSkillId(skillId))?.gradeContext ?? 7)
+              ? 'MASTERED_FRONTIER_STRETCH'
+              : 'CURRENT_CURRICULUM',
+          selectedCurriculumOrigin: KB.getSkill(skillId).curriculumOrigin,
+          selectionConfidence: 1,
         },
       ],
       problemTypeIds: [],

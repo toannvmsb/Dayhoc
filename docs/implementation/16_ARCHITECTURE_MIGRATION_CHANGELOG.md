@@ -11,8 +11,13 @@
 > bounded orchestrator + persistence ✅ · **C4.1** target selection + pipeline
 > hardening (typed target roles, deterministic `selectLearningTargets`, structured
 > Actual Learning Frontier, advanced-knowledge vs advanced-thinking split,
-> bucket→target binding, validator role checks, estimated-vs-actual cost) ✅.
-> **403 tests. No live AI provider.** C5+ not started — awaiting anh's approval of C4.1.
+> bucket→target binding, validator role checks, estimated-vs-actual cost) ✅ ·
+> **C4.2** Learning Context / Frontier separation (curriculum `nodeType` +
+> `isEligibleForCurrentLearningContext`, synthetic EXT nodes can no longer become
+> `resolved.lessonId`, Next Safe Frontier selection with traced
+> `selectionReason`/`frontierEvidenceOrigin`, thinking-target fallback, no global
+> above-grade unlock) ✅.
+> **415 tests. No live AI provider.** C5+ not started — awaiting anh's approval of C4.2.
 
 ---
 

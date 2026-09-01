@@ -121,6 +121,9 @@ function buildGrade(gradeContext) {
       curriculum.push({
         id,
         gradeContext,
+        // real SGK lesson nodes are CORE_CURRICULUM: the school teaches these, so
+        // only they may become the resolved current lesson (doc 13 C4.2 §1).
+        nodeType: 'CORE_CURRICULUM',
         textbook: curriculumSrc.textbook ?? 'Kết nối tri thức với cuộc sống',
         ...(grp.volume ? { volume: grp.volume } : {}),
         strand,
@@ -131,11 +134,14 @@ function buildGrade(gradeContext) {
       }
     });
   });
-  // a fallback node for skills the curriculum doesn't atomically list (advanced families, etc.)
+  // a fallback node for skills the curriculum doesn't atomically list (advanced /
+  // HSG / enrichment families). ADVANCED: NOT a school-teaching node — it must
+  // never become the resolved current lesson (doc 13 C4.2 §1).
   const fallbackNodeId = `C.G${gradeContext}.EXT.0`;
   curriculum.push({
     id: fallbackNodeId,
     gradeContext,
+    nodeType: 'ADVANCED',
     textbook: 'Math Core (skill family)',
     strand: 'Nội dung theo skill family / nâng cao',
     lesson: 'Không ứng với một bài SGK đơn lẻ',

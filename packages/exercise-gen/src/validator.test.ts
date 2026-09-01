@@ -29,6 +29,16 @@ const t = (skillId: string, role: TargetSkill['role'], buckets: TargetSkill['buc
   curriculumOrigin: kb.getSkill(skillId).curriculumOrigin,
   buckets,
   knowledgeCeiling: kc,
+  selectionReason:
+    role === 'CURRENT'
+      ? 'CURRENT_CURRICULUM'
+      : role === 'PREREQUISITE_REPAIR'
+        ? 'GAP_REPAIR'
+        : role === 'FRONTIER'
+          ? 'MASTERED_FRONTIER_STRETCH'
+          : 'THINKING_STRETCH',
+  selectedCurriculumOrigin: kb.getSkill(skillId).curriculumOrigin,
+  selectionConfidence: 0.6,
 });
 const aboveGradeFrontier = (): Record<string, DomainFrontierView> => ({
   algebraic_thinking: { reachedCurriculumOrigin: 9, aboveGrade: true, confidence: 0.6, evidenceCount: 8, masteredSkillIds: [asSkillId(SKILL)], readyNextSkillIds: [asSkillId(FRONTIER_SKILL)], exposureSkillIds: [] },

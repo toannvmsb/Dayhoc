@@ -79,6 +79,17 @@ export interface SpecGoal {
 export const TARGET_ROLES = ['CURRENT', 'PREREQUISITE_REPAIR', 'FRONTIER', 'THINKING'] as const;
 export type TargetRole = (typeof TARGET_ROLES)[number];
 
+/** WHY a target was selected — traceable (doc 14 C4.2 §4). */
+export const TARGET_SELECTION_REASONS = [
+  'CURRENT_CURRICULUM',
+  'GAP_REPAIR',
+  'NEXT_SAFE_FRONTIER', // a "ready next" above-grade skill whose prereqs are satisfied
+  'MASTERED_FRONTIER_STRETCH', // an already-demonstrated above-grade skill, revisited harder
+  'THINKING_STRETCH', // T4/T5 on a current grade-level skill
+  'THINKING_ADJACENT_FALLBACK', // T4/T5 on a safe adjacent grade-level skill (no PT on current)
+] as const;
+export type TargetSelectionReason = (typeof TARGET_SELECTION_REASONS)[number];
+
 export interface TargetSkill {
   readonly skillId: SkillId;
   readonly role: TargetRole;
@@ -89,6 +100,13 @@ export interface TargetSkill {
   readonly buckets: readonly (keyof ExerciseDistribution)[];
   /** Highest K a FRONTIER/CURRENT target permits (a THINKING target stays at grade K). */
   readonly knowledgeCeiling: KnowledgeLevel;
+  readonly selectionReason: TargetSelectionReason;
+  /** = `curriculumOrigin`, spelled out for provenance. */
+  readonly selectedCurriculumOrigin: number;
+  /** For a FRONTIER target: the domain's highest DEMONSTRATED origin (the evidence behind the pick). */
+  readonly frontierEvidenceOrigin?: number;
+  /** 0..1 — how confident the selector is in this target (frontier confidence / mastery / 1 for CURRENT). */
+  readonly selectionConfidence: number;
 }
 
 export interface SpecTargets {

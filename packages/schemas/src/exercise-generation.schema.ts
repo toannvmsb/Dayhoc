@@ -7,6 +7,7 @@ import {
   PARENT_GOALS,
   SESSION_GOALS,
   TARGET_ROLES,
+  TARGET_SELECTION_REASONS,
   THINKING_DIMENSIONS,
   THINKING_LEVELS,
 } from '@copilot/domain';
@@ -66,6 +67,10 @@ export const exerciseGenerationSpecSchema = z
                 curriculumOrigin: z.number().int().min(1).max(12),
                 buckets: z.array(z.enum(DISTRIBUTION_BUCKETS)).min(1),
                 knowledgeCeiling: z.enum(KNOWLEDGE_LEVELS),
+                selectionReason: z.enum(TARGET_SELECTION_REASONS),
+                selectedCurriculumOrigin: z.number().int().min(1).max(12),
+                selectionConfidence: z.number().min(0).max(1),
+                frontierEvidenceOrigin: z.number().int().min(1).max(12).optional(),
               })
               .strict(),
           )

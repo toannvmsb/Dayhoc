@@ -74,7 +74,7 @@ describe('ExerciseGenerationSpec schema (doc 14 §3)', () => {
     goal: { parentGoal: 'kha_gioi', sessionGoal: 'lesson_practice' },
     targets: {
       skills: [
-        { skillId: 'M7.RATIO.EQUAL_CHAIN', role: 'CURRENT', domain: 'algebraic_thinking', curriculumOrigin: 7, buckets: ['currentSkill', 'variation', 'application'], knowledgeCeiling: 'K3' },
+        { skillId: 'M7.RATIO.EQUAL_CHAIN', role: 'CURRENT', domain: 'algebraic_thinking', curriculumOrigin: 7, buckets: ['currentSkill', 'variation', 'application'], knowledgeCeiling: 'K3', selectionReason: 'CURRENT_CURRICULUM', selectedCurriculumOrigin: 7, selectionConfidence: 0.6 },
       ],
       problemTypeIds: [],
       skillIds: ['M7.RATIO.EQUAL_CHAIN'],

@@ -178,7 +178,7 @@ describe('ExerciseGenerationOrchestrator (doc 14 C4 §J)', () => {
     const res = await orchestrateGeneration({ spec, generator: createMockExerciseGenerator(), referenceLibrary: lib, knowledgeBase: kb });
     const { specRecord } = toGenerationRecords(spec, res, { setId: 'ges_prov' });
     expect(specRecord.targetSelectorVersion).toBe(spec.provenance.targetSelectorVersion);
-    expect(specRecord.targetSelectorVersion).toBe('target-selector.v1');
+    expect(specRecord.targetSelectorVersion).toBe('target-selector.v2');
     expect(specRecord.curriculumContentHash).toBe(spec.provenance.curriculumContentHash);
     void InMemoryGenerationStore;
   });

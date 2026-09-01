@@ -25,6 +25,19 @@
 >   decays on stale/conflicting evidence; an applied pace shifts only the FUTURE
 >   estimate, never `resolved` confidence.
 > - Functional demo output: [`B3_DEMO_OUTPUT.md`](B3_DEMO_OUTPUT.md).
+> - **§5 — C4.2 hardening (2026-09-01): Context ≠ Frontier.** The resolved
+>   current lesson MUST be a node a school class actually teaches. Every
+>   `curriculum` node now carries `nodeType` (`CORE_CURRICULUM | ENRICHMENT |
+>   ADVANCED | HSG | DIAGNOSTIC | REFERENCE`, default `CORE_CURRICULUM`) and
+>   `@copilot/math-data` exports `isEligibleForCurrentLearningContext(node)` —
+>   never a string match on `"EXT"`. `resolveLearningContext` filters EVERY
+>   signal source (lesson confirmations, teacher/parent contributions, observed
+>   evidence) through this eligibility check before it can become
+>   `resolved.lessonId` — so a parent/teacher cannot even *confirm* a synthetic
+>   HSG/enrichment node as "the current lesson". Advanced/HSG evidence still
+>   flows to the Twin/gap engine/frontier unchanged (see doc 14 C4.2) — it is
+>   simply never a resolver signal. Required tests: `resolver.test.ts` +
+>   `packages/testing/src/golden/context-frontier-separation.test.ts`.
 
 ---
 
