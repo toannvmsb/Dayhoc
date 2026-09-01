@@ -150,16 +150,15 @@ then the default flips and the old path is deleted in a later step.
 - **Acceptance:** `distribution` sums to `totalQuestions`; K/T ranges ordered & tied to twin+frontier; constraints set; every target id resolves in the KB.
 - **Determinism:** `buildExerciseGenerationSpec` is a pure fn of (context, KB, twin, gaps, readiness, frontier, goal, time). `plannerVersion` = `exercise-spec.v1`.
 
-### C2 — `@copilot/reference-library` (repurpose the bank)
-- **Goal:** `questions*.json` → grounding/examples/validation, not delivery.
-- **Files:** new `packages/reference-library/` (move `question-bank.ts` + data); `packages/practice/src/index.ts` (drop the export); update importers in `apps/web`, golden tests.
+### C2 — `@copilot/reference-library` (repurpose the bank) — ✅ DONE (2026-09-01)
+- **Goal:** `questions*.json` → grounding / examples / calibration / validation, **not delivery**.
+- **Files:** new `packages/reference-library/` (`library.ts` + `data/questions*.json` moved from `@copilot/practice`); `packages/practice/src/question-bank.ts` **deleted**; `assignment.ts` now reads `@copilot/reference-library` (marked LEGACY delivery, C5 replaces it); `practice/src/index.ts` drops the bank export; importers updated in `apps/web/lib/child-scene.ts`, `packages/testing/{pipeline,projections}.test.ts`; root/testing/web tsconfig + package.json + `next.config.transpilePackages`.
 - **Deps:** none (parallel with C1).
-- **DB:** none.
-- **API:** none.
-- **Tests:** `reference-library.test.ts` — same schema validation as before; `groundingExamplesFor(skill, problemType)` returns ≤ N examples.
-- **Golden:** `golden/mapping.test.ts` unchanged (still a skill-id gate).
-- **Rollback:** keep `@copilot/practice` re-exporting for one step.
-- **Acceptance:** `@copilot/practice` no longer exposes `loadQuestionBank` as a delivery API.
+- **DB / API:** none.
+- **API surface:** `loadReferenceLibrary()`, `examplesForSkill(skillId)`, `groundingExamplesFor({skillId, problemTypeId?, K?, T?, limit=3})`, `calibrationRangeFor(skillId)`. **No "pick a question to serve a child" function exists.**
+- **Tests:** `reference-library/src/library.test.ts` — corpus schema + 6-rung ladder + AI-draft flags (moved from `practice.test.ts`); grounding returns ≤ limit, prefers same problem type, unknown skill → `[]`, deterministic.
+- **Golden:** `golden/mapping.test.ts` unchanged (still the skill-id gate).
+- **Acceptance:** `@copilot/practice` no longer exports `loadQuestionBank`; the corpus is grounding/calibration only. Legacy `buildAssignment` still works via the library shim until C5.
 
 ### C3 — `GeneratedExerciseValidator` (`@copilot/exercise-gen`)
 - **Goal:** deterministic gate: schema, known IDs, K/T range, prereq safety, answerability, uniqueness, hint ladder, safety.

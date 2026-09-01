@@ -4,7 +4,8 @@ import { buildLearningTwin } from '@copilot/learning-twin';
 import { runGapEngine } from '@copilot/gap-engine';
 import { buildLearningContext } from '@copilot/learning-context';
 import { buildDailyPlan } from '@copilot/planning';
-import { buildAssignmentsForPlan, initHintLadder, loadQuestionBank } from '@copilot/practice';
+import { buildAssignmentsForPlan, initHintLadder } from '@copilot/practice';
+import { loadReferenceLibrary } from '@copilot/reference-library';
 import {
   assertChildSafe,
   buildChildChallenge,
@@ -63,7 +64,7 @@ export function childTodayView() {
 
 export function childFirstQuestionView() {
   const { kb, assignments } = scene();
-  const bank = loadQuestionBank();
+  const bank = loadReferenceLibrary();
   const asg = assignments.find((a) => a.questionIds.length > 0 && bank.some((q) => q.id === a.questionIds[0]));
   if (!asg) return null;
   const q = bank.find((x) => x.id === asg.questionIds[0])!;
@@ -80,7 +81,7 @@ export function childFirstQuestionView() {
 }
 
 export function childChallengeView() {
-  const bank = loadQuestionBank();
+  const bank = loadReferenceLibrary();
   const q = bank.find((x) => x.answerSpec.kind === 'reasoning')!;
   const view = buildChildChallenge('asg_challenge', q);
   assertChildSafe(view);
@@ -88,7 +89,7 @@ export function childChallengeView() {
 }
 
 export function childResultView() {
-  const bank = loadQuestionBank();
+  const bank = loadReferenceLibrary();
   const qs = bank.filter((x) => x.skillId === 'M4.FRAC.COMMON_DENOM').slice(0, 3);
   const view = buildChildResult({
     assignmentId: 'asg_1',

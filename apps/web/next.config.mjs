@@ -14,6 +14,7 @@ const nextConfig = {
     '@copilot/math-data',
     '@copilot/planning',
     '@copilot/projections',
+    '@copilot/reference-library',
   ],
 };
 export default nextConfig;

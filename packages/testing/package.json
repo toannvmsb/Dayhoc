@@ -29,6 +29,7 @@
     "@copilot/planning": "0.1.0",
     "@copilot/practice": "0.1.0",
     "@copilot/projections": "0.1.0",
+    "@copilot/reference-library": "0.1.0",
     "@copilot/revision": "0.1.0",
     "yaml": "^2.9.0",
     "zod": "^3.24.1"

@@ -1,7 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "rootDir": "./src", "outDir": "./dist", "resolveJsonModule": true },
-  "references": [{ "path": "../domain" }, { "path": "../math-data" }],
-  "include": ["src/**/*.ts", "src/**/*.json"],
+  "compilerOptions": { "rootDir": "./src", "outDir": "./dist" },
+  "references": [{ "path": "../domain" }, { "path": "../math-data" }, { "path": "../reference-library" }],
+  "include": ["src/**/*.ts"],
   "exclude": ["**/*.test.ts"]
 }

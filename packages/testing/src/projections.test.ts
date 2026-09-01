@@ -4,7 +4,8 @@ import { buildLearningTwin } from '@copilot/learning-twin';
 import { runGapEngine } from '@copilot/gap-engine';
 import { buildLearningContext } from '@copilot/learning-context';
 import { buildDailyPlan } from '@copilot/planning';
-import { buildAssignmentsForPlan, initHintLadder, loadQuestionBank } from '@copilot/practice';
+import { buildAssignmentsForPlan, initHintLadder } from '@copilot/practice';
+import { loadReferenceLibrary } from '@copilot/reference-library';
 import {
   assertChildSafe,
   buildChildChallenge,
@@ -103,7 +104,7 @@ describe('Child-safe projection (server-side)', () => {
   });
 
   it('child question view: one question, only unlocked hints, no answer key', () => {
-    const q = loadQuestionBank().find((x) => x.skillId === 'M4.FRAC.COMMON_DENOM')!;
+    const q = loadReferenceLibrary().find((x) => x.skillId === 'M4.FRAC.COMMON_DENOM')!;
     const view = buildChildQuestion({
       assignmentId: 'asg_1',
       question: q,
@@ -119,7 +120,7 @@ describe('Child-safe projection (server-side)', () => {
   });
 
   it('child result view: shows a reasoning prompt after a challenge, and it is child-safe', () => {
-    const challenge = loadQuestionBank().find((x) => x.answerSpec.kind === 'reasoning')!;
+    const challenge = loadReferenceLibrary().find((x) => x.answerSpec.kind === 'reasoning')!;
     const result = buildChildResult({
       assignmentId: 'asg_c',
       questions: [challenge],

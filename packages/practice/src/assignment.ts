@@ -6,7 +6,7 @@ import {
   type PlannedAction,
   type Question,
 } from '@copilot/domain';
-import { loadQuestionBank } from './question-bank.js';
+import { loadReferenceLibrary } from '@copilot/reference-library';
 import { selectStretchSet } from './stretch-zone.js';
 
 const MODE_BY_ACTION: Record<PlannedAction['kind'], Assignment['mode']> = {
@@ -33,12 +33,13 @@ export interface BuildAssignmentInput {
 }
 
 /**
- * Turn one planned action into a concrete assignment, choosing stretch-zone
- * items from the authored bank (Math Core §16–§17). Returns `null` when the bank
- * has nothing for the target skill yet (Pending D-03).
+ * LEGACY delivery path (Group C5 replaces this with AI generation).
+ * Turns one planned action into an assignment, choosing stretch-zone items from
+ * the reference library. Returns `null` when the library has nothing for the
+ * target skill. Kept working only as migration compatibility.
  */
 export function buildAssignment(input: BuildAssignmentInput): Assignment | null {
-  const pool = (input.pool ?? loadQuestionBank()).filter(
+  const pool = (input.pool ?? loadReferenceLibrary()).filter(
     (q) => !input.action.targetSkillId || q.skillId === input.action.targetSkillId,
   );
   if (pool.length === 0) return null;

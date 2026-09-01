@@ -4,7 +4,8 @@ import { buildLearningTwin } from '@copilot/learning-twin';
 import { runGapEngine } from '@copilot/gap-engine';
 import { buildLearningContext } from '@copilot/learning-context';
 import { buildDailyPlan } from '@copilot/planning';
-import { buildAssignment, loadQuestionBank, submissionToEvidence } from '@copilot/practice';
+import { buildAssignment, submissionToEvidence } from '@copilot/practice';
+import { loadReferenceLibrary } from '@copilot/reference-library';
 import { KB, buildEvidence } from './harness.js';
 
 const childId = asChildId('pipeline_child');
@@ -86,7 +87,7 @@ describe('full planning pipeline', () => {
     expect(assignment!.questionIds.length).toBeGreaterThan(0);
 
     // child now answers all items correctly, unaided
-    const bank = loadQuestionBank();
+    const bank = loadReferenceLibrary();
     const newEvidence: Evidence[] = assignment!.questionIds.map((qid, i) => {
       const q = bank.find((x) => x.id === qid)!;
       const submission: Submission = {

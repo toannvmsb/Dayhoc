@@ -1,39 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { asChildId, asSkillId, type ChildLearningTwin, type Submission } from '@copilot/domain';
-import { loadQuestionBank, questionsForSkill } from './question-bank.js';
+import { examplesForSkill, loadReferenceLibrary } from '@copilot/reference-library';
 import { advanceHintLadder, currentHintText, initHintLadder } from './hint-ladder.js';
 import { selectStretchSet } from './stretch-zone.js';
 import { submissionToEvidence } from './submission.js';
 
-describe('question bank', () => {
-  it('validates every question and requires a full six-rung hint ladder', () => {
-    const bank = loadQuestionBank();
-    expect(bank.length).toBeGreaterThan(4);
-    const ids = new Set<string>();
-    for (const q of bank) {
-      expect(q.hints).toHaveLength(6);
-      for (const h of q.hints) expect(h.trim().length).toBeGreaterThan(0);
-      expect(q.workedSolution.length).toBeGreaterThan(0);
-      expect(['authored', 'ai_generated']).toContain(q.origin);
-      expect(ids.has(q.id), `duplicate question id ${q.id}`).toBe(false);
-      ids.add(q.id);
-    }
-  });
-
-  it('AI-drafted questions are flagged for educator review (anh decision Q5)', () => {
-    const drafts = loadQuestionBank().filter((q) => q.origin === 'ai_generated');
-    // every draft id is namespaced so a reviewer can tell them apart at a glance
-    for (const q of drafts) expect(q.id).toContain('.AI.');
-    // the first batch covers a spread of core Grade 4 + Grade 7 skills
-    const skills = new Set(drafts.map((q) => q.skillId));
-    expect(skills.size).toBeGreaterThanOrEqual(12);
-    expect([...skills].some((s) => s.startsWith('M4.'))).toBe(true);
-    expect([...skills].some((s) => s.startsWith('M7.'))).toBe(true);
-  });
-});
-
 describe('hint ladder state machine (Math Core §17)', () => {
-  const q = questionsForSkill('M4.FRAC.COMMON_DENOM')[0]!;
+  const q = examplesForSkill('M4.FRAC.COMMON_DENOM')[0]!;
 
   it('opens the orientation rung on the first unaided wrong attempt', () => {
     const s = advanceHintLadder(initHintLadder(q.id), { type: 'attempt_wrong' });
@@ -74,7 +47,7 @@ describe('stretch-zone selection (Math Core §17)', () => {
       computedFromEvidenceCount: 0,
     } as unknown as ChildLearningTwin;
 
-    const pool = loadQuestionBank();
+    const pool = loadReferenceLibrary();
     const set = selectStretchSet(twin, pool, 4);
     expect(set).toHaveLength(4);
     // at least one comfortable (common denom, mastery 80) and one stretch (distributive, mastery 30)
@@ -83,7 +56,7 @@ describe('stretch-zone selection (Math Core §17)', () => {
 });
 
 describe('submission → evidence (loop close, Math Core §29)', () => {
-  const q = questionsForSkill('M4.FRAC.COMMON_DENOM')[0]!;
+  const q = examplesForSkill('M4.FRAC.COMMON_DENOM')[0]!;
   const baseSubmission: Submission = {
     id: 'sub_1',
     assignmentId: 'asg_1',
@@ -112,7 +85,7 @@ describe('submission → evidence (loop close, Math Core §29)', () => {
   });
 
   it('grades a reasoning question on the explanation, not a single answer', () => {
-    const challenge = questionsForSkill('M4.ARITH.DISTRIBUTIVE').find((x) => x.answerSpec.kind === 'reasoning')!;
+    const challenge = examplesForSkill('M4.ARITH.DISTRIBUTIVE').find((x) => x.answerSpec.kind === 'reasoning')!;
     const strong = submissionToEvidence({
       submission: { ...baseSubmission, questionId: challenge.id, correct: false, score: undefined, reasoningText: 'x'.repeat(80) },
       question: challenge,

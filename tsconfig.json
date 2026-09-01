@@ -14,6 +14,7 @@
     { "path": "packages/gap-engine" },
     { "path": "packages/planning" },
     { "path": "packages/practice" },
+    { "path": "packages/reference-library" },
     { "path": "packages/api-contract" },
     { "path": "packages/projections" },
     { "path": "packages/revision" },
