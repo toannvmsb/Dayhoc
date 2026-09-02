@@ -173,6 +173,40 @@ export class IdentityService {
   }
 
   /**
+   * Resolve a bearer token to a domain identity (doc 22 §4). The `AuthAdapter`
+   * verifies the token; we map its `authUserId` to a `users` row. Returns `null`
+   * when the token is invalid or no linked user exists — the caller returns 401.
+   */
+  async authenticate(bearer: string): Promise<ResolvedIdentity | null> {
+    const identity = await this.#auth.verifyToken(bearer);
+    if (!identity) return null;
+    const user = await this.#store.findUserByAuthId(identity.authUserId);
+    if (!user) return null;
+    return this.getIdentity(user.id);
+  }
+
+  /**
+   * The server-derived `RequestContext` for a workspace-scoped call: verify the
+   * token, then require the declared workspace to be a role the user holds.
+   * `childScope` is only meaningful for STUDENT and must match a linked child.
+   */
+  async sessionContext(
+    bearer: string,
+    workspace: WorkspaceRole,
+  ): Promise<(WorkspaceContext & { childScope?: string }) | null> {
+    const resolved = await this.authenticate(bearer);
+    if (!resolved) return null;
+    if (!resolved.roles.includes(workspace)) throw new WorkspaceNotHeldError(workspace);
+    if (workspace === 'STUDENT') {
+      const links = await this.#store.listStudentLinksForUser(resolved.user.id);
+      const active = links.find((l) => l.status === 'ACTIVE');
+      if (!active) throw new WorkspaceNotHeldError('STUDENT (no linked child)');
+      return { userId: resolved.user.id, workspace, childScope: active.childId };
+    }
+    return { userId: resolved.user.id, workspace };
+  }
+
+  /**
    * Bind a Student identity to an **existing** Child Profile. Creates a PENDING
    * `student_account_links` row — a guardian must approve it (unless a
    * pre-approving `linkedByUserId` guardian with `can_manage_child` initiated it).

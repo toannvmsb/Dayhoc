@@ -260,3 +260,24 @@ export interface PermissionDecision {
   readonly allowed: boolean;
   readonly reason: string;
 }
+
+/**
+ * A privacy-safe discovery primitive (doc 21 §10). A guardian mints a
+ * short-lived code scoped to ONE child; a teacher redeems it to create a
+ * PENDING Teacher–Child request — never any direct access. There is NO endpoint
+ * that searches children by name / school / class.
+ */
+export interface RelationshipInviteCodeRecord {
+  readonly id: string;
+  readonly code: string;
+  readonly childId: string;
+  readonly subjectId: SubjectId | null;
+  readonly createdByUserId: string;
+  readonly relationshipType: RelationshipType;
+  readonly proposedPermissions: readonly PermissionCode[];
+  readonly usesRemaining: number;
+  readonly expiresAt: string;
+  readonly redeemedByUserId: string | null;
+  readonly redeemedAt: string | null;
+  readonly createdAt: string;
+}

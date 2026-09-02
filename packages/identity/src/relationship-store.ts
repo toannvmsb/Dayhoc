@@ -4,6 +4,7 @@ import type {
   PermissionCode,
   PermissionGrantRecord,
   PrivacyPreferencesRecord,
+  RelationshipInviteCodeRecord,
   RelationshipKind,
   RelationshipRequestRecord,
   RelationshipRequestStatus,
@@ -77,6 +78,13 @@ export interface RelationshipStore {
   getPrivacyPreferences(childId: string): Promise<PrivacyPreferencesRecord | null>;
   upsertPrivacyPreferences(r: PrivacyPreferencesRecord): Promise<void>;
 
+  insertInviteCode(r: RelationshipInviteCodeRecord): Promise<void>;
+  getInviteCodeByCode(code: string): Promise<RelationshipInviteCodeRecord | null>;
+  updateInviteCode(
+    id: string,
+    patch: { usesRemaining?: number; redeemedByUserId?: string | null; redeemedAt?: string | null },
+  ): Promise<void>;
+
   appendAuditEvent(r: AuditEventRecord): Promise<void>;
   listAuditEvents(key: { childId?: string; eventType?: AuditEventType }): Promise<readonly AuditEventRecord[]>;
 }
@@ -96,6 +104,7 @@ export class InMemoryRelationshipStore implements RelationshipStore {
   readonly #tpl = new Map<string, TeacherParentLinkRecord>();
   readonly #grants = new Map<string, PermissionGrantRecord>();
   readonly #privacy = new Map<string, PrivacyPreferencesRecord>();
+  readonly #inviteCodes = new Map<string, RelationshipInviteCodeRecord>();
   readonly #audit: AuditEventRecord[] = [];
 
   insertRequest(r: RelationshipRequestRecord): Promise<void> {
@@ -266,6 +275,27 @@ export class InMemoryRelationshipStore implements RelationshipStore {
   }
   upsertPrivacyPreferences(r: PrivacyPreferencesRecord): Promise<void> {
     this.#privacy.set(r.childId, clone(r));
+    return Promise.resolve();
+  }
+
+  insertInviteCode(r: RelationshipInviteCodeRecord): Promise<void> {
+    if ([...this.#inviteCodes.values()].some((x) => x.code === r.code)) {
+      return Promise.reject(new Error('DUPLICATE_INVITE_CODE'));
+    }
+    this.#inviteCodes.set(r.id, clone(r));
+    return Promise.resolve();
+  }
+  getInviteCodeByCode(code: string): Promise<RelationshipInviteCodeRecord | null> {
+    for (const r of this.#inviteCodes.values()) if (r.code === code) return Promise.resolve(clone(r));
+    return Promise.resolve(null);
+  }
+  updateInviteCode(
+    id: string,
+    patch: { usesRemaining?: number; redeemedByUserId?: string | null; redeemedAt?: string | null },
+  ): Promise<void> {
+    const cur = this.#inviteCodes.get(id);
+    if (!cur) return Promise.reject(new Error(`invite code ${id} not found`));
+    this.#inviteCodes.set(id, { ...cur, ...strip(patch) });
     return Promise.resolve();
   }
 

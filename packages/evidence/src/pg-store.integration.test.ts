@@ -12,6 +12,8 @@ describe.skipIf(!DATABASE_URL)('PgLedgerStore (integration)', () => {
   let pool: import('pg').Pool;
   let store: import('./pg-store.js').PgLedgerStore;
   let childId: string;
+  let userId: string;
+  let familyId: string;
 
   beforeAll(async () => {
     const { Pool } = await import('pg');
@@ -19,13 +21,15 @@ describe.skipIf(!DATABASE_URL)('PgLedgerStore (integration)', () => {
     pool = new Pool({ connectionString: DATABASE_URL });
     store = new PgLedgerStore(pool);
     const user = await pool.query<{ id: string }>(`INSERT INTO users(role) VALUES ('parent') RETURNING id`);
+    userId = user.rows[0]!.id;
     const fam = await pool.query<{ id: string }>(
       `INSERT INTO families(owner_parent_id) VALUES ($1) RETURNING id`,
-      [user.rows[0]!.id],
+      [userId],
     );
+    familyId = fam.rows[0]!.id;
     const child = await pool.query<{ id: string }>(
       `INSERT INTO child_profiles(family_id, display_name, school_grade) VALUES ($1,'IT Test',7) RETURNING id`,
-      [fam.rows[0]!.id],
+      [familyId],
     );
     childId = child.rows[0]!.id;
   });
@@ -33,12 +37,15 @@ describe.skipIf(!DATABASE_URL)('PgLedgerStore (integration)', () => {
   afterAll(async () => {
     // Cascading a child delete into `evidence` hits the append-only trigger — by
     // design. Retention/erasure runs as a privileged op that suspends triggers;
-    // we do the same here for test teardown only.
+    // we do the same here for test teardown only. Clean up EVERYTHING the test
+    // created (child + family + user) so it can't skew a backfill/audit run.
     if (pool && childId) {
       const client = await pool.connect();
       try {
         await client.query(`SET session_replication_role = replica`);
         await client.query(`DELETE FROM child_profiles WHERE id = $1`, [childId]);
+        await client.query(`DELETE FROM families WHERE id = $1`, [familyId]);
+        await client.query(`DELETE FROM users WHERE id = $1`, [userId]);
       } finally {
         await client.query(`SET session_replication_role = origin`);
         client.release();

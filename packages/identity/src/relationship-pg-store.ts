@@ -4,6 +4,7 @@ import type {
   AuditEventType,
   PermissionGrantRecord,
   PrivacyPreferencesRecord,
+  RelationshipInviteCodeRecord,
   RelationshipKind,
   RelationshipRequestRecord,
   TeacherChildLinkRecord,
@@ -331,6 +332,51 @@ export class PgRelationshipStore implements RelationshipStore {
         r.allowTeacherDiscoveryByClassJoin, r.shareBehaviourObservationsWithChild, r.updatedBy, r.updatedAt,
       ],
     );
+  }
+
+  async insertInviteCode(r: RelationshipInviteCodeRecord): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO relationship_invite_codes (id, code, child_id, subject_id, created_by_user_id,
+         relationship_type, proposed_permissions, uses_remaining, expires_at, redeemed_by_user_id,
+         redeemed_at, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$11,$12)`,
+      [
+        r.id, r.code, r.childId, r.subjectId, r.createdByUserId, r.relationshipType,
+        JSON.stringify(r.proposedPermissions), r.usesRemaining, r.expiresAt, r.redeemedByUserId,
+        r.redeemedAt, r.createdAt,
+      ],
+    );
+  }
+  async getInviteCodeByCode(code: string): Promise<RelationshipInviteCodeRecord | null> {
+    const r = await this.pool.query(`SELECT * FROM relationship_invite_codes WHERE code = $1`, [code]);
+    const x = r.rows[0] as any;
+    return x
+      ? {
+          id: x.id,
+          code: x.code,
+          childId: x.child_id,
+          subjectId: x.subject_id ?? null,
+          createdByUserId: x.created_by_user_id,
+          relationshipType: x.relationship_type,
+          proposedPermissions: arr(x.proposed_permissions),
+          usesRemaining: x.uses_remaining,
+          expiresAt: iso(x.expires_at),
+          redeemedByUserId: x.redeemed_by_user_id ?? null,
+          redeemedAt: isoN(x.redeemed_at),
+          createdAt: iso(x.created_at),
+        }
+      : null;
+  }
+  async updateInviteCode(
+    id: string,
+    patch: { usesRemaining?: number; redeemedByUserId?: string | null; redeemedAt?: string | null },
+  ): Promise<void> {
+    const { sql, vals } = setClause(patch, {
+      usesRemaining: 'uses_remaining', redeemedByUserId: 'redeemed_by_user_id', redeemedAt: 'redeemed_at',
+    });
+    if (!sql) return;
+    vals.push(id);
+    await this.pool.query(`UPDATE relationship_invite_codes SET ${sql} WHERE id = $${vals.length}`, vals);
   }
 
   async appendAuditEvent(r: AuditEventRecord): Promise<void> {

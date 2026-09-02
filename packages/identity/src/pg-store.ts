@@ -410,6 +410,7 @@ export async function backfillIdentityFromLegacy(pool: Pool): Promise<void> {
     INSERT INTO parent_profiles (user_id, display_name, contact_visibility, created_at)
     SELECT DISTINCT ON (p.user_id) p.user_id, p.display_name, 'FAMILY', now()
     FROM parents p
+    WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = p.user_id)
     ORDER BY p.user_id, p.id
     ON CONFLICT (user_id) DO NOTHING;
   `);
@@ -417,6 +418,7 @@ export async function backfillIdentityFromLegacy(pool: Pool): Promise<void> {
     INSERT INTO teacher_profiles (user_id, display_name, verification_status, created_at)
     SELECT DISTINCT ON (t.user_id) t.user_id, 'Teacher', 'UNVERIFIED', now()
     FROM teachers t
+    WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = t.user_id)
     ORDER BY t.user_id, t.id
     ON CONFLICT (user_id) DO NOTHING;
   `);
@@ -431,9 +433,11 @@ export async function backfillIdentityFromLegacy(pool: Pool): Promise<void> {
     INSERT INTO family_memberships (family_id, user_id, member_role, joined_at)
     SELECT p.family_id, p.user_id, 'GUARDIAN', now()
     FROM parents p
-    WHERE NOT EXISTS (
-      SELECT 1 FROM families f WHERE f.id = p.family_id AND f.owner_parent_id = p.user_id
-    )
+    WHERE EXISTS (SELECT 1 FROM families f WHERE f.id = p.family_id)
+      AND EXISTS (SELECT 1 FROM users u WHERE u.id = p.user_id)
+      AND NOT EXISTS (
+        SELECT 1 FROM families f WHERE f.id = p.family_id AND f.owner_parent_id = p.user_id
+      )
     ON CONFLICT (family_id, user_id) DO NOTHING;
   `);
   await pool.query(`

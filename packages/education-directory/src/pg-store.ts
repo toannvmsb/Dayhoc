@@ -420,6 +420,13 @@ export class PgEducationStore implements EducationStore {
     );
     return r.rows.map(rowToClassEnrollment);
   }
+  async listClassEnrollmentsForClassroom(classroomId: ClassroomId): Promise<readonly StudentClassEnrollmentRecord[]> {
+    const r = await this.pool.query(
+      `SELECT * FROM student_class_enrollments WHERE classroom_id = $1 ORDER BY joined_at`,
+      [classroomId],
+    );
+    return r.rows.map(rowToClassEnrollment);
+  }
 
   // --- I6 ---
   async insertTransition(r: EnrollmentTransitionRecord): Promise<void> {

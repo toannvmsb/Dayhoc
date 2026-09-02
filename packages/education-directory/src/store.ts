@@ -109,6 +109,7 @@ export interface EducationStore {
   updateClassEnrollment(id: string, patch: ClassEnrollmentPatch): Promise<void>;
   getClassEnrollment(id: string): Promise<StudentClassEnrollmentRecord | null>;
   listClassEnrollments(childId: string): Promise<readonly StudentClassEnrollmentRecord[]>;
+  listClassEnrollmentsForClassroom(classroomId: ClassroomId): Promise<readonly StudentClassEnrollmentRecord[]>;
 
   // --- I6: transitions ---
   insertTransition(record: EnrollmentTransitionRecord): Promise<void>;
@@ -356,6 +357,9 @@ export class InMemoryEducationStore implements EducationStore {
         .sort((a, b) => a.joinedAt.localeCompare(b.joinedAt))
         .map(clone),
     );
+  }
+  listClassEnrollmentsForClassroom(classroomId: ClassroomId): Promise<readonly StudentClassEnrollmentRecord[]> {
+    return Promise.resolve([...this.#classEnroll.values()].filter((e) => e.classroomId === classroomId).map(clone));
   }
 
   // --- I6 ---

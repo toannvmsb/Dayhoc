@@ -97,6 +97,26 @@ Docs mới (spec/plan only): `19_IDENTITY_FAMILY_MODEL.md` · `20_SCHOOL_CLASS_E
 
 **⚠ Implement PHẠM VI: chỉ I0 + I1. KHÔNG I2+ (school/classroom, enrollment transition, teacher permission, teacher contribution, progression, workspace UI) — trừ type/interface tối thiểu để compile.**
 
+**✅ I0..I7 BACKEND/DOMAIN FOUNDATION ĐÃ IMPLEMENT (2026-09-02, continuous authorization):**
+- **I2 + I3 + I6** commit `17924dc` — `@copilot/education-directory` (schools/years/subjects/classrooms + teacher↔school/class + enrollment history PRIMARY/supplementary + ProgressionEngine). Migrations `1757289600000`, `1757376000000`, `1757462400000`.
+- **I4** commit `27f7894` — `@copilot/identity` relationship/permission/authorization (relationship_requests + teacher_child/parent_links + permission_grants + privacy_preferences + audit_events; `RelationshipService` + `PermissionService.can()` 6-condition gate + `AuthorizationService`). Migration `1757548800000`.
+- **I5** commit `98eadd4` — `TeacherContributionService` (subject-scoped, permission-checked, provenance, append-only sink, no Twin write). Migration `1757635200000` (additive ALTER `teacher_contributions`).
+- **I7** commit (this) — `SupabaseAuthAdapter` (HS256) + `resolveAuthAdapter` fallback; `IdentityService.authenticate`/`sessionContext` (server-derived RequestContext); `/me/roles` + `/me/switch-workspace` + `contextFromToken` + `authorizeChild` in `services/api`; invite codes (privacy-safe discovery) + `DiscoveryService` (email yes/no, class-join opt-in). Migration `1757721600000`.
+
+### OPEN_DECISION (NON_BLOCKING) — recorded during I2–I7
+
+| # | decision | current conservative default | future action |
+|---|---|---|---|
+| **OD-1 RLS policies** | Supabase Postgres RLS not yet written | application `authorize()`/`can()` is the sole business-authorization control (fully tested); DB direct-connection is trusted (single API service role) | add RLS as defence-in-depth in an additive migration when the deployment auth story (Supabase `auth.uid()` wiring) is fixed — I7+ follow-up. Never a permissive policy to pass tests. |
+| **OD-2 `child_school_enrollment` compat VIEW** | legacy table kept, no VIEW swap | `CurriculumClockService` still reads the `services/api` `childProfiles` deps dict (demo path); `EnrollmentService.resolveActiveEnrollment` is the new source of truth, wired where DB-backed | when `services/api` routes become DB-backed, replace the dict read with `resolveActiveEnrollment` + a compat VIEW selecting the ACTIVE `student_school_enrollments` row. 0 legacy rows in pilot. |
+| **OD-3 live Supabase (ENV_REQUIRED)** | `SupabaseAuthAdapter` implemented + tested with a mock fetch/JWT; `resolveAuthAdapter` returns `InMemoryAuthAdapter` when `SUPABASE_URL`/`SUPABASE_JWT_SECRET` absent | none — anh provides `SUPABASE_URL`, `SUPABASE_JWT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY` when a Supabase project exists; then a contract test against the real JWKS. |
+| **OD-4 full `authorize()` route cutover** | engine done + tested; `services/api` wires `/me/*` + `contextFromToken` + `authorizeChild` on teacher read/write paths; legacy demo routes keep `requireChildAccess` family scope (dev/test `TRUSTED_CONTEXT`) | wire `authorize()` into every child route once the routes are DB-backed (they currently read an in-memory `childProfiles` dict with no relationship data). Additive; feature-flagged by `deps.auth`. |
+| **OD-5 RS256/JWKS tokens** | `SupabaseAuthAdapter` verifies HS256 (Supabase default) | add RS256/JWKS verification if the Supabase project switches to asymmetric signing keys. |
+| **OD-6 `class_cohorts`** | deferred (ID-Q7) — deterministic `suggestNextClassName` heuristic | add the table only if a real cohort need appears post-pilot. |
+| **OD-7 message store for `MESSAGE_PARENT`** | permission code + `teacher_parent_links` designed; no message persistence | a later doc + migration. |
+
+---
+
 **✅ I0 + I1 ĐÃ IMPLEMENT (2026-09-02):**
 - **I0** — `docs/implementation/I0_AUDIT_RESULTS.md`. DB pilot: 0 child, 0 `users.role='child'`, 0 `teacher_invites`, 0 enrollment. Chỉ có 5 user + 4 family là test-residue (vô hại). Green-field-safe. Không conflict C4/C5.
 - **I1 migration** `migrations/1757203200000_identity_family.js` (additive; up→down→up verified). ALTER `users` (+`auth_user_id`/`primary_email`/`primary_phone`/`display_name`/`status`, giữ `role`); ADD `user_roles`, `parent_profiles`, `teacher_profiles`, `family_memberships`, `parent_child_relationships` (capability model + `authority_source`), `student_account_links`; ALTER `child_profiles` (+`date_of_birth`); VIEW `children`. Backfill idempotent: `user_roles` (PARENT/TEACHER/ADMIN, KHÔNG 'child'), `family_memberships` (OWNER/GUARDIAN), `parent_child_relationships` (owner→`MIGRATED_FAMILY_OWNER` full caps `is_legal_guardian=NULL`; parent khác→`SELF_DECLARED` chỉ `can_manage_child`).

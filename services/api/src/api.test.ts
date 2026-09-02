@@ -307,3 +307,38 @@ describe('C5 §23 — AI generation SHADOW mode (child never sees AI content)', 
     expect(gen.calls).toBeGreaterThan(0); // but it did run
   });
 });
+
+describe('I7 — token-derived RequestContext + /me endpoints', () => {
+  it('meRoles + switchWorkspace derive identity server-side; a workspace not held is rejected', async () => {
+    const {
+      IdentityService,
+      InMemoryIdentityStore,
+      InMemoryAuthAdapter,
+    } = await import('@copilot/identity');
+    const store = new InMemoryIdentityStore();
+    const auth = new InMemoryAuthAdapter();
+    const identityService = new IdentityService({ store, auth });
+    const reg = await identityService.register({
+      email: 'parent@x.com',
+      password: 'supersecret',
+      intendedRole: 'PARENT',
+    });
+    const bearer = (await store.getUser(reg.user.id))!.authUserId!;
+
+    const api = createApi({ ...deps, auth: { identityService } });
+    const me = await api.meRoles(bearer);
+    expect(me.roles).toEqual(['PARENT']);
+    expect(me.defaultWorkspace).toBe('PARENT');
+
+    const ctx = await api.switchWorkspace(bearer, 'PARENT');
+    expect(ctx).toMatchObject({ userId: reg.user.id, role: 'parent', workspace: 'PARENT' });
+
+    await expect(api.switchWorkspace(bearer, 'TEACHER')).rejects.toBeTruthy();
+    await expect(api.meRoles('forged-token')).rejects.toBeInstanceOf(AuthzError);
+  });
+
+  it('the /me endpoints require token auth to be configured', async () => {
+    const api = createApi(deps); // no deps.auth
+    await expect(api.meRoles('anything')).rejects.toBeInstanceOf(AuthzError);
+  });
+});

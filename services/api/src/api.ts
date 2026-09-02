@@ -18,6 +18,12 @@ import {
   type ChildProfileInput,
 } from '@copilot/projections';
 import { createLogger, type Logger } from '@copilot/observability';
+import type {
+  AuthorizationService,
+  IdentityService,
+  Resource,
+  WorkspaceRequestContext,
+} from '@copilot/identity';
 import type { EvidenceInput, TeacherContributionInput } from '@copilot/schemas';
 
 export interface RequestContext {
@@ -25,7 +31,20 @@ export interface RequestContext {
   readonly role: Role;
   /** For a child token: the single child this token is scoped to. */
   readonly childScope?: string;
+  /**
+   * I7: the workspace this context was derived from (set by `contextFromToken`).
+   * When present + `deps.auth.authorization` is configured, child routes run the
+   * relationship-aware `authorize()` gate in addition to family scope.
+   */
+  readonly workspace?: 'PARENT' | 'STUDENT' | 'TEACHER' | 'ADMIN';
 }
+
+const WORKSPACE_TO_ROLE: Record<'PARENT' | 'STUDENT' | 'TEACHER' | 'ADMIN', Role> = {
+  PARENT: 'parent',
+  STUDENT: 'child',
+  TEACHER: 'teacher',
+  ADMIN: 'admin',
+};
 
 export class AuthzError extends Error {
   readonly status = 403;
@@ -58,6 +77,16 @@ export interface ApiDeps {
   >;
   /** Persisted per-child applied pace_delta (doc 13 §4). Default 0. */
   readonly appliedPaceDeltaFor?: (childId: string) => number;
+  /**
+   * I7 auth/workspace foundation (doc 22). When present, `contextFromToken`
+   * derives a `RequestContext` server-side from a verified bearer token, and
+   * `authorize` runs the relationship-aware gate. When absent the API keeps the
+   * legacy trusted-`RequestContext` path (dev/test only — `TRUSTED_CONTEXT`).
+   */
+  readonly auth?: {
+    readonly identityService: IdentityService;
+    readonly authorization?: AuthorizationService;
+  };
   /**
    * Live AI generation in SHADOW mode (doc 14 C5 §11). When `mode === 'SHADOW'`
    * a full generation pipeline runs in parallel with the legacy child path via
@@ -199,7 +228,67 @@ export function createApi(deps: ApiDeps) {
     return { rec, twin, gaps, context, plan, asOf };
   }
 
+  /**
+   * Derive a `RequestContext` from a verified bearer token (doc 22 §4). The
+   * client never asserts its own userId/role/childScope on this path. Throws
+   * `AuthzError` (401-ish) when the token is invalid or the workspace is not held.
+   */
+  async function contextFromToken(
+    bearer: string,
+    workspace: 'PARENT' | 'STUDENT' | 'TEACHER' | 'ADMIN',
+  ): Promise<RequestContext> {
+    if (!deps.auth) throw new AuthzError('token auth is not configured');
+    const session = await deps.auth.identityService.sessionContext(bearer, workspace);
+    if (!session) throw new AuthzError('invalid or expired token');
+    return {
+      userId: session.userId,
+      role: WORKSPACE_TO_ROLE[workspace],
+      workspace,
+      ...(session.childScope !== undefined ? { childScope: session.childScope } : {}),
+    };
+  }
+
+  /**
+   * The relationship-aware authorization gate (doc 22 §5). A no-op unless the
+   * context was token-derived (`ctx.workspace` set) AND `deps.auth.authorization`
+   * is configured — otherwise the legacy `requireChildAccess` family scope is the
+   * only control (dev/test).
+   */
+  async function authorizeChild(ctx: RequestContext, childId: string, action: string, subjectId?: string): Promise<void> {
+    if (!ctx.workspace || !deps.auth?.authorization) return;
+    const resource: Resource = { kind: 'child', childId, ...(subjectId ? { subjectId } : {}) };
+    const wctx: WorkspaceRequestContext = {
+      userId: ctx.userId,
+      workspace: ctx.workspace,
+      ...(ctx.childScope !== undefined ? { childScope: ctx.childScope } : {}),
+    };
+    await deps.auth.authorization.authorize(wctx, resource, action);
+  }
+
   return {
+    /** GET /me/roles — the workspaces this identity may switch into (doc 25 §1). */
+    async meRoles(bearer: string) {
+      if (!deps.auth) throw new AuthzError('token auth is not configured');
+      const resolved = await deps.auth.identityService.authenticate(bearer);
+      if (!resolved) throw new AuthzError('invalid or expired token');
+      return {
+        userId: resolved.user.id,
+        roles: resolved.roles,
+        hasParentProfile: resolved.parentProfile !== null,
+        hasTeacherProfile: resolved.teacherProfile !== null,
+        defaultWorkspace: resolved.roles.includes('PARENT')
+          ? 'PARENT'
+          : (resolved.roles[0] ?? null),
+      };
+    },
+
+    /** POST /me/switch-workspace — validates workspace ∈ held roles, returns the context. */
+    async switchWorkspace(bearer: string, workspace: 'PARENT' | 'STUDENT' | 'TEACHER' | 'ADMIN') {
+      return contextFromToken(bearer, workspace);
+    },
+
+    contextFromToken,
+
     /** GET /children/:id/home — parent only. */
     async parentHome(ctx: RequestContext, childId: string) {
       requireParent(ctx);
@@ -261,6 +350,11 @@ export function createApi(deps: ApiDeps) {
     async recordTeacherUpdate(ctx: RequestContext, childId: string, input: TeacherContributionInput) {
       if (ctx.role !== 'teacher' && ctx.role !== 'parent' && ctx.role !== 'admin') throw new AuthzError('not permitted');
       requireChildAccess(ctx, childId);
+      // I7: a token-derived TEACHER context is additionally checked against the
+      // scoped permission for the contribution (doc 21 §7 / §3.1).
+      if (ctx.workspace === 'TEACHER') {
+        await authorizeChild(ctx, childId, 'submit_current_lesson');
+      }
       return evidenceService.recordTeacherContribution({ ...input, childId });
     },
 
@@ -272,6 +366,7 @@ export function createApi(deps: ApiDeps) {
     async learningContext(ctx: RequestContext, childId: string) {
       if (ctx.role === 'child') throw new AuthzError('child token cannot read learning context');
       requireChildAccess(ctx, childId);
+      if (ctx.workspace === 'TEACHER') await authorizeChild(ctx, childId, 'view_learning_context');
       const s = await scene(childId);
       return {
         childId,

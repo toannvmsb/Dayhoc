@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import {
   CLASS_ASSIGNMENT_ALLOWED_CODES,
   SENSITIVE_PERMISSION_CODES,
@@ -7,6 +7,7 @@ import {
   type AuditEventType,
   type DiscoveryMethod,
   type PermissionCode,
+  type RelationshipInviteCodeRecord,
   type RelationshipKind,
   type RelationshipRequestRecord,
   type RelationshipType,
@@ -418,6 +419,82 @@ export class RelationshipService {
       childId: link.childId,
       payload: { accessSource: 'PARENT_DIRECT', count: n },
     });
+  }
+
+  /**
+   * A guardian mints a short-lived invite code scoped to ONE child (doc 21 §10).
+   * Needs `can_manage_child`. Sensitive codes are stripped from the proposal —
+   * they always need an explicit grant later.
+   */
+  async generateInviteCode(input: {
+    childId: string;
+    guardianUserId: string;
+    subjectId?: string;
+    relationshipType?: RelationshipType;
+    proposedPermissions?: readonly PermissionCode[];
+    ttlHours?: number;
+    uses?: number;
+  }): Promise<RelationshipInviteCodeRecord> {
+    const ok = await authorisedGuardian(
+      this.#identity,
+      input.guardianUserId as never,
+      input.childId,
+      'can_manage_child',
+    );
+    if (!ok) throw new AuthorizationError('only a guardian with can_manage_child may mint an invite code');
+
+    const proposed = (input.proposedPermissions ?? ['VIEW_CLASS_CONTEXT', 'SUBMIT_CURRENT_LESSON']).filter(
+      (c) => !SENSITIVE_PERMISSION_CODES.includes(c),
+    );
+    const record: RelationshipInviteCodeRecord = {
+      id: this.#newId(),
+      code: randomBytes(6).toString('hex').toUpperCase(),
+      childId: input.childId,
+      subjectId: (input.subjectId as RelationshipInviteCodeRecord['subjectId']) ?? null,
+      createdByUserId: input.guardianUserId,
+      relationshipType: input.relationshipType ?? 'SUBJECT_TEACHER',
+      proposedPermissions: proposed,
+      usesRemaining: Math.max(1, input.uses ?? 1),
+      expiresAt: new Date(this.#now().getTime() + (input.ttlHours ?? 72) * 3_600_000).toISOString(),
+      redeemedByUserId: null,
+      redeemedAt: null,
+      createdAt: this.#now().toISOString(),
+    };
+    await this.#store.insertInviteCode(record);
+    return record;
+  }
+
+  /**
+   * A teacher redeems an invite code → a PENDING Teacher–Child request. ZERO
+   * access is granted here (R-2) — a guardian still has to accept the request.
+   */
+  async redeemInviteCode(code: string, teacherUserId: string): Promise<RelationshipRequestRecord> {
+    const invite = await this.#store.getInviteCodeByCode(code);
+    if (!invite) throw new NotFoundError('invite code');
+    if (invite.usesRemaining <= 0) throw new ConflictError('invite code is used up', 'INVITE_USED');
+    if (Date.parse(invite.expiresAt) <= this.#now().getTime()) {
+      throw new ConflictError('invite code has expired', 'INVITE_EXPIRED');
+    }
+    const roles = await this.#identity.listRoles(teacherUserId as never);
+    if (!roles.includes('TEACHER')) throw new ValidationError('only a TEACHER may redeem an invite code');
+
+    const request = await this.createRequest({
+      requesterUserId: teacherUserId,
+      requesterRole: 'TEACHER',
+      relationshipKind: 'TEACHER_CHILD',
+      targetType: 'CHILD',
+      targetChildId: invite.childId,
+      ...(invite.subjectId ? { subjectId: invite.subjectId } : {}),
+      relationshipType: invite.relationshipType,
+      proposedPermissions: invite.proposedPermissions,
+      discoveryMethod: 'INVITE_CODE',
+    });
+    await this.#store.updateInviteCode(invite.id, {
+      usesRemaining: invite.usesRemaining - 1,
+      redeemedByUserId: teacherUserId,
+      redeemedAt: this.#now().toISOString(),
+    });
+    return request;
   }
 
   async listInbox(userId: string): Promise<readonly RelationshipRequestRecord[]> {

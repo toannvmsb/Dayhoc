@@ -27,3 +27,5 @@ export * from './permission-service.js';
 export * from './relationship-service.js';
 export * from './authorization-service.js';
 export * from './teacher-contribution-service.js';
+export * from './supabase-auth-adapter.js';
+export * from './discovery-service.js';
