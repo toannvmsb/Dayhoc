@@ -8,6 +8,7 @@ import {
   type Viewer,
   type Workspace,
 } from './api';
+import { CHILD_KEY } from './child';
 import { prefStore, secureStore } from './store';
 
 const TOKEN_KEY = 'dz.bearer';
@@ -82,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await secureStore.remove(TOKEN_KEY);
       await prefStore.remove(VIEWER_KEY);
       await prefStore.remove(WS_KEY);
+      await prefStore.remove(CHILD_KEY); // don't carry a child selection across accounts
     }
   }, []);
 

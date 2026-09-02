@@ -11,18 +11,17 @@ import type { Child, ParentHome } from '@/types';
 
 export default function ParentHomeScreen() {
   const { session } = useAuth();
-  const { childId, setChildId } = useChild();
+  const { childId, setChildId, reconcile } = useChild();
   const api = useClient('PARENT');
 
   const children = useQuery<Child[]>(() => api.get('/children'), [session?.bearer]);
 
   useEffect(() => {
-    if (!childId && children.data && children.data.length > 0) {
-      setChildId(children.data[0]!.childId);
-    }
-  }, [childId, children.data, setChildId]);
+    if (children.data) reconcile(children.data.map((c) => c.childId));
+  }, [children.data, reconcile]);
 
-  const activeId = childId ?? children.data?.[0]?.childId ?? null;
+  const known = children.data?.some((c) => c.childId === childId) ? childId : null;
+  const activeId = known ?? children.data?.[0]?.childId ?? null;
   const home = useQuery<ParentHome>(() => api.get(`/children/${activeId}/home`), [activeId]);
 
   if (children.loading) return <Loading />;
