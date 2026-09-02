@@ -63,6 +63,7 @@ describe.skipIf(!DATABASE_URL)('F8 — practice loop (assignment → attempt →
       await c.query(`DELETE FROM evidence WHERE child_id = ANY($1::uuid[])`, [children]).catch(() => {});
       await c.query(`DELETE FROM student_account_links WHERE child_id = ANY($1::uuid[])`, [children]).catch(() => {});
       await c.query(`DELETE FROM child_profiles WHERE id = ANY($1::uuid[])`, [children]);
+      await c.query(`DELETE FROM family_subscriptions WHERE family_id = ANY($1::uuid[])`, [families]).catch(() => {});
       await c.query(`DELETE FROM families WHERE id = ANY($1::uuid[])`, [families]);
       await c.query(`DELETE FROM users WHERE id = ANY($1::uuid[])`, [users]);
     } finally {
@@ -196,6 +197,7 @@ describe.skipIf(!DATABASE_URL)('F8 — practice loop (assignment → attempt →
     expect(list.find((a) => a.id === assignmentId)!.status).toBe('COMPLETED');
 
     // a student cannot submit for another child's assignment
+    await api.setPlan(pAuth, 'plus'); // FREE allows 1 child — need room for a second (M7 entitlement gate)
     const otherChild = await api.createChild(pAuth, { displayName: 'Khác', schoolGrade: 4 });
     children.push(otherChild.childId);
     const otherFam = await pool.query<{ family_id: string }>(`SELECT family_id FROM child_profiles WHERE id = $1`, [otherChild.childId]);

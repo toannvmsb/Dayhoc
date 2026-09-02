@@ -28,7 +28,10 @@ export default async function Profile({ params }: { params: { childId: string } 
 
   return (
     <Screen nav={<ParentNav childId={params.childId} active="profile" />}>
-      <h1 className="h1">Hồ sơ {name}</h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <h1 className="h1">Hồ sơ {name}</h1>
+        <Link href={`/be/${params.childId}/cai-dat`} className="chip">Cài đặt ⚙</Link>
+      </div>
       <div className="card">
         <span className="overline">Thông tin</span>
         <div style={{ fontSize: 14 }}>Tên: <b>{name}</b></div>

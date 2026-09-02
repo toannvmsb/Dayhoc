@@ -146,6 +146,41 @@ export async function createStudentPracticeAction(
   return { assignmentId: res.assignmentIds[0] ?? null };
 }
 
+// ---- PARENT: plan & child-profile deletion (M7) -------------------------
+
+export async function setPlanAction(plan: string): Promise<void> {
+  await getApi().setPlan(parentAuth(), plan);
+  revalidatePath('/goi-dich-vu');
+  revalidatePath('/');
+}
+
+export async function requestChildDeletionAction(childId: string): Promise<void> {
+  await getApi().requestChildDeletion(parentAuth(), childId);
+  revalidatePath(`/be/${childId}/cai-dat`);
+}
+
+export async function cancelChildDeletionAction(childId: string): Promise<void> {
+  await getApi().cancelChildDeletion(parentAuth(), childId);
+  revalidatePath(`/be/${childId}/cai-dat`);
+}
+
+export async function confirmChildDeletionAction(
+  _prev: FormState & { done?: boolean },
+  form: FormData,
+): Promise<FormState & { done?: boolean }> {
+  const childId = String(form.get('childId') ?? '');
+  const confirmName = String(form.get('confirmName') ?? '');
+  if (!childId || !confirmName) return { error: 'Nhập đúng tên của con để xác nhận.' };
+  try {
+    await getApi().confirmChildDeletion(parentAuth(), childId, confirmName);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/does not match/.test(msg)) return { error: 'Tên không khớp. Nhập đúng tên hiển thị của con.' };
+    return { error: friendly(e) };
+  }
+  return { done: true };
+}
+
 // ---- PARENT: exam intelligence (M6) -------------------------------------
 
 export async function createExamAction(

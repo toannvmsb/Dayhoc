@@ -46,7 +46,7 @@ import {
 import { buildRevisionPlan, diagnoseAssessment, inferExamScope } from '@copilot/revision';
 import type { AssessmentQuestionOutcome, Exam } from '@copilot/domain';
 import { createLogger, type Logger } from '@copilot/observability';
-import { asChildId, type AnswerSpec } from '@copilot/domain';
+import { asChildId, entitlementsFor, PLANS, type AnswerSpec, type Plan } from '@copilot/domain';
 import { createApi, AuthzError, NotFoundError, type RequestContext } from '../api.js';
 import { createContextResolver, ForbiddenError, type CallerAuth } from './context.js';
 import { resolveChildLearningInputs, syncSchoolGradeCache } from './learning-scene.js';
@@ -232,6 +232,20 @@ export function createProductionApi(opts: ProductionApiOptions) {
     role: 'admin', // authorization already enforced above; 'admin' bypasses the legacy family check
   });
 
+  /** The plan for the family this user owns or belongs to (default 'free'). */
+  async function familyPlan(userId: string): Promise<Plan> {
+    const r = (
+      await pool.query(
+        `SELECT s.plan FROM family_subscriptions s
+           JOIN family_memberships m ON m.family_id = s.family_id
+          WHERE m.user_id = $1 AND s.status = 'active'
+          ORDER BY (m.member_role = 'OWNER') DESC LIMIT 1`,
+        [userId],
+      )
+    ).rows[0] as { plan: Plan } | undefined;
+    return r?.plan ?? 'free';
+  }
+
   // ---- IX: recompute-if-stale persisted learning state --------------
   //
   // The Twin / gaps / plan are DERIVED from the append-only `evidence` stream.
@@ -329,7 +343,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
       await base.learningState.replaceGaps(
         childId,
         s.gaps.gaps.map((g) => ({
-          id: g.id,
+          id: cryptoRandom(), // storage id; the engine's ephemeral g.id lives only in the GAPS snapshot
           childId,
           gapType: g.type,
           targetSkillId: String(g.targetSkillId),
@@ -595,6 +609,21 @@ export function createProductionApi(opts: ProductionApiOptions) {
     ) {
       const ctx = await deriveContext(auth);
       if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      // entitlement gate — feature/quota only, never touches AI routing
+      const plan = await familyPlan(ctx.userId);
+      const current = (
+        await pool.query(
+          `SELECT count(*)::int n FROM parent_child_relationships r
+             JOIN child_profiles c ON c.id = r.child_id
+            WHERE r.parent_user_id = $1 AND r.status = 'ACTIVE' AND c.deletion_state <> 'deleted'`,
+          [ctx.userId],
+        )
+      ).rows[0] as { n: number };
+      if (current.n >= entitlementsFor(plan).maxChildren) {
+        throw new ForbiddenError(
+          `gói ${plan} cho tối đa ${entitlementsFor(plan).maxChildren} hồ sơ con — nâng gói để thêm`,
+        );
+      }
       return withTransaction(pool, async (client) => {
         const svc = buildServices(client, now, logger);
         // find or create a billing family owned by this parent
@@ -1524,6 +1553,224 @@ export function createProductionApi(opts: ProductionApiOptions) {
         );
       });
       return { ok: true };
+    },
+
+    // ---- M7: ENTITLEMENTS / PLAN ------------------------------------
+
+    /** GET /me/entitlements — the caller's family plan + what it unlocks. */
+    async getEntitlements(auth: CallerAuth) {
+      const ctx = await deriveContext(auth);
+      const plan = await familyPlan(ctx.userId);
+      const ent = entitlementsFor(plan);
+      const childCount = (
+        await pool.query(
+          `SELECT count(*)::int n FROM parent_child_relationships r
+             JOIN child_profiles c ON c.id = r.child_id
+            WHERE r.parent_user_id = $1 AND r.status = 'ACTIVE' AND c.deletion_state <> 'deleted'`,
+          [ctx.userId],
+        )
+      ).rows[0] as { n: number };
+      return {
+        plan,
+        entitlements: ent,
+        options: PLANS.map((p) => ({
+          plan: p,
+          priceVnd: entitlementsFor(p).priceVnd,
+          recommended: entitlementsFor(p).recommended,
+        })),
+        usage: { children: childCount.n, maxChildren: ent.maxChildren },
+      };
+    },
+
+    /**
+     * POST /me/plan — MOCK plan change. There is NO billing: no card, no
+     * invoice, no gateway. It only moves the feature/quota gate. The plan NEVER
+     * changes which AI model runs.
+     */
+    async setPlan(auth: CallerAuth, plan: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      if (!(PLANS as readonly string[]).includes(plan)) throw new ForbiddenError('unknown plan');
+      const fam = (
+        await pool.query(
+          `SELECT f.id FROM families f JOIN family_memberships m ON m.family_id = f.id
+            WHERE m.user_id = $1 AND m.member_role = 'OWNER' LIMIT 1`,
+          [ctx.userId],
+        )
+      ).rows[0] as { id: string } | undefined;
+      if (!fam) throw new ForbiddenError('only the family owner may change the plan');
+      await pool.query(
+        `INSERT INTO family_subscriptions (family_id, plan, status, current_period_end, updated_at)
+         VALUES ($1, $2, 'active', now() + interval '30 days', now())
+         ON CONFLICT (family_id) DO UPDATE SET plan = EXCLUDED.plan, status = 'active',
+           current_period_end = EXCLUDED.current_period_end, updated_at = now()`,
+        [fam.id, plan],
+      );
+      return { plan: plan as import('@copilot/domain').Plan, billing: 'MOCK_NO_CHARGE' as const };
+    },
+
+    // ---- M7: REAL CHILD-PROFILE DELETION ---------------------------
+
+    async getChildDeletionStatus(auth: CallerAuth, childId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'view_child');
+      const r = (
+        await pool.query(
+          `SELECT d.state, d.requested_at, d.confirmed_at, c.display_name, c.deletion_state
+             FROM child_profiles c
+             LEFT JOIN child_deletion_requests d ON d.child_id = c.id
+                   AND d.state IN ('REQUESTED','CONFIRMED')
+            WHERE c.id = $1`,
+          [childId],
+        )
+      ).rows[0] as any;
+      if (!r) throw new NotFoundError('child');
+      return {
+        childName: r.display_name,
+        deletionState: r.deletion_state,
+        request: r.state ? { state: r.state, requestedAt: String(r.requested_at) } : null,
+      };
+    },
+
+    /** POST /children/:childId/deletion — start the workflow (reversible until confirmed). */
+    async requestChildDeletion(auth: CallerAuth, childId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'manage_child');
+      await authorizeChild(ctx, childId, 'grant_permission'); // → can_manage_privacy
+      await withTransaction(pool, async (client) => {
+        await client.query(
+          `UPDATE child_profiles SET deletion_state = 'deletion_requested' WHERE id = $1 AND deletion_state = 'active'`,
+          [childId],
+        );
+        await client.query(
+          `INSERT INTO child_deletion_requests (child_id, requested_by_user_id, state)
+           VALUES ($1, $2, 'REQUESTED')
+           ON CONFLICT (child_id) DO UPDATE SET state = 'REQUESTED', requested_by_user_id = EXCLUDED.requested_by_user_id,
+             requested_at = now(), confirmed_at = NULL, completed_at = NULL, updated_at = now()`,
+          [childId, ctx.userId],
+        );
+      });
+      return { ok: true };
+    },
+
+    async cancelChildDeletion(auth: CallerAuth, childId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'manage_child');
+      await withTransaction(pool, async (client) => {
+        await client.query(
+          `UPDATE child_profiles SET deletion_state = 'active' WHERE id = $1 AND deletion_state = 'deletion_requested'`,
+          [childId],
+        );
+        await client.query(
+          `UPDATE child_deletion_requests SET state = 'CANCELLED', updated_at = now()
+            WHERE child_id = $1 AND state IN ('REQUESTED','CONFIRMED')`,
+          [childId],
+        );
+      });
+      return { ok: true };
+    },
+
+    /**
+     * POST /children/:childId/deletion/confirm — HARD delete. The parent must
+     * re-type the child's display name. Purges every child-scoped row (the
+     * append-only ledgers included) and the profile itself, then records an
+     * append-only `deletion_jobs` audit row. Not a soft-hide.
+     */
+    async confirmChildDeletion(auth: CallerAuth, childId: string, confirmName: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'manage_child');
+      await authorizeChild(ctx, childId, 'grant_permission');
+      const child = (
+        await pool.query(`SELECT display_name FROM child_profiles WHERE id = $1`, [childId])
+      ).rows[0] as { display_name: string } | undefined;
+      if (!child) throw new NotFoundError('child');
+      if (confirmName.trim() !== child.display_name.trim()) {
+        throw new ForbiddenError('confirmation name does not match');
+      }
+
+      const summary = await withTransaction(pool, async (client) => {
+        // student user(s) linked to this child (deleted too — the login only exists for this child)
+        const studentUsers = (
+          await client.query(`SELECT user_id FROM student_account_links WHERE child_id = $1`, [childId])
+        ).rows.map((x: { user_id: string }) => x.user_id);
+
+        await client.query(`SET session_replication_role = replica`);
+        const counts: Record<string, number> = {};
+        const del = async (label: string, sql: string, params: unknown[]) => {
+          const r = await client.query(sql, params);
+          counts[label] = r.rowCount ?? 0;
+        };
+
+        // child-scoped rows in dependency order
+        await del('attempt_answers', `DELETE FROM attempt_answers WHERE attempt_id IN (SELECT id FROM attempts WHERE child_id = $1)`, [childId]);
+        await del('attempts', `DELETE FROM attempts WHERE child_id = $1`, [childId]);
+        await del('assignment_items', `DELETE FROM assignment_items WHERE assignment_id IN (SELECT id FROM assignments WHERE child_id = $1)`, [childId]);
+        await del('assignments', `DELETE FROM assignments WHERE child_id = $1`, [childId]);
+        await del('plan_items', `DELETE FROM plan_items WHERE learning_plan_id IN (SELECT id FROM learning_plans WHERE child_id = $1)`, [childId]);
+        await del('learning_plans', `DELETE FROM learning_plans WHERE child_id = $1`, [childId]);
+        await del('gap_prescriptions', `DELETE FROM gap_prescriptions WHERE child_id = $1`, [childId]);
+        await del('knowledge_gaps', `DELETE FROM knowledge_gaps WHERE child_id = $1`, [childId]);
+        await del('skill_states', `DELETE FROM skill_states WHERE child_id = $1`, [childId]);
+        await del('problem_type_mastery', `DELETE FROM problem_type_mastery WHERE child_id = $1`, [childId]);
+        await del('thinking_state', `DELETE FROM thinking_state WHERE child_id = $1`, [childId]);
+        await del('learning_state_snapshots', `DELETE FROM learning_state_snapshots WHERE child_id = $1`, [childId]);
+        await del('learning_context_snapshots', `DELETE FROM learning_context_snapshots WHERE child_id = $1`, [childId]);
+        await del('lesson_confirmations', `DELETE FROM lesson_confirmations WHERE child_id = $1`, [childId]);
+        await del('generation_specs', `DELETE FROM generation_specs WHERE child_id = $1`, [childId]);
+        await del('exam_results', `DELETE FROM exam_results WHERE child_id = $1`, [childId]);
+        await del('exams', `DELETE FROM exams WHERE child_id = $1`, [childId]);
+        await del('upload_analysis', `DELETE FROM upload_analysis WHERE child_id = $1`, [childId]);
+        await del('uploads', `DELETE FROM uploads WHERE child_id = $1`, [childId]);
+        await del('evidence', `DELETE FROM evidence WHERE child_id = $1`, [childId]);
+        await del('teacher_contributions', `DELETE FROM teacher_contributions WHERE child_id = $1`, [childId]);
+        await del('permission_grants', `DELETE FROM permission_grants WHERE subject_link_id IN (SELECT id FROM teacher_child_links WHERE child_id = $1)`, [childId]);
+        await del('teacher_child_links', `DELETE FROM teacher_child_links WHERE child_id = $1`, [childId]);
+        await del('teacher_parent_links', `DELETE FROM teacher_parent_links WHERE child_id = $1`, [childId]);
+        await del('relationship_invite_codes', `DELETE FROM relationship_invite_codes WHERE child_id = $1`, [childId]);
+        await del('relationship_requests', `DELETE FROM relationship_requests WHERE target_child_id = $1`, [childId]);
+        await del('teacher_invites', `DELETE FROM teacher_invites WHERE child_id = $1`, [childId]);
+        await del('student_class_enrollments', `DELETE FROM student_class_enrollments WHERE child_id = $1`, [childId]);
+        await del('student_school_enrollments', `DELETE FROM student_school_enrollments WHERE child_id = $1`, [childId]);
+        await del('child_school_enrollment', `DELETE FROM child_school_enrollment WHERE child_id = $1`, [childId]);
+        await del('enrollment_transitions', `DELETE FROM enrollment_transitions WHERE child_id = $1`, [childId]);
+        await del('consent_records', `DELETE FROM consent_records WHERE child_id = $1`, [childId]);
+        await del('privacy_preferences', `DELETE FROM privacy_preferences WHERE child_id = $1`, [childId]);
+        await del('child_credentials', `DELETE FROM child_credentials WHERE child_id = $1`, [childId]);
+        await del('child_quick_access', `DELETE FROM child_quick_access WHERE child_id = $1`, [childId]);
+        await del('student_account_links', `DELETE FROM student_account_links WHERE child_id = $1`, [childId]);
+        await del('parent_child_relationships', `DELETE FROM parent_child_relationships WHERE child_id = $1`, [childId]);
+        await del('audit_events', `DELETE FROM audit_events WHERE child_id = $1`, [childId]);
+        await del('child_profiles', `DELETE FROM child_profiles WHERE id = $1`, [childId]);
+        // student logins that existed only for this child
+        for (const uid of studentUsers) {
+          await client.query(`DELETE FROM user_roles WHERE user_id = $1`, [uid]).catch(() => undefined);
+          await client.query(`DELETE FROM users WHERE id = $1`, [uid]).catch(() => undefined);
+        }
+        await client.query(`SET session_replication_role = origin`);
+
+        // append-only audit trail
+        await client.query(
+          `INSERT INTO deletion_jobs (child_id, requested_by, state, steps_completed, completed_at, audit_ref)
+           VALUES ($1, $2, 'completed', $3::jsonb, now(), $4)`,
+          [childId, ctx.userId, JSON.stringify(counts), `confirm-${now().toISOString()}`],
+        );
+        await client
+          .query(
+            `INSERT INTO child_deletion_requests (child_id, requested_by_user_id, state, confirmed_at, completed_at, purge_summary, updated_at)
+             VALUES ($1,$2,'COMPLETED', now(), now(), $3::jsonb, now())
+             ON CONFLICT (child_id) DO UPDATE SET state='COMPLETED', confirmed_at=now(), completed_at=now(),
+               purge_summary=EXCLUDED.purge_summary, updated_at=now()`,
+            [childId, ctx.userId, JSON.stringify(counts)],
+          )
+          .catch(() => undefined); // child_deletion_requests row is FK-cascade-gone once child_profiles is deleted
+        return counts;
+      });
+
+      return { ok: true, purged: summary };
     },
 
     // ---- M4: EVIDENCE UPLOAD / DOCUMENT VISION ------------------------

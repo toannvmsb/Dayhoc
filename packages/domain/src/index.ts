@@ -20,6 +20,7 @@ export * from './relationships.js';
 export * from './learning-state.js';
 export * from './uploads.js';
 export * from './subscription.js';
+export * from './entitlements.js';
 export * from './context.js';
 export * from './twin.js';
 export * from './prescription.js';
