@@ -4,7 +4,8 @@ import { router } from 'expo-router';
 import { useAuth } from '@/auth';
 import { TeacherNav } from '@/nav';
 import { Body, Button, Card, ErrorNote, Field, H1, Loading, Muted, Overline, Screen } from '@/ui';
-import { useClient, useQuery } from '@/useApi';
+import { errText, useClient, useQuery } from '@/useApi';
+import { WorkspaceSwitcher } from '@/workspace-switcher';
 import type { TeacherChildRow } from '@/types';
 
 export default function TeacherStudents() {
@@ -26,7 +27,7 @@ export default function TeacherStudents() {
       setOk(true);
       setCode('');
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Mã không hợp lệ.');
+      setErr(errText(e));
     } finally {
       setBusy(false);
     }
@@ -35,6 +36,7 @@ export default function TeacherStudents() {
   return (
     <Screen nav={<TeacherNav />} edges={['bottom']}>
       <H1>Học sinh</H1>
+      <WorkspaceSwitcher />
 
       <Card>
         <Overline>Nhập mã kết nối từ phụ huynh</Overline>

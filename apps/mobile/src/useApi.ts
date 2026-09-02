@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { client, type Workspace } from './api';
+import { ApiError, client, type Workspace } from './api';
 import { useAuth } from './auth';
+
+/** Human message for any thrown value — prefers ApiError.friendly. */
+export function errText(e: unknown): string {
+  if (e instanceof ApiError) return e.friendly;
+  return e instanceof Error ? e.message : String(e);
+}
 
 /** A client bound to the current session + an explicit workspace. */
 export function useClient(workspace?: Workspace) {
@@ -37,7 +43,7 @@ export function useQuery<T>(fn: () => Promise<T>, deps: unknown[]): QueryState<T
         if (alive) setData(d);
       })
       .catch((e: unknown) => {
-        if (alive) setError(e instanceof Error ? e.message : String(e));
+        if (alive) setError(errText(e));
       })
       .finally(() => {
         if (alive) setLoading(false);

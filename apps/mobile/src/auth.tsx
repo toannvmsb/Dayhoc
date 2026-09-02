@@ -1,16 +1,18 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
-  apiCall,
   login as apiLogin,
   register as apiRegister,
   setUnauthorizedHandler,
+  whoami,
   type Viewer,
   type Workspace,
 } from './api';
+import { prefStore, secureStore } from './store';
 
-const KEY = 'dz.session.v1';
+const TOKEN_KEY = 'dz.bearer';
+const VIEWER_KEY = 'dz.viewer.v1';
+const WS_KEY = 'dz.workspace.v1';
 
 interface Session {
   bearer: string;
@@ -21,6 +23,7 @@ interface AuthValue {
   ready: boolean;
   session: Session | null;
   workspace: Workspace;
+  availableWorkspaces: Workspace[];
   setWorkspace: (w: Workspace) => void;
   signIn: (email: string) => Promise<void>;
   signUp: (i: { email: string; password: string; displayName?: string; role?: 'PARENT' | 'TEACHER' }) => Promise<void>;
@@ -28,6 +31,17 @@ interface AuthValue {
 }
 
 const Ctx = createContext<AuthValue | null>(null);
+
+const ROLE_TO_WS: Record<string, Workspace | undefined> = {
+  PARENT: 'PARENT',
+  STUDENT: 'STUDENT',
+  TEACHER: 'TEACHER',
+};
+
+function workspacesOf(v: Viewer): Workspace[] {
+  const ws = v.roles.map((r) => ROLE_TO_WS[r]).filter((x): x is Workspace => !!x);
+  return ws.length > 0 ? [...new Set(ws)] : ['PARENT'];
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -37,16 +51,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const raw = await AsyncStorage.getItem(KEY);
-        if (raw) {
-          const s = JSON.parse(raw) as Session;
-          // validate the token still resolves
+        const bearer = await secureStore.get(TOKEN_KEY);
+        if (bearer) {
           try {
-            await apiCall('/me', { bearer: s.bearer });
+            const viewer = await whoami(bearer); // re-validate on launch
+            const s = { bearer, viewer };
             setSession(s);
-            setWorkspaceState(defaultWorkspace(s.viewer));
+            await prefStore.set(VIEWER_KEY, JSON.stringify(viewer));
+            const savedWs = (await prefStore.get(WS_KEY)) as Workspace | null;
+            const opts = workspacesOf(viewer);
+            setWorkspaceState(savedWs && opts.includes(savedWs) ? savedWs : opts[0]!);
           } catch {
-            await AsyncStorage.removeItem(KEY);
+            await secureStore.remove(TOKEN_KEY);
+            await prefStore.remove(VIEWER_KEY);
           }
         }
       } finally {
@@ -58,10 +75,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const persist = useCallback(async (s: Session | null) => {
     setSession(s);
     if (s) {
-      await AsyncStorage.setItem(KEY, JSON.stringify(s));
-      setWorkspaceState(defaultWorkspace(s.viewer));
+      await secureStore.set(TOKEN_KEY, s.bearer);
+      await prefStore.set(VIEWER_KEY, JSON.stringify(s.viewer));
+      setWorkspaceState(workspacesOf(s.viewer)[0]!);
     } else {
-      await AsyncStorage.removeItem(KEY);
+      await secureStore.remove(TOKEN_KEY);
+      await prefStore.remove(VIEWER_KEY);
+      await prefStore.remove(WS_KEY);
     }
   }, []);
 
@@ -72,33 +92,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => setUnauthorizedHandler(null);
   }, [persist]);
 
+  const setWorkspace = useCallback((w: Workspace) => {
+    setWorkspaceState(w);
+    void prefStore.set(WS_KEY, w);
+  }, []);
+
   const value = useMemo<AuthValue>(
     () => ({
       ready,
       session,
       workspace,
-      setWorkspace: setWorkspaceState,
+      availableWorkspaces: session ? workspacesOf(session.viewer) : ['PARENT'],
+      setWorkspace,
       signIn: async (email) => {
-        const r = await apiLogin(email);
-        await persist(r);
+        await persist(await apiLogin(email));
       },
       signUp: async (i) => {
-        const r = await apiRegister(i);
-        await persist(r);
+        await persist(await apiRegister(i));
       },
       signOut: () => persist(null),
     }),
-    [ready, session, workspace, persist],
+    [ready, session, workspace, persist, setWorkspace],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
-}
-
-function defaultWorkspace(v: Viewer): Workspace {
-  if (v.roles.includes('PARENT')) return 'PARENT';
-  if (v.roles.includes('STUDENT')) return 'STUDENT';
-  if (v.roles.includes('TEACHER')) return 'TEACHER';
-  return 'PARENT';
 }
 
 export function useAuth(): AuthValue {

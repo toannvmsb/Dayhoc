@@ -32,8 +32,11 @@ export const theme = {
   radius: { sm: 10, md: 14, lg: 18, pill: 999 },
   space: (n: number) => n * 4,
   font: {
-    // Be Vietnam Pro on the web; system default on mobile until the font is bundled.
-    family: undefined as string | undefined,
+    // Be Vietnam Pro (OFL, bundled via @expo-google-fonts). Falls back to the
+    // system font until `useFonts` resolves — see app/_layout.tsx.
+    regular: 'BeVietnamPro_400Regular',
+    medium: 'BeVietnamPro_500Medium',
+    bold: 'BeVietnamPro_700Bold',
   },
 } as const;
 

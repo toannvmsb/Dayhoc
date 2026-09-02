@@ -1,6 +1,6 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import { prefStore } from './store';
 
 const KEY = 'dz.child.v1';
 
@@ -15,7 +15,7 @@ export function ChildProvider({ children }: { children: ReactNode }) {
   const [childId, setId] = useState<string | null>(null);
 
   useEffect(() => {
-    AsyncStorage.getItem(KEY).then((v) => {
+    prefStore.get(KEY).then((v) => {
       if (v) setId(v);
     });
   }, []);
@@ -25,7 +25,7 @@ export function ChildProvider({ children }: { children: ReactNode }) {
       childId,
       setChildId: (id: string) => {
         setId(id);
-        void AsyncStorage.setItem(KEY, id);
+        void prefStore.set(KEY, id);
       },
     }),
     [childId],

@@ -5,7 +5,8 @@ import { useChild } from '@/child';
 import { ParentNav } from '@/nav';
 import { theme } from '@/theme';
 import { Body, Button, Card, ErrorNote, Field, H1, Loading, Muted, Overline, Screen } from '@/ui';
-import { useClient, useQuery } from '@/useApi';
+import { errText, useClient, useQuery } from '@/useApi';
+import { WorkspaceSwitcher } from '@/workspace-switcher';
 import type { Child, Entitlements } from '@/types';
 
 const PLAN_LABEL: Record<string, string> = { free: 'Miễn phí', basic: 'Cơ bản', plus: 'Plus', pro: 'Pro' };
@@ -35,7 +36,7 @@ export default function SettingsScreen() {
       children.reload();
       ent.reload();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Không thêm được.');
+      setErr(errText(e));
     } finally {
       setBusy(false);
     }
@@ -65,7 +66,7 @@ export default function SettingsScreen() {
       setChildId('');
       children.reload();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Tên không khớp.');
+      setErr(errText(e));
     } finally {
       setBusy(false);
     }
@@ -74,6 +75,8 @@ export default function SettingsScreen() {
   return (
     <Screen nav={<ParentNav />} edges={['bottom']}>
       <H1>Cài đặt</H1>
+
+      <WorkspaceSwitcher />
 
       <Card>
         <Overline>Tài khoản</Overline>

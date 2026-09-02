@@ -4,7 +4,7 @@ import { useChild } from '@/child';
 import { ParentNav } from '@/nav';
 import { theme } from '@/theme';
 import { Body, Button, Card, ErrorNote, Field, H1, Loading, Muted, Overline, Screen } from '@/ui';
-import { useClient, useQuery } from '@/useApi';
+import { errText, useClient, useQuery } from '@/useApi';
 import type { ExamDiagnosis, ExamListItem, RevisionMap } from '@/types';
 
 const SCORES = [
@@ -37,7 +37,7 @@ export default function ExamsScreen() {
       setDate('');
       list.reload();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Không tạo được.');
+      setErr(errText(e));
     } finally {
       setBusy(false);
     }
@@ -51,7 +51,7 @@ export default function ExamsScreen() {
       setOpen({ map, diagnosis });
       setMarks(Object.fromEntries(map.items.map((it) => [it.skillId, 1])));
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Không mở được.');
+      setErr(errText(e));
     } finally {
       setBusy(false);
     }
@@ -74,7 +74,7 @@ export default function ExamsScreen() {
       setOpen({ ...open, diagnosis: diag });
       list.reload();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Không ghi được.');
+      setErr(errText(e));
     } finally {
       setBusy(false);
     }

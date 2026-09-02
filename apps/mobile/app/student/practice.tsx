@@ -3,7 +3,7 @@ import { Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { StudentNav } from '@/nav';
 import { Body, Button, Card, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/ui';
-import { useClient, useQuery } from '@/useApi';
+import { errText, useClient, useQuery } from '@/useApi';
 import type { Assignment } from '@/types';
 
 export default function StudentPractice() {
@@ -28,7 +28,7 @@ export default function StudentPractice() {
         router.push({ pathname: '/run/[assignmentId]', params: { assignmentId: res.assignmentIds[0] } });
       }
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Không tạo được bài.');
+      setErr(errText(e));
     } finally {
       setBusy(false);
     }

@@ -5,7 +5,7 @@ import { useChild } from '@/child';
 import { ParentNav } from '@/nav';
 import { theme } from '@/theme';
 import { Body, Button, Card, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/ui';
-import { useClient, useQuery } from '@/useApi';
+import { errText, useClient, useQuery } from '@/useApi';
 import type { UploadAnalysis, UploadListItem } from '@/types';
 
 const STATE: Record<string, string> = {
@@ -71,7 +71,7 @@ export default function UploadsScreen() {
       );
       list.reload();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Không tải lên được.');
+      setErr(errText(e));
     } finally {
       setBusy(false);
     }
@@ -91,7 +91,7 @@ export default function UploadsScreen() {
       setReview(null);
       list.reload();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Không xác nhận được.');
+      setErr(errText(e));
     } finally {
       setBusy(false);
     }

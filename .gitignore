@@ -49,3 +49,6 @@ apps/mobile/expo-env.d.ts
 
 # Large copyrighted reference material (SGK textbook PDFs — kept locally, not versioned)
 Tai lieu/
+
+# Expo export output
+apps/mobile/dist/

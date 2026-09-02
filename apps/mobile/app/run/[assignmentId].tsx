@@ -3,7 +3,7 @@ import { Pressable, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { theme } from '@/theme';
 import { Body, Button, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/ui';
-import { useClient, useQuery } from '@/useApi';
+import { errText, useClient, useQuery } from '@/useApi';
 import type { AssignmentDetail } from '@/types';
 
 export default function Runner() {
@@ -51,7 +51,7 @@ export default function Runner() {
       });
       setDone(true);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Không lưu được.');
+      setErr(errText(e));
       setDone(true);
     } finally {
       setBusy(false);

@@ -6,7 +6,7 @@
   "workspaces": [
     "packages/*",
     "services/*",
-    "apps/*"
+    "apps/web"
   ],
   "engines": {
     "node": ">=20"
@@ -15,7 +15,8 @@
     "build": "npm run build --workspaces --if-present",
     "typecheck": "tsc -b",
     "typecheck:web": "npm run typecheck --workspace @copilot/web",
-    "typecheck:mobile": "npm run typecheck --workspace @copilot/mobile",
+    "typecheck:mobile": "npm --prefix apps/mobile run typecheck",
+    "mobile:install": "npm --prefix apps/mobile install",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "npm run e2e --workspace @copilot/web",

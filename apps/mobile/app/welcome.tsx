@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Redirect, router } from 'expo-router';
 import { useAuth } from '@/auth';
+import { errText } from '@/useApi';
 import { Body, Button, Card, ErrorNote, Field, H1, Loading, Muted, Overline, Screen, theme } from '@/ui';
 
 type Mode = 'login' | 'register' | 'teacher';
@@ -32,7 +33,7 @@ export default function Welcome() {
         });
       router.replace('/');
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Có lỗi xảy ra, thử lại sau.');
+      setErr(errText(e));
     } finally {
       setBusy(false);
     }

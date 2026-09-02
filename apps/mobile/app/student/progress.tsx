@@ -3,6 +3,7 @@ import { StudentNav } from '@/nav';
 import { theme } from '@/theme';
 import { Body, Card, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/ui';
 import { useClient, useQuery } from '@/useApi';
+import { WorkspaceSwitcher } from '@/workspace-switcher';
 import type { StudentProgress, StudentReview } from '@/types';
 
 export default function StudentProgressScreen() {
@@ -11,8 +12,17 @@ export default function StudentProgressScreen() {
   const r = useQuery<StudentReview>(() => api.get('/student/review'), []);
 
   return (
-    <Screen nav={<StudentNav />} edges={['bottom']}>
+    <Screen
+      nav={<StudentNav />}
+      edges={['bottom']}
+      refreshing={p.loading}
+      onRefresh={() => {
+        p.reload();
+        r.reload();
+      }}
+    >
       <H1>Tiến bộ của con</H1>
+      <WorkspaceSwitcher />
       {p.loading && <Loading />}
       {p.error && <ErrorNote message={p.error} />}
       {p.data && (

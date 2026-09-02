@@ -5,7 +5,7 @@ import { useChild } from '@/child';
 import { ParentNav } from '@/nav';
 import { theme } from '@/theme';
 import { Body, Button, Card, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/ui';
-import { useClient, useQuery } from '@/useApi';
+import { errText, useClient, useQuery } from '@/useApi';
 import type { Assignment } from '@/types';
 
 const STATUS: Record<string, string> = {
@@ -35,7 +35,7 @@ export default function ParentPractice() {
         router.push({ pathname: '/run/[assignmentId]', params: { assignmentId: res.assignmentIds[0] } });
       } else list.reload();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Không tạo được bài.');
+      setErr(errText(e));
     } finally {
       setBusy(false);
     }
