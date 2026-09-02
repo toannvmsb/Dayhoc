@@ -1,0 +1,20 @@
+{
+  "name": "@copilot/education-directory",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./pg": { "types": "./dist/pg-store.d.ts", "default": "./dist/pg-store.js" }
+  },
+  "scripts": { "build": "tsc -b" },
+  "dependencies": {
+    "@copilot/domain": "0.1.0",
+    "@copilot/observability": "0.1.0"
+  },
+  "peerDependencies": { "pg": "^8" },
+  "peerDependenciesMeta": { "pg": { "optional": true } },
+  "devDependencies": { "@types/pg": "^8.11.10" }
+}

@@ -10,6 +10,7 @@
     { "path": "packages/observability" },
     { "path": "packages/evidence" },
     { "path": "packages/identity" },
+    { "path": "packages/education-directory" },
     { "path": "packages/learning-context" },
     { "path": "packages/learning-twin" },
     { "path": "packages/gap-engine" },
