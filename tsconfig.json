@@ -9,6 +9,7 @@
     { "path": "packages/design-tokens" },
     { "path": "packages/observability" },
     { "path": "packages/evidence" },
+    { "path": "packages/identity" },
     { "path": "packages/learning-context" },
     { "path": "packages/learning-twin" },
     { "path": "packages/gap-engine" },

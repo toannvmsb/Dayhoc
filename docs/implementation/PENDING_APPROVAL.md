@@ -97,6 +97,13 @@ Docs mới (spec/plan only): `19_IDENTITY_FAMILY_MODEL.md` · `20_SCHOOL_CLASS_E
 
 **⚠ Implement PHẠM VI: chỉ I0 + I1. KHÔNG I2+ (school/classroom, enrollment transition, teacher permission, teacher contribution, progression, workspace UI) — trừ type/interface tối thiểu để compile.**
 
+**✅ I0 + I1 ĐÃ IMPLEMENT (2026-09-02):**
+- **I0** — `docs/implementation/I0_AUDIT_RESULTS.md`. DB pilot: 0 child, 0 `users.role='child'`, 0 `teacher_invites`, 0 enrollment. Chỉ có 5 user + 4 family là test-residue (vô hại). Green-field-safe. Không conflict C4/C5.
+- **I1 migration** `migrations/1757203200000_identity_family.js` (additive; up→down→up verified). ALTER `users` (+`auth_user_id`/`primary_email`/`primary_phone`/`display_name`/`status`, giữ `role`); ADD `user_roles`, `parent_profiles`, `teacher_profiles`, `family_memberships`, `parent_child_relationships` (capability model + `authority_source`), `student_account_links`; ALTER `child_profiles` (+`date_of_birth`); VIEW `children`. Backfill idempotent: `user_roles` (PARENT/TEACHER/ADMIN, KHÔNG 'child'), `family_memberships` (OWNER/GUARDIAN), `parent_child_relationships` (owner→`MIGRATED_FAMILY_OWNER` full caps `is_legal_guardian=NULL`; parent khác→`SELF_DECLARED` chỉ `can_manage_child`).
+- **`@copilot/identity`** (ID-Q8) — `IdentityService` (register/addRole/resolveWorkspace/linkStudentAccount/approveStudentLink), `FamilyService` (createFamily/createChild/addGuardian/setGuardianCapabilities/revokeGuardian), `guardianAuthority()` + `authorisedGuardian(capability)`, `AuthAdapter` port + `InMemoryAuthAdapter`, `IdentityStore` port + `InMemoryIdentityStore`, `@copilot/identity/pg` `PgIdentityStore` + `backfillIdentityFromLegacy()` (mirror SQL của migration). Domain vocab: `packages/domain/src/identity.ts`.
+- **Tests** — `identity.test.ts` (12 golden: §1–5 doc 26, M:N guardian + capability clamp, revoke, child_id continuity; doc 26 §12 A–H = `it.todo`, I3/I4) + `pg-store.integration.test.ts` (3: Pg round-trip, test I / §63 backfill `MIGRATED_FAMILY_OWNER` + capability split idempotent, `children` view). **505 pass / 2 skip / 8 todo** (từ 490/5). tsc + eslint + web typecheck + `next build` xanh.
+- **KHÔNG động** C4/C5, `services/api` auth, `roles.ts`, enrollment. I2+ CHƯA bắt đầu.
+
 ---
 
 ## A. Quyết định — ✅ ANH ĐÃ CHỐT 5/5 (2026-08-31)
