@@ -92,6 +92,7 @@ export type PracticeSubmitResult = {
     assignmentItemId: string;
     verificationLevel: string;
     correct: boolean | null;
+    expectedAnswer: string | null;
   }[];
 };
 

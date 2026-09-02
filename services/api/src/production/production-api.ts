@@ -2231,6 +2231,10 @@ export function createProductionApi(opts: ProductionApiOptions) {
             assignmentItemId: g.a.assignmentItemId,
             verificationLevel: g.level,
             correct: g.correct,
+            // deterministic items have a known answer — surface it so a parent
+            // whose child answered in a different form can teach the gap. Never
+            // for AI_CROSSCHECK_REQUIRED (no deterministic key there).
+            expectedAnswer: g.correct === false ? expectedAnswerText(g.it?.answerSpec) : null,
           })),
         };
       });
@@ -2283,6 +2287,20 @@ function tLevelNum(t: string): number {
  * Returns `{ correct: null }` when the child's answer is well-formed but the spec
  * carries no comparable value — never guesses.
  */
+function expectedAnswerText(spec: unknown): string | null {
+  const s = spec as
+    | { kind?: string; value?: unknown; numerator?: number; denominator?: number; correct?: string }
+    | undefined;
+  if (!s) return null;
+  if (s.kind === 'exact') return typeof s.value === 'string' ? s.value : null;
+  if (s.kind === 'numeric') return s.value != null ? String(s.value) : null;
+  if (s.kind === 'fraction' && s.numerator != null && s.denominator != null) {
+    return `${s.numerator}/${s.denominator}`;
+  }
+  if (s.kind === 'choice') return s.correct ?? null;
+  return null;
+}
+
 function verifyDeterministic(spec: AnswerSpec, raw: string): { correct: boolean | null } {
   const a = raw.trim().replace(/\s+/g, '').replace('−', '-').replace(',', '.');
   if (spec.kind === 'exact') {

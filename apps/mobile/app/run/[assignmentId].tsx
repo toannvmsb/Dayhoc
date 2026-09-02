@@ -29,32 +29,51 @@ export default function Runner() {
   if (detail.error) return <Screen><ErrorNote message={detail.error} /></Screen>;
 
   if (!item || done) {
-    const graded = (outcome?.results ?? []).filter((r) => r.correct !== null);
+    const res = outcome?.results ?? [];
+    const graded = res.filter((r) => r.correct !== null);
     const correctCount = graded.filter((r) => r.correct === true).length;
-    const needReview = (outcome?.results ?? []).filter(
-      (r) => r.verificationLevel === 'AI_CROSSCHECK_REQUIRED',
-    ).length;
+    const needReview = res.filter((r) => r.verificationLevel === 'AI_CROSSCHECK_REQUIRED').length;
+    const numberOf = (id: string) => {
+      const idx = items.findIndex((it) => it.id === id);
+      return idx >= 0 ? idx + 1 : '?';
+    };
+    const textOf = (id: string) => {
+      const p = items.find((it) => it.id === id)?.prompt as { text?: string } | string | undefined;
+      return typeof p === 'string' ? p : (p?.text ?? '');
+    };
     return (
-      <Screen scroll={false}>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+      <Screen>
+        <View style={{ alignItems: 'center', gap: 6, marginTop: 12 }}>
           <H1>Xong rồi!</H1>
           {graded.length > 0 && (
-            <Card>
-              <Overline>Kết quả</Overline>
-              <Body>
-                Con làm đúng {correctCount}/{graded.length} câu.
-              </Body>
-              {needReview > 0 && (
-                <Muted>{needReview} câu cần bố mẹ xem lại lời giải cùng con.</Muted>
-              )}
-            </Card>
+            <Body>
+              Con làm đúng {correctCount}/{graded.length} câu.
+            </Body>
           )}
-          {graded.length === 0 && needReview > 0 && (
-            <Body>{needReview} câu cần bố mẹ xem lại lời giải cùng con.</Body>
-          )}
-          <Body>DạyZi đã ghi nhận và sẽ cập nhật tiến độ của con.</Body>
-          <Button label="Về trang chính" onPress={() => router.back()} />
         </View>
+
+        {res.map((r) => (
+          <Card key={r.assignmentItemId}>
+            <Overline>Câu {numberOf(r.assignmentItemId)}</Overline>
+            {textOf(r.assignmentItemId) ? <Muted>{textOf(r.assignmentItemId)}</Muted> : null}
+            <Body>
+              {r.correct === true
+                ? '✓ Đúng'
+                : r.correct === false
+                  ? '✗ Chưa đúng'
+                  : 'Cần xem lại lời giải cùng con'}
+            </Body>
+            {r.correct === false && r.expectedAnswer ? (
+              <Muted>Đáp án đúng: {r.expectedAnswer}</Muted>
+            ) : null}
+          </Card>
+        ))}
+
+        {needReview > 0 && (
+          <Muted>Câu tự luận DạyZi không tự chấm — bố mẹ xem lời giải và trao đổi với con.</Muted>
+        )}
+        <Muted>DạyZi đã ghi nhận và sẽ cập nhật tiến độ của con.</Muted>
+        <Button label="Về trang chính" onPress={() => router.back()} />
       </Screen>
     );
   }
@@ -124,6 +143,15 @@ export default function Runner() {
         />
       )}
 
+      {item.answerKind !== 'choice' && (
+        <Muted>
+          {item.answerKind === 'numeric'
+            ? 'Chỉ nhập số, ví dụ: 9'
+            : item.answerKind === 'fraction'
+              ? 'Nhập dạng phân số, ví dụ: 3/4'
+              : 'Nhập đáp án ngắn gọn, đúng như cách viết trong bài.'}
+        </Muted>
+      )}
       {item.hintCount > 0 && <Muted>Cần gợi ý? Hỏi con nghĩ theo hướng đơn giản hơn một chút.</Muted>}
       {err && <ErrorNote message={err} />}
 

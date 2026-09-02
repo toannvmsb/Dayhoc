@@ -13,7 +13,7 @@ declare global {
   var __dzApi: ReturnType<typeof createProductionApi> | undefined;
 }
 
-function pool(): Pool {
+export function pool(): Pool {
   if (!globalThis.__dzPool) {
     const connectionString = process.env.DATABASE_URL;
     if (!connectionString) {

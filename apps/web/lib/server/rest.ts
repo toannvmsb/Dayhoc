@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { getApi } from './api';
+import { getApi, pool } from './api';
 
 /**
  * The mobile HTTP surface (M9). Thin JSON dispatch over the same
@@ -35,7 +35,10 @@ function auth(c: Ctx, ws?: Workspace) {
 }
 
 function db(): Pool {
-  return (globalThis as unknown as { __dzPool: Pool }).__dzPool;
+  // `pool()` lazily creates the shared pool — don't assume another code path
+  // (e.g. the /ready probe) initialised it first. A cold server whose very
+  // first request is /auth/login must still work.
+  return pool();
 }
 
 async function bearerForUser(userId: string): Promise<string> {
