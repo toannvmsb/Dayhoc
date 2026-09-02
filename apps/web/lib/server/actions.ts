@@ -390,6 +390,16 @@ export async function createSchoolEnrollmentAction(
   revalidatePath(`/be/${childId}`);
 }
 
+export async function proposeClassAction(
+  schoolId: string,
+  academicYearId: string,
+  grade: number,
+  className: string,
+): Promise<{ id: string; className: string }> {
+  const res = await getApi().proposeClass(parentAuth(), schoolId, { academicYearId, grade, className });
+  return { id: res.id, className: res.className };
+}
+
 export async function createClassEnrollmentAction(
   childId: string,
   input: {

@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['packages/**/*.test.ts', 'services/**/*.test.ts'],
+    include: ['packages/**/*.test.ts', 'services/**/*.test.ts', 'apps/web/lib/**/*.test.ts'],
     // The `*.integration.test.ts` suites all talk to ONE shared PostgreSQL and
     // some run privileged operations (`session_replication_role = replica` for
     // the child-deletion hard purge / ledger teardown). Running test files in

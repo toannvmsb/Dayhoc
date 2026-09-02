@@ -7,6 +7,7 @@ import {
   createClassEnrollmentAction,
   createSchoolEnrollmentAction,
   listClassroomsAction,
+  proposeClassAction,
   proposeSchoolAction,
   searchSchoolsAction,
   setClassPrivacyAction,
@@ -61,6 +62,7 @@ export function SchoolClassManager({
   const [results, setResults] = useState<School[]>([]);
   const [picked, setPicked] = useState<School | null>(null);
   const [classes, setClasses] = useState<Classroom[]>([]);
+  const [newClassName, setNewClassName] = useState('');
   const [classType, setClassType] = useState('PRIMARY');
   const [privacy, setPrivacy] = useState('LINKED_PRIVATE');
   const [proposeState, proposeAction] = useFormState(proposeSchoolAction, {} as { error?: string });
@@ -82,6 +84,14 @@ export function SchoolClassManager({
       if (!picked || !academicYearId) return;
       await createSchoolEnrollmentAction(childId, { schoolId: picked.id, academicYearId, grade });
       router.refresh();
+    });
+
+  const addClass = () =>
+    start(async () => {
+      if (!picked || !academicYearId || !newClassName.trim()) return;
+      const res = await proposeClassAction(picked.id, academicYearId, grade, newClassName.trim());
+      setClasses((cs) => [...cs, { id: res.id, grade, className: res.className, displayName: res.className }]);
+      setNewClassName('');
     });
 
   const enrollClass = (classroomId: string) =>
@@ -180,9 +190,31 @@ export function SchoolClassManager({
         </details>
       </div>
 
-      {picked && classes.length > 0 && (
+      {picked && (
         <div className="card" style={{ gap: 10 }}>
           <span className="overline">Gắn con vào lớp</span>
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              value={newClassName}
+              onChange={(e) => setNewClassName(e.target.value)}
+              placeholder="Tên lớp, VD: 7A2"
+              style={{ ...inp, flex: 1 }}
+            />
+            <button
+              type="button"
+              className="cta"
+              style={{ width: 'auto', padding: '0 14px' }}
+              onClick={addClass}
+              disabled={pending || !newClassName.trim()}
+            >
+              Thêm lớp
+            </button>
+          </div>
+          {classes.length === 0 && (
+            <span className="muted">Trường chưa có lớp nào trên hệ thống — tạo lớp của con ở trên.</span>
+          )}
+
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--c-text-label)' }}>Loại lớp</span>
             <select value={classType} onChange={(e) => setClassType(e.target.value)} style={inp}>

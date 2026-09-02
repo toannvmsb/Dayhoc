@@ -45,5 +45,13 @@ export default [
     files: ['**/*.config.*', '**/*.test.ts', 'packages/testing/**'],
     rules: { 'no-console': 'off' },
   },
+  {
+    // Node scripts (seed/build tooling) — CLI, run under Node.
+    files: ['scripts/**/*.mjs', 'scripts/**/*.js'],
+    languageOptions: {
+      globals: { process: 'readonly', console: 'readonly', Buffer: 'readonly', __dirname: 'readonly' },
+    },
+    rules: { 'no-console': 'off' },
+  },
   prettier,
 ];

@@ -24,9 +24,33 @@ function pool(): Pool {
   return globalThis.__dzPool;
 }
 
+/**
+ * Fail fast in production if the deploy is misconfigured (M-hardening §7).
+ * Throws once, on first API use — a broken production should not boot serving
+ * requests with dev auth or no DB.
+ */
+export function assertProductionConfig(env = process.env): void {
+  if (env.NODE_ENV !== 'production') return;
+  const missing: string[] = [];
+  if (!env.DATABASE_URL) missing.push('DATABASE_URL');
+  if (!env.SUPABASE_URL || !env.SUPABASE_JWT_SECRET) {
+    missing.push('SUPABASE_URL + SUPABASE_JWT_SECRET (production auth)');
+  }
+  if (env.DZ_DEV_AUTH === '1') {
+    throw new Error('DZ_DEV_AUTH must NOT be set in production (dev auth is dev-only).');
+  }
+  if (missing.length > 0) {
+    throw new Error(`production config missing: ${missing.join('; ')}`);
+  }
+}
+
 export function getApi(): ReturnType<typeof createProductionApi> {
   if (!globalThis.__dzApi) {
-    const { adapter } = resolveAuthAdapter(process.env);
+    assertProductionConfig();
+    const { adapter, kind } = resolveAuthAdapter(process.env);
+    if (process.env.NODE_ENV === 'production' && kind !== 'supabase') {
+      throw new Error(`production requires the Supabase auth adapter, resolved "${kind}"`);
+    }
     globalThis.__dzApi = createProductionApi({ pool: pool(), authAdapter: adapter });
   }
   return globalThis.__dzApi;
@@ -34,6 +58,11 @@ export function getApi(): ReturnType<typeof createProductionApi> {
 
 export function getBearer(): string | null {
   return cookies().get(SESSION_COOKIE)?.value ?? null;
+}
+
+/** Readiness probe — resolves when Postgres answers. */
+export async function pingDb(): Promise<void> {
+  await pool().query('SELECT 1');
 }
 
 /** The verified identity for the current request, or null. */
