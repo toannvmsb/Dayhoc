@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { theme } from '@/theme';
-import { Body, Button, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/ui';
+import { Body, Button, Card, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/ui';
 import { errText, useClient, useQuery } from '@/useApi';
-import type { AssignmentDetail } from '@/types';
+import type { AssignmentDetail, PracticeSubmitResult } from '@/types';
 
 export default function Runner() {
   const { assignmentId } = useLocalSearchParams<{ assignmentId: string }>();
@@ -14,6 +14,7 @@ export default function Runner() {
   const [i, setI] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [done, setDone] = useState(false);
+  const [outcome, setOutcome] = useState<PracticeSubmitResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | undefined>();
 
@@ -28,10 +29,29 @@ export default function Runner() {
   if (detail.error) return <Screen><ErrorNote message={detail.error} /></Screen>;
 
   if (!item || done) {
+    const graded = (outcome?.results ?? []).filter((r) => r.correct !== null);
+    const correctCount = graded.filter((r) => r.correct === true).length;
+    const needReview = (outcome?.results ?? []).filter(
+      (r) => r.verificationLevel === 'AI_CROSSCHECK_REQUIRED',
+    ).length;
     return (
       <Screen scroll={false}>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
           <H1>Xong rồi!</H1>
+          {graded.length > 0 && (
+            <Card>
+              <Overline>Kết quả</Overline>
+              <Body>
+                Con làm đúng {correctCount}/{graded.length} câu.
+              </Body>
+              {needReview > 0 && (
+                <Muted>{needReview} câu cần bố mẹ xem lại lời giải cùng con.</Muted>
+              )}
+            </Card>
+          )}
+          {graded.length === 0 && needReview > 0 && (
+            <Body>{needReview} câu cần bố mẹ xem lại lời giải cùng con.</Body>
+          )}
           <Body>DạyZi đã ghi nhận và sẽ cập nhật tiến độ của con.</Body>
           <Button label="Về trang chính" onPress={() => router.back()} />
         </View>
@@ -46,9 +66,10 @@ export default function Runner() {
     setBusy(true);
     setErr(undefined);
     try {
-      await api.post(`/assignments/${assignmentId}/submit`, {
+      const res = await api.post<PracticeSubmitResult>(`/assignments/${assignmentId}/submit`, {
         answers: items.map((it) => ({ assignmentItemId: it.id, answer: (answers[it.id] ?? '').trim(), hintsUsed: 0 })),
       });
+      setOutcome(res);
       setDone(true);
     } catch (e) {
       setErr(errText(e));

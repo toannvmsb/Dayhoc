@@ -86,6 +86,15 @@ export type AssignmentDetail = {
   }[];
 };
 
+export type PracticeSubmitResult = {
+  attemptId: string;
+  results: {
+    assignmentItemId: string;
+    verificationLevel: string;
+    correct: boolean | null;
+  }[];
+};
+
 export type ChildToday = {
   greetingName: string;
   summary: string;
