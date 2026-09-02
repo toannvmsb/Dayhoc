@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Text, View } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import {
@@ -10,12 +10,33 @@ import {
   useFonts,
 } from '@expo-google-fonts/be-vietnam-pro';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { AuthProvider } from '@/auth';
+import { AuthProvider, useAuth } from '@/auth';
 import { ChildProvider } from '@/child';
 import { configStatus } from '@/config';
 import { theme } from '@/theme';
 
 void SplashScreen.preventAutoHideAsync();
+
+/**
+ * Redirects to the welcome screen the moment the session is cleared (sign-out,
+ * or a global 401) from anywhere in the app. `app/index.tsx` only gates the
+ * initial launch; without this, signing out from a deep screen leaves the user
+ * stranded on a now-empty authenticated screen.
+ */
+function AuthGate() {
+  const { ready, session } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!ready) return;
+    const root = segments[0] as string | undefined;
+    const onAuthScreen = !root || root === 'welcome';
+    if (!session && !onAuthScreen) router.replace('/welcome');
+  }, [ready, session, segments, router]);
+
+  return null;
+}
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -59,6 +80,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <AuthProvider>
         <ChildProvider>
+          <AuthGate />
           <StatusBar style="dark" />
           <Stack
             screenOptions={{
