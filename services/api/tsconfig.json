@@ -8,6 +8,7 @@
     { "path": "../../packages/education-directory" },
     { "path": "../../packages/evidence" },
     { "path": "../../packages/identity" },
+    { "path": "../../packages/learning-state" },
     { "path": "../../packages/gap-engine" },
     { "path": "../../packages/learning-context" },
     { "path": "../../packages/learning-twin" },

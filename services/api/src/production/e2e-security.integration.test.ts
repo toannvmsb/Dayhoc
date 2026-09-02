@@ -334,12 +334,28 @@ describe.skipIf(!DATABASE_URL)('I7.1 — production API E2E security matrix', ()
   });
 
   it('23 — a PROPOSED enrollment cannot become the current context', async () => {
-    // childB has no ACTIVE enrollment → clock returns null → evidence-only (HC09)
+    // give childB a PROPOSED school enrollment at grade 9 — it must NOT become the
+    // resolved ACTIVE context.
+    await api._services.enrollments.createSchoolEnrollment({
+      childId: childB,
+      schoolId,
+      academicYearId: year2627,
+      grade: 9,
+      status: 'PROPOSED',
+    });
+    const active = await api._services.enrollments.resolveActiveEnrollment(childB, now());
+    expect(active).toBeNull(); // PROPOSED is never ACTIVE truth
+
+    // the learning scene falls back to a CONSERVATIVE clock estimate from the
+    // grade cache (7) + the active academic year — never grade 9 from the PROPOSED
+    // row, and always `confidence: ESTIMATED` (not shown as fact).
     const inputs = await import('./learning-scene.js').then((m) =>
       m.resolveChildLearningInputs(pool, api._services.enrollments, childB, now()),
     );
-    expect(inputs.enrollment).toBeUndefined();
-    expect(inputs.gradeContext).toBe(7); // falls back to child_profiles.school_grade cache
+    expect(inputs.gradeContext).toBe(7);
+    if (inputs.enrollment) {
+      expect(inputs.enrollment.academicYear).toBe('2026-2027');
+    }
   });
 
   it('25 — historical enrollment is preserved after a transition', async () => {

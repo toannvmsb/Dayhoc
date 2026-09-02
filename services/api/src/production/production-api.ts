@@ -22,11 +22,15 @@ import {
 } from '@copilot/education-directory';
 import { PgEducationStore } from '@copilot/education-directory/pg';
 import { PgLedgerStore } from '@copilot/evidence/pg';
+import { PgLearningStateStore } from '@copilot/learning-state/pg';
 import { loadKnowledgeBase, type KnowledgeBase } from '@copilot/math-data';
+import { loadReferenceLibrary } from '@copilot/reference-library';
 import { runGapEngine } from '@copilot/gap-engine';
 import { buildLearningTwin } from '@copilot/learning-twin';
+import { buildDailyPlan } from '@copilot/planning';
+import { buildAssignmentsForPlan } from '@copilot/practice';
 import { createLogger, type Logger } from '@copilot/observability';
-import { asChildId } from '@copilot/domain';
+import { asChildId, type AnswerSpec } from '@copilot/domain';
 import { createApi, AuthzError, NotFoundError, type RequestContext } from '../api.js';
 import { createContextResolver, ForbiddenError, type CallerAuth } from './context.js';
 import { resolveChildLearningInputs, syncSchoolGradeCache } from './learning-scene.js';
@@ -52,6 +56,7 @@ function buildServices(q: Queryable, now: () => Date, logger: Logger) {
   const relStore = new PgRelationshipStore(q);
   const eduStore = new PgEducationStore(q);
   const ledger = new PgLedgerStore(q);
+  const learningState = new PgLearningStateStore(q);
 
   const identity = new IdentityService({ store: identityStore, auth: NULL_AUTH, logger, now });
   const family = new FamilyService({ store: identityStore, logger, now });
@@ -94,6 +99,7 @@ function buildServices(q: Queryable, now: () => Date, logger: Logger) {
     relStore,
     eduStore,
     ledger,
+    learningState,
     identity,
     family,
     permissions,
@@ -895,6 +901,323 @@ export function createProductionApi(opts: ProductionApiOptions) {
       return { assignments: (today as any).tasks ?? [] };
     },
 
+    // ---- PRACTICE LOOP (F8 / F30) — assignment → attempt → evidence ----
+
+    /**
+     * PARENT builds a practice assignment from today's plan (legacy
+     * reference-library path — LIVE AI generation stays OFF). Persists the plan +
+     * the assignment + items.
+     */
+    async createPracticeAssignment(auth: CallerAuth, childId: string, input: { minutes?: number } = {}) {
+      const ctx = await deriveContext(auth);
+      await authorizeChild(ctx, childId, 'view_child'); // parent guardian read is enough to assign own child's practice
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+
+      // reuse the tested scene (Curriculum Clock estimate + pace + twin + gaps +
+      // context + plan) — DB-backed via learningScene, computed for `minutes`.
+      const inputs = await resolveChildLearningInputs(pool, base.enrollments, childId, now());
+      const scoped = createApi({
+        allowLegacyInProduction: true,
+        knowledgeBase: kb,
+        ledger: base.ledger,
+        logger,
+        now,
+        childProfiles: {
+          [childId]: {
+            profile: inputs.profile,
+            gradeContext: inputs.gradeContext,
+            familyUserIds: [],
+            ...(inputs.enrollment ? { enrollment: inputs.enrollment } : {}),
+          },
+        },
+      });
+      const scene = await scoped._scene(childId);
+      const twin = scene.twin;
+      const plan =
+        scene.plan.kind === 'plan'
+          ? scene.plan
+          : buildDailyPlan({
+              childId: asChildId(childId),
+              planDate: now().toISOString().slice(0, 10),
+              availableMinutes: input.minutes ?? 20,
+              twin,
+              gaps: scene.gaps,
+              context: scene.context,
+              knowledgeBase: kb,
+              asOf: now(),
+            });
+
+      let seq = 0;
+      const newId = () => `${Date.now()}-${(seq += 1)}`;
+      const refLib = loadReferenceLibrary();
+      const byId = new Map(refLib.map((q) => [q.id, q]));
+
+      let legacy =
+        plan.kind === 'plan'
+          ? buildAssignmentsForPlan(plan, twin, now().toISOString(), newId)
+          : [];
+
+      // ZERO-DATA fallback (Journey 1): the deterministic planner returns
+      // `no_plan_needed` for a child it has no signal about. "Hôm nay dạy con gì?"
+      // must still have an answer — practice today's ESTIMATED current lesson.
+      if (legacy.length === 0) {
+        const resolved = scene.context.resolved;
+        const active =
+          resolved.activeSkillIds.length > 0
+            ? [...resolved.activeSkillIds]
+            : resolved.lessonId
+              ? [...kb.skills.entries()]
+                  .filter(([, s]) => s.curriculumNodeId === resolved.lessonId)
+                  .map(([id]) => id)
+              : [];
+        const lessonSkills = new Set(active.map(String));
+        let pool2 = refLib.filter((q) => lessonSkills.has(String(q.skillId)));
+        if (pool2.length === 0) {
+          // the estimated lesson has no authored practice content yet — fall back
+          // to conservative grade-level practice (K ≤ K3) for the child's grade.
+          pool2 = refLib.filter((q) => {
+            const sk = kb.skills.get(q.skillId);
+            return (
+              sk !== undefined &&
+              Number(sk.gradeContext) === Number(inputs.gradeContext) &&
+              (q.knowledgeLevel === 'K0' ||
+                q.knowledgeLevel === 'K1' ||
+                q.knowledgeLevel === 'K2' ||
+                q.knowledgeLevel === 'K3')
+            );
+          });
+        }
+        if (pool2.length > 0) {
+          const picked = pool2.slice(0, 4);
+          legacy = [
+            {
+              id: `asg_${newId()}`,
+              childId: asChildId(childId),
+              dailyPlanDate: now().toISOString().slice(0, 10),
+              mode: 'practice' as const,
+              targetSkillIds: [...new Set(picked.map((q) => String(q.skillId)))] as never,
+              questionIds: picked.map((q) => q.id),
+              createdAt: now().toISOString(),
+            },
+          ];
+        }
+      }
+
+      const created: string[] = [];
+      await withTransaction(pool, async (client) => {
+        const ls = new PgLearningStateStore(client);
+        if (plan.kind === 'plan') {
+          await ls.savePlan({
+            id: cryptoRandom(),
+            childId,
+            planDate: plan.planDate,
+            availableMinutes: input.minutes ?? 20,
+            kind: 'plan',
+            mix: (plan.mix as Record<string, number>) ?? {},
+            plannerVersion: 'exercise-spec.v1',
+            createdAt: now().toISOString(),
+            items: plan.orderedActions.map((a, i) => ({
+              orderIndex: i,
+              actionKind: String((a as any).kind ?? 'school'),
+              skillId: ((a as any).targetSkillId as string | undefined) ?? null,
+              minutes: Number((a as any).minutes ?? 0),
+              payload: {},
+            })),
+          });
+        }
+        for (const a of legacy) {
+          const items = a.questionIds
+            .map((qid) => byId.get(qid))
+            .filter((q): q is NonNullable<typeof q> => q !== undefined)
+            .map((q, i) => ({
+              orderIndex: i,
+              questionRef: q.id,
+              skillId: q.skillId as string,
+              problemTypeId: (q.problemTypeId as string | undefined) ?? null,
+              knowledgeLevel: kLevelNum(q.knowledgeLevel),
+              thinkingLevel: tLevelNum(q.thinkingLevel),
+              prompt: { text: q.prompt },
+              answerSpec: q.answerSpec,
+              hints: [...q.hints],
+            }));
+          if (items.length === 0) continue;
+          const row = await ls.createAssignment({
+            childId,
+            source: 'LEGACY_PRACTICE',
+            assignedByUserId: ctx.userId,
+            assignedByRole: 'PARENT',
+            subjectId: null,
+            mode: a.mode.toUpperCase(),
+            targetSkillIds: a.targetSkillIds as unknown as string[],
+            items,
+          });
+          created.push(row.id);
+        }
+      });
+      return { planKind: plan.kind, assignmentIds: created };
+    },
+
+    async getChildAssignments(auth: CallerAuth, childId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace === 'STUDENT') {
+        if (ctx.childScope !== childId) throw new ForbiddenError('student scoped to another child');
+      } else {
+        await authorizeChild(ctx, childId, 'view_child');
+      }
+      const rows = await base.learningState.listAssignmentsForChild(childId);
+      return rows.map((a) => ({
+        id: a.id,
+        status: a.status,
+        mode: a.mode,
+        targetSkillIds: a.targetSkillIds,
+        createdAt: a.createdAt,
+        completedAt: a.completedAt,
+      }));
+    },
+
+    async getAssignmentDetail(auth: CallerAuth, assignmentId: string) {
+      const ctx = await deriveContext(auth);
+      const full = await base.learningState.getAssignment(assignmentId);
+      if (!full) throw new NotFoundError('assignment');
+      const childId = full.assignment.childId;
+      if (ctx.workspace === 'STUDENT') {
+        if (ctx.childScope !== childId) throw new ForbiddenError('student scoped to another child');
+      } else {
+        await authorizeChild(ctx, childId, 'view_child');
+      }
+      // child-safe item shape — no worked solution, hint ladder is progressive client-side
+      return {
+        id: full.assignment.id,
+        status: full.assignment.status,
+        mode: full.assignment.mode,
+        items: full.items.map((it) => ({
+          id: it.id,
+          orderIndex: it.orderIndex,
+          prompt: it.prompt,
+          answerKind: (it.answerSpec as { kind?: string })?.kind ?? 'exact',
+          options: (it.answerSpec as { options?: string[] })?.options ?? null,
+          hintCount: it.hints.length,
+        })),
+      };
+    },
+
+    /**
+     * STUDENT (own scope) submits practice → persist attempt + answers → verify
+     * (deterministic where possible, else honest UNVERIFIED) → write each answer
+     * into the append-only evidence ledger → mark COMPLETED → invalidate derived
+     * state so the next read recomputes the Twin. The child NEVER sees a
+     * correctness claim that was not actually verified.
+     */
+    async submitPractice(
+      auth: CallerAuth,
+      assignmentId: string,
+      answers: ReadonlyArray<{
+        assignmentItemId: string;
+        answer: string;
+        hintsUsed?: number;
+        reasoningText?: string;
+        timeSpentSeconds?: number;
+      }>,
+    ) {
+      const ctx = await deriveContext(auth);
+      const full = await base.learningState.getAssignment(assignmentId);
+      if (!full) throw new NotFoundError('assignment');
+      const childId = full.assignment.childId;
+      if (ctx.workspace === 'STUDENT') {
+        if (ctx.childScope !== childId) throw new ForbiddenError('student scoped to another child');
+      } else {
+        await authorizeChild(ctx, childId, 'manage_child');
+      }
+      const itemById = new Map(full.items.map((it) => [it.id, it]));
+
+      const result = await withTransaction(pool, async (client) => {
+        const ls = new PgLearningStateStore(client);
+        const evSvc = base.ledger; // append-only ledger; PgLedgerStore bound to base pool is fine (INSERT-only)
+        const attempt = await ls.startAttempt({ assignmentId, childId });
+
+        const graded = answers.map((a) => {
+          const it = itemById.get(a.assignmentItemId);
+          const spec = it?.answerSpec as { kind?: string } | undefined;
+          const kind = spec?.kind ?? 'exact';
+          let correct: boolean | null = null;
+          let level = 'UNVERIFIED';
+          if (kind === 'exact' || kind === 'numeric' || kind === 'fraction') {
+            const v = verifyDeterministic(it!.answerSpec as AnswerSpec, a.answer);
+            correct = v.correct;
+            level = v.correct !== null ? 'DETERMINISTIC_CORRECTNESS_VERIFIED' : 'FORMAT_VERIFIED';
+          } else if (kind === 'choice') {
+            const c = (it!.answerSpec as { correct?: string }).correct;
+            correct = c !== undefined ? a.answer.trim() === c.trim() : null;
+            level = correct !== null ? 'DETERMINISTIC_CORRECTNESS_VERIFIED' : 'FORMAT_VERIFIED';
+          } else {
+            level = 'AI_CROSSCHECK_REQUIRED'; // reasoning — never claim correctness deterministically
+          }
+          return { a, it, kind, correct, level };
+        });
+
+        await ls.submitAttempt(
+          attempt.id,
+          graded.map((g) => ({
+            assignmentItemId: g.a.assignmentItemId,
+            childAnswer: { value: g.a.answer },
+            hintsUsed: g.a.hintsUsed ?? 0,
+            reasoningText: g.a.reasoningText ?? null,
+            timeSpentSeconds: g.a.timeSpentSeconds ?? null,
+            verificationLevel: g.level,
+            correct: g.correct,
+          })),
+        );
+
+        // each answer → an append-only Evidence record (feeds the next recompute)
+        for (const g of graded) {
+          if (!g.it?.skillId) continue;
+          await evSvc.appendEvidence({
+            id: `ev_${attempt.id}_${g.a.assignmentItemId}` as never,
+            childId: asChildId(childId),
+            source: 'app_practice',
+            occurredAt: now().toISOString(),
+            recordedAt: now().toISOString(),
+            skillId: g.it.skillId as never,
+            ...(g.it.problemTypeId ? { problemTypeId: g.it.problemTypeId as never } : {}),
+            result: {
+              ...(g.correct !== null ? { correct: g.correct } : {}),
+            },
+            ...(g.kind === 'reasoning' && g.a.reasoningText
+              ? {
+                  reasoningQuality:
+                    g.a.reasoningText.trim().length >= 60
+                      ? ('strong' as const)
+                      : g.a.reasoningText.trim().length >= 15
+                        ? ('adequate' as const)
+                        : ('weak' as const),
+                }
+              : {}),
+            hintDependency:
+              (g.it.hints?.length ?? 0) > 0
+                ? Math.min(1, (g.a.hintsUsed ?? 0) / (g.it.hints.length || 1))
+                : 0,
+            ...(g.a.timeSpentSeconds !== undefined ? { timeSpentSeconds: g.a.timeSpentSeconds } : {}),
+            confidenceTier: 'B',
+            provenance: 'manual',
+          });
+        }
+
+        await ls.updateAssignmentStatus(assignmentId, 'COMPLETED');
+        return {
+          attemptId: attempt.id,
+          results: graded.map((g) => ({
+            assignmentItemId: g.a.assignmentItemId,
+            verificationLevel: g.level,
+            correct: g.correct,
+          })),
+        };
+      });
+
+      // derived state is now stale — next Twin/gap/plan read recomputes from evidence
+      await base.learningState.invalidateDerived(childId);
+      return result;
+    },
+
     // exposed for tests / transports
     _deriveContext: deriveContext,
     _services: base,
@@ -923,6 +1246,45 @@ export function createProductionApi(opts: ProductionApiOptions) {
 
 function cryptoRandom(): string {
   return globalThis.crypto?.randomUUID?.() ?? `evt-${Math.random().toString(36).slice(2)}`;
+}
+
+function kLevelNum(k: string): number {
+  return Number(String(k).replace(/[^0-9]/g, '')) || 2;
+}
+function tLevelNum(t: string): number {
+  return Number(String(t).replace(/[^0-9]/g, '')) || 2;
+}
+
+/**
+ * Narrow deterministic check for `exact` / `numeric` / `fraction` answer specs.
+ * Returns `{ correct: null }` when the child's answer is well-formed but the spec
+ * carries no comparable value — never guesses.
+ */
+function verifyDeterministic(spec: AnswerSpec, raw: string): { correct: boolean | null } {
+  const a = raw.trim().replace(/\s+/g, '').replace('−', '-').replace(',', '.');
+  if (spec.kind === 'exact') {
+    return { correct: a.toLowerCase() === spec.value.trim().replace(/\s+/g, '').toLowerCase() };
+  }
+  if (spec.kind === 'numeric') {
+    const n = Number(a);
+    if (!Number.isFinite(n)) return { correct: null };
+    return { correct: Math.abs(n - spec.value) <= (spec.tolerance ?? 0) };
+  }
+  if (spec.kind === 'fraction') {
+    const m = /^(-?\d+)\/(-?\d+)$/.exec(a);
+    if (!m) {
+      const n = Number(a);
+      if (Number.isFinite(n) && spec.denominator !== 0) {
+        return { correct: Math.abs(n - spec.numerator / spec.denominator) < 1e-9 };
+      }
+      return { correct: null };
+    }
+    const num2 = Number(m[1]);
+    const den = Number(m[2]);
+    if (den === 0 || spec.denominator === 0) return { correct: null };
+    return { correct: num2 * spec.denominator === spec.numerator * den };
+  }
+  return { correct: null };
 }
 
 export { AuthzError, NotFoundError };

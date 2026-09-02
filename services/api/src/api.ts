@@ -279,6 +279,14 @@ export function createApi(deps: ApiDeps) {
   }
 
   return {
+    /**
+     * Internal: the computed scene (twin / gaps / context / plan) for a child.
+     * Used by `createProductionApi` AFTER a DB authorize() — not a client route.
+     */
+    async _scene(childId: string) {
+      return scene(childId);
+    },
+
     /** GET /me/roles — the workspaces this identity may switch into (doc 25 §1). */
     async meRoles(bearer: string) {
       if (!deps.auth) throw new AuthzError('token auth is not configured');

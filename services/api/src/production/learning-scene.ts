@@ -52,6 +52,28 @@ export async function resolveChildLearningInputs(
     (typeof row.school_context === 'object' && row.school_context?.name) ||
     (active ? active.curriculumId : 'Kết nối tri thức');
 
+  let enrollment:
+    | { readonly curriculum: string; readonly academicYear: string; readonly calendarId?: string }
+    | undefined;
+  if (active) {
+    // an ACTIVE PRIMARY enrollment is the Curriculum Clock's source of truth
+    enrollment = {
+      curriculum: active.curriculumId,
+      academicYear: active.academicYearLabel,
+      ...(active.calendarId ? { calendarId: active.calendarId } : {}),
+    };
+  } else {
+    // ZERO-DATA / no-enrollment: a CONSERVATIVE Curriculum Clock estimate from
+    // the grade + the ACTIVE academic year + the default curriculum. The clock
+    // output is always `confidence: ESTIMATED` — never presented as fact (§11).
+    // (A PROPOSED enrollment is deliberately NOT used here — HC09 stays intact.)
+    const ay = (await pool.query(`SELECT label FROM academic_years WHERE status = 'ACTIVE' ORDER BY label DESC LIMIT 1`))
+      .rows[0] as any;
+    if (ay && (grade === 4 || grade === 7)) {
+      enrollment = { curriculum: 'KET_NOI_TRI_THUC', academicYear: ay.label };
+    }
+  }
+
   return {
     profile: {
       childId,
@@ -60,13 +82,7 @@ export async function resolveChildLearningInputs(
       schoolContext: String(schoolContext),
     },
     gradeContext: grade,
-    enrollment: active
-      ? {
-          curriculum: active.curriculumId,
-          academicYear: active.academicYearLabel,
-          ...(active.calendarId ? { calendarId: active.calendarId } : {}),
-        }
-      : undefined,
+    enrollment,
     familyId: row.family_id,
   };
 }
