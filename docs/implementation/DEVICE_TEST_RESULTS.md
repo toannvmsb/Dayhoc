@@ -28,9 +28,9 @@ journey broken · **P2** major defect w/ workaround · **P3** polish.
 | # | Test case | Result | Observed | Sev | Fix commit |
 |---|---|---|---|---|---|
 | 1 | App startup (open in Expo Go) | ✅ (w/ notes) | Welcome renders; "BẢN DEV" banner shows; form validation works; API reached from device (server returned the register error). Notes: (a) no custom blue splash — **P3**; (b) register endpoint error was English "email + 8-char password required" — **P2, fixed** → Vietnamese | P2 / P3 | `b047c1d` |
-| 2 | Parent login (`phuhuynh@dayzi.seed`) | 🔄 | (a) Login OK, both children listed. Red error "not a guardian of this child" — stale child selection from an earlier throwaway account (**D-04, P1, fixed**). (b) Sign-out from Settings cleared the account card but did not navigate to the login screen — user stranded (**D-05, P1, fixed**). Retest pending | P1 | `791a1d0` / `e046149` |
-| 3 | Parent Home (context = ESTIMATE, today plan) | ⏳ | | | |
-| 4 | Create / select Child (switcher, 2 children) | ⏳ | | | |
+| 2 | Parent login (`phuhuynh@dayzi.seed`) | ✅ | Retest after D-04/D-05 fixes: login OK, lands on Parent Home, no error. (First pass found D-04 + D-05, both P1, both fixed & confirmed on device.) | P1 (fixed) | `791a1d0` / `e046149` |
+| 3 | Parent Home (context = ESTIMATE, today plan) | ✅ | "Hôm nay dạy con gì?", "Bài đang học" card + today plan render for Bé Lớp 4. Sign-out returns to login. | — | — |
+| 4 | Create / select Child (switcher, 2 children) | 🔄 | Switcher toggles Bé Lớp 4 ↔ Bé Lớp 7, content updates. Bé Lớp 7 has no input data yet → "đang học" empty (expected — seed only added evidence for Bé Lớp 4). *Create-child* still to test. | — | — |
 | 5 | Practice (create → runner → submit → "Xong rồi!") | ⏳ | | | |
 | 6 | Student access / login (create login, log in as student) | ⏳ | | | |
 | 7 | Student practice (self-luyện → submit) | ⏳ | | | |
