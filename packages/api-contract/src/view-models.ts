@@ -114,6 +114,39 @@ export interface ParentPrescriptionView {
   }[];
 }
 
+/**
+ * Parent Teaching Copilot (M5) — DạyZi teaches the PARENT how to teach this
+ * skill to their child. This is NOT a worked answer to hand the child; it is a
+ * short coaching script for the adult. Deterministic (KB + reference library),
+ * no LIVE AI.
+ */
+export interface ParentTeachingPlanView {
+  readonly forGapId: string | null;
+  readonly skillName: string;
+  readonly focusLine: string; // "Con đang vướng ở: rút gọn phân số"
+  readonly gapMeaning: string; // what this KIND of difficulty means, plain words
+  readonly minutes: number;
+  readonly beforeYouStart: readonly string[];
+  readonly steps: readonly TeachingStepView[];
+  readonly checkUnderstanding: readonly string[]; // questions the parent asks
+  readonly commonMistakes: readonly string[];
+  readonly praise: readonly string[];
+  readonly workedExample: TeachingExampleView | null;
+  readonly ifStuck: string;
+}
+
+export interface TeachingStepView {
+  readonly title: string; // "Bước 1 — Nhắc lại ý chính"
+  readonly say: string; // suggested words for the parent
+  readonly why: string; // the pedagogy, so the parent understands the move
+}
+
+export interface TeachingExampleView {
+  readonly prompt: string;
+  readonly walkthrough: readonly string[]; // step-by-step for the PARENT to model
+  readonly answer: string;
+}
+
 // ---------- Child (SAFE PROJECTION) ----------
 export interface ChildTodayView {
   readonly greetingName: string;

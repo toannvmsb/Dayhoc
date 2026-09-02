@@ -53,7 +53,7 @@ export default async function ParentHome({ params }: { params: { childId: string
         <span style={{ color: 'var(--c-primary)', fontWeight: 700 }}>›</span>
       </Link>
 
-      <AttentionCard items={home.attention} />
+      <AttentionCard items={home.attention} childId={params.childId} />
       <InsightsRow progressInsights={home.progressInsights} thinkingChallenge={home.thinkingChallenge} />
     </Screen>
   );

@@ -7,6 +7,7 @@
     { "path": "../math-data" },
     { "path": "../gap-engine" },
     { "path": "../planning" },
+    { "path": "../reference-library" },
     { "path": "../revision" }
   ],
   "include": ["src/**/*.ts"],

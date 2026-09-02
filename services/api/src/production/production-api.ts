@@ -35,10 +35,14 @@ import {
 import { PgUploadAnalysisStore } from '@copilot/uploads/pg';
 import { loadKnowledgeBase, type KnowledgeBase } from '@copilot/math-data';
 import { loadReferenceLibrary } from '@copilot/reference-library';
-import { runGapEngine } from '@copilot/gap-engine';
-import { buildLearningTwin } from '@copilot/learning-twin';
 import { buildDailyPlan } from '@copilot/planning';
 import { buildAssignmentsForPlan } from '@copilot/practice';
+import {
+  buildParentGapDetail,
+  buildParentHome,
+  buildParentProgress,
+  buildParentTeachingPlan,
+} from '@copilot/projections';
 import { createLogger, type Logger } from '@copilot/observability';
 import { asChildId, type AnswerSpec } from '@copilot/domain';
 import { createApi, AuthzError, NotFoundError, type RequestContext } from '../api.js';
@@ -224,6 +228,162 @@ export function createProductionApi(opts: ProductionApiOptions) {
   const parentDelegateCtx = (userId: string): RequestContext => ({
     userId,
     role: 'admin', // authorization already enforced above; 'admin' bypasses the legacy family check
+  });
+
+  // ---- IX: recompute-if-stale persisted learning state --------------
+  //
+  // The Twin / gaps / plan are DERIVED from the append-only `evidence` stream.
+  // Every learning read runs the tested pipeline once, then — only when the
+  // persisted derived rows are STALE (evidence count or version moved) —
+  // re-persists skill_states / knowledge_gaps / learning_plans / snapshots so
+  // `child_id` owns durable, version+hash-guarded learning state. `submitPractice`
+  // and `confirmUploadAnalysis` call `invalidateDerived`, which forces the next
+  // read to recompute.
+  const TWIN_STATE_VERSION = 'twin.v2';
+  const GAPS_STATE_VERSION = 'gaps.v2';
+  const CONTEXT_STATE_VERSION = 'context.v2';
+
+  function twinBlob(twin: import('@copilot/domain').ChildLearningTwin) {
+    return {
+      skillMastery: Object.fromEntries(
+        [...twin.skillMastery.entries()].map(([k, v]) => [String(k), v.mastery]),
+      ),
+      thinking: Object.fromEntries(
+        [...twin.thinkingProfile.entries()].map(([k, v]) => [String(k), v.demonstratedLevel]),
+      ),
+    };
+  }
+
+  async function refreshLearningState(childId: string) {
+    const { scoped } = await learningScene(childId);
+    const s = await scoped._scene(childId);
+    const evidenceCount = (await base.ledger.listEvidence(asChildId(childId))).length;
+
+    const twinSnap = await base.learningState.getSnapshot(childId, 'TWIN');
+    const fresh =
+      twinSnap?.stateVersion === TWIN_STATE_VERSION && twinSnap.evidenceCount === evidenceCount;
+
+    if (!fresh) {
+      const at = now().toISOString();
+      const blob = twinBlob(s.twin);
+      await base.learningState.putSnapshot({
+        childId,
+        kind: 'TWIN',
+        state: blob,
+        stateVersion: TWIN_STATE_VERSION,
+        evidenceCount,
+        contentHash: snapshotHash(blob),
+        provenance: { computedBy: 'refreshLearningState' },
+        computedAt: at,
+      });
+      const gapBlob = s.gaps.gaps.map((g) => ({
+        id: g.id,
+        type: g.type,
+        targetSkillId: g.targetSkillId,
+        lifecycleState: g.lifecycleState,
+        priority: g.score.score,
+      }));
+      await base.learningState.putSnapshot({
+        childId,
+        kind: 'GAPS',
+        state: gapBlob,
+        stateVersion: GAPS_STATE_VERSION,
+        evidenceCount,
+        contentHash: snapshotHash(gapBlob),
+        provenance: { computedBy: 'refreshLearningState' },
+        computedAt: at,
+      });
+      const ctxBlob = {
+        resolvedLessonId: s.context.resolved.lessonId,
+        source: s.context.resolved.source,
+        confidence: s.context.resolved.confidence,
+      };
+      await base.learningState.putSnapshot({
+        childId,
+        kind: 'CONTEXT',
+        state: ctxBlob,
+        stateVersion: CONTEXT_STATE_VERSION,
+        evidenceCount,
+        contentHash: snapshotHash(ctxBlob),
+        provenance: { computedBy: 'refreshLearningState' },
+        computedAt: at,
+      });
+
+      await base.learningState.replaceSkillStates(
+        childId,
+        [...s.twin.skillMastery.entries()].map(([skillId, m]) => ({
+          childId,
+          skillId: String(skillId),
+          mastery: m.mastery,
+          confidence: m.confidence,
+          retention: m.retention ?? null,
+          evidenceCount: m.evidenceCount,
+          lastObservedAt: m.lastObservedAt ?? null,
+          lastVerifiedAt: m.lastVerifiedAt ?? null,
+          computedFromEvidenceCount: evidenceCount,
+          computedAt: at,
+        })),
+      );
+      await base.learningState.replaceGaps(
+        childId,
+        s.gaps.gaps.map((g) => ({
+          id: g.id,
+          childId,
+          gapType: g.type,
+          targetSkillId: String(g.targetSkillId),
+          rootSkillId: g.rootSkillId ? String(g.rootSkillId) : null,
+          severity: g.severity,
+          priority: g.score.score,
+          lifecycleState: g.lifecycleState,
+          blocksCurrentLearning: g.blocksCurrentLearning,
+          blocksAdvancedLearning: g.blocksAdvancedLearning,
+          rationale: g.rationale ?? null,
+          evidenceRefs: [...g.evidenceRefs],
+          detectedAt: g.detectedAt,
+          updatedAt: at,
+          computedFromEvidenceCount: evidenceCount,
+        })),
+      );
+      if (s.plan.kind === 'plan') {
+        await base.learningState
+          .savePlan({
+            id: cryptoRandom(),
+            childId,
+            planDate: s.plan.planDate,
+            availableMinutes: 25,
+            kind: 'plan',
+            mix: (s.plan.mix as Record<string, number>) ?? {},
+            plannerVersion: 'exercise-spec.v1',
+            createdAt: at,
+            items: s.plan.orderedActions.map((a, i) => ({
+              orderIndex: i,
+              actionKind: String((a as { kind?: unknown }).kind ?? 'school'),
+              skillId: ((a as { targetSkillId?: string }).targetSkillId as string | undefined) ?? null,
+              minutes: Number((a as { minutes?: unknown }).minutes ?? 0),
+              payload: {},
+            })),
+          })
+          .catch(() => undefined);
+      }
+    }
+
+    return {
+      twin: s.twin,
+      gaps: s.gaps,
+      context: s.context,
+      plan: s.plan,
+      profile: s.rec.profile,
+      gradeContext: s.rec.gradeContext,
+      fromCache: fresh,
+    };
+  }
+  const projInput = (s: Awaited<ReturnType<typeof refreshLearningState>>) => ({
+    profile: s.profile,
+    twin: s.twin,
+    gaps: s.gaps,
+    context: s.context,
+    plan: s.plan,
+    knowledgeBase: kb,
   });
 
   // ---- DTO mappers (data minimization — §11) ------------------------
@@ -578,33 +738,14 @@ export function createProductionApi(opts: ProductionApiOptions) {
 
     /**
      * GET /children/:childId/home — the hero screen ("Hôm nay dạy con gì?").
-     * DB-authorized, then the tested Parent projection. Also persists a
-     * write-through snapshot of the computed twin/gaps for fast subsequent reads.
+     * DB-authorized → recompute-if-stale learning state → tested Parent projection.
      */
     async getParentHome(auth: CallerAuth, childId: string) {
       const ctx = await deriveContext(auth);
       if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
       await authorizeChild(ctx, childId, 'view_child');
-      const { scoped } = await learningScene(childId);
-      const view = await scoped.parentHome(parentDelegateCtx(ctx.userId), childId);
-      // write-through cache (best-effort, never blocks the response)
-      try {
-        const scene = await scoped._scene(childId);
-        const evCount = (await base.ledger.listEvidence(asChildId(childId))).length;
-        await base.learningState.putSnapshot({
-          childId,
-          kind: 'TWIN',
-          state: scene.twin as unknown,
-          stateVersion: 'twin.v1',
-          evidenceCount: evCount,
-          contentHash: snapshotHash(scene.twin),
-          provenance: { computedBy: 'getParentHome' },
-          computedAt: now().toISOString(),
-        });
-      } catch {
-        /* cache write is best-effort */
-      }
-      return view;
+      const s = await refreshLearningState(childId);
+      return buildParentHome(projInput(s));
     },
 
     /** GET /children/:childId/progress */
@@ -612,8 +753,8 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const ctx = await deriveContext(auth);
       if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
       await authorizeChild(ctx, childId, 'view_child');
-      const { scoped } = await learningScene(childId);
-      return scoped.parentProgress(parentDelegateCtx(ctx.userId), childId);
+      const s = await refreshLearningState(childId);
+      return buildParentProgress(projInput(s));
     },
 
     /** GET /children/:childId/gaps/:gapId */
@@ -621,8 +762,21 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const ctx = await deriveContext(auth);
       if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
       await authorizeChild(ctx, childId, 'view_child');
-      const { scoped } = await learningScene(childId);
-      return scoped.parentGapDetail(parentDelegateCtx(ctx.userId), childId, gapId);
+      const s = await refreshLearningState(childId);
+      const view = buildParentGapDetail(projInput(s), gapId);
+      if (!view) throw new NotFoundError('gap');
+      return view;
+    },
+
+    /** GET /children/:childId/teaching-plan — Parent Teaching Copilot (M5). */
+    async getParentTeachingPlan(auth: CallerAuth, childId: string, gapId?: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'view_child');
+      const s = await refreshLearningState(childId);
+      const view = buildParentTeachingPlan(projInput(s), gapId);
+      if (!view) throw new NotFoundError('teaching plan');
+      return view;
     },
 
     // ---- SCHOOL / CLASS -----------------------------------------
@@ -979,15 +1133,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const ctx = await deriveContext(auth);
       if (ctx.workspace !== 'TEACHER') throw new ForbiddenError('TEACHER workspace required');
       await authorizeChild(ctx, childId, 'view_twin_summary', subjectId);
-      const { inputs } = await learningScene(childId);
-      const evidence = await base.ledger.listEvidence(asChildId(childId));
-      const twin = buildLearningTwin({
-        childId: asChildId(childId),
-        gradeContext: inputs.gradeContext,
-        evidence,
-        knowledgeBase: kb,
-        asOf: now(),
-      });
+      const { twin } = await refreshLearningState(childId);
       // redacted — mastery band words only, no scores, no evidence, no behaviour
       const skills = [...twin.skillMastery.entries()]
         .slice(0, 12)
@@ -1002,23 +1148,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const ctx = await deriveContext(auth);
       if (ctx.workspace !== 'TEACHER') throw new ForbiddenError('TEACHER workspace required');
       await authorizeChild(ctx, childId, 'view_selected_gaps', subjectId);
-      const { inputs } = await learningScene(childId);
-      const evidence = await base.ledger.listEvidence(asChildId(childId));
-      const twin = buildLearningTwin({
-        childId: asChildId(childId),
-        gradeContext: inputs.gradeContext,
-        evidence,
-        knowledgeBase: kb,
-        asOf: now(),
-      });
-      const gaps = runGapEngine({
-        childId: asChildId(childId),
-        gradeContext: inputs.gradeContext,
-        twin,
-        evidence,
-        knowledgeBase: kb,
-        asOf: now(),
-      });
+      const { gaps } = await refreshLearningState(childId);
       return {
         childId,
         gaps: gaps.gaps
@@ -1065,10 +1195,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const ctx = await deriveContext(auth);
       if (ctx.workspace !== 'STUDENT' || !ctx.childScope) throw new ForbiddenError('STUDENT workspace required');
       const childId = ctx.childScope;
-      const inputs = await resolveChildLearningInputs(pool, base.enrollments, childId, now());
-      const evidence = await base.ledger.listEvidence(asChildId(childId));
-      const twin = buildLearningTwin({ childId: asChildId(childId), gradeContext: inputs.gradeContext, evidence, knowledgeBase: kb, asOf: now() });
-      const gaps = runGapEngine({ childId: asChildId(childId), gradeContext: inputs.gradeContext, twin, evidence, knowledgeBase: kb, asOf: now() });
+      const { gaps } = await refreshLearningState(childId);
       const assignments = await base.learningState.listAssignmentsForChild(childId);
       return {
         revisit: gaps.gaps
@@ -1084,9 +1211,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const ctx = await deriveContext(auth);
       if (ctx.workspace !== 'STUDENT' || !ctx.childScope) throw new ForbiddenError('STUDENT workspace required');
       const childId = ctx.childScope;
-      const inputs = await resolveChildLearningInputs(pool, base.enrollments, childId, now());
-      const evidence = await base.ledger.listEvidence(asChildId(childId));
-      const twin = buildLearningTwin({ childId: asChildId(childId), gradeContext: inputs.gradeContext, evidence, knowledgeBase: kb, asOf: now() });
+      const { twin } = await refreshLearningState(childId);
       const skills = [...twin.skillMastery.entries()];
       const solid = skills.filter(([, s]) => s.mastery >= 75).map(([id]) => kb.skills.get(id)?.name ?? id);
       const growing = skills.filter(([, s]) => s.mastery >= 45 && s.mastery < 75).map(([id]) => kb.skills.get(id)?.name ?? id);

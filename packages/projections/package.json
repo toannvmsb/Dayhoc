@@ -13,6 +13,7 @@
     "@copilot/math-data": "0.1.0",
     "@copilot/gap-engine": "0.1.0",
     "@copilot/planning": "0.1.0",
+    "@copilot/reference-library": "0.1.0",
     "@copilot/revision": "0.1.0"
   }
 }

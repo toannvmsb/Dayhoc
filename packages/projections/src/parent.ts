@@ -35,9 +35,9 @@ const PRIORITY: Record<'high' | 'medium' | 'low', ParentGapDetailView['priorityL
 const LIFECYCLE_LABEL: Record<string, string> = {
   DETECTED: 'Mới phát hiện',
   CONFIRMED: 'Đã xác nhận',
-  TREATING: 'Đang xử lý',
-  IMPROVING: 'Đang cải thiện',
-  CLOSED: 'Đã ổn',
+  TREATING: 'Đang củng cố',
+  IMPROVING: 'Đang tiến bộ',
+  CLOSED: 'Đã khắc phục',
   MONITORING: 'Đang theo dõi',
 };
 const LIFECYCLE_ORDER = ['DETECTED', 'CONFIRMED', 'TREATING', 'IMPROVING', 'CLOSED'] as const;

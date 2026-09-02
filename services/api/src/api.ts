@@ -15,6 +15,7 @@ import {
   buildParentGapDetail,
   buildParentHome,
   buildParentProgress,
+  buildParentTeachingPlan,
   type ChildProfileInput,
 } from '@copilot/projections';
 import { createLogger, type Logger } from '@copilot/observability';
@@ -331,6 +332,19 @@ export function createApi(deps: ApiDeps) {
       const s = await scene(childId);
       const view = buildParentGapDetail({ profile: s.rec.profile, twin: s.twin, gaps: s.gaps, context: s.context, plan: s.plan, knowledgeBase: kb }, gapId);
       if (!view) throw new NotFoundError('gap not found');
+      return view;
+    },
+
+    /** GET /children/:id/teaching-plan[?gapId] — the Parent Teaching Copilot (M5). */
+    async parentTeachingPlan(ctx: RequestContext, childId: string, gapId?: string) {
+      requireParent(ctx);
+      requireChildAccess(ctx, childId);
+      const s = await scene(childId);
+      const view = buildParentTeachingPlan(
+        { profile: s.rec.profile, twin: s.twin, gaps: s.gaps, context: s.context, plan: s.plan, knowledgeBase: kb },
+        gapId,
+      );
+      if (!view) throw new NotFoundError('no teaching plan available');
       return view;
     },
 

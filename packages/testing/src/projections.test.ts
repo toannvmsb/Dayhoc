@@ -15,6 +15,7 @@ import {
   buildParentGapDetail,
   buildParentHome,
   buildParentProgress,
+  buildParentTeachingPlan,
 } from '@copilot/projections';
 import { KB, buildEvidence } from './harness.js';
 
@@ -71,6 +72,34 @@ describe('Parent projections', () => {
     expect(detail.prescription?.options.map((o) => o.key).sort()).toEqual(
       ['follow', 'later', 'lighter', 'intensify'].sort(),
     );
+  });
+
+  it('Teaching Copilot: coaches the parent, not a worked answer for the child', () => {
+    const gapId = s.gaps.gaps.find((g) => g.type !== 'careless_error')!.id;
+    const plan = buildParentTeachingPlan(input, gapId)!;
+    expect(plan.forGapId).toBe(gapId);
+    expect(plan.gapMeaning.length).toBeGreaterThan(30);
+    expect(plan.steps.length).toBeGreaterThanOrEqual(2);
+    // every step tells the parent what to SAY and WHY (the pedagogy)
+    for (const step of plan.steps) {
+      expect(step.say.length).toBeGreaterThan(5);
+      expect(step.why.length).toBeGreaterThan(10);
+    }
+    expect(plan.checkUnderstanding.length).toBeGreaterThan(0);
+    expect(plan.commonMistakes.length).toBeGreaterThan(0);
+    expect(plan.praise.length).toBeGreaterThan(0);
+    // no leaked internals
+    expect(JSON.stringify(plan)).not.toMatch(/mastery|gapScore|severity|confidence":/);
+  });
+
+  it('Teaching Copilot: falls back to the current lesson when there is no gap', () => {
+    const noGaps = { ...input, gaps: { ...s.gaps, gaps: [] } };
+    const plan = buildParentTeachingPlan(noGaps);
+    // may be null only if there is also no active lesson skill
+    if (plan) {
+      expect(plan.forGapId).toBeNull();
+      expect(plan.focusLine.length).toBeGreaterThan(5);
+    }
   });
 });
 

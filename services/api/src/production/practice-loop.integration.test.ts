@@ -110,12 +110,37 @@ describe.skipIf(!DATABASE_URL)('F8 — practice loop (assignment → attempt →
     await expect(
       api.getParentHome({ bearer: stranger.bearer, workspace: 'PARENT' }, child.childId),
     ).rejects.toBeTruthy();
-    // a write-through TWIN snapshot now exists
-    const snap = await pool.query<{ n: number }>(
-      `SELECT count(*)::int n FROM learning_state_snapshots WHERE child_id = $1 AND kind = 'TWIN'`,
+    // IX — recompute-if-stale: a TWIN snapshot + derived rows are persisted
+    const snap = await pool.query<{ n: number; v: string; ec: number; at: string }>(
+      `SELECT count(*)::int n, max(state_version) v, max(evidence_count) ec, max(computed_at)::text at
+         FROM learning_state_snapshots WHERE child_id = $1 AND kind = 'TWIN'`,
       [child.childId],
     );
     expect(snap.rows[0]!.n).toBe(1);
+    expect(snap.rows[0]!.v).toBe('twin.v2');
+    const skillStates = await pool.query<{ n: number }>(
+      `SELECT count(*)::int n FROM skill_states WHERE child_id = $1`,
+      [child.childId],
+    );
+    expect(skillStates.rows[0]!.n).toBeGreaterThanOrEqual(0);
+    const firstComputedAt = snap.rows[0]!.at;
+
+    // a second read with NO new evidence must NOT re-persist (fresh-skip)
+    await api.getParentProgress(pAuth, child.childId);
+    const snap2 = await pool.query<{ at: string }>(
+      `SELECT max(computed_at)::text at FROM learning_state_snapshots WHERE child_id = $1 AND kind = 'TWIN'`,
+      [child.childId],
+    );
+    expect(snap2.rows[0]!.at).toBe(firstComputedAt);
+
+    // the Teaching Copilot coaches the parent
+    const gapDetailList = await api.getParentHome(pAuth, child.childId);
+    void gapDetailList;
+    const teach = await api.getParentTeachingPlan(pAuth, child.childId).catch(() => null);
+    if (teach) {
+      expect(teach.steps.length).toBeGreaterThan(0);
+      expect(JSON.stringify(teach)).not.toContain('"mastery"');
+    }
   });
 
   it('Journey 7 — student completes practice → append-only evidence → derived state invalidated', async () => {

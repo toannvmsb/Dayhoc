@@ -155,7 +155,13 @@ export function TodayPlanCard({
   );
 }
 
-export function AttentionCard({ items }: { items: ParentHomeView['attention'] }) {
+export function AttentionCard({
+  items,
+  childId,
+}: {
+  items: ParentHomeView['attention'];
+  childId?: string;
+}) {
   if (items.length === 0) return null;
   const top = items[0]!;
   return (
@@ -168,8 +174,13 @@ export function AttentionCard({ items }: { items: ParentHomeView['attention'] })
         {top.title}
       </span>
       <span style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--c-attention-body)' }}>{top.note}</span>
-      {top.gapId ? (
-        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text-faint)' }}>Chi tiết đang hoàn thiện</span>
+      {top.gapId && childId ? (
+        <a
+          href={`/be/${childId}/diem-can-cai-thien/${top.gapId}`}
+          style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-attention-heading)' }}
+        >
+          Xem chi tiết &amp; cách dạy con ›
+        </a>
       ) : null}
       {items.slice(1).map((it) => (
         <span key={it.title} style={{ fontSize: 12.5, color: 'var(--c-attention-body)' }}>
