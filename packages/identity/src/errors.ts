@@ -34,7 +34,7 @@ export class ValidationError extends IdentityError {
 }
 
 export class ConflictError extends IdentityError {
-  constructor(message: string) {
-    super(message, 'CONFLICT');
+  constructor(message: string, code = 'CONFLICT') {
+    super(message, code);
   }
 }

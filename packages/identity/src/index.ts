@@ -21,3 +21,8 @@ export * from './store.js';
 export * from './guardian-authority.js';
 export * from './identity-service.js';
 export * from './family-service.js';
+export * from './relationship-store.js';
+export * from './class-context.js';
+export * from './permission-service.js';
+export * from './relationship-service.js';
+export * from './authorization-service.js';

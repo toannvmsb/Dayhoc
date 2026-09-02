@@ -20,6 +20,8 @@ import type {
   StudentLinkPatch,
 } from './store.js';
 
+export { PgRelationshipStore, migrateTeacherInvitesFromLegacy } from './relationship-pg-store.js';
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const iso = (v: unknown): string =>
   v instanceof Date ? v.toISOString() : String(v);

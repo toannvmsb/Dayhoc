@@ -267,17 +267,14 @@ describe('I1 — identity & family', () => {
 });
 
 /**
- * doc 26 §12 tests A–H are I3/I4 acceptance (enrollment_type, class-context vs
- * child-specific writes, LEGACY_MINIMAL migration). They are intentionally
- * out of I1 scope — tracked here so the coverage matrix stays visible.
+ * doc 26 §12 tests A–I — coverage map (implemented in their own groups):
+ *   A (55) PRIMARY + HSG_TEAM coexist ....... education-directory.test.ts (I3)
+ *   B (56) second ACTIVE PRIMARY rejected ... education-directory.test.ts (I3)
+ *   C (57) supplementary ≠ clock context .... education-directory.test.ts (I3)
+ *   D (58) PRIMARY change at year transition  education-directory.test.ts (I6)
+ *   E (59) class-context write, six conds ... relationships.test.ts (I4)
+ *   F (60) no child-specific write via class  relationships.test.ts (I4)
+ *   G (61) no sensitive Twin read via class . relationships.test.ts (I4)
+ *   H (62) legacy invite → LEGACY_MINIMAL ... relationship-pg-store.integration.test.ts (I4)
+ *   I (63) MIGRATED_FAMILY_OWNER provenance .. pg-store.integration.test.ts (I1)
  */
-describe('doc 26 §12 A–H — deferred to I3 / I4', () => {
-  it.todo('A (55) — PRIMARY + HSG_TEAM enrollments coexist (I3)');
-  it.todo('B (56) — a second ACTIVE PRIMARY enrollment is rejected (I3)');
-  it.todo('C (57) — a supplementary class is not a Curriculum Clock context (I3)');
-  it.todo('D (58) — PRIMARY change at a year transition keeps ≤1 ACTIVE PRIMARY (I3/I6)');
-  it.todo('E (59) — a Teacher–Class op is class-context write only, under all six conditions (I4)');
-  it.todo('F (60) — a Teacher–Class assignment cannot submit a child-specific skill assessment (I4)');
-  it.todo('G (61) — a classroom assignment never yields a sensitive Twin read (I4)');
-  it.todo('H (62) — a legacy teacher_invite migrates to LEGACY_MINIMAL, no over-grant (I4)');
-});

@@ -16,6 +16,7 @@ export * from './gap.js';
 export * from './roles.js';
 export * from './identity.js';
 export * from './education.js';
+export * from './relationships.js';
 export * from './subscription.js';
 export * from './context.js';
 export * from './twin.js';

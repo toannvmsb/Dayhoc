@@ -5,7 +5,11 @@
     "outDir": "./dist",
     "types": ["node"]
   },
-  "references": [{ "path": "../domain" }, { "path": "../observability" }],
+  "references": [
+    { "path": "../domain" },
+    { "path": "../observability" },
+    { "path": "../education-directory" }
+  ],
   "include": ["src/**/*.ts"],
   "exclude": ["**/*.test.ts"]
 }
