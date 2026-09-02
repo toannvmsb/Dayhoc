@@ -61,20 +61,29 @@ const ROUTES: Record<string, Handler> = {
     const password = String(c.body.password ?? '');
     const displayName = String(c.body.displayName ?? '').trim() || undefined;
     const intendedRole = String(c.body.role ?? 'PARENT') === 'TEACHER' ? 'TEACHER' : 'PARENT';
-    if (!email || password.length < 8) throw new RestError(400, 'email + 8-char password required');
-    const me = await getApi().register({ email, password, intendedRole, displayName });
-    return { bearer: await bearerForUser(me.userId), viewer: await getApi().whoami(await bearerForUser(me.userId)) };
+    if (!email || !email.includes('@')) throw new RestError(400, 'Nhập email hợp lệ.');
+    if (password.length < 8) throw new RestError(400, 'Mật khẩu cần tối thiểu 8 ký tự.');
+    try {
+      const me = await getApi().register({ email, password, intendedRole, displayName });
+      const bearer = await bearerForUser(me.userId);
+      return { bearer, viewer: await getApi().whoami(bearer) };
+    } catch (e) {
+      const m = e instanceof Error ? e.message : String(e);
+      if (/already exists|duplicate/i.test(m)) throw new RestError(409, 'Email này đã được đăng ký. Hãy đăng nhập.');
+      throw e;
+    }
   },
   'POST /auth/login': async (c) => {
     const email = String(c.body.email ?? '').trim().toLowerCase();
+    if (!email || !email.includes('@')) throw new RestError(400, 'Nhập email đã đăng ký.');
     if (process.env.NODE_ENV === 'production' && !process.env.SUPABASE_URL) {
-      throw new RestError(400, 'login needs Supabase config (ENV_REQUIRED)');
+      throw new RestError(400, 'Đăng nhập cần cấu hình Supabase (ENV_REQUIRED).');
     }
     const r = await db().query<{ id: string }>(
       'SELECT id FROM users WHERE lower(primary_email) = $1',
       [email],
     );
-    if (!r.rows[0]) throw new RestError(404, 'no account with this email');
+    if (!r.rows[0]) throw new RestError(404, 'Không tìm thấy tài khoản với email này.');
     const bearer = await bearerForUser(r.rows[0].id);
     return { bearer, viewer: await getApi().whoami(bearer) };
   },
