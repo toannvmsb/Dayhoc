@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { Pool } from 'pg';
-import { getApi, parentAuth, SESSION_COOKIE } from './api';
+import { getApi, parentAuth, preferredAuth, studentAuth, SESSION_COOKIE } from './api';
 
 function db(): Pool {
   return (globalThis as unknown as { __dzPool: Pool }).__dzPool;
@@ -103,8 +103,46 @@ export async function submitPracticeAction(
   assignmentId: string,
   answers: ReadonlyArray<{ assignmentItemId: string; answer: string; hintsUsed?: number }>,
 ): Promise<{ ok: true }> {
-  await getApi().submitPractice(parentAuth(), assignmentId, answers);
+  await getApi().submitPractice(await preferredAuth(), assignmentId, answers);
   return { ok: true };
+}
+
+export async function createStudentAccessAction(
+  _prev: FormState,
+  form: FormData,
+): Promise<FormState> {
+  const childId = String(form.get('childId') ?? '');
+  const password = String(form.get('password') ?? '');
+  const displayName = String(form.get('displayName') ?? '').trim() || undefined;
+  if (!childId || password.length < 8) {
+    return { error: 'Mật khẩu cho con tối thiểu 8 ký tự.' };
+  }
+  try {
+    await getApi().createStudentAccess(parentAuth(), childId, {
+      password,
+      ...(displayName ? { displayName } : {}),
+    });
+  } catch (e) {
+    return { error: friendly(e) };
+  }
+  revalidatePath(`/be/${childId}/ho-so`);
+  return {};
+}
+
+export async function revokeStudentAccessAction(childId: string): Promise<void> {
+  await getApi().revokeStudentAccess(parentAuth(), childId);
+  revalidatePath(`/be/${childId}/ho-so`);
+}
+
+/** Student builds their own short practice session. Returns the assignment to open. */
+export async function createStudentPracticeAction(
+  minutes: number,
+): Promise<{ assignmentId: string | null }> {
+  const me = await getApi().studentGetMe(studentAuth());
+  const res = await getApi().createPracticeAssignment(studentAuth(), me.childId, { minutes });
+  revalidatePath('/hoc-sinh');
+  revalidatePath('/hoc-sinh/bai-tap');
+  return { assignmentId: res.assignmentIds[0] ?? null };
 }
 
 function friendly(e: unknown): string {

@@ -954,12 +954,125 @@ export function createProductionApi(opts: ProductionApiOptions) {
     async studentGetAssignments(auth: CallerAuth) {
       const ctx = await deriveContext(auth);
       if (ctx.workspace !== 'STUDENT' || !ctx.childScope) throw new ForbiddenError('STUDENT workspace required');
-      const { scoped } = await learningScene(ctx.childScope);
-      const today = await scoped.childToday(
-        { userId: ctx.userId, role: 'child', childScope: ctx.childScope },
-        ctx.childScope,
+      const rows = await base.learningState.listAssignmentsForChild(ctx.childScope);
+      return rows.map((a) => ({
+        id: a.id,
+        status: a.status,
+        mode: a.mode,
+        targetSkillIds: a.targetSkillIds,
+        createdAt: a.createdAt,
+        completedAt: a.completedAt,
+      }));
+    },
+
+    /** GET /student/review — skills to revisit + unfinished work (child-safe words). */
+    async studentGetReview(auth: CallerAuth) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'STUDENT' || !ctx.childScope) throw new ForbiddenError('STUDENT workspace required');
+      const childId = ctx.childScope;
+      const inputs = await resolveChildLearningInputs(pool, base.enrollments, childId, now());
+      const evidence = await base.ledger.listEvidence(asChildId(childId));
+      const twin = buildLearningTwin({ childId: asChildId(childId), gradeContext: inputs.gradeContext, evidence, knowledgeBase: kb, asOf: now() });
+      const gaps = runGapEngine({ childId: asChildId(childId), gradeContext: inputs.gradeContext, twin, evidence, knowledgeBase: kb, asOf: now() });
+      const assignments = await base.learningState.listAssignmentsForChild(childId);
+      return {
+        revisit: gaps.gaps
+          .slice(0, 5)
+          .map((g) => ({ topic: kb.skills.get(g.targetSkillId)?.name ?? g.targetSkillId })),
+        unfinished: assignments.filter((a) => a.status === 'IN_PROGRESS').length,
+        recent: assignments.filter((a) => a.status === 'COMPLETED').slice(0, 3).length,
+      };
+    },
+
+    /** GET /student/progress — friendly, no numbers. */
+    async studentGetProgress(auth: CallerAuth) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'STUDENT' || !ctx.childScope) throw new ForbiddenError('STUDENT workspace required');
+      const childId = ctx.childScope;
+      const inputs = await resolveChildLearningInputs(pool, base.enrollments, childId, now());
+      const evidence = await base.ledger.listEvidence(asChildId(childId));
+      const twin = buildLearningTwin({ childId: asChildId(childId), gradeContext: inputs.gradeContext, evidence, knowledgeBase: kb, asOf: now() });
+      const skills = [...twin.skillMastery.entries()];
+      const solid = skills.filter(([, s]) => s.mastery >= 75).map(([id]) => kb.skills.get(id)?.name ?? id);
+      const growing = skills.filter(([, s]) => s.mastery >= 45 && s.mastery < 75).map(([id]) => kb.skills.get(id)?.name ?? id);
+      const completed = (await base.learningState.listAssignmentsForChild(childId)).filter((a) => a.status === 'COMPLETED').length;
+      return {
+        streakDone: completed,
+        solid: solid.slice(0, 4),
+        growing: growing.slice(0, 4),
+        line:
+          solid.length > 0
+            ? `Con đang chắc hơn ở ${solid[0]}.`
+            : 'Con vừa bắt đầu — làm vài bài để DạyZi hiểu con hơn nhé.',
+      };
+    },
+
+    // ---- STUDENT ACCOUNT LINKING (parent side) ------------------
+
+    /** POST /children/:childId/student-access — parent creates + links a student login. */
+    async createStudentAccess(
+      auth: CallerAuth,
+      childId: string,
+      input: { displayName?: string; password: string },
+    ) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'link_student'); // → can_manage_child
+      const existing = await pool.query(
+        `SELECT u.primary_email FROM student_account_links l JOIN users u ON u.id = l.user_id
+          WHERE l.child_id = $1 AND l.status = 'ACTIVE'`,
+        [childId],
       );
-      return { assignments: (today as any).tasks ?? [] };
+      if (existing.rows[0]) {
+        return { loginEmail: (existing.rows[0] as any).primary_email as string, alreadyExists: true };
+      }
+      const loginEmail = `hs-${childId.slice(0, 8)}@dayzi.local`;
+      const student = await registrar.register({
+        email: loginEmail,
+        password: input.password,
+        intendedRole: 'STUDENT',
+        ...(input.displayName ? { displayName: input.displayName } : {}),
+      });
+      await base.identity.linkStudentAccount({
+        studentUserId: student.user.id as never,
+        childId,
+        linkMethod: 'GUARDIAN_MANUAL',
+        linkedByUserId: ctx.userId as never,
+      });
+      return { loginEmail, alreadyExists: false };
+    },
+
+    async getStudentAccess(auth: CallerAuth, childId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'view_child');
+      const r = await pool.query(
+        `SELECT u.primary_email, l.status, l.created_at FROM student_account_links l
+           JOIN users u ON u.id = l.user_id WHERE l.child_id = $1 ORDER BY l.created_at DESC LIMIT 1`,
+        [childId],
+      );
+      const x = r.rows[0] as any;
+      return x
+        ? {
+            loginEmail: x.primary_email as string,
+            status: x.status as string,
+            createdAt: new Date(x.created_at).toISOString(),
+          }
+        : null;
+    },
+
+    async revokeStudentAccess(auth: CallerAuth, childId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'link_student');
+      await withTransaction(pool, async (client) => {
+        await client.query(
+          `UPDATE student_account_links SET status = 'REVOKED', revoked_at = now()
+            WHERE child_id = $1 AND status = 'ACTIVE'`,
+          [childId],
+        );
+      });
+      return { ok: true };
     },
 
     // ---- PRACTICE LOOP (F8 / F30) — assignment → attempt → evidence ----
@@ -971,8 +1084,13 @@ export function createProductionApi(opts: ProductionApiOptions) {
      */
     async createPracticeAssignment(auth: CallerAuth, childId: string, input: { minutes?: number } = {}) {
       const ctx = await deriveContext(auth);
-      await authorizeChild(ctx, childId, 'view_child'); // parent guardian read is enough to assign own child's practice
-      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      if (ctx.workspace === 'STUDENT') {
+        // a student may build their own short practice, but only within their own scope
+        if (ctx.childScope !== childId) throw new ForbiddenError('student scoped to another child');
+      } else {
+        await authorizeChild(ctx, childId, 'view_child'); // parent guardian read is enough to assign own child's practice
+        if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      }
 
       // reuse the tested scene (Curriculum Clock estimate + pace + twin + gaps +
       // context + plan) — DB-backed via learningScene, computed for `minutes`.
@@ -1106,7 +1224,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
             childId,
             source: 'LEGACY_PRACTICE',
             assignedByUserId: ctx.userId,
-            assignedByRole: 'PARENT',
+            assignedByRole: ctx.workspace === 'STUDENT' ? 'SYSTEM' : 'PARENT',
             subjectId: null,
             mode: a.mode.toUpperCase(),
             targetSkillIds: a.targetSkillIds as unknown as string[],

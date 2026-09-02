@@ -54,9 +54,29 @@ export async function getViewer(): Promise<
   }
 }
 
-export type ParentAuth = { bearer: string; workspace: 'PARENT' };
-export function parentAuth(): ParentAuth {
+export type WsAuth<W extends 'PARENT' | 'STUDENT' | 'TEACHER'> = { bearer: string; workspace: W };
+function wsAuth<W extends 'PARENT' | 'STUDENT' | 'TEACHER'>(workspace: W): WsAuth<W> {
   const bearer = getBearer();
   if (!bearer) throw new Error('NO_SESSION');
-  return { bearer, workspace: 'PARENT' };
+  return { bearer, workspace };
+}
+export const parentAuth = () => wsAuth('PARENT');
+export const studentAuth = () => wsAuth('STUDENT');
+export const teacherAuth = () => wsAuth('TEACHER');
+
+/**
+ * The workspace that best fits the signed-in identity — PARENT if held, else
+ * STUDENT, else TEACHER. Used by endpoints that any of the three roles may reach
+ * (e.g. the practice runner) so we don't force a PARENT context onto a student.
+ */
+export async function preferredAuth(): Promise<WsAuth<'PARENT' | 'STUDENT' | 'TEACHER'>> {
+  const bearer = getBearer();
+  if (!bearer) throw new Error('NO_SESSION');
+  const roles = (await getViewer())?.roles ?? [];
+  const workspace = roles.includes('PARENT')
+    ? 'PARENT'
+    : roles.includes('STUDENT')
+      ? 'STUDENT'
+      : 'TEACHER';
+  return { bearer, workspace };
 }

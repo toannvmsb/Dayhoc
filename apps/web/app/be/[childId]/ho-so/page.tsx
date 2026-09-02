@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 import { ParentNav, Screen } from '../../../components';
 import { getApi, getViewer, parentAuth } from '@/lib/server/api';
+import { StudentAccess } from './student-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,10 +11,12 @@ export default async function Profile({ params }: { params: { childId: string } 
 
   let child;
   let guardians;
+  let studentAccess = null;
   try {
-    [child, guardians] = await Promise.all([
+    [child, guardians, studentAccess] = await Promise.all([
       getApi().getChild(parentAuth(), params.childId),
       getApi().listGuardians(parentAuth(), params.childId),
+      getApi().getStudentAccess(parentAuth(), params.childId),
     ]);
   } catch {
     notFound();
@@ -39,6 +42,8 @@ export default async function Profile({ params }: { params: { childId: string } 
           </div>
         ))}
       </div>
+      <StudentAccess childId={params.childId} access={studentAccess} />
+
       <p className="card" style={{ margin: 0, fontSize: 13.5, color: 'var(--c-text-body)' }}>
         Không bắt buộc kết nối trường/lớp hay giáo viên — bố mẹ vẫn dùng đầy đủ DạyZi.
       </p>

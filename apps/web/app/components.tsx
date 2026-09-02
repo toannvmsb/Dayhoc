@@ -266,6 +266,49 @@ export function ParentNav({
   );
 }
 
+export function StudentNav({ active }: { active: 'home' | 'practice' | 'review' | 'progress' }) {
+  const items = [
+    { key: 'home', label: 'Hôm nay', glyph: '◉', href: '/hoc-sinh' },
+    { key: 'practice', label: 'Bài tập', glyph: '⌗', href: '/hoc-sinh/bai-tap' },
+    { key: 'review', label: 'Ôn tập', glyph: '↻', href: '/hoc-sinh/on-tap' },
+    { key: 'progress', label: 'Tiến bộ', glyph: '◔', href: '/hoc-sinh/tien-bo' },
+  ] as const;
+  return (
+    <nav className="bottomnav">
+      {items.map((it) => (
+        <a key={it.key} href={it.href} className="bottomnav__item" data-active={it.key === active}>
+          <span style={{ fontSize: 19 }}>{it.glyph}</span>
+          {it.label}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
+export function TeacherNav({
+  active,
+}: {
+  active: 'students' | 'classes' | 'updates' | 'assignments' | 'connect';
+}) {
+  const items = [
+    { key: 'students', label: 'Học sinh', glyph: '◍', href: '/giao-vien' },
+    { key: 'classes', label: 'Lớp học', glyph: '▤', href: '/giao-vien/lop-hoc' },
+    { key: 'updates', label: 'Cập nhật', glyph: '⌗', href: '/giao-vien/cap-nhat' },
+    { key: 'assignments', label: 'Bài giao', glyph: '✎', href: '/giao-vien/bai-giao' },
+    { key: 'connect', label: 'Kết nối', glyph: '⇄', href: '/giao-vien/ket-noi' },
+  ] as const;
+  return (
+    <nav className="bottomnav">
+      {items.map((it) => (
+        <a key={it.key} href={it.href} className="bottomnav__item" data-active={it.key === active}>
+          <span style={{ fontSize: 19 }}>{it.glyph}</span>
+          {it.label}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
 export function Screen({ children, nav }: { children: ReactNode; nav: ReactNode }) {
   return (
     <div className="screen">
