@@ -292,16 +292,47 @@ correctness metric. No paid second-pass call in C5.2.
 - The `BenchmarkReport` now carries `coverage`, `readiness`, `hardCaseCount`,
   `baseCaseCount`, and the exact/near reference-copy split.
 
-## 26. Current readiness (mock probe)
+## 26. C5.2 coverage patch (anh 2026-09-02) — HC05→HC06, ESTIMATED, K5
 
-`benchmarkReady: true`. Blocking gaps: none. Non-blocking gaps (documented):
-`knowledge K5`, `context confidence ESTIMATED`, `parent goal kha_gioi`,
-`answer format choice`, `answer format exact`,
-`deterministic-correctness-supported answer item` — the last three are MOCK
-artifacts (the mock only emits numeric/fraction/reasoning word problems); they
-will be measured on the first real Luna run.
+Three coverage issues closed (manifest patch only, no architecture change):
 
-## 27. What C5.2 did NOT do
+1. **HC05→HC06 proves the SAME Grade-9 candidate opens.** HC05/HC06 now carry
+   the `selectLearningTargets` trace. HC05: `M7.ALG.SYMMETRIC` (origin 9) is a
+   candidate, **REJECTED**, reason `"blocking prerequisite gap on path:
+   M7.ALG.IDENTITY"` (the specific Grade-8 bridge). HC06: the bridge (and the
+   rest of the Grade-8 algebra) is mastered → SYMMETRIC is **no longer rejected**
+   and **is a selected FRONTIER target** at `selectedCurriculumOrigin: 9`,
+   `prerequisiteRepair: 0`. Its `selectionReason` is `MASTERED_FRONTIER_STRETCH`
+   (not `NEXT_SAFE_FRONTIER`) because the child carried direct Grade-9 evidence
+   into HC05 — an explicit, traceable reason, not a fake transition.
+2. **HC09 — true ESTIMATED context.** A brand-new child: no confirmation, no
+   evidence, Curriculum Clock only. `learningContext.confidence = ESTIMATED`,
+   `source = CURRICULUM_TIMELINE`; the spec still builds; no frontier;
+   `advanced = 0`; `stretchRatio = 0.15`. Coverage: `contextConfidence.ESTIMATED >= 1`.
+3. **HC10 — legitimate K5.** Strong VERIFIED above-grade frontier (5× tier-A
+   school assessments on the Grade-9 chain), readiness `ready`, prereqs
+   satisfied, frontier confidence past the STRONG threshold → `kMax = K5`,
+   `advanced > 0`. **T stays ≤ T4** (no strong-thinking problem-type evidence) —
+   K5 does not imply T5, just as HC02/HC03 show T5 at K3 (T5 does not imply K5).
+
+`assessBenchmarkReadiness` criteria widened per §5: grade 4+7, FRONTIER, K4, K5,
+T4, T5, grade-level T4/T5, Parallel Gap Repair, HC05→HC06 progression, no-frontier
+HSG, ESTIMATED context, SUPPORTING+STRONG+VERIFIED all represented, adversarial
+suite, build gates.
+
+## 27. Current readiness (mock probe, C5.2 patched)
+
+`benchmarkReady: true`. Blocking gaps: **none**. Manifest: 16 base + 10 hard = 26.
+Coverage: grade g4:10/g7:16 · roles CURRENT/REPAIR/FRONTIER/THINKING all > 0 ·
+K1:15 K2:26 K3:18 **K4:4 K5:1** · T1:15 T2:26 T3:26 **T4:3 T5:3** · context
+**ESTIMATED:1** SUPPORTING:1 STRONG:3 VERIFIED:21 · Parallel Gap Repair:15 ·
+above-grade FRONTIER:4 · grade-level T4/T5:3.
+Non-blocking gaps (kept visible): `parent goal kha_gioi`, `answer format choice`,
+`answer format exact`, `deterministic-correctness-supported answer item` — the
+last three are MOCK artifacts (the mock only emits numeric/fraction/reasoning
+word problems), measured on the first real Luna run.
+
+## 28. What C5.2 did NOT do
 
 Same list as §13/§20 — plus: no paid/live benchmark run, no Terra/Sonnet, no
 second-pass AI verifier call.

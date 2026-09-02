@@ -27,7 +27,9 @@
 > CORRECTNESS, narrow deterministic math verifier, explicit strict-vs-fallback
 > structured output, schema/prompt/manifest versioning, frozen benchmark
 > manifest, paid-spend guardrail, machine-readable benchmark report) ✅ ·
-> **C5.2** benchmark COVERAGE hardening (8 synthetic hard cases HC01–HC08 for
+> **C5.2** benchmark COVERAGE hardening (10 synthetic hard cases HC01–HC10 —
+> incl. HC09 true ESTIMATED context and HC10 legitimate K5, HC05→HC06 proves
+> the same Grade-9 candidate opens after bridge repair — for
 > grade-level T4/T5 · real above-grade FRONTIER · Parallel Gap Repair · safe
 > frontier progression · no-frontier HSG · conservative-under-uncertainty; 15
 > adversarial generator/validator cases; exact-vs-near reference-copy split with
@@ -35,7 +37,7 @@
 > matrix with no hidden GAP; `benchmarkReady` machine decision) ✅ —
 > **no live provider run, LIVE not activated, no child ever sees AI content.** See
 > [18](18_LIVE_AI_GENERATION_SHADOW_MODE.md).
-> **487 tests / 5 skipped. No live AI provider run. `benchmarkReady: true`.** C6+ not started — awaiting anh's approval of C5.2 + explicit go for the Luna benchmark.
+> **489 tests / 5 skipped. No live AI provider run. `benchmarkReady: true` (16 base + 10 hard, no blocking coverage gaps).** C6+ not started — awaiting anh's approval of the C5.2 coverage patch + explicit go for the Luna benchmark.
 
 ---
 

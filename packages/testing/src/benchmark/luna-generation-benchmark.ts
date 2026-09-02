@@ -18,7 +18,7 @@ import {
   manifestCoverage,
   type BenchmarkCase,
 } from './luna-benchmark-manifest.js';
-import { buildHardCaseManifest, HARDCASE_MANIFEST_VERSION, type HardCase } from './luna-hardcase-manifest.js';
+import { algebraicFrontierTrace, buildHardCaseManifest, HARDCASE_MANIFEST_VERSION, type HardCase } from './luna-hardcase-manifest.js';
 import {
   assessBenchmarkReadiness,
   computeCoverageMatrix,
@@ -182,10 +182,24 @@ export async function runLunaBenchmark(input: RunBenchmarkInput): Promise<{ repo
   ];
   const producedBatches = records.filter((r) => r.result.status === 'delivered').map((r) => (r.result.status === 'delivered' ? r.result.batch : null)).filter((b): b is NonNullable<typeof b> => b !== null);
   const coverage = probeAnswerCoverage(computeCoverageMatrix(coverageCases), producedBatches);
+
+  // HC05→HC06: the SAME Grade-9 candidate (SYMMETRIC) is rejected on the bridge, then
+  // (after the bridge is mastered) is a selected FRONTIER target (doc 14 C5.2 §1).
+  const G9 = 'M7.ALG.SYMMETRIC';
+  const hc05 = hardCases.find((h) => h.hardCaseId === 'HC05')?.pipeline;
+  const hc06 = hardCases.find((h) => h.hardCaseId === 'HC06')?.pipeline;
+  const frontierProgressionProven =
+    !!hc05 &&
+    !!hc06 &&
+    algebraicFrontierTrace(hc05).rejected.some((r) => r.skillId === G9 && /IDENTITY/.test(r.reason)) &&
+    !algebraicFrontierTrace(hc06).rejected.some((r) => r.skillId === G9) &&
+    algebraicFrontierTrace(hc06).selected.includes(G9);
+
   const readiness = assessBenchmarkReadiness({
     matrix: coverage,
     adversarialTestsPassed: input.adversarialTestsPassed ?? false,
     buildGatesGreen: input.buildGatesGreen ?? false,
+    frontierProgressionProven,
   });
 
   const questionCount = records

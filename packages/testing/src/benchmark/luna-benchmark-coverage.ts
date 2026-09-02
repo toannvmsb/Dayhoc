@@ -158,23 +158,32 @@ export interface ReadinessInput {
   readonly matrix: CoverageMatrix;
   readonly adversarialTestsPassed: boolean;
   readonly buildGatesGreen: boolean;
+  /** Whether the HC05→HC06 test proved the SAME Grade-9 candidate opens after bridge repair (doc 14 C5.2 §1). */
+  readonly frontierProgressionProven: boolean;
 }
 
 /**
- * Coverage cells whose absence BLOCKS the live benchmark (doc 14 C5.2 §G).
- * `context confidence ESTIMATED` is deliberately NOT here — the readiness
- * criterion is "uncertain-context conservative behaviour is covered", which
- * `SUPPORTING` satisfies; a specific ESTIMATED cell is a non-blocking gap.
+ * Coverage cells whose absence BLOCKS the live benchmark (doc 14 C5.2 §G,
+ * revised §5). Everything else that is uncovered is a NON-blocking gap and is
+ * still reported.
  */
 const BLOCKING_DIMENSIONS: readonly string[] = [
+  'grade-4',
+  'grade-7',
   'above-grade FRONTIER',
   'grade-level T4/T5',
+  'knowledge K4',
+  'knowledge K5',
   'thinking T4',
   'thinking T5',
   'Parallel Gap Repair',
   'parent goal hsg_thi_chuyen',
   'target role FRONTIER',
   'target role THINKING',
+  'context confidence ESTIMATED',
+  'context confidence SUPPORTING',
+  'context confidence STRONG',
+  'context confidence VERIFIED',
 ];
 
 export function assessBenchmarkReadiness(input: ReadinessInput): BenchmarkReadiness {
@@ -184,14 +193,20 @@ export function assessBenchmarkReadiness(input: ReadinessInput): BenchmarkReadin
   const blockingCoverageGaps = m.uncovered.filter(isBlocking);
   const nonBlockingCoverageGaps = m.uncovered.filter((g) => !isBlocking(g));
 
-  // explicit criteria from doc 14 C5.2 §G
+  // explicit criteria from doc 14 C5.2 §G (revised §5)
   const criteria: Array<[string, boolean]> = [
+    ['grade 4 and grade 7 covered', m.grade.g4 > 0 && m.grade.g7 > 0],
     ['FRONTIER covered', m.aboveGradeFrontier > 0 && m.targetRole.FRONTIER > 0],
-    ['T4/T5 covered', (m.thinkingLevel.T4 ?? 0) > 0 && (m.thinkingLevel.T5 ?? 0) > 0],
+    ['K4 covered', (m.knowledgeLevel.K4 ?? 0) > 0],
+    ['K5 covered', (m.knowledgeLevel.K5 ?? 0) > 0],
+    ['T4 covered', (m.thinkingLevel.T4 ?? 0) > 0],
+    ['T5 covered', (m.thinkingLevel.T5 ?? 0) > 0],
     ['grade-level T4/T5 covered', m.gradeLevelT4T5 > 0],
     ['Parallel Gap Repair covered', m.parallelGapRepair > 0],
+    ['HC05→HC06 proves an actual frontier progression', input.frontierProgressionProven],
     ['no-frontier HSG covered', (m.parentGoal.hsg_thi_chuyen ?? 0) > 0],
-    ['uncertain-context conservative behaviour covered', (m.contextConfidence.ESTIMATED ?? 0) + (m.contextConfidence.SUPPORTING ?? 0) > 0],
+    ['ESTIMATED curriculum-only context covered', (m.contextConfidence.ESTIMATED ?? 0) > 0],
+    ['SUPPORTING / STRONG / VERIFIED represented', (m.contextConfidence.SUPPORTING ?? 0) > 0 && (m.contextConfidence.STRONG ?? 0) > 0 && (m.contextConfidence.VERIFIED ?? 0) > 0],
     ['adversarial validator tests pass', input.adversarialTestsPassed],
     ['build / golden / lint / typecheck / web-build green', input.buildGatesGreen],
   ];
