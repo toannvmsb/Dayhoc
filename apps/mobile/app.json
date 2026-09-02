@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "DạyZi",
+    "slug": "dayzi",
+    "scheme": "dayzi",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#3B5BFF",
+      "resizeMode": "contain"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "vn.dayzi.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "DạyZi cần camera để bạn chụp trang vở / bài kiểm tra của con.",
+        "NSPhotoLibraryUsageDescription": "DạyZi cần truy cập ảnh để bạn tải bài của con lên."
+      }
+    },
+    "android": {
+      "package": "vn.dayzi.app",
+      "permissions": ["CAMERA", "READ_EXTERNAL_STORAGE"],
+      "adaptiveIcon": { "backgroundColor": "#3B5BFF" }
+    },
+    "web": { "bundler": "metro" },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        { "cameraPermission": "DạyZi cần camera để bạn chụp bài của con." }
+      ],
+      [
+        "expo-image-picker",
+        { "photosPermission": "DạyZi cần truy cập ảnh để bạn tải bài của con lên." }
+      ]
+    ],
+    "extra": {
+      "apiBaseUrl": "http://localhost:3100/api/v1"
+    }
+  }
+}

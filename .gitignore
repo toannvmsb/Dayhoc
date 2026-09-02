@@ -43,6 +43,8 @@ Thumbs.db
 
 # Expo / RN
 .expo/
+**/.expo/
+apps/mobile/expo-env.d.ts
 *.orig.*
 
 # Large copyrighted reference material (SGK textbook PDFs — kept locally, not versioned)
