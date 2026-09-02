@@ -87,9 +87,7 @@ export function LearningContextCard({ ctx }: { ctx: ParentHomeView['learningCont
         </span>
       ) : null}
       {estimated ? (
-        <a href="/more" className="chip" style={{ marginTop: 6, alignSelf: 'flex-start' }}>
-          Xác nhận bài học ›
-        </a>
+        <span className="chip" style={{ marginTop: 6, alignSelf: 'flex-start' }}>DạyZi đang ước tính</span>
       ) : null}
     </div>
   );
@@ -171,9 +169,7 @@ export function AttentionCard({ items }: { items: ParentHomeView['attention'] })
       </span>
       <span style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--c-attention-body)' }}>{top.note}</span>
       {top.gapId ? (
-        <a href={`/gap/${top.gapId}`} style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-primary)' }}>
-          Xem khuyến nghị ›
-        </a>
+        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text-faint)' }}>Chi tiết đang hoàn thiện</span>
       ) : null}
       {items.slice(1).map((it) => (
         <span key={it.title} style={{ fontSize: 12.5, color: 'var(--c-attention-body)' }}>
@@ -243,13 +239,20 @@ export function ProgressRow({ row }: { row: SkillProgressRow }) {
   );
 }
 
-export function BottomNav({ active }: { active: 'home' | 'child' | 'update' | 'progress' | 'more' }) {
+export function ParentNav({
+  childId,
+  active,
+}: {
+  childId: string;
+  active: 'home' | 'progress' | 'practice' | 'profile' | 'connect';
+}) {
+  const base = `/be/${childId}`;
   const items: { key: typeof active; label: string; glyph: string; href: string }[] = [
-    { key: 'home', label: 'Hôm nay', glyph: '◉', href: '/' },
-    { key: 'child', label: 'Con', glyph: '◍', href: '/child' },
-    { key: 'update', label: 'Cập nhật', glyph: '⌗', href: '/teacher/update' },
-    { key: 'progress', label: 'Tiến bộ', glyph: '◔', href: '/progress' },
-    { key: 'more', label: 'Thêm', glyph: '⋯', href: '/more' },
+    { key: 'home', label: 'Hôm nay', glyph: '◉', href: base },
+    { key: 'progress', label: 'Tiến độ', glyph: '◔', href: `${base}/tien-do` },
+    { key: 'practice', label: 'Bài tập', glyph: '⌗', href: `${base}/bai-tap` },
+    { key: 'profile', label: 'Hồ sơ con', glyph: '◍', href: `${base}/ho-so` },
+    { key: 'connect', label: 'Kết nối', glyph: '⇄', href: `${base}/ket-noi` },
   ];
   return (
     <nav className="bottomnav">

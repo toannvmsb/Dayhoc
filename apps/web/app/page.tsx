@@ -1,29 +1,14 @@
-import { demoScene } from '@/lib/demo-scene';
-import {
-  AttentionCard,
-  BottomNav,
-  ChildSwitcher,
-  InsightsRow,
-  LearningContextCard,
-  Screen,
-  TodayPlanCard,
-} from './components';
+import { redirect } from 'next/navigation';
+import { getApi, getViewer, parentAuth } from '@/lib/server/api';
 
-export default function ParentHome() {
-  const { home } = demoScene();
-  return (
-    <Screen nav={<BottomNav active="home" />}>
-      <ChildSwitcher
-        name={home.child.displayName}
-        sub={`Lớp ${home.child.schoolGrade} · ${home.child.schoolContext}`}
-      />
-      <LearningContextCard ctx={home.learningContext} />
-      <TodayPlanCard plan={home.todayPlan} />
-      <AttentionCard items={home.attention} />
-      <InsightsRow
-        progressInsights={home.progressInsights}
-        thinkingChallenge={home.thinkingChallenge}
-      />
-    </Screen>
-  );
+export const dynamic = 'force-dynamic';
+
+export default async function Root() {
+  const viewer = await getViewer();
+  if (!viewer) redirect('/welcome');
+  if (!viewer.roles.includes('PARENT')) redirect('/welcome');
+
+  const children = await getApi().listChildren(parentAuth());
+  if (children.length === 0) redirect('/onboarding');
+  redirect(`/be/${children[0]!.childId}`);
 }

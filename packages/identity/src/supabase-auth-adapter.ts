@@ -113,13 +113,37 @@ export class SupabaseAuthAdapter implements AuthAdapter {
 }
 
 /**
- * Pick the auth adapter for the current environment. Returns `SupabaseAuthAdapter`
- * when `SUPABASE_URL` + `SUPABASE_JWT_SECRET` are set, else a fresh
- * `InMemoryAuthAdapter` (dev / test / CI). The caller logs which one is in use.
+ * A stateless dev auth adapter: the bearer IS the provider subject id
+ * (`verifyToken(bearer) → { authUserId: bearer }`), so a session survives a
+ * server restart without a real IdP. **Dev only** — `resolveAuthAdapter` picks it
+ * only when `DZ_DEV_AUTH=1` AND `NODE_ENV !== 'production'`.
+ */
+export class DevAuthAdapter implements AuthAdapter {
+  #seq = 0;
+  verifyToken(bearer: string): Promise<AuthIdentity | null> {
+    const t = bearer.replace(/^Bearer\s+/i, '').trim();
+    if (!t.startsWith('devauth_')) return Promise.resolve(null);
+    return Promise.resolve({ authUserId: t, email: undefined, phone: undefined });
+  }
+  createUser(input: { email?: string; phone?: string; password: string }): Promise<string> {
+    if (!input.password || input.password.length < 8) {
+      return Promise.reject(new Error('password too short'));
+    }
+    this.#seq += 1;
+    // deterministic-ish but unique per registration
+    return Promise.resolve(`devauth_${Date.now().toString(36)}_${this.#seq}`);
+  }
+}
+
+/**
+ * Pick the auth adapter for the current environment.
+ *  - `SUPABASE_URL` + `SUPABASE_JWT_SECRET` → `SupabaseAuthAdapter` (production).
+ *  - `DZ_DEV_AUTH=1` (non-production) → `DevAuthAdapter` (browser dev without an IdP).
+ *  - else → `InMemoryAuthAdapter` (tests / CI).
  */
 export function resolveAuthAdapter(
   env: Record<string, string | undefined> = process.env,
-): { adapter: AuthAdapter; kind: 'supabase' | 'in-memory' } {
+): { adapter: AuthAdapter; kind: 'supabase' | 'dev' | 'in-memory' } {
   if (env.SUPABASE_URL && env.SUPABASE_JWT_SECRET) {
     return {
       adapter: new SupabaseAuthAdapter({
@@ -129,6 +153,9 @@ export function resolveAuthAdapter(
       }),
       kind: 'supabase',
     };
+  }
+  if (env.DZ_DEV_AUTH === '1' && env.NODE_ENV !== 'production') {
+    return { adapter: new DevAuthAdapter(), kind: 'dev' };
   }
   return { adapter: new InMemoryAuthAdapter(), kind: 'in-memory' };
 }

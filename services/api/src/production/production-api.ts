@@ -261,6 +261,17 @@ export function createProductionApi(opts: ProductionApiOptions) {
     },
 
     /** GET /me */
+    /** Authenticate a bearer with NO workspace requirement (for the app shell). */
+    async whoami(bearer: string) {
+      const resolved = await registrar.authenticate(bearer);
+      if (!resolved) return null;
+      return {
+        userId: resolved.user.id,
+        displayName: resolved.user.displayName,
+        roles: resolved.roles,
+      };
+    },
+
     async getMe(auth: CallerAuth) {
       const ctx = await deriveContext(auth);
       return meDto(await registrar.getIdentity(ctx.userId as never));
