@@ -2,12 +2,14 @@
 
 > **Authority:** locked spec §10, §11, §17. Companion: [19](19_IDENTITY_FAMILY_MODEL.md)–[22](22_AUTH_AND_WORKSPACE_ARCHITECTURE.md),
 > [24](24_ACADEMIC_PROGRESSION_ENGINE.md), [27](27_IDENTITY_MIGRATION_ROADMAP.md).
-> **Status:** I0 + I1 APPROVED FOR IMPLEMENTATION (anh 2026-09-02). I2+ remain
-> PLAN ONLY. ID-Q1..Q10 RESOLVED — see doc 19 §6. Key deltas folded in below:
-> capability-based `parent_child_relationships` (ID-Q6), `MIGRATED_FAMILY_OWNER`
-> backfill, `enrollment_type` PRIMARY constraint (Amendment 2), `LEGACY_MINIMAL`
-> invite migration (ID-Q3), `class_cohorts` deferred (ID-Q7), Supabase Postgres +
-> RLS-as-defence-in-depth (ID-Q1).
+> **Status:** I0..I7 BACKEND/DOMAIN FOUNDATION IMPLEMENTED (anh 2026-09-02). ID-Q1..Q10
+> RESOLVED (doc 19 §6). Migrations applied: `1757203200000_identity_family` (I0/I1),
+> `1757289600000_education_directory` (I2), `1757376000000_enrollment_history` (I3),
+> `1757462400000_enrollment_transitions` (I6), `1757548800000_relationships_permissions`
+> (I4), `1757635200000_teacher_learning_contributions` (I5),
+> `1757721600000_relationship_invite_codes` (I7). All additive, up/down/up verified.
+> IX (persist learning tables) + full route cutover + RLS = OD-1..OD-7 in
+> `PENDING_APPROVAL.md`.
 
 ---
 

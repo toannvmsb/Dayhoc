@@ -1,9 +1,11 @@
 # 27 — Identity / Relationship Migration Roadmap
 
 > **Authority:** locked spec §17, §19, prompt §B33. Companion: [19](19_IDENTITY_FAMILY_MODEL.md)–[26](26_IDENTITY_RELATIONSHIP_GOLDEN_TEST_PLAN.md).
-> **Status:** ID-Q1..Q10 RESOLVED (doc 19 §6). **I0 + I1 APPROVED FOR
-> IMPLEMENTATION** (anh 2026-09-02). I2+ remain roadmap only — do not start I2
-> until I1 is merged and green.
+> **Status:** ID-Q1..Q10 RESOLVED (doc 19 §6). **I0..I7 BACKEND/DOMAIN
+> FOUNDATION IMPLEMENTED** (anh 2026-09-02, continuous authorization) — commits
+> `eab4069` (I0+I1), `17924dc` (I2+I3+I6), `27f7894` (I4), `98eadd4` (I5),
+> `a00189c` (I7). IX (persist learning tables) + full API/UI cutover pending
+> review — see `PENDING_APPROVAL.md` OD-1..OD-7.
 
 ---
 
