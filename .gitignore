@@ -13,6 +13,10 @@ out/
 # Test / coverage
 coverage/
 .vitest/
+test-results/
+playwright-report/
+blob-report/
+.playwright/
 
 # Local dev upload store (M4 — bytes live outside git and Postgres)
 .dz-uploads/

@@ -17,6 +17,7 @@
     "typecheck:web": "npm run typecheck --workspace @copilot/web",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "npm run e2e --workspace @copilot/web",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
