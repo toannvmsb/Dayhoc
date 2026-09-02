@@ -647,7 +647,28 @@ export function createProductionApi(opts: ProductionApiOptions) {
         base.relationships.listInbox(ctx.userId),
         base.relationships.listOutbox(ctx.userId),
       ]);
-      return { inbox: inbox.map(requestDto), outbox: outbox.map(requestDto) };
+      // A TEACHER→CHILD request minted from an invite code targets the child, not
+      // a user, so it never lands in listInbox (which keys on target_user_id).
+      // Fold in the pending requests for every child this caller guards.
+      const merged = new Map(inbox.map((r) => [r.id, r]));
+      if (ctx.workspace === 'PARENT') {
+        const childRows = (
+          await pool.query(
+            `SELECT child_id FROM parent_child_relationships
+              WHERE parent_user_id = $1 AND status = 'ACTIVE'`,
+            [ctx.userId],
+          )
+        ).rows as Array<{ child_id: string }>;
+        for (const { child_id } of childRows) {
+          for (const r of await base.relStore.listRequestsForChild(child_id)) {
+            if (!merged.has(r.id)) merged.set(r.id, r);
+          }
+        }
+      }
+      return {
+        inbox: [...merged.values()].map(requestDto),
+        outbox: outbox.map(requestDto),
+      };
     },
 
     async createRelationshipRequest(
@@ -721,7 +742,16 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const ctx = await deriveContext(auth);
       await authorizeChild(ctx, childId, 'view_child');
       const links = await base.relationships.listChildRelationships(childId);
-      return links.map(linkDto);
+      const out = [];
+      for (const l of links) {
+        const dto = linkDto(l) as ReturnType<typeof linkDto> & { teacherName: string | null };
+        const row = (
+          await pool.query(`SELECT display_name FROM users WHERE id = $1`, [dto.teacherUserId])
+        ).rows[0] as { display_name: string | null } | undefined;
+        dto.teacherName = row?.display_name ?? null;
+        out.push(dto);
+      }
+      return out;
     },
 
     async getTeacherLinkPermissions(auth: CallerAuth, childId: string, linkId: string) {

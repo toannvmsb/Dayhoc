@@ -146,6 +146,136 @@ export async function createStudentPracticeAction(
   return { assignmentId: res.assignmentIds[0] ?? null };
 }
 
+// ---- PARENT: relationships & permissions ----------------------------------
+
+export async function createInviteCodeAction(
+  _prev: FormState & { code?: string },
+  form: FormData,
+): Promise<FormState & { code?: string }> {
+  const childId = String(form.get('childId') ?? '');
+  const subjectId = String(form.get('subjectId') ?? '') || undefined;
+  if (!childId) return { error: 'Thiếu hồ sơ con.' };
+  try {
+    const res = await getApi().createInviteCode(parentAuth(), {
+      childId,
+      ...(subjectId ? { subjectId } : {}),
+    });
+    revalidatePath(`/be/${childId}/ket-noi`);
+    return { code: res.code };
+  } catch (e) {
+    return { error: friendly(e) };
+  }
+}
+
+export async function revokeTeacherLinkAction(childId: string, linkId: string): Promise<void> {
+  await getApi().revokeTeacherChildLink(parentAuth(), linkId);
+  revalidatePath(`/be/${childId}/ket-noi`);
+}
+
+export async function updateTeacherPermissionsAction(
+  childId: string,
+  linkId: string,
+  grant: string[],
+  revoke: string[],
+): Promise<void> {
+  await getApi().updateTeacherLinkPermissions(parentAuth(), childId, linkId, {
+    grant: grant as never,
+    revoke: revoke as never,
+  });
+  revalidatePath(`/be/${childId}/ket-noi`);
+}
+
+export async function acceptRequestAsParentAction(childId: string, requestId: string): Promise<void> {
+  await getApi().acceptRelationshipRequest(parentAuth(), requestId);
+  revalidatePath(`/be/${childId}/ket-noi`);
+}
+
+export async function rejectRequestAsParentAction(childId: string, requestId: string): Promise<void> {
+  await getApi().rejectRelationshipRequest(parentAuth(), requestId);
+  revalidatePath(`/be/${childId}/ket-noi`);
+}
+
+// ---- PARENT: school / class ----------------------------------------------
+
+export async function proposeSchoolAction(
+  _prev: FormState,
+  form: FormData,
+): Promise<FormState> {
+  const officialName = String(form.get('officialName') ?? '').trim();
+  const province = String(form.get('province') ?? '').trim() || undefined;
+  const district = String(form.get('district') ?? '').trim() || undefined;
+  const childId = String(form.get('childId') ?? '');
+  if (!officialName) return { error: 'Nhập tên trường.' };
+  try {
+    await getApi().proposeSchool(parentAuth(), {
+      officialName,
+      ...(province ? { province } : {}),
+      ...(district ? { district } : {}),
+    });
+  } catch (e) {
+    return { error: friendly(e) };
+  }
+  if (childId) revalidatePath(`/be/${childId}/truong-lop`);
+  return {};
+}
+
+export async function searchSchoolsAction(
+  nameFragment: string,
+): Promise<{ id: string; officialName: string; province: string | null; district: string | null }[]> {
+  if (nameFragment.trim().length < 2) return [];
+  const rows = await getApi().searchSchools(parentAuth(), { nameFragment: nameFragment.trim() });
+  return rows.map((s) => ({
+    id: String(s.id),
+    officialName: s.officialName,
+    province: s.province ?? null,
+    district: s.district ?? null,
+  }));
+}
+
+export async function listClassroomsAction(
+  schoolId: string,
+  academicYearId: string,
+): Promise<{ id: string; grade: number; className: string; displayName: string }[]> {
+  const rows = await getApi().listClasses(parentAuth(), schoolId, academicYearId);
+  return rows.map((c) => ({
+    id: String(c.id),
+    grade: c.grade,
+    className: c.className,
+    displayName: c.displayName ?? c.className,
+  }));
+}
+
+export async function createSchoolEnrollmentAction(
+  childId: string,
+  input: { schoolId: string; academicYearId: string; grade: number },
+): Promise<void> {
+  await getApi().createSchoolEnrollment(parentAuth(), childId, input);
+  revalidatePath(`/be/${childId}/truong-lop`);
+  revalidatePath(`/be/${childId}`);
+}
+
+export async function createClassEnrollmentAction(
+  childId: string,
+  input: {
+    classroomId: string;
+    academicYearId: string;
+    enrollmentType: 'PRIMARY' | 'SUPPLEMENTARY' | 'HSG_TEAM' | 'TUTOR_GROUP';
+    privacyMode: 'PRIVATE_LEARNING' | 'LINKED_PRIVATE' | 'LINKED_SHARED';
+  },
+): Promise<void> {
+  await getApi().createClassEnrollment(parentAuth(), childId, input);
+  revalidatePath(`/be/${childId}/truong-lop`);
+}
+
+export async function setClassPrivacyAction(
+  childId: string,
+  classEnrollmentId: string,
+  privacyMode: 'PRIVATE_LEARNING' | 'LINKED_PRIVATE' | 'LINKED_SHARED',
+): Promise<void> {
+  await getApi().setClassPrivacy(parentAuth(), childId, classEnrollmentId, privacyMode);
+  revalidatePath(`/be/${childId}/truong-lop`);
+}
+
 // ---- TEACHER ---------------------------------------------------------------
 
 export async function teacherSubmitContributionAction(

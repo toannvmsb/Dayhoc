@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { ParentNav, Screen } from '../../../components';
 import { getApi, getViewer, parentAuth } from '@/lib/server/api';
@@ -42,6 +43,16 @@ export default async function Profile({ params }: { params: { childId: string } 
           </div>
         ))}
       </div>
+      <Link href={`/be/${params.childId}/truong-lop`} className="card" style={{ flexDirection: 'row', alignItems: 'center', textDecoration: 'none' }}>
+        <span style={{ flex: 1, fontWeight: 700, color: 'var(--c-text-heading)' }}>
+          Trường &amp; lớp
+          <span className="muted" style={{ display: 'block', fontWeight: 500 }}>
+            Khai báo trường/lớp, chế độ chia sẻ
+          </span>
+        </span>
+        <span style={{ color: 'var(--c-primary)', fontWeight: 700 }}>›</span>
+      </Link>
+
       <StudentAccess childId={params.childId} access={studentAccess} />
 
       <p className="card" style={{ margin: 0, fontSize: 13.5, color: 'var(--c-text-body)' }}>
