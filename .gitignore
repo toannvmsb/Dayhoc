@@ -14,6 +14,10 @@ out/
 coverage/
 .vitest/
 
+# Local dev upload store (M4 — bytes live outside git and Postgres)
+.dz-uploads/
+**/.dz-uploads/
+
 # Env & secrets (NEVER commit)
 .env
 .env.*

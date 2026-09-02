@@ -18,6 +18,7 @@ export * from './identity.js';
 export * from './education.js';
 export * from './relationships.js';
 export * from './learning-state.js';
+export * from './uploads.js';
 export * from './subscription.js';
 export * from './context.js';
 export * from './twin.js';

@@ -24,6 +24,7 @@ const nextConfig = {
     '@copilot/projections',
     '@copilot/reference-library',
     '@copilot/schemas',
+    '@copilot/uploads',
   ],
   experimental: {
     serverComponentsExternalPackages: ['pg', 'pg-native'],

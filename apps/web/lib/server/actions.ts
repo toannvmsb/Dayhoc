@@ -146,6 +146,58 @@ export async function createStudentPracticeAction(
   return { assignmentId: res.assignmentIds[0] ?? null };
 }
 
+// ---- PARENT: evidence upload (M4) ----------------------------------------
+
+const UPLOAD_KINDS = ['NOTEBOOK_PAGE', 'GRADED_TEST', 'HOMEWORK', 'TEACHER_MESSAGE', 'OTHER'] as const;
+
+export async function createUploadAction(
+  _prev: FormState & { uploadId?: string },
+  form: FormData,
+): Promise<FormState & { uploadId?: string }> {
+  const childId = String(form.get('childId') ?? '');
+  const kindRaw = String(form.get('kind') ?? 'NOTEBOOK_PAGE');
+  const kind = (UPLOAD_KINDS as readonly string[]).includes(kindRaw)
+    ? (kindRaw as (typeof UPLOAD_KINDS)[number])
+    : 'NOTEBOOK_PAGE';
+  const file = form.get('file');
+  if (!childId || !(file instanceof File) || file.size === 0) {
+    return { error: 'Chọn một ảnh hoặc file PDF của con.' };
+  }
+  if (file.size > 12 * 1024 * 1024) return { error: 'File tối đa 12MB.' };
+  const contentBase64 = Buffer.from(await file.arrayBuffer()).toString('base64');
+  try {
+    const res = await getApi().createUpload(parentAuth(), childId, {
+      kind,
+      filename: file.name || 'upload',
+      mimeType: file.type || 'application/octet-stream',
+      contentBase64,
+    });
+    // kick off the (mock, free) analysis immediately
+    await getApi().runUploadAnalysis(parentAuth(), childId, res.uploadId).catch(() => undefined);
+    revalidatePath(`/be/${childId}/tai-lieu`);
+    return { uploadId: res.uploadId };
+  } catch (e) {
+    return { error: friendly(e) };
+  }
+}
+
+export async function runUploadAnalysisAction(childId: string, uploadId: string): Promise<void> {
+  await getApi().runUploadAnalysis(parentAuth(), childId, uploadId);
+  revalidatePath(`/be/${childId}/tai-lieu/${uploadId}`);
+  revalidatePath(`/be/${childId}/tai-lieu`);
+}
+
+export async function confirmUploadAction(
+  childId: string,
+  uploadId: string,
+  corrections: ReadonlyArray<{ index: number; confirm: boolean; skillId?: string; correct?: boolean | null }>,
+): Promise<{ evidenceRecorded: number }> {
+  const res = await getApi().confirmUploadAnalysis(parentAuth(), childId, uploadId, corrections);
+  revalidatePath(`/be/${childId}/tai-lieu`);
+  revalidatePath(`/be/${childId}`);
+  return { evidenceRecorded: res.evidenceRecorded };
+}
+
 // ---- PARENT: relationships & permissions ----------------------------------
 
 export async function createInviteCodeAction(

@@ -39,6 +39,20 @@ export default async function ParentHome({ params }: { params: { childId: string
         Bắt đầu 20 phút cùng con
       </Link>
 
+      <Link
+        href={`/be/${params.childId}/tai-lieu`}
+        className="card"
+        style={{ flexDirection: 'row', alignItems: 'center', textDecoration: 'none' }}
+      >
+        <span style={{ flex: 1, fontWeight: 700, color: 'var(--c-text-heading)' }}>
+          Tải bài của con
+          <span className="muted" style={{ display: 'block', fontWeight: 500 }}>
+            Chụp trang vở / bài kiểm tra để DạyZi hiểu con hơn
+          </span>
+        </span>
+        <span style={{ color: 'var(--c-primary)', fontWeight: 700 }}>›</span>
+      </Link>
+
       <AttentionCard items={home.attention} />
       <InsightsRow progressInsights={home.progressInsights} thinkingChallenge={home.thinkingChallenge} />
     </Screen>

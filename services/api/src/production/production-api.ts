@@ -24,6 +24,15 @@ import { PgEducationStore } from '@copilot/education-directory/pg';
 import { PgLedgerStore } from '@copilot/evidence/pg';
 import { PgLearningStateStore } from '@copilot/learning-state/pg';
 import { snapshotHash } from '@copilot/learning-state';
+import {
+  UploadIngestionService,
+  resolveDocumentVisionAdapter,
+  resolveUploadStorageAdapter,
+  type DocumentVisionAdapter,
+  type ItemCorrection,
+  type UploadStorageAdapter,
+} from '@copilot/uploads';
+import { PgUploadAnalysisStore } from '@copilot/uploads/pg';
 import { loadKnowledgeBase, type KnowledgeBase } from '@copilot/math-data';
 import { loadReferenceLibrary } from '@copilot/reference-library';
 import { runGapEngine } from '@copilot/gap-engine';
@@ -47,6 +56,10 @@ export interface ProductionApiOptions {
   readonly now?: () => Date;
   /** Forced OFF in production (fail-closed). Tests set this true. */
   readonly allowTrustedContext?: boolean;
+  /** M4 — object store for upload bytes. Default: resolved from env (local-fs / Supabase). */
+  readonly uploadStorage?: UploadStorageAdapter;
+  /** M4 — document-vision adapter. Default: deterministic mock (no paid call). */
+  readonly documentVision?: DocumentVisionAdapter;
 }
 
 type Queryable = Pool | PoolClient;
@@ -155,6 +168,24 @@ export function createProductionApi(opts: ProductionApiOptions) {
     allowTrustedContext: opts.allowTrustedContext ?? false,
   });
 
+  // ---- M4: upload / document-vision ingestion ----------------------
+  const uploadStorage =
+    opts.uploadStorage ?? resolveUploadStorageAdapter(process.env).adapter;
+  const documentVision =
+    opts.documentVision ?? resolveDocumentVisionAdapter(process.env).adapter;
+  const uploadStore = new PgUploadAnalysisStore(pool);
+  const uploadIngestion = new UploadIngestionService({
+    storage: uploadStorage,
+    vision: documentVision,
+    store: uploadStore,
+    now,
+    logger,
+  });
+  const gradeBandSkillIds = (grade: number): string[] =>
+    [...kb.skills.entries()]
+      .filter(([, s]) => Number((s as { gradeContext?: unknown }).gradeContext) === Number(grade))
+      .map(([id]) => String(id));
+
   // ---- helpers -------------------------------------------------------
 
   async function authorizeChild(
@@ -244,6 +275,40 @@ export function createProductionApi(opts: ProductionApiOptions) {
     needsGuardianReview: l.needsGuardianReview,
     acceptedAt: l.acceptedAt,
   });
+
+  const uploadAnalysisDto = (
+    a: import('@copilot/domain').UploadAnalysisRecord,
+    knowledge?: KnowledgeBase,
+  ) => {
+    const skillName = (id: string) => knowledge?.skills.get(id as never)?.name ?? id;
+    const AUTOSELECT = 0.6;
+    return {
+      uploadId: a.uploadId,
+      state: a.state,
+      confidence: a.confidence,
+      adapterProvider: a.adapterProvider,
+      extractionVersion: a.extractionVersion,
+      errorCode: a.errorCode,
+      errorMessage: a.errorMessage,
+      confirmedAt: a.confirmedAt,
+      evidenceRecorded: a.resultingEvidenceIds.length,
+      documentType: a.extraction?.documentType ?? null,
+      observedOn: a.extraction?.observedOn ?? null,
+      teacherNote: a.extraction?.teacherNote ?? null,
+      items: (a.extraction?.items ?? []).map((it) => ({
+        index: it.index,
+        prompt: it.prompt,
+        childAnswer: it.childAnswer,
+        markedCorrect: it.markedCorrect,
+        autoSelected: (it.skillCandidates[0]?.confidence ?? 0) >= AUTOSELECT,
+        skillCandidates: it.skillCandidates.map((c) => ({
+          skillId: c.skillId,
+          skillName: skillName(c.skillId),
+          confidence: c.confidence,
+        })),
+      })),
+    };
+  };
 
   // ---- IDENTITY / WORKSPACE ---------------------------------------
 
@@ -1103,6 +1168,151 @@ export function createProductionApi(opts: ProductionApiOptions) {
         );
       });
       return { ok: true };
+    },
+
+    // ---- M4: EVIDENCE UPLOAD / DOCUMENT VISION ------------------------
+
+    /** GET /children/:childId/uploads — ledger rows + current analysis state. */
+    async listUploads(auth: CallerAuth, childId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'view_child');
+      const uploads = await uploadStore.listUploads(childId);
+      const out = [];
+      for (const u of uploads) {
+        const a = await uploadStore.getAnalysisByUpload(u.id);
+        out.push({
+          id: u.id,
+          kind: u.kind,
+          originalFilename: u.originalFilename,
+          mimeType: u.mimeType,
+          byteSize: u.byteSize,
+          createdAt: u.createdAt,
+          state: a?.state ?? 'UPLOAD_CREATED',
+          confidence: a?.confidence ?? null,
+          itemCount: a?.extraction?.items.length ?? 0,
+          errorMessage: a?.errorMessage ?? null,
+        });
+      }
+      return out;
+    },
+
+    /**
+     * POST /children/:childId/uploads — parent uploads a page. `contentBase64`
+     * is decoded, stored via the object-store adapter, and an analysis row is
+     * opened (UPLOAD_CREATED → UPLOADED). NO paid call happens here.
+     */
+    async createUpload(
+      auth: CallerAuth,
+      childId: string,
+      input: {
+        kind: 'NOTEBOOK_PAGE' | 'GRADED_TEST' | 'HOMEWORK' | 'TEACHER_MESSAGE' | 'OTHER';
+        filename: string;
+        mimeType: string;
+        contentBase64: string;
+      },
+    ) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'manage_child');
+      const bytes = new Uint8Array(Buffer.from(input.contentBase64, 'base64'));
+      if (bytes.byteLength === 0) throw new ForbiddenError('empty upload');
+      if (bytes.byteLength > 12 * 1024 * 1024) throw new ForbiddenError('upload exceeds 12MB');
+      const { upload, analysis } = await uploadIngestion.createUpload({
+        childId,
+        actorUserId: ctx.userId,
+        kind: input.kind,
+        filename: input.filename,
+        mimeType: input.mimeType,
+        bytes,
+      });
+      return { uploadId: upload.id, state: analysis.state };
+    },
+
+    /**
+     * POST /children/:childId/uploads/:uploadId/analyze — run the (mock)
+     * document-vision adapter: READING → ANALYZING → MAPPED → NEEDS_CONFIRMATION,
+     * or FAILED. Still no paid call unless an operator explicitly wired a live
+     * adapter.
+     */
+    async runUploadAnalysis(auth: CallerAuth, childId: string, uploadId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'manage_child');
+      const upload = await uploadStore.getUpload(uploadId);
+      if (!upload || upload.childId !== childId) throw new NotFoundError('upload');
+      const grade = (
+        await pool.query(`SELECT school_grade FROM child_profiles WHERE id = $1`, [childId])
+      ).rows[0] as { school_grade: number } | undefined;
+      const analysis = await uploadIngestion.runAnalysis({
+        uploadId,
+        childGrade: grade?.school_grade ?? 4,
+        knownSkillIds: gradeBandSkillIds(grade?.school_grade ?? 4),
+      });
+      return uploadAnalysisDto(analysis, kb);
+    },
+
+    /** GET /children/:childId/uploads/:uploadId/analysis — for the review screen. */
+    async getUploadAnalysis(auth: CallerAuth, childId: string, uploadId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'view_child');
+      const upload = await uploadStore.getUpload(uploadId);
+      if (!upload || upload.childId !== childId) throw new NotFoundError('upload');
+      const analysis = await uploadStore.getAnalysisByUpload(uploadId);
+      if (!analysis) throw new NotFoundError('analysis');
+      return uploadAnalysisDto(analysis, kb);
+    },
+
+    /**
+     * POST /children/:childId/uploads/:uploadId/confirm — the parent reviews and
+     * corrects the extraction. Only confirmed items become append-only evidence
+     * (SUPPORTING/STRONG, NEVER 'verified'). The derived Twin/gap state is then
+     * invalidated so the next read recomputes — the Twin is never mutated here.
+     */
+    async confirmUploadAnalysis(
+      auth: CallerAuth,
+      childId: string,
+      uploadId: string,
+      corrections: readonly ItemCorrection[],
+    ) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'manage_child');
+      const upload = await uploadStore.getUpload(uploadId);
+      if (!upload || upload.childId !== childId) throw new NotFoundError('upload');
+
+      const { analysis, evidenceDrafts, teacherNote } = await uploadIngestion.confirmAnalysis({
+        uploadId,
+        confirmedByUserId: ctx.userId,
+        corrections,
+      });
+
+      const evidenceIds: string[] = [];
+      for (const d of evidenceDrafts) {
+        const id = `ev_upl_${analysis.id}_${d.skillId}_${evidenceIds.length}`;
+        await base.ledger.appendEvidence({
+          id: id as never,
+          childId: asChildId(childId),
+          source: d.source,
+          occurredAt: d.occurredAt,
+          recordedAt: now().toISOString(),
+          skillId: d.skillId as never,
+          ...(d.problemTypeId ? { problemTypeId: d.problemTypeId as never } : {}),
+          result: { ...(d.correct !== null ? { correct: d.correct } : {}) },
+          confidenceTier: d.confidenceTier,
+          provenance: 'scan',
+        });
+        evidenceIds.push(id);
+      }
+      await uploadIngestion.recordResultingEvidence(analysis.id, evidenceIds);
+      if (evidenceIds.length > 0) await base.learningState.invalidateDerived(childId);
+
+      return {
+        state: analysis.state,
+        evidenceRecorded: evidenceIds.length,
+        teacherNote,
+      };
     },
 
     // ---- PRACTICE LOOP (F8 / F30) — assignment → attempt → evidence ----

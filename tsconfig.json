@@ -12,6 +12,7 @@
     { "path": "packages/identity" },
     { "path": "packages/education-directory" },
     { "path": "packages/learning-state" },
+    { "path": "packages/uploads" },
     { "path": "packages/learning-context" },
     { "path": "packages/learning-twin" },
     { "path": "packages/gap-engine" },
