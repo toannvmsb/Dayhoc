@@ -16,6 +16,8 @@
 | E-4 | **Class membership ≠ Learning Twin sharing** (see doc 21). A privacy mode is chosen per class enrollment. |
 | E-5 | School/Class/Teacher data is **Learning Context evidence**, routed through the Resolver with provenance — never absolute truth (preserve doc 13 architecture). |
 | E-6 | Grade progression and Class progression are **separate**. Grade +1 may be a strong system proposal; class name (`7C0 → 8C0`) is only a suggestion. Grade 5→6 and Grade 9→10 require school confirmation. |
+| E-7 | **PRIMARY vs supplementary classroom (FINAL DECISION, anh 2026-09-02).** A Child has **at most one ACTIVE PRIMARY classroom enrollment** per academic period; supplementary enrollments (`SUPPLEMENTARY | HSG_TEAM | TUTOR_GROUP | CLUB | OTHER`) may coexist without limit. **Only the ACTIVE PRIMARY enrollment** participates in: school-grade context, Curriculum Clock default classroom, academic-year progression, automatic grade advancement, primary class-name suggestion. Supplementary enrollments are relationship/context sources only — never a progression or clock input. |
+| E-8 | **CLASS_CONTEXT_WRITE ≠ CHILD_SPECIFIC_WRITE (FINAL DECISION).** A Teacher–Class assignment (even under `LINKED_SHARED`) authorises only *class-context* contributions; anything child-specific needs an explicit per-Child grant. See doc 21 §3.1. |
 
 ---
 
@@ -94,27 +96,25 @@ existing Math row is treated as `subject = MATH`; a `subject_id` column is added
 | `grade` | smallint | 1–12 |
 | `class_name` | text | `7C0`, `8A2` — display label, **not identity** |
 | `display_name` | text nullable | "Lớp 7C0 — Trường THCS …" |
-| `cohort_id` | uuid → class_cohorts nullable | |
+| ~~`cohort_id`~~ | — | **not added** (ID-Q7 — `class_cohorts` deferred, §2.5) |
 | `verification_status` | text | `UNVERIFIED | COMMUNITY_VERIFIED | SYSTEM_VERIFIED` |
 | `status` | text | `ACTIVE | ARCHIVED` |
 | `created_by` | uuid → users | |
 | `created_at`, `archived_at` | timestamptz | |
 | unique | `(school_id, academic_year_id, grade, class_name)` | |
 
-### 2.5 `class_cohorts` (optional, evaluated → **ADD, low priority**)
+### 2.5 `class_cohorts` — **DEFERRED (ID-Q7, anh 2026-09-02)**
 
-| column | type | notes |
-|---|---|---|
-| `id` | uuid PK | |
-| `school_id` | uuid → schools | |
-| `cohort_label` | text | "Cohort C0" |
-| `created_at` | timestamptz | |
-
-A cohort is a *hint* that a group of students moves together year to year
-(`7C0 → 8C0 → 9C0`). It **never** confers identity — classes may split, merge,
-rename, swap students. Used only to seed the *suggested* class name in an
-`enrollment_transitions` proposal (doc 24). Ship it in I2 but the progression
-engine (I6) can also work without it.
+Persistent `class_cohorts` are **NOT built for the initial MVP**. Documented here
+as OPTIONAL / FUTURE only. Rationale: a cohort never confers identity (classes
+split, merge, rename, swap students), and the one thing it was going to feed —
+the suggested next-year class name — is now produced by a **deterministic
+class-name heuristic** instead (doc 24 §2): given `classrooms.class_name`
+matching `^(\d{1,2})([A-Za-z].*)$`, the suggestion for grade `G+1` is
+`(G+1) + <same trailing segment>` (`7C0 → 8C0`, `7A2 → 8A2`). Pure string
+transform, **suggestion only, no identity semantics** — the guardian always
+edits/confirms. If a real cohort need appears post-pilot, add the table then;
+nothing in I2–I6 depends on it.
 
 ---
 
@@ -183,14 +183,22 @@ as an *access source* that a parent may later convert into scoped permissions
 | `child_id` | uuid → children | |
 | `classroom_id` | uuid → classrooms | |
 | `academic_year_id` | uuid → academic_years | |
-| `school_enrollment_id` | uuid → student_school_enrollments | the parent school enrollment |
+| `school_enrollment_id` | uuid → student_school_enrollments nullable | the parent school enrollment (null for pure tutor/club groups with no school) |
+| `enrollment_type` | text NOT NULL default `'PRIMARY'` | `PRIMARY | SUPPLEMENTARY | HSG_TEAM | TUTOR_GROUP | CLUB | OTHER` (E-7) |
 | `privacy_mode` | text NOT NULL default `'PRIVATE_LEARNING'` | `PRIVATE_LEARNING | LINKED_PRIVATE | LINKED_SHARED` (E-4, doc 21 §5) |
 | `status` | text | `PROPOSED | ACTIVE | LEFT` |
 | `joined_at`, `left_at` | timestamptz | |
 | `source` | text | `PARENT | TEACHER | SCHOOL | SYSTEM_SUGGESTED` |
 | `verified_by` | uuid → users nullable | |
 | `verified_at` | timestamptz nullable | |
-| partial unique | `(child_id)` where `status='ACTIVE'` | one ACTIVE class at a time |
+| partial unique | `(child_id, academic_year_id)` where `status='ACTIVE' AND enrollment_type='PRIMARY'` | **one ACTIVE PRIMARY classroom per Child per academic period (E-7)** |
+
+**Supplementary enrollments are NOT constrained** — a Child may be ACTIVE in a
+PRIMARY class *and* an `HSG_TEAM` *and* a `TUTOR_GROUP` simultaneously. Only the
+PRIMARY row is read by the Curriculum Clock, the school-grade sync rule (doc 19 §3.3),
+the Academic Progression Engine (doc 24) and the class-name suggestion.
+`enrollment_type` is set at enrollment time (default `PRIMARY`) and changing it is
+an authorised-guardian action (`can_manage_child`, doc 19 §3.4).
 
 ### 4.3 State machine (enrollment — spec §13.2)
 
@@ -224,7 +232,17 @@ resolveActiveEnrollment(childId, asOf):
        AND (start_date IS NULL OR start_date <= asOf)
    → { curriculum_id, grade, academic_year.label, calendar_id }
    → CurriculumClockService input (unchanged shape)
+
+resolveDefaultClassroom(childId, asOf):
+   pick student_class_enrollments WHERE child_id=? AND status='ACTIVE'
+       AND enrollment_type='PRIMARY'          # supplementary rows are ignored here
+   → the classroom whose current-lesson / exam-window context the clock defaults to
 ```
+
+Supplementary class enrollments (`HSG_TEAM`, `TUTOR_GROUP`, …) never feed the
+clock or the school-grade sync — they are only relationship / discovery / evidence
+context (doc 21). A Teacher assigned to a supplementary class gets class-context
+write scope for *that* class only, still gated by all conditions in doc 21 §3.1.
 
 - A `PROPOSED` enrollment is **not** used by the clock — a brand-new / unconfirmed
   child falls back to the existing evidence-only path (doc 13), i.e. exactly the
@@ -243,7 +261,7 @@ resolveActiveEnrollment(childId, asOf):
 | `academic_years` | ADD |
 | `subjects` | ADD |
 | `classrooms` | ADD |
-| `class_cohorts` | ADD (optional, low priority) |
+| `class_cohorts` | **DEFERRED — not built for MVP (ID-Q7)** |
 | `teacher_school_memberships` | ADD |
 | `teacher_class_assignments` | ADD |
 | `student_school_enrollments` | ADD (replaces `child_school_enrollment`) |
@@ -254,18 +272,27 @@ resolveActiveEnrollment(childId, asOf):
 
 ---
 
-## 7. Open questions (school/class/enrollment)
+## 7. Resolved decisions (school/class/enrollment) — anh 2026-09-02
 
-1. **School directory bootstrap.** No MOET dataset in the repo. MVP proposal:
-   user-proposed + community-verified only; a later batch import upgrades
-   `verification_status`. Confirm acceptable for pilot.
-2. **`children.school_grade`** — deprecate now (read from ACTIVE enrollment) or
-   keep as a cache for the pilot? Proposal: keep as a nullable cache, updated by a
-   trigger/service on enrollment change, remove after I3 is stable.
-3. **Cross-year Curriculum Clock** — a child mid-transfer (old `TRANSFERRED`, new
-   `PROPOSED`) has no `ACTIVE` enrollment → clock returns null → evidence-only.
-   Acceptable, or should the most recent `TRANSFERRED` be used with lowered
-   confidence? Proposal: evidence-only (safest).
-4. **Subject expansion timing** — add `subject_id` columns now (nullable, MATH
-   backfill) so future subjects are non-breaking, but do NOT build non-Math
-   curriculum. Confirm.
+1. **School directory bootstrap** — user-proposed + community-verified only for
+   the pilot; a later batch import upgrades `verification_status`. *(unchanged
+   from proposal; not a blocking question.)*
+2. **`children.school_grade`** — **ID-Q9 RESOLVED: keep as a nullable cache**, not
+   the source of truth. Source of truth = ACTIVE **PRIMARY**
+   `student_school_enrollments.grade`. Sync rule (doc 19 §3.3):
+   `children.school_grade := activePrimarySchoolEnrollment(child).grade` on every
+   enrollment insert / status change; a nightly reconcile job re-asserts it.
+   Deprecate the column only after every reader is switched (post-I3).
+3. **Cross-year Curriculum Clock** — a child with no ACTIVE enrollment (mid
+   transfer) → clock returns null → evidence-only path (C5.2 HC09 behaviour).
+   Confirmed as the safe default.
+4. **Subject expansion** — add `subject_id` columns now (nullable, MATH backfill)
+   so future subjects are non-breaking; do **not** build non-Math curriculum.
+   Confirmed.
+5. **ID-Q7 (`class_cohorts`)** — **DEFERRED from MVP.** Class-name suggestion uses
+   the deterministic heuristic in §2.5 / doc 24 §2. No table, no `cohort_id`
+   column.
+6. **E-7 / Amendment 2 (PRIMARY vs supplementary)** — `enrollment_type` added to
+   `student_class_enrollments`; the ACTIVE-enrollment uniqueness constraint is now
+   scoped to `enrollment_type='PRIMARY'`; only PRIMARY feeds clock / progression /
+   grade advancement / class-name suggestion (§4.2, §5).

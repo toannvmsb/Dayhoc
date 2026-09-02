@@ -15,6 +15,8 @@
 | P-3 | Grade **5→6** and **9→10** must **not** assume the same school — require school confirmation or keep the new enrollment `PROPOSED`. |
 | P-4 | Support **repeat-grade** (no auto +1), **manual correction**, **graduation**. |
 | P-5 | Class / school changes always create new enrollment + a transition record; history stays intact. The Learning Twin keeps the same `child_id` (doc 19 I-3). |
+| P-6 | **Only the ACTIVE PRIMARY `student_class_enrollments` row participates in progression** (E-7, doc 20 §4.2). Supplementary enrollments (`HSG_TEAM`, `TUTOR_GROUP`, `CLUB`, …) are never promoted, never advance a grade, never drive a class-name suggestion. A year-end batch iterates ACTIVE PRIMARY school enrollments only. |
+| P-7 | **Class-name suggestion is a deterministic string heuristic (ID-Q7 — no `class_cohorts`).** `suggest(className, toGrade)`: if `className` matches `^(\d{1,2})(.+)$`, return `toGrade + <group 2>` (`7C0 → 8C0`, `7A2 → 8A2`, `6/1 → 7/1`); else no suggestion. Pure transform, suggestion only, no identity semantics — guardian always confirms/edits. |
 
 ---
 
@@ -33,7 +35,7 @@
 | `to_classroom_id` | uuid → classrooms nullable | |
 | `to_academic_year_id` | uuid → academic_years | |
 | `to_grade` | smallint | |
-| `suggested_class_name` | text nullable | from cohort (doc 20 §2.5) — a suggestion only (P-2) |
+| `suggested_class_name` | text nullable | from the deterministic heuristic (P-7) — a suggestion only (P-2) |
 | `status` | text | `PROPOSED | CONFIRMED | CANCELLED` |
 | `requires_school_confirmation` | boolean NOT NULL | true for grade 5→6, 9→10, school transfer (P-3) |
 | `proposed_by` | text | `SYSTEM | PARENT | TEACHER | SCHOOL` |
@@ -65,10 +67,11 @@ determineProposal(child, activeEnrollment, nextYear):
    # --- repeat / correction are never auto-proposed ---
    #   REPEAT_GRADE and MANUAL_CORRECTION are only ever guardian/school initiated.
 
-   # --- class suggestion (P-2) ---
+   # --- class suggestion (P-2, P-7 — deterministic heuristic, no cohort) ---
+   primaryClass = activeEnrollment's ACTIVE PRIMARY student_class_enrollments (P-6)
    suggestedClassName =
-       if activeEnrollment has a class enrollment whose classroom.cohort_id is set:
-           next class_name in that cohort's naming series   (7C0 → 8C0)
+       if primaryClass exists and primaryClass.classroom.class_name matches ^(\d{1,2})(.+)$:
+           toGrade + <trailing segment>          # 7C0 → 8C0, 7A2 → 8A2
        else: null
 
    return EnrollmentTransition{
@@ -170,18 +173,18 @@ PROPOSED ──confirm──► ACTIVE ──year-end/confirm──► COMPLETED
 
 ---
 
-## 7. Open questions (progression)
+## 7. Resolved decisions (progression) — anh 2026-09-02
 
-1. **Cohort class-name series** — how is "next class name" derived (`7C0 → 8C0`)?
-   Proposal: a `class_cohorts.naming_pattern` (e.g. `{grade}C0`) rendered with the
-   new grade; if no pattern, no suggestion. Confirm.
-2. **Auto-COMPLETE timing** — flip the old enrollment to `COMPLETED` on the
-   guardian's confirm (proposed) vs on `academic_years.end_date` regardless?
-   Proposal: on confirm; if never confirmed, the old enrollment stays `ACTIVE`
-   into the new year and the clock keeps using the old grade (surfaced as a
-   nag). Confirm.
-3. **Graduation retention** — keep the `child_id` + Twin indefinitely (alumni /
-   returning users) subject to the deletion policy? Confirm.
+1. **Class-name series** — **ID-Q7 RESOLVED: deterministic string heuristic
+   (P-7), no `class_cohorts` table.** `suggest(className, toGrade)` transforms the
+   leading grade number; if the name has no leading grade number, no suggestion.
+2. **Auto-COMPLETE timing** — on the guardian's confirm; if never confirmed, the
+   old enrollment stays `ACTIVE` into the new year and the clock keeps the old
+   grade (surfaced as a nag). Confirmed.
+3. **Graduation retention** — keep `child_id` + Twin indefinitely (alumni /
+   returning users), subject to the deletion policy. Confirmed.
 4. **Teacher-proposed transitions** — a `CLASS_TEACHER` may propose a
-   `CLASS_CHANGE` (`proposed_by = TEACHER`); it still needs guardian `Confirm`.
-   Confirm this is desired for the pilot or defer to I6+.
+   `CLASS_CHANGE` (`proposed_by = TEACHER`), still guardian-confirmed. Kept in the
+   design; the endpoint ships with I6 (not I1).
+5. **Supplementary enrollments** — never participate in progression (P-6); the
+   year-end batch iterates ACTIVE PRIMARY only.

@@ -2,7 +2,12 @@
 
 > **Authority:** locked spec §10, §11, §17. Companion: [19](19_IDENTITY_FAMILY_MODEL.md)–[22](22_AUTH_AND_WORKSPACE_ARCHITECTURE.md),
 > [24](24_ACADEMIC_PROGRESSION_ENGINE.md), [27](27_IDENTITY_MIGRATION_ROADMAP.md).
-> **Status:** PLAN ONLY — no migration files written in this phase.
+> **Status:** I0 + I1 APPROVED FOR IMPLEMENTATION (anh 2026-09-02). I2+ remain
+> PLAN ONLY. ID-Q1..Q10 RESOLVED — see doc 19 §6. Key deltas folded in below:
+> capability-based `parent_child_relationships` (ID-Q6), `MIGRATED_FAMILY_OWNER`
+> backfill, `enrollment_type` PRIMARY constraint (Amendment 2), `LEGACY_MINIMAL`
+> invite migration (ID-Q3), `class_cohorts` deferred (ID-Q7), Supabase Postgres +
+> RLS-as-defence-in-depth (ID-Q1).
 
 ---
 
@@ -67,30 +72,55 @@ compat/rollback → (later) remove legacy assumption.**
   a populated DB exists — the pilot DB is currently empty, so I0 is trivially "0
   rows" and the migrations below are green-field-safe).
 
-### I1 — Identity + Family (additive)
+### I1 — Identity + Family (additive) — **IMPLEMENTATION SCOPE for this phase**
 
-New: `user_roles`, `parent_child_relationships`, `student_account_links`,
-`family_memberships`.
+New: `user_roles`, `parent_child_relationships` (**capability-based authority
+model**, ID-Q6), `student_account_links`, `family_memberships`.
 Alter: `users` (+`auth_user_id text UNIQUE`, `primary_email citext`,
-`primary_phone`, `status`; **keep** `role` column, no longer authoritative).
-Rename via new tables + backfill: `parents → parent_profiles`,
-`teachers → teacher_profiles` (create new, copy rows, keep old as a VIEW for one
+`primary_phone text`, `status text`, `display_name text`; **keep** `role` column,
+no longer authoritative — denormalised hint only).
+New + backfill (not rename): `parent_profiles`, `teacher_profiles` (create new,
+copy rows from `parents`/`teachers`, keep `parents`/`teachers` as VIEWs for one
 release).
-Alter: `child_profiles` (+`date_of_birth date`).
+Alter: `child_profiles` (+`date_of_birth date` nullable).
+
+**`parent_child_relationships` columns (ID-Q6 capability model — doc 19 §3.4):**
+`id`, `parent_user_id → users`, `child_id → children`,
+`relationship_type text` (`FATHER | MOTHER | GUARDIAN | OTHER`),
+`can_manage_child boolean NOT NULL default false`,
+`can_manage_privacy boolean NOT NULL default false`,
+`can_approve_teacher_relationships boolean NOT NULL default false`,
+`authority_source text NOT NULL` (`SELF_DECLARED | INVITED_BY_EXISTING_GUARDIAN |
+VERIFIED | MIGRATED_FAMILY_OWNER`),
+`is_legal_guardian boolean` **nullable** (never the sole predicate),
+`status text` (`ACTIVE | REVOKED`), `valid_from`, `valid_until`,
+`created_at`, `revoked_at`;
+partial unique `(parent_user_id, child_id)` where `status='ACTIVE'`.
+
 Backfill:
-- one `user_roles` per distinct `users.role`;
-- one `parent_child_relationships` per `child_profiles.family_id` →
-  `family_memberships.user_id` with `relationship_type='GUARDIAN'`,
-  `is_legal_guardian=true`, `status='ACTIVE'`;
-- `family_memberships` from `families.owner_parent_id` (`OWNER`) + `parents.user_id`
-  (`GUARDIAN`).
-Compat: a VIEW `children` = `child_profiles`; keep `parents`/`teachers` VIEWs.
-Rollback: drop new tables + `users` columns; VIEWs make it clean.
+- one `user_roles` per distinct `users.role` — **except `'child'`**: those rows
+  are audited in I0 and left as-is (ID-Q2); a `'child'` user gets **no** STUDENT
+  role row until the `student_account_links` migration is designed;
+- `family_memberships`: `families.owner_parent_id` → `OWNER`; other
+  `parents.user_id` in the family → `GUARDIAN`;
+- `parent_child_relationships`, one per `(parent in the child's family, child)`:
+  - the **family owner** → `authority_source='MIGRATED_FAMILY_OWNER'`, all three
+    capability flags `true`, `is_legal_guardian = NULL`,
+    `relationship_type='GUARDIAN'`, `status='ACTIVE'`;
+  - any **other** parent in the family → `authority_source='SELF_DECLARED'`,
+    `can_manage_child=true`, `can_manage_privacy=false`,
+    `can_approve_teacher_relationships=false`, `is_legal_guardian=NULL`.
+Compat: a VIEW `children` = `child_profiles`; keep `parents`/`teachers` VIEWs;
+`services/api` `familyUserIds` semantics preserved via `family_memberships` +
+`parent_child_relationships`.
+Rollback: drop new tables + `users` columns; VIEWs restore old names.
 
 ### I2 — School + Academic Year + Subject + Classroom
 
-New: `schools`, `academic_years`, `subjects`, `classrooms`, `class_cohorts`,
+New: `schools`, `academic_years`, `subjects`, `classrooms`,
 `teacher_school_memberships`, `teacher_class_assignments`.
+**No `class_cohorts`** — deferred from MVP (ID-Q7). Class-name suggestion uses the
+deterministic heuristic (doc 24 §2).
 Seed: `academic_years` (2025-26 … 2028-29) from MOET typical dates;
 `subjects` (`MATH` ACTIVE, `VIETNAMESE`/`ENGLISH`/`SCIENCE` PLANNED).
 Backfill: none required (green field for directory).
@@ -99,8 +129,17 @@ Rollback: drop tables (no FK from older tables into these yet).
 
 ### I3 — Student Enrollment (history)
 
-New: `student_school_enrollments`, `student_class_enrollments`,
-`enrollment_transitions`.
+New: `student_school_enrollments`, `student_class_enrollments`
+(+`enrollment_type` — `PRIMARY | SUPPLEMENTARY | HSG_TEAM | TUTOR_GROUP | CLUB |
+OTHER`, default `PRIMARY`), `enrollment_transitions`.
+Constraint: `student_school_enrollments` partial unique `(child_id)` where
+`status='ACTIVE'`; `student_class_enrollments` partial unique
+`(child_id, academic_year_id)` where
+`status='ACTIVE' AND enrollment_type='PRIMARY'` — **one ACTIVE PRIMARY classroom
+per Child per academic period; supplementary enrollments are unconstrained**
+(E-7, doc 20 §4.2). Only the ACTIVE PRIMARY row feeds the Curriculum Clock, the
+`children.school_grade` sync, the Progression Engine and the class-name
+suggestion.
 Migrate: each `child_school_enrollment` row → one `student_school_enrollments`
 (`status='ACTIVE'`, `source='PARENT'`, need a `school_id` — if the row has only a
 `section_label` and no school, create a placeholder `schools` row per family with
@@ -126,12 +165,15 @@ Migrate: each `teacher_invites` with `status='accepted'` →
 - `teacher_child_links` (`access_source='PARENT_DIRECT'`, `subject_id=MATH`,
   `status='ACCEPTED'`, `initiated_by_role='PARENT'`,
   `accepted_by_parent_user_id` = the family owner);
-- a minimal `permission_sets` + `permission_grants`
-  (`{VIEW_CLASS_CONTEXT, SUBMIT_CURRENT_LESSON}` — pending anh's confirmation,
-  doc 21 §12.1);
+- the **`LEGACY_MINIMAL`** `permission_sets` + `permission_grants`
+  (`{VIEW_CLASS_CONTEXT, SUBMIT_CURRENT_LESSON}` — **frozen**, ID-Q3, doc 21
+  §12.1); **never** a sensitive Twin/gap or CHILD_SPECIFIC_WRITE code;
+- `teacher_child_links.needs_guardian_review = true`;
 - an `audit_events` `RELATIONSHIP_MIGRATED` row.
+Only migrate an `accepted` invite if the row has a resolvable `teacher_id` **and**
+`child_id`; otherwise leave it as history and surface it for manual re-invite.
 `pending` invites → `relationship_requests` (`status='PENDING'`); `revoked` →
-`teacher_child_links` `status='REVOKED'`.
+`teacher_child_links` `status='REVOKED'` (history only, no grants).
 Compat: `services/api` `requireChildAccess` gains a new branch — for a `TEACHER`
 workspace it calls `can(...)`; the legacy `familyUserIds` path stays for `PARENT`.
 Rollback: drop new tables; `teacher_invites` untouched.

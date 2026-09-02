@@ -15,6 +15,7 @@
 | A-3 | Child-data authorization is checked **server-side** on every request. UI hiding is never sufficient (spec §15.7, §16.54). |
 | A-4 | A request declares a **workspace** (`PARENT | STUDENT | TEACHER`); the API rejects any workspace the user does not hold. |
 | A-5 | A Child with no login has **no** `users` row and **no** session — only `child_credentials` / `child_quick_access` keyed by `child_id`. |
+| A-6 | **LOCKED (ID-Q1, anh 2026-09-02): Supabase Auth + Supabase Postgres for the MVP.** The domain stays behind the `AuthAdapter` port (A-2). Server-side `authorize()` / `can()` is the **primary** business authorization layer; Postgres/Supabase **RLS is defence-in-depth where practical, never the only business-authorization engine** (§7). |
 
 ---
 
@@ -126,9 +127,15 @@ authorize(ctx, resource, action):
        action ∈ ADMIN_ACTIONS   (never a child-data read/export)
 ```
 
-- **`authorisedGuardian(userId, childId)`** — `ACTIVE parent_child_relationships`
-  with `is_legal_guardian = true`, or (if none flagged) any `ACTIVE` guardian.
-  The consent authority for R-2 / privacy changes.
+- **`authorisedGuardian(userId, childId, capability)`** — an `ACTIVE
+  parent_child_relationships` row for `(userId, childId)` whose requested
+  capability flag is true (`can_manage_child` / `can_manage_privacy` /
+  `can_approve_teacher_relationships`, doc 19 §3.4). **`is_legal_guardian` is
+  never the predicate** (ID-Q6). `guardianAuthority(userId, childId)` returns the
+  OR-union of capabilities across that user's ACTIVE rows. R-2 acceptance needs
+  `can_approve_teacher_relationships`; privacy-mode / sensitive-grant changes need
+  `can_manage_privacy`; profile / enrollment / student-link changes need
+  `can_manage_child`.
 - **`can(...)`** — the effective-permission function from doc 21 §6.
 - `actionToPermissionCode` maps e.g. `GET /children/:id/twin-summary` →
   `VIEW_LEARNING_TWIN_SUMMARY`.
@@ -156,19 +163,27 @@ Every accept/reject/revoke/permission/privacy/enrollment transition and every
 
 ---
 
-## 7. RLS strategy (if Supabase Postgres)
+## 7. RLS strategy — Supabase Postgres LOCKED (ID-Q1)
 
-If the pilot uses Supabase-hosted Postgres, add Row-Level Security as
-**defence-in-depth** (the API `authorize` gate stays the primary control):
+The pilot uses Supabase-hosted Postgres. Row-Level Security is added as
+**defence-in-depth only — the application `authorize()` / `can()` gate is the
+primary and authoritative business-authorization control** (A-6). RLS is a
+backstop for direct-connection mistakes, not a substitute for the domain check,
+and a resource is never considered "protected" merely because an RLS policy
+exists.
 
 - `children`, `evidence`, twin/gap/plan tables: `USING` policy that joins to
-  `parent_child_relationships` / `teacher_child_links` + `permission_grants` for
-  the `auth.uid()`.
+  `parent_child_relationships` (capability-aware, doc 19 §3.4) /
+  `teacher_child_links` + `permission_grants` for the `auth.uid()`.
 - The API connects as a role that respects RLS for user-scoped reads, and as a
   privileged migration/service role for the append-only ledgers + the
   Progression Engine.
-- If we do **not** adopt Supabase Postgres, RLS is deferred and the API gate is
-  the only control (acceptable for pilot, documented as a risk).
+- Where an RLS policy would be complex or lossy (e.g. the six-condition
+  class-derived write check, doc 21 §3.1), RLS stays coarse (deny-by-default,
+  relationship-exists) and the precise decision is the application gate's job.
+- RLS policies are **not** in scope for I1 — they land with I7 (auth cutover).
+  Until then the application gate is the control and this is recorded as an
+  accepted, time-boxed risk.
 
 ---
 
@@ -182,16 +197,16 @@ If the pilot uses Supabase-hosted Postgres, add Row-Level Security as
 
 ---
 
-## 9. Open questions (auth/workspace)
+## 9. Resolved decisions (auth/workspace) — anh 2026-09-02
 
-1. **Supabase Auth vs Supabase Postgres** — adopt both, or Supabase Auth +
-   self-hosted Postgres? Affects RLS (§7) and the migration story. Recommend:
-   Supabase Auth + Supabase Postgres for the pilot (RLS as bonus), keep the
-   `AuthAdapter` so it stays swappable.
-2. **Workspace token vs claims in one JWT** — short-lived workspace token
-   (proposed) vs putting `workspace` as a mutable claim. Recommend the separate
-   short-lived token (clean revocation, no claim-mutation).
-3. **Child session lifetime** — parent-configurable? Proposal: 30 days for
-   username/password, session ends on parent password reset; PIN session 24h.
-4. **ADMIN scope** — confirm ADMIN has *zero* child-data read path (only ops:
-   school verification, provider registry, cost dashboards).
+1. **ID-Q1 — LOCKED: Supabase Auth + Supabase Postgres for the MVP.** Domain
+   behind `AuthAdapter`. Application `authorize()` / `can()` primary; RLS
+   defence-in-depth, not sole (§7, A-6). Adapter keeps a future IdP swap cheap.
+2. **Workspace token vs claims** — separate **short-lived workspace token**
+   (clean revocation, no claim-mutation). Confirmed.
+3. **Child session lifetime** — 30 days for username/password (ends on parent
+   password reset); PIN session 24h. Confirmed for pilot.
+4. **ADMIN scope** — ADMIN has **zero** child-data read/export path; ops only
+   (school verification, provider registry, cost dashboards). Confirmed.
+5. **RLS timing** — RLS policies land with I7, not I1; until then the application
+   gate is the only control (accepted time-boxed risk, §7).

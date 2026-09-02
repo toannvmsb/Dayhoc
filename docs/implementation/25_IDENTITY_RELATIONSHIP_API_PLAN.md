@@ -17,6 +17,19 @@
 - All state-changing relationship/enrollment endpoints write an `audit_events` row.
 - Errors: `401` unauthenticated · `403 AuthzError` · `404 NotFoundError` ·
   `409` state conflict · `422` validation.
+- **Guardian checks are capability-scoped (ID-Q6).** Where a row below says
+  "`authorisedGuardian`", the required capability is named in parentheses:
+  `(manage_child)` = `can_manage_child`, `(manage_privacy)` = `can_manage_privacy`,
+  `(approve_teacher)` = `can_approve_teacher_relationships` (doc 19 §3.4). Never
+  `is_legal_guardian`.
+- **`POST /teacher/children/:id/contributions` splits CLASS_CONTEXT_WRITE from
+  CHILD_SPECIFIC_WRITE (doc 21 §3.1).** A CLASS_CONTEXT_WRITE code
+  (`SUBMIT_CURRENT_LESSON`, `SUBMIT_CURRICULUM_PROGRESS`, `SUBMIT_HOMEWORK`,
+  `SUBMIT_EXAM_NOTICE`, `SUBMIT_EXAM_SCOPE`) may resolve via an ACTIVE
+  Teacher–Class–Subject assignment (all six §3.1 conditions). A CHILD_SPECIFIC_WRITE
+  code (`SUBMIT_SKILL_ASSESSMENT`, `SUBMIT_LEARNING_OBSERVATION`,
+  `BEHAVIOUR_OBSERVATION`, identifying `SUBMIT_TEST_RESULT`) requires an explicit
+  `PARENT_DIRECT` grant → otherwise `403`.
 
 ---
 
@@ -28,9 +41,9 @@
 | `POST /auth/login` | `{ email?/phone?, password }` | none | returns session JWT. |
 | `GET /me/roles` | — | authenticated | `{ userId, roles[], profiles:{parent?,teacher?}, defaultWorkspace }` |
 | `POST /me/switch-workspace` | `{ workspace }` | `workspace ∈ user_roles` | returns short-lived workspace token. |
-| `POST /children/:id/student-link/invite` | `{ }` | PARENT + `authorisedGuardian` | issues a single-use claim code for a student to link. |
+| `POST /children/:id/student-link/invite` | `{ }` | PARENT + `authorisedGuardian(manage_child)` | issues a single-use claim code for a student to link. |
 | `POST /me/student-link/claim` | `{ claimCode }` | STUDENT | creates `student_account_links` (PENDING guardian approval if not pre-approved). |
-| `POST /children/:id/student-link/:linkId/approve` | — | PARENT + `authorisedGuardian` | activates the link. **No new child.** |
+| `POST /children/:id/student-link/:linkId/approve` | — | PARENT + `authorisedGuardian(manage_child)` | activates the link. **No new child.** |
 
 ---
 
@@ -38,7 +51,7 @@
 
 | method / path | authorization | notes |
 |---|---|---|
-| `POST /children` | PARENT | `{ displayName, dateOfBirth?, grade?, goals? }` → `children` + `parent_child_relationships` (`is_legal_guardian=true`) + `family_memberships`. `child_id` exists immediately; Twin bootstrap. |
+| `POST /children` | PARENT | `{ displayName, dateOfBirth?, grade?, goals? }` → `children` + `parent_child_relationships` (creator = `authority_source='SELF_DECLARED'`, all three capability flags `true`, `is_legal_guardian=NULL`) + `family_memberships`. `child_id` exists immediately; Twin bootstrap. |
 | `GET /children/:id` | PARENT: `authorisedGuardian` · STUDENT: `childScope==id` (child-safe) · TEACHER: `can(VIEW_CLASS_CONTEXT ∨ any granted)` — teacher sees display name + class + granted fields only | |
 | `GET /me/children` | PARENT: guardian rows · STUDENT: the linked child · TEACHER: children via `teacher_class_assignments` opt-in + `teacher_child_links` — **display name + class only**, never enumerable PII | |
 
@@ -143,13 +156,17 @@ and the golden tests (doc 26 §50–54) assert it.
 
 ---
 
-## 9. Open questions (API)
+## 9. Resolved decisions (API) — anh 2026-09-02
 
-1. **Contribution vs evidence for parents** — parents currently `POST /evidence`
-   directly (they're the guardian). Keep, or also route parent input through a
-   `parent_learning_contributions`? Proposal: keep the direct parent path (they
-   are the owner); only teachers are constrained.
-2. **`GET /me/children` for teachers** — the class-join discovery list: show only
-   `allow_teacher_discovery_by_class_join = true` children? Confirm.
-3. **Rate limiting** on `/schools/search` and `/relationship-requests` to prevent
-   discovery abuse — design in I7, note here.
+1. **ID-Q10 — direct Parent evidence path KEPT.** `POST /children/:id/evidence`
+   stays for guardians (they are the owner). Every row carries actor / provenance
+   (`PARENT_DIRECT`) / source / `subject_id`, and enters the normal
+   `Evidence → Resolver / Gap / Twin` pipeline — no Twin bypass (doc 21 §12.4).
+   Only teachers are routed through `teacher_learning_contributions`.
+2. **`GET /me/children` for teachers** — class-join list shows only
+   `allow_teacher_discovery_by_class_join = true` children whose PRIMARY class
+   `privacy_mode != PRIVATE_LEARNING`; display name + class only. Confirmed.
+3. **Rate limiting** on `/schools/search` and `/relationship-requests` — designed
+   in I7 (noted here).
+4. **Contribution endpoint** — enforces the CLASS_CONTEXT_WRITE /
+   CHILD_SPECIFIC_WRITE split (§0, doc 21 §3.1).

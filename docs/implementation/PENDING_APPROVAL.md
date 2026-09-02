@@ -9,8 +9,8 @@
 > **Tình trạng:** Vertical slice P0–P10 xong, web PWA test được trên iPhone.
 > Migration v1.1: **A ✅ · B1+B2+B3 ✅ · pace ✅ · C1+C2+C3 ✅ · C3.1 ✅ · C4 ✅ · C4.1 ✅ · C4.2 ✅ · C5 (SHADOW MODE) ✅ · C5.1 (benchmark hardening) ✅ · C5.2 (benchmark COVERAGE hardening + patch) ✅ (490 test / 5 skip, `benchmarkReady: true` — 16 base + 10 hard, không blocking gap, KHÔNG chạy live AI, LIVE mode CHƯA bật)**.
 > **C5 Luna SMOKE: `SMOKE_EXECUTION_STATUS = BLOCKED_MISSING_API_KEY`** — không có `OPENAI_API_KEY` trong env, KHÔNG gọi paid, KHÔNG bịa kết quả. `selectSmokeCases()` chọn đúng 5 case đại diện, sẵn sàng chạy khi có key.
-> **Identity/Family/School/Relationship Architecture: AUDIT + SPEC + MIGRATION PLAN xong (docs 19–27), CHƯA implement.**
-> **⚠ ĐANG CHỜ ANH: (1) duyệt C5.2 patch + cấp key + cho phép chạy Luna smoke; (2) duyệt docs 19–27 + trả lời open questions bên dưới trước khi bắt đầu I0/I1.
+> **Identity/Family/School/Relationship Architecture: docs 19–27 DUYỆT nguyên tắc; ID-Q1..Q10 CHỐT (anh 2026-09-02, doc 19 §6); Amendment 1–3 áp vào docs. I0 + I1 ĐANG IMPLEMENT (chỉ I0+I1, KHÔNG I2+).**
+> **⚠ ĐANG CHỜ ANH: cấp `OPENAI_API_KEY` + cho phép tường minh chạy Luna smoke (Phase A vẫn `BLOCKED_MISSING_API_KEY`).
 
 ---
 
@@ -74,22 +74,28 @@ Docs mới (spec/plan only): `19_IDENTITY_FAMILY_MODEL.md` · `20_SCHOOL_CLASS_E
 
 **Migration roadmap:** I0 (audit) → I1 (identity+family) → IX (persist Twin/gap/plan/assignment/attempt keyed `child_id`) → I2 (school/class/subject) → I3 (enrollment history + compat VIEW `child_school_enrollment`) → I4 (relationship_requests + permission + `authorize`/`can()`) → I5 (teacher contributions subject-scoped) → I6 (progression engine) → I7 (workspaces + auth cutover). Additive, feature-flag, không big-bang, xoá legacy chỉ sau 1 release.
 
-**OPEN QUESTIONS cần anh trả lời trước khi bắt đầu I0/I1:**
+**ID-Q1..Q10 — ✅ ANH ĐÃ CHỐT 10/10 (2026-09-02). Chi tiết verbatim: `19_IDENTITY_FAMILY_MODEL.md` §6.**
 
-| # | Câu hỏi | Đề xuất của em |
-|---|---|---|
-| ID-Q1 | Auth provider: dùng **Supabase Auth + Supabase Postgres** (có RLS defence-in-depth) hay Supabase Auth + self-host Postgres? | Supabase Auth + Supabase Postgres cho pilot; giữ `AuthAdapter` port để swap được. |
-| ID-Q2 | `users.role = 'child'` — có row nào không? (cần check trên DB có data; DB pilot hiện trống → I1 green-field-safe) | Nếu có: chuyển thành `STUDENT` user link qua `student_account_links`, hoặc xoá row (learning data đã key `child_id`). |
-| ID-Q3 | Migrate `teacher_invites` status `accepted`: default permission set nào cho `teacher_child_links` mới? | `{VIEW_CLASS_CONTEXT, SUBMIT_CURRENT_LESSON}` + notify guardian review. |
-| ID-Q4 | Một Child thuộc **1 family** (billing home) + cho phép guardian từ family khác qua `parent_child_relationships` (không có billing control)? | Có — `children.family_id` giữ single (billing), guardianship M:N. |
-| ID-Q5 | `relationship_requests.expires_at` default | 14 ngày. |
-| ID-Q6 | Authorised-guardian khi 2 guardian đều `ACTIVE` mà không ai `is_legal_guardian` — ai được ACCEPT teacher→child request? | Bất kỳ ai, first-to-act, hiển thị cho guardian kia + revoke được. |
-| ID-Q7 | `class_cohorts` — ship ở I2 (low priority) hay bỏ? Naming pattern (`{grade}C0`) để gợi ý tên lớp năm sau? | Ship I2, `naming_pattern` optional; progression engine chạy được cả khi không có cohort. |
-| ID-Q8 | Package home: `@copilot/identity` mới (giống `@copilot/evidence`) hay fold vào `services/api`? | Package mới `@copilot/identity` (`IdentityService`/`RelationshipService`/`EnrollmentService`/`ProgressionEngine` + golden tests). |
-| ID-Q9 | `children.school_grade` — deprecate ngay (đọc từ ACTIVE enrollment) hay giữ làm cache cho pilot? | Giữ nullable cache, update qua service khi enrollment đổi, xoá sau I3 ổn định. |
-| ID-Q10 | Parent input: giữ path `POST /evidence` trực tiếp (parent = owner), chỉ teacher bị constrain? | Có. |
+| # | Quyết định |
+|---|---|
+| **ID-Q1** | **LOCKED: Supabase Auth + Supabase Postgres cho MVP.** Domain sau `AuthAdapter`. `authorize()`/`can()` server-side = lớp phân quyền nghiệp vụ CHÍNH; RLS chỉ defence-in-depth (không phải lớp duy nhất). RLS policy ship ở I7, không phải I1. |
+| **ID-Q2** | Legacy `users.role='child'`: I0 audit hết; **KHÔNG xoá ngay, KHÔNG auto-migrate**; giữ compat ≥1 release; Child Profile độc lập với Student login; chuyển dần sang `student_account_links` (thiết kế sau). |
+| **ID-Q3** | `teacher_invites` accepted → `teacher_child_links` **chỉ khi data đủ**, permission set = **`LEGACY_MINIMAL`** = `{VIEW_CLASS_CONTEXT, SUBMIT_CURRENT_LESSON}` (freeze). KHÔNG bao giờ auto-grant `VIEW_SELECTED_GAPS`/`VIEW_LEARNING_TWIN_SUMMARY`/CHILD_SPECIFIC_WRITE — cần Parent re-consent. `pending`→`relationship_requests`; `revoked`→history. `needs_guardian_review=true`. |
+| **ID-Q4** | **KHÔNG ép one-family-per-child.** Parent↔Child M:N qua `parent_child_relationships`. `family` = household/billing/group. Guardian qua nhiều household context được. Learning ownership = `child_id`. |
+| **ID-Q5** | Expiry default **14 ngày, configurable** (`RELATIONSHIP_REQUEST_EXPIRY_DAYS`, không hard-code). Hết hạn → không accept được → gửi request mới. |
+| **ID-Q6** | **`is_legal_guardian` KHÔNG phải cơ chế authority.** Model capability tường minh: `can_manage_child`, `can_manage_privacy`, `can_approve_teacher_relationships` + `authority_source` (`SELF_DECLARED | INVITED_BY_EXISTING_GUARDIAN | VERIFIED | MIGRATED_FAMILY_OWNER`). `is_legal_guardian` nullable/verification-aware, không bao giờ là predicate duy nhất. Family owner migrate → `authority_source=MIGRATED_FAMILY_OWNER`, 3 capability = true, `is_legal_guardian=NULL`. |
+| **ID-Q7** | **DEFER `class_cohorts` khỏi MVP.** Class-name suggestion = heuristic string deterministic (`7C0→8C0`) — suggestion only, không có identity semantics. Không thêm bảng, không thêm `cohort_id`. |
+| **ID-Q8** | **LOCKED: package mới `@copilot/identity`** cho identity/family/role/relationship/permission/authorization. Enrollment/curriculum education-specific ở package education/domain nếu hướng phụ thuộc sạch hơn. KHÔNG circular dependency. |
+| **ID-Q9** | `children.school_grade` **KHÔNG phải source of truth tương lai.** Source = ACTIVE **PRIMARY** `student_school_enrollments.grade`. Trong migration là cache/compat có sync rule (`children.school_grade := activePrimarySchoolEnrollment(child).grade`). Deprecate sau khi mọi reader chuyển. |
+| **ID-Q10** | **GIỮ** direct Parent evidence. Kèm actor/provenance/source, subject-scoped. Vào pipeline `Evidence → Resolver/Gap/Twin` bình thường. KHÔNG bypass Resolver, KHÔNG mutate Twin trực tiếp. Chỉ teacher bị route qua `teacher_learning_contributions`. |
 
-**⚠ CHƯA implement gì cho Identity/Relationship. Chờ anh duyệt docs 19–27 + trả lời ID-Q1..Q10.**
+**Amendment 1–3 (anh 2026-09-02) đã áp vào docs:**
+- **A2 — PRIMARY vs supplementary classroom:** `student_class_enrollments.enrollment_type` ∈ `PRIMARY | SUPPLEMENTARY | HSG_TEAM | TUTOR_GROUP | CLUB | OTHER`. Partial-unique "1 ACTIVE PRIMARY / child / academic period"; supplementary KHÔNG bị constrain. Chỉ PRIMARY feed clock/progression/grade-advance/class-name suggestion. (doc 20 E-7, doc 23 I3, doc 24 P-6)
+- **A3 — CLASS_CONTEXT_WRITE ≠ CHILD_SPECIFIC_WRITE:** class-context ops (`SUBMIT_CURRENT_LESSON/CURRICULUM_PROGRESS/HOMEWORK/EXAM_NOTICE/EXAM_SCOPE`) derive được từ ACTIVE Teacher-Class-Subject + `LINKED_SHARED` khi đủ **cả 6 điều kiện**; child-specific ops (`SUBMIT_SKILL_ASSESSMENT/LEARNING_OBSERVATION/BEHAVIOUR_OBSERVATION/identifying TEST_RESULT`) **luôn cần `PARENT_DIRECT` grant**. Classroom assignment KHÔNG bao giờ mở sensitive Twin read. (doc 21 §3.1, R-10)
+- **A1 — capability guardian authority** (= ID-Q6).
+- **Golden tests A–I** (doc 26 §12, id 55–63).
+
+**⚠ Implement PHẠM VI: chỉ I0 + I1. KHÔNG I2+ (school/classroom, enrollment transition, teacher permission, teacher contribution, progression, workspace UI) — trừ type/interface tối thiểu để compile.**
 
 ---
 

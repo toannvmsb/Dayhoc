@@ -167,12 +167,44 @@
 
 ---
 
-## 11. Open questions (tests)
+## 11. Resolved decisions (tests) — anh 2026-09-02
 
-1. Package home — a new `@copilot/identity` package with `IdentityService`,
-   `RelationshipService`, `EnrollmentService`, `ProgressionEngine` + these golden
-   tests, or fold into `services/api`? Proposal: new package (mirrors
-   `@copilot/evidence` / `@copilot/gap-engine` boundary discipline).
-2. Scenario dataset — hand-built fixtures (proposed, like C5.2 hard cases) vs a
-   vendored JSONL golden dataset from anh (like twin/planner). Proposal:
-   hand-built for the state-machine tests; a vendored dataset later for scale.
+1. **Package home — LOCKED: new `@copilot/identity` package** (ID-Q8) with
+   `IdentityService`, `FamilyService`, `guardianAuthority` / `authorisedGuardian`,
+   `AuthAdapter` port + `InMemoryAuthAdapter`, and these golden tests. Education
+   enrollment/curriculum stays in the education/domain packages. No circular deps.
+2. **Scenario dataset** — hand-built fixtures for the state-machine tests (like
+   the C5.2 hard cases); a vendored dataset later for scale.
+
+---
+
+## 12. FINAL AMENDMENT tests A–I (anh 2026-09-02) — PRIMARY vs supplementary + class-context vs child-specific write
+
+Tests **A–H** are I1..I4 acceptance (in-memory). Test **I** (55) is an **I1**
+migration test and runs against the portable Postgres. IDs continue from §8 (55+).
+
+| # | id | scenario | assert |
+|---|---|---|---|
+| **A** | 55 | Child has an ACTIVE `PRIMARY` class enrollment **and** an ACTIVE `HSG_TEAM` enrollment at the same time | both rows `status='ACTIVE'`; the partial-unique index does **not** fire (it is scoped to `enrollment_type='PRIMARY'`); `resolveDefaultClassroom` returns the PRIMARY classroom only. |
+| **B** | 56 | attempt to open a **second** ACTIVE `PRIMARY` class enrollment for the same `(child, academic_year)` | insert rejected by the partial-unique constraint → service returns `409 PRIMARY_ENROLLMENT_EXISTS`; the first PRIMARY row is untouched. |
+| **C** | 57 | Child's only current-lesson evidence source is a `TUTOR_GROUP` (supplementary) class | `CurriculumClockService` / school-grade sync ignore it (`resolveActiveEnrollment` + `resolveDefaultClassroom` see no PRIMARY) → evidence-only path (HC09-style); `children.school_grade` sync is a no-op. |
+| **D** | 58 | year transition: guardian confirms the PROMOTION; the old PRIMARY class → `LEFT`, a new PRIMARY class → `ACTIVE` for the next academic year | at every instant there is **≤ 1** ACTIVE PRIMARY per `(child, academic_year)`; supplementary rows from the old year are unaffected; `suggested_class_name` came from the deterministic heuristic (`7C0 → 8C0`), `to_classroom_id` was NULL until confirm. |
+| **E** | 59 | Teacher with an ACTIVE Teacher–Class–Subject(MATH) assignment for the Child's ACTIVE PRIMARY class, `privacy_mode='LINKED_SHARED'`, guardian policy allows class-derived contribution → `POST /teacher/children/:id/contributions { contributionType: CURRENT_LESSON }` | **accepted**; `teacher_learning_contributions` row with `relationship_source_type='CLASS_ASSIGNMENT'`. Then flip **any** of the six §3.1 conditions (assignment ENDED / subject mismatch / child PRIMARY enrollment LEFT / privacy `LINKED_PRIVATE` / policy off / consent withdrawn) → the same call → `403`, nothing written. |
+| **F** | 60 | same Teacher (class assignment only, **no** `PARENT_DIRECT` grant) → `POST /teacher/children/:id/contributions { contributionType: SKILL_ASSESSMENT }` | `403 CHILD_SPECIFIC_WRITE_REQUIRES_DIRECT_GRANT`; `can(teacher, child, SUBMIT_SKILL_ASSESSMENT, MATH)` == false; nothing written. Add an explicit `PARENT_DIRECT` grant for `SUBMIT_SKILL_ASSESSMENT` → now accepted. |
+| **G** | 61 | same Teacher (class assignment only, `LINKED_SHARED`) → `GET /teacher/children/:id/twin-summary` and `can(..., VIEW_LEARNING_TWIN_SUMMARY, MATH)` and `can(..., VIEW_SELECTED_GAPS, MATH)` | all `403` / `false` — a classroom assignment (primary **or** supplementary), at any privacy mode, **never** yields a sensitive Twin read. |
+| **H** | 62 | migrate a legacy `teacher_invites(status='accepted')` with a resolvable teacher + child | one `teacher_child_links(ACCEPTED, access_source='PARENT_DIRECT', needs_guardian_review=true)`; `permission_grants` == exactly `LEGACY_MINIMAL` (`{VIEW_CLASS_CONTEXT, SUBMIT_CURRENT_LESSON}`); `can(..., VIEW_SELECTED_GAPS/…/SUBMIT_SKILL_ASSESSMENT, …)` all false; `audit_events(RELATIONSHIP_MIGRATED)`. An invite with an unresolvable teacher/child → **no** link created, surfaced for manual re-invite. |
+| **I** | 63 | I1 migration on a DB with one family (owner + 1 co-parent) + 1 child | the owner's `parent_child_relationships` row: `authority_source='MIGRATED_FAMILY_OWNER'`, all three capability flags `true`, `is_legal_guardian IS NULL`; the co-parent's row: `authority_source='SELF_DECLARED'`, `can_manage_child=true`, `can_manage_privacy=false`, `can_approve_teacher_relationships=false`; `guardianAuthority(owner, child)` = all caps, `guardianAuthority(coParent, child)` = manage_child only; `child_id` unchanged; `children` count unchanged. |
+
+### 12.1 Coverage matrix additions
+
+| dimension | covered by |
+|---|---|
+| PRIMARY + supplementary coexist | A (55) |
+| One ACTIVE PRIMARY enforced | B (56), D (58) |
+| Supplementary never a clock/progression input | C (57), D (58) |
+| Class-context write needs all six conditions | E (59) |
+| Child-specific write needs PARENT_DIRECT | F (60) |
+| Classroom assignment never grants sensitive Twin read | G (61) |
+| Legacy invite → LEGACY_MINIMAL, no over-grant | H (62) |
+| MIGRATED_FAMILY_OWNER provenance + capability backfill | I (63) |
+| Capability-based guardian authority (not `is_legal_guardian`) | I (63), 13, 22 |

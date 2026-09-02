@@ -1,7 +1,9 @@
 # 27 — Identity / Relationship Migration Roadmap
 
 > **Authority:** locked spec §17, §19, prompt §B33. Companion: [19](19_IDENTITY_FAMILY_MODEL.md)–[26](26_IDENTITY_RELATIONSHIP_GOLDEN_TEST_PLAN.md).
-> **Status:** ROADMAP ONLY — implementation starts only after anh approves.
+> **Status:** ID-Q1..Q10 RESOLVED (doc 19 §6). **I0 + I1 APPROVED FOR
+> IMPLEMENTATION** (anh 2026-09-02). I2+ remain roadmap only — do not start I2
+> until I1 is merged and green.
 
 ---
 
@@ -19,13 +21,13 @@ replacement has shipped and run for a release.
 | group | scope | depends on | ships |
 |---|---|---|---|
 | **I0** | current-state audit (data checks, no schema) | — | audit doc |
-| **I1** | Identity + Family: `user_roles`, `parent_child_relationships`, `student_account_links`, `family_memberships`; `users`/`parent_profiles`/`teacher_profiles` extend; `AuthAdapter` port | I0 | multi-role identity, guardian model |
+| **I1** | Identity + Family: `user_roles`, `parent_child_relationships` (**capability authority model** — ID-Q6), `student_account_links`, `family_memberships`; `users`/`parent_profiles`/`teacher_profiles` extend; `child_profiles`+`date_of_birth`; `AuthAdapter` port + `InMemoryAuthAdapter`; `@copilot/identity` package | I0 | multi-role identity, capability-based guardian authority |
 | **IX** | Learning-domain persistence: migrate the in-memory Twin/gap/plan/assignment/attempt tables to Postgres, keyed by `child_id` | I1 (needs `children` FK target) | `child_id` ownership for all learning data (spec §25) |
-| **I2** | Education directory: `schools`, `academic_years`, `subjects`, `classrooms`, `class_cohorts`, `teacher_school_memberships`, `teacher_class_assignments` | I1 | school/class/subject entities |
-| **I3** | Enrollment history: `student_school_enrollments`, `student_class_enrollments`, `enrollment_transitions`; compat VIEW `child_school_enrollment`; `CurriculumClockService.resolveActiveEnrollment` | I2 | no-overwrite enrollment history |
+| **I2** | Education directory: `schools`, `academic_years`, `subjects`, `classrooms` (**no `class_cohorts`** — ID-Q7 deferred), `teacher_school_memberships`, `teacher_class_assignments` | I1 | school/class/subject entities |
+| **I3** | Enrollment history: `student_school_enrollments`, `student_class_enrollments` (+`enrollment_type`, **one ACTIVE PRIMARY** partial-unique — Amendment 2), `enrollment_transitions`; compat VIEW `child_school_enrollment`; `resolveActiveEnrollment` + `resolveDefaultClassroom` | I2 | no-overwrite history, PRIMARY vs supplementary |
 | **I4** | Relationship + permission: `relationship_requests`, `teacher_child_links`, `teacher_parent_links`, `permission_sets`, `permission_grants`, `privacy_preferences`, `audit_events`; `authorize` + `can(...)`; migrate `teacher_invites` | I1, I2, I3 (class privacy mode) | both-direction requests, scoped permissions, R-2 invariant |
 | **I5** | Teacher contributions: extend `teacher_contributions` → `teacher_learning_contributions` (subject/type/source/confidence/visibility); Resolver reads new fields | I4 | subject-scoped, provenance-rich teacher evidence |
-| **I6** | Academic Progression Engine: `determineProposal`, `confirmTransition`, year-end batch design; `class_cohorts.naming_pattern` | I3 | deterministic progression proposals |
+| **I6** | Academic Progression Engine: `determineProposal`, `confirmTransition`, year-end batch design; deterministic class-name heuristic (no cohort) | I3 | deterministic progression proposals |
 | **I7** | Workspaces + APIs + UI: `SupabaseAuthAdapter`, workspace token, `/me/*`, relationship inbox, school/class picker, privacy controls; cut `services/api` from trusted `RequestContext` to token-derived | I1, I4, I6 | parent/student/teacher workspaces |
 
 **Critical path:** I0 → I1 → I2 → I3 → I4 → I5 → I6 → I7.
@@ -39,13 +41,13 @@ replacement has shipped and run for a release.
 
 | item | detail |
 |---|---|
-| tables | ADD `user_roles`, `parent_child_relationships`, `student_account_links`, `family_memberships`; ALTER `users`; new `parent_profiles`/`teacher_profiles` + copy from `parents`/`teachers` |
-| domain types | `@copilot/domain`: `WorkspaceRole = 'PARENT'\|'STUDENT'\|'TEACHER'\|'ADMIN'`; `ParentChildRelationshipType`; `RelationshipStatus` |
-| services | new `@copilot/identity`: `IdentityService` (register, roles, workspace), `FamilyService`, `authorisedGuardian(userId, childId)`; `AuthAdapter` port + `InMemoryAuthAdapter` |
-| API | `POST /auth/register`, `/auth/login`, `GET /me/roles`, `POST /me/switch-workspace`, student-link endpoints |
-| tests | golden §1–5 |
-| backward compat | VIEWs `children`=`child_profiles`, `parents`, `teachers`; `users.role` retained (denormalised); `family_memberships` backfill preserves `ApiDeps.childProfiles[...].familyUserIds` semantics |
-| rollback | drop new tables + `users` cols; VIEWs restore names |
+| tables | ADD `user_roles`, `parent_child_relationships` (capability model — ID-Q6), `student_account_links`, `family_memberships`; ALTER `users` (+`auth_user_id`, `primary_email`, `primary_phone`, `status`, `display_name`); ALTER `child_profiles` (+`date_of_birth`); new `parent_profiles`/`teacher_profiles` + copy from `parents`/`teachers` |
+| domain types | `@copilot/domain`: `WorkspaceRole = 'PARENT'\|'STUDENT'\|'TEACHER'\|'ADMIN'`; `ParentChildRelationshipType`; `RelationshipStatus`; `GuardianAuthoritySource`; `GuardianCapability` |
+| services | new `@copilot/identity`: `IdentityService` (register, roles, workspace), `FamilyService`, `guardianAuthority(userId, childId)` / `authorisedGuardian(userId, childId, capability)`; `AuthAdapter` port + `InMemoryAuthAdapter`; in-memory + Pg stores |
+| API | (design only in I1 — routes ship with I7) |
+| tests | golden §1–5 + §12 tests A, I (55, 63); `child_id` unchanged through migration; multi-role; capability backfill |
+| backward compat | VIEWs `children`=`child_profiles`, `parents`, `teachers`; `users.role` retained (denormalised); `family_memberships` + `parent_child_relationships` backfill preserves `ApiDeps.childProfiles[...].familyUserIds` semantics; legacy `users.role='child'` rows NOT auto-migrated (ID-Q2) |
+| rollback | drop new tables + `users`/`child_profiles` cols; VIEWs restore names |
 | risk | low — pilot DB effectively empty |
 
 ### IX — Learning-domain persistence
@@ -63,7 +65,7 @@ replacement has shipped and run for a release.
 
 | item | detail |
 |---|---|
-| tables | ADD `schools`, `academic_years`, `subjects`, `classrooms`, `class_cohorts`, `teacher_school_memberships`, `teacher_class_assignments` |
+| tables | ADD `schools`, `academic_years`, `subjects`, `classrooms`, `teacher_school_memberships`, `teacher_class_assignments` (**no `class_cohorts`** — ID-Q7) |
 | seeds | `academic_years` 2025-26…2028-29; `subjects` (MATH ACTIVE) |
 | domain types | `SchoolVerificationStatus`, `SubjectCode`, `ClassroomRef` |
 | services | `SchoolDirectoryService` (search + de-dup + propose), `ClassroomService` |
@@ -119,7 +121,7 @@ replacement has shipped and run for a release.
 
 | item | detail |
 |---|---|
-| schema | `class_cohorts.naming_pattern text` |
+| schema | none (deterministic class-name heuristic — doc 24 §2 / P-7) |
 | services | `ProgressionEngine.determineProposal`, `EnrollmentService.confirmTransition`, year-end batch (design; scheduler is I7+) |
 | API | `/children/:id/enrollment-transitions*` |
 | tests | golden §34–43 |
@@ -170,16 +172,13 @@ single denormalised column — same number, better provenance.
 
 ---
 
-## 5. Recommended next action
+## 5. Status / next action
 
-1. **anh reviews docs 19–27** and answers the open questions (collected in
-   `PENDING_APPROVAL.md`), especially:
-   - auth provider (Supabase Postgres yes/no → RLS strategy);
-   - `teacher_invites` migration default permission set;
-   - one-family-per-child vs cross-family guardians;
-   - `relationship_requests` expiry default.
-2. On approval, implement **I0 + I1** first (identity + family, additive, low
-   risk), with the `@copilot/identity` package + golden tests §1–5.
+1. ✅ **anh reviewed docs 19–27; ID-Q1..Q10 RESOLVED** (doc 19 §6); Amendments
+   1–3 folded in (PRIMARY vs supplementary; class-context vs child-specific
+   write; capability guardian authority).
+2. ✅ **I0 + I1 APPROVED FOR IMPLEMENTATION** — `@copilot/identity` package +
+   additive migration + golden tests §1–5 + §12 A/I. **In progress / this phase.**
 3. **Do NOT** start I2+ until I1 is merged and green.
 4. Phase A (Luna smoke) remains `BLOCKED_MISSING_API_KEY` — unrelated; runs when
    `OPENAI_API_KEY` is provided.

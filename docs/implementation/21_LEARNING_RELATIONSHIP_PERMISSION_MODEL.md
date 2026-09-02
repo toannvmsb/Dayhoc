@@ -19,6 +19,8 @@
 | R-7 | Teacher input never mutates the Twin directly — it becomes `teacher_learning_contributions` → `evidence` → Resolver (preserve doc 13). |
 | R-8 | Every accept / reject / revoke / permission change is **audited**. |
 | R-9 | Effective permission = union of active grants, **then** gated by privacy mode + consent policy (the higher-level gate always wins). |
+| R-10 | **CLASS_CONTEXT_WRITE ≠ CHILD_SPECIFIC_WRITE (FINAL DECISION, anh 2026-09-02).** `LINKED_SHARED` does **not** mean every Teacher assigned to the classroom may write arbitrary Child-specific data. Class-context contributions may be derived from an ACTIVE Teacher–Class–Subject assignment; child-specific contributions **always** require an explicit per-Child grant. See §3.1. |
+| R-11 | **Legacy `teacher_invites` migrate to `LEGACY_MINIMAL` only (ID-Q3).** An accepted invite never auto-grants a sensitive Twin/gap permission — those need fresh Parent consent. See §12. |
 
 ---
 
@@ -145,10 +147,16 @@ is a single server-side function:
 1. find ACTIVE teacher_child_links for (teacher, child) [any subject or matching subject]
 2. collect ACTIVE permission_grants for those links matching (code, subject)
 3. if none → DENY
-4. gate by privacy mode of the child's ACTIVE class enrollment (if the only
-   access_source is CLASS_ASSIGNMENT) — LINKED_SHARED required for VIEW_* Twin codes
-5. gate by consent_records — a withdrawn consent for the relevant data_category → DENY
-6. else → ALLOW
+4. if code ∈ CHILD_SPECIFIC_WRITE and every matching grant has
+   access_source='CLASS_ASSIGNMENT' → DENY   (R-10 / §3.1 — child-specific needs PARENT_DIRECT)
+5. if the only matching access_source is CLASS_ASSIGNMENT:
+   5a. require an ACTIVE teacher_class_assignments(teacher, classroom, subject)
+   5b. require the child's ACTIVE PRIMARY student_class_enrollments in that classroom
+   5c. require that class enrollment privacy_mode = LINKED_SHARED
+       (VIEW_* Twin/gap codes are never class-derivable regardless — §3.1)
+6. gate by consent_records / privacy_preferences — a withdrawn consent for the
+   relevant data_category → DENY
+7. else → ALLOW
 ```
 
 ---
@@ -178,6 +186,40 @@ is a single server-side function:
 child's class `privacy_mode = LINKED_SHARED`. All `VIEW_*` Twin/gap codes require
 `PARENT_DIRECT` (an explicit guardian grant on a `teacher_child_links` row).
 `SCHOOL_AUTHORIZATION` is reserved (future) and grants nothing today.
+
+### 3.1 CLASS_CONTEXT_WRITE vs CHILD_SPECIFIC_WRITE (Amendment 3 — FINAL, anh 2026-09-02)
+
+Contribution permission codes split into two write classes:
+
+| write class | codes | may be derived from a Teacher–Class assignment? |
+|---|---|---|
+| **CLASS_CONTEXT_WRITE** | `SUBMIT_CURRENT_LESSON`, `SUBMIT_CURRICULUM_PROGRESS`, `SUBMIT_HOMEWORK`, `SUBMIT_EXAM_NOTICE`, `SUBMIT_EXAM_SCOPE` | **yes** — from an ACTIVE Teacher–Class–Subject assignment + `LINKED_SHARED`, where the guardian's permission policy explicitly allows class-derived contribution |
+| **CHILD_SPECIFIC_WRITE** | `SUBMIT_SKILL_ASSESSMENT`, `SUBMIT_LEARNING_OBSERVATION`, `BEHAVIOUR_OBSERVATION`, individual identifying `SUBMIT_TEST_RESULT` | **no** — always needs an explicit per-Child `PARENT_DIRECT` grant on a `teacher_child_links` row |
+
+**Class-derived (CLASS_CONTEXT_WRITE via `CLASS_ASSIGNMENT`) access is effective
+only when ALL SIX hold:**
+
+1. the Teacher–Class assignment is `ACTIVE` (`teacher_class_assignments.status='ACTIVE'`);
+2. the Teacher's assignment `subject_id` matches the contribution `subject_id`;
+3. the Child has an `ACTIVE` **PRIMARY** class enrollment in that classroom
+   (`student_class_enrollments.status='ACTIVE' AND enrollment_type='PRIMARY'`) —
+   *(a supplementary-class assignment grants class-context write for that
+   supplementary class's context only, never the Child's primary curriculum
+   context)*;
+4. the Child's class `privacy_mode = LINKED_SHARED`;
+5. the guardian's permission policy for that link/source allows the code
+   (`permission_grants` row with `access_source='CLASS_ASSIGNMENT'`);
+6. every consent / `privacy_preferences` gate for the code's data category allows it.
+
+Failing **any** condition → the class-derived path yields nothing; the Teacher can
+still contribute if a separate `PARENT_DIRECT` grant exists. **No classroom
+assignment — primary or supplementary — ever grants a sensitive Twin read
+(`VIEW_SELECTED_GAPS`, `VIEW_LEARNING_TWIN_SUMMARY`).** Those are `PARENT_DIRECT`,
+guardian-granted, default OFF, forever.
+
+`can(teacher, child, code, subject, asOf)` (§2 step 4) is extended: if `code ∈
+CHILD_SPECIFIC_WRITE` and the only matching grant has
+`access_source='CLASS_ASSIGNMENT'` → **DENY**.
 
 ---
 
@@ -236,8 +278,12 @@ effectiveCodes(teacher, child, subject, asOf) =
        over ACTIVE teacher_child_links (teacher, child)
        where grant.subject matches (subject or null)
     ── minus codes not allowed for the grant's access_source
-    ── minus VIEW_* Twin codes if the child's ACTIVE class privacy_mode != LINKED_SHARED
+    ── minus CHILD_SPECIFIC_WRITE codes whose only source is CLASS_ASSIGNMENT (R-10)
+    ── minus class-derived CLASS_CONTEXT_WRITE codes unless all six §3.1 conditions hold
+    ── minus VIEW_* Twin codes if the child's ACTIVE PRIMARY class privacy_mode != LINKED_SHARED
        and the only source is CLASS_ASSIGNMENT
+    ── minus VIEW_SELECTED_GAPS / VIEW_LEARNING_TWIN_SUMMARY whenever the only source
+       is CLASS_ASSIGNMENT (never class-derivable — §3.1)
     ── minus codes whose data_category has a withdrawn consent_record
 ```
 
@@ -339,22 +385,64 @@ guardian opt-in, and returns no PII beyond display name.
 | `permission_grants` | ADD |
 | `privacy_preferences` | ADD |
 | `teacher_contributions` | **EXTEND** → `teacher_learning_contributions` (+ subject/type/source/confidence/visibility) |
-| `teacher_invites` | **DEPRECATE-LATER** (migrate `accepted` rows to a `PARENT_DIRECT` `teacher_child_links` with a minimal permission set) |
+| `teacher_invites` | **DEPRECATE-LATER** (migrate `accepted` rows to a `PARENT_DIRECT` `teacher_child_links` with the `LEGACY_MINIMAL` permission set — §12.1) |
 | `consent_records` | REUSE |
 | `evidence`, `lesson_confirmations`, `learning_context_snapshots` | REUSE unchanged |
 
 ---
 
-## 12. Open questions (relationship/permission)
+## 12. Resolved decisions (relationship/permission) — anh 2026-09-02
 
-1. **`teacher_invites` migration** — the existing `accepted` rows have no subject
-   and no permissions. Proposal: migrate each to a `teacher_child_links`
-   (`access_source=PARENT_DIRECT`, `subject_id=MATH`, permission set =
-   `{VIEW_CLASS_CONTEXT, SUBMIT_CURRENT_LESSON}` only) and notify the guardian to
-   review. Confirm the default permission set.
-2. **Authorised-guardian ambiguity** — if a child has two `ACTIVE` guardians and
-   neither is flagged `is_legal_guardian`, may either accept a teacher request?
-   Proposal: yes, first-to-act, visible to the other, revocable. Confirm.
-3. **Expiry default** — 14 days for `relationship_requests.expires_at`? Confirm.
-4. **`MESSAGE_PARENT` content** — messaging is out of scope for this phase; the
-   permission code + table are designed but the message store is a later doc.
+### 12.1 ID-Q3 — legacy `teacher_invites` migration → `LEGACY_MINIMAL`
+
+An `accepted` invite migrates to a `teacher_child_links`
+(`access_source='PARENT_DIRECT'`, `subject_id=MATH`, `status='ACCEPTED'`,
+`initiated_by_role='PARENT'`) **only if the existing data supports the
+relationship** (a resolvable `teacher_id` and `child_id`). Its permission set is
+the frozen **`LEGACY_MINIMAL`** profile:
+
+```
+LEGACY_MINIMAL = { VIEW_CLASS_CONTEXT, SUBMIT_CURRENT_LESSON }
+```
+
+- **Never** includes `VIEW_SELECTED_GAPS`, `VIEW_SELECTED_MASTERY`,
+  `VIEW_LEARNING_TWIN_SUMMARY`, `SUBMIT_SKILL_ASSESSMENT`,
+  `SUBMIT_LEARNING_OBSERVATION`, `BEHAVIOUR_OBSERVATION` or any CHILD_SPECIFIC_WRITE
+  code. Those require a fresh Parent grant through the normal request flow.
+- The migration writes an `audit_events` `RELATIONSHIP_MIGRATED` row and flags the
+  link `needs_guardian_review = true` so the Parent is prompted to confirm or
+  extend it.
+- `pending` invites → `relationship_requests(status='PENDING')`.
+- `revoked` invites → `teacher_child_links(status='REVOKED')` (history only, no
+  grants).
+
+### 12.2 ID-Q5 — request expiry
+
+`relationship_requests.expires_at` default = **now() + 14 days**, sourced from a
+**config value** `RELATIONSHIP_REQUEST_EXPIRY_DAYS` (not a hard constant) so it is
+tunable per environment. An expired request cannot be accepted; the requester
+sends a new one (§4.1).
+
+### 12.3 ID-Q6 — authorised-guardian for accept
+
+Any guardian with `can_approve_teacher_relationships = true` (doc 19 §3.4) may
+accept a Teacher→Child request; **first-to-act wins**; the acceptance records
+`accepted_by_parent_user_id`; other guardians see it in `audit_events` and may
+`revoke`. `is_legal_guardian` is **not** consulted as the predicate — the
+capability flag is.
+
+### 12.4 ID-Q10 — direct Parent evidence retained, with provenance
+
+Parents keep the direct `POST /children/:id/evidence` path (they are the owner).
+Every such row now carries `actor_user_id`, `provenance='PARENT_DIRECT'`,
+`source='PARENT_INPUT'`, and a `subject_id` where applicable. It enters the
+**normal** `Evidence → LearningContextResolver / GapEngine / Twin` pipeline — it
+**must not** bypass the Resolver or mutate the Twin directly (R-7 applies to
+parents too). Only *teachers* are additionally constrained to
+`teacher_learning_contributions` (§7).
+
+### 12.5 Deferred (not blocking)
+
+- **`MESSAGE_PARENT` content / message store** — messaging is out of scope for
+  this phase; the permission code + `teacher_parent_links` table are designed, the
+  message store is a later doc.
