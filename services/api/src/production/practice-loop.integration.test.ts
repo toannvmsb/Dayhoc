@@ -98,6 +98,24 @@ describe.skipIf(!DATABASE_URL)('F8 — practice loop (assignment → attempt →
     expect(detail.items.length).toBeGreaterThan(0);
     // child-safe: no worked solution in the item DTO
     expect(JSON.stringify(detail)).not.toContain('workedSolution');
+
+    // F3 — the hero Parent DTOs are DB-authorized and answer "hôm nay dạy con gì?"
+    const home = await api.getParentHome(pAuth, child.childId);
+    expect(home.child.childId).toBe(child.childId);
+    expect(home.child.displayName).toBe('Bé Na');
+    const progress = await api.getParentProgress(pAuth, child.childId);
+    expect(progress.child.childId).toBe(child.childId);
+    // an unrelated parent cannot read the hero screen
+    const stranger = await reg(`pl-x-${stamp}@x.com`, 'PARENT');
+    await expect(
+      api.getParentHome({ bearer: stranger.bearer, workspace: 'PARENT' }, child.childId),
+    ).rejects.toBeTruthy();
+    // a write-through TWIN snapshot now exists
+    const snap = await pool.query<{ n: number }>(
+      `SELECT count(*)::int n FROM learning_state_snapshots WHERE child_id = $1 AND kind = 'TWIN'`,
+      [child.childId],
+    );
+    expect(snap.rows[0]!.n).toBe(1);
   });
 
   it('Journey 7 — student completes practice → append-only evidence → derived state invalidated', async () => {

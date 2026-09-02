@@ -23,6 +23,7 @@ import {
 import { PgEducationStore } from '@copilot/education-directory/pg';
 import { PgLedgerStore } from '@copilot/evidence/pg';
 import { PgLearningStateStore } from '@copilot/learning-state/pg';
+import { snapshotHash } from '@copilot/learning-state';
 import { loadKnowledgeBase, type KnowledgeBase } from '@copilot/math-data';
 import { loadReferenceLibrary } from '@copilot/reference-library';
 import { runGapEngine } from '@copilot/gap-engine';
@@ -497,6 +498,55 @@ export function createProductionApi(opts: ProductionApiOptions) {
       await authorizeChild(ctx, childId, 'view_child');
       const { scoped } = await learningScene(childId);
       return scoped.childToday({ userId: 'preview', role: 'child', childScope: childId }, childId);
+    },
+
+    /**
+     * GET /children/:childId/home — the hero screen ("Hôm nay dạy con gì?").
+     * DB-authorized, then the tested Parent projection. Also persists a
+     * write-through snapshot of the computed twin/gaps for fast subsequent reads.
+     */
+    async getParentHome(auth: CallerAuth, childId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'view_child');
+      const { scoped } = await learningScene(childId);
+      const view = await scoped.parentHome(parentDelegateCtx(ctx.userId), childId);
+      // write-through cache (best-effort, never blocks the response)
+      try {
+        const scene = await scoped._scene(childId);
+        const evCount = (await base.ledger.listEvidence(asChildId(childId))).length;
+        await base.learningState.putSnapshot({
+          childId,
+          kind: 'TWIN',
+          state: scene.twin as unknown,
+          stateVersion: 'twin.v1',
+          evidenceCount: evCount,
+          contentHash: snapshotHash(scene.twin),
+          provenance: { computedBy: 'getParentHome' },
+          computedAt: now().toISOString(),
+        });
+      } catch {
+        /* cache write is best-effort */
+      }
+      return view;
+    },
+
+    /** GET /children/:childId/progress */
+    async getParentProgress(auth: CallerAuth, childId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'view_child');
+      const { scoped } = await learningScene(childId);
+      return scoped.parentProgress(parentDelegateCtx(ctx.userId), childId);
+    },
+
+    /** GET /children/:childId/gaps/:gapId */
+    async getParentGapDetail(auth: CallerAuth, childId: string, gapId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'view_child');
+      const { scoped } = await learningScene(childId);
+      return scoped.parentGapDetail(parentDelegateCtx(ctx.userId), childId, gapId);
     },
 
     // ---- SCHOOL / CLASS -----------------------------------------
@@ -1247,6 +1297,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
 function cryptoRandom(): string {
   return globalThis.crypto?.randomUUID?.() ?? `evt-${Math.random().toString(36).slice(2)}`;
 }
+
 
 function kLevelNum(k: string): number {
   return Number(String(k).replace(/[^0-9]/g, '')) || 2;
