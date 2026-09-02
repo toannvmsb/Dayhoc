@@ -28,7 +28,7 @@ journey broken · **P2** major defect w/ workaround · **P3** polish.
 | # | Test case | Result | Observed | Sev | Fix commit |
 |---|---|---|---|---|---|
 | 1 | App startup (open in Expo Go) | ✅ (w/ notes) | Welcome renders; "BẢN DEV" banner shows; form validation works; API reached from device (server returned the register error). Notes: (a) no custom blue splash — **P3**; (b) register endpoint error was English "email + 8-char password required" — **P2, fixed** → Vietnamese | P2 / P3 | `b047c1d` |
-| 2 | Parent login (`phuhuynh@dayzi.seed`) | 🔄 | (a) Login OK, both children listed. Red error "not a guardian of this child" — stale child selection from an earlier throwaway account (**D-04, P1, fixed**). (b) Sign-out from Settings cleared the account card but did not navigate to the login screen — user stranded (**D-05, P1, fixed**). Retest pending | P1 | `791a1d0` / `<pending>` |
+| 2 | Parent login (`phuhuynh@dayzi.seed`) | 🔄 | (a) Login OK, both children listed. Red error "not a guardian of this child" — stale child selection from an earlier throwaway account (**D-04, P1, fixed**). (b) Sign-out from Settings cleared the account card but did not navigate to the login screen — user stranded (**D-05, P1, fixed**). Retest pending | P1 | `791a1d0` / `e046149` |
 | 3 | Parent Home (context = ESTIMATE, today plan) | ⏳ | | | |
 | 4 | Create / select Child (switcher, 2 children) | ⏳ | | | |
 | 5 | Practice (create → runner → submit → "Xong rồi!") | ⏳ | | | |
