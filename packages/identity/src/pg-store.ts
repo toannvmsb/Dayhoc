@@ -1,4 +1,5 @@
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
+type Queryable = Pool | PoolClient;
 import {
   asFamilyId,
   asUserId,
@@ -78,7 +79,7 @@ function rowToStudentLink(r: any): StudentAccountLinkRecord {
  * `*_identity_family`). Dumb CRUD — invariants live in the services.
  */
 export class PgIdentityStore implements IdentityStore {
-  constructor(private readonly pool: Pool) {}
+  constructor(private readonly pool: Queryable) {}
 
   async insertUser(u: UserRecord): Promise<void> {
     await this.pool.query(

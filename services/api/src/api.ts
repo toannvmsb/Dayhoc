@@ -102,6 +102,14 @@ export interface ApiDeps {
     readonly store?: GenerationStore;
     readonly resolveUsageContext?: (childId: string, ctx: RequestContext) => UsageContext;
   };
+  /**
+   * The legacy `createApi` surface (in-memory `childProfiles`, trusted
+   * `RequestContext`) is for unit tests / local fixtures ONLY, and is
+   * fail-closed in production: constructing it with `NODE_ENV === 'production'`
+   * throws unless this is explicitly set. The production surface is
+   * `createProductionApi` (DB-backed, server-derived identity, authorize()/can()).
+   */
+  readonly allowLegacyInProduction?: boolean;
 }
 
 /**
@@ -114,6 +122,11 @@ export interface ApiDeps {
  * - every write goes through the append-only EvidenceService
  */
 export function createApi(deps: ApiDeps) {
+  if (process.env.NODE_ENV === 'production' && !deps.allowLegacyInProduction) {
+    throw new Error(
+      'createApi (legacy in-memory surface) is disabled in production — use createProductionApi',
+    );
+  }
   const kb = deps.knowledgeBase ?? loadKnowledgeBase();
   const ledger = deps.ledger ?? new InMemoryLedgerStore();
   const logger = deps.logger ?? createLogger({ level: 'warn' });

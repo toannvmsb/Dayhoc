@@ -103,17 +103,37 @@ Docs mới (spec/plan only): `19_IDENTITY_FAMILY_MODEL.md` · `20_SCHOOL_CLASS_E
 - **I5** commit `98eadd4` — `TeacherContributionService` (subject-scoped, permission-checked, provenance, append-only sink, no Twin write). Migration `1757635200000` (additive ALTER `teacher_contributions`).
 - **I7** commit (this) — `SupabaseAuthAdapter` (HS256) + `resolveAuthAdapter` fallback; `IdentityService.authenticate`/`sessionContext` (server-derived RequestContext); `/me/roles` + `/me/switch-workspace` + `contextFromToken` + `authorizeChild` in `services/api`; invite codes (privacy-safe discovery) + `DiscoveryService` (email yes/no, class-join opt-in). Migration `1757721600000`.
 
-### OPEN_DECISION (NON_BLOCKING) — recorded during I2–I7
+### OPEN_DECISION (NON_BLOCKING)
 
 | # | decision | current conservative default | future action |
 |---|---|---|---|
-| **OD-1 RLS policies** | Supabase Postgres RLS not yet written | application `authorize()`/`can()` is the sole business-authorization control (fully tested); DB direct-connection is trusted (single API service role) | add RLS as defence-in-depth in an additive migration when the deployment auth story (Supabase `auth.uid()` wiring) is fixed — I7+ follow-up. Never a permissive policy to pass tests. |
-| **OD-2 `child_school_enrollment` compat VIEW** | legacy table kept, no VIEW swap | `CurriculumClockService` still reads the `services/api` `childProfiles` deps dict (demo path); `EnrollmentService.resolveActiveEnrollment` is the new source of truth, wired where DB-backed | when `services/api` routes become DB-backed, replace the dict read with `resolveActiveEnrollment` + a compat VIEW selecting the ACTIVE `student_school_enrollments` row. 0 legacy rows in pilot. |
-| **OD-3 live Supabase (ENV_REQUIRED)** | `SupabaseAuthAdapter` implemented + tested with a mock fetch/JWT; `resolveAuthAdapter` returns `InMemoryAuthAdapter` when `SUPABASE_URL`/`SUPABASE_JWT_SECRET` absent | none — anh provides `SUPABASE_URL`, `SUPABASE_JWT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY` when a Supabase project exists; then a contract test against the real JWKS. |
-| **OD-4 full `authorize()` route cutover** | engine done + tested; `services/api` wires `/me/*` + `contextFromToken` + `authorizeChild` on teacher read/write paths; legacy demo routes keep `requireChildAccess` family scope (dev/test `TRUSTED_CONTEXT`) | wire `authorize()` into every child route once the routes are DB-backed (they currently read an in-memory `childProfiles` dict with no relationship data). Additive; feature-flagged by `deps.auth`. |
-| **OD-5 RS256/JWKS tokens** | `SupabaseAuthAdapter` verifies HS256 (Supabase default) | add RS256/JWKS verification if the Supabase project switches to asymmetric signing keys. |
+| **OD-1 RLS policies** | Supabase Postgres RLS not yet written | application `authorize()`/`can()` is the sole business-authorization control (fully tested); DB direct-connection is trusted (single API service role) | add RLS as defence-in-depth in an additive migration when the deployment auth story (Supabase `auth.uid()` wiring) is fixed. Never a permissive policy to pass tests. |
+| **OD-2 Curriculum Clock DB cutover** | **CLOSED for the production path (I7.1).** `services/api` `createProductionApi` learning routes resolve `gradeContext` + curriculum/calendar + academic year from the ACTIVE **PRIMARY** enrollment via `EnrollmentService.resolveActiveEnrollment` (`resolveChildLearningInputs`); PROPOSED / missing → evidence-only (HC09). `child_school_enrollment` legacy table (0 rows, **no production reader**) is left as-is — no compat VIEW needed. The legacy `createApi` demo path still reads its dict but is fail-closed in production. | remove the legacy `child_school_enrollment` table + `child_school_enrollment` dict field once IX (persist learning tables) lands. |
+| **OD-3 live Supabase (ENV_REQUIRED)** | `SupabaseAuthAdapter` implemented + tested with a mock fetch/JWT; `resolveAuthAdapter` returns `InMemoryAuthAdapter` when `SUPABASE_URL`/`SUPABASE_JWT_SECRET` absent | anh provides `SUPABASE_URL`, `SUPABASE_JWT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`; then a contract test against the real project. |
+| **OD-4 `authorize()` route cutover** | **CLOSED for every production Child-data route.** `createProductionApi` is the production surface — server-derived identity, DB-backed resources, `AuthorizationService.authorize()` + `PermissionService.can()` on every Child route. `createApi` (legacy, in-memory, trusted `RequestContext`) is **fail-closed in production** (throws unless `allowLegacyInProduction`) and is not consumed by any client — it remains for unit tests / the internal projection delegation only. Routes still on legacy `RequestContext` (test/fixture only): see §0c. | delete the legacy `createApi` learning methods once `createProductionApi` covers `parentHome`/`parentProgress`/`parentGapDetail` DTOs and IX persists the Twin. |
+| **OD-5 RS256/JWKS tokens** | `SupabaseAuthAdapter` verifies HS256 (Supabase default) | add RS256/JWKS if the Supabase project switches to asymmetric keys. |
 | **OD-6 `class_cohorts`** | deferred (ID-Q7) — deterministic `suggestNextClassName` heuristic | add the table only if a real cohort need appears post-pilot. |
 | **OD-7 message store for `MESSAGE_PARENT`** | permission code + `teacher_parent_links` designed; no message persistence | a later doc + migration. |
+
+### §0c — routes still on the legacy trusted `RequestContext` (I7.1)
+
+**NON-PRODUCTION** — `createApi` (in `services/api/src/api.ts`) is fail-closed in
+production (`NODE_ENV === 'production'` → throws unless `allowLegacyInProduction`).
+Not consumed by `apps/web` or any transport. Kept for: (a) its own unit tests,
+(b) the internal `createProductionApi` delegation to the already-tested C4/C5
+projection pipeline (called with `allowLegacyInProduction: true` **after** a DB
+`authorize()` check).
+
+`parentHome` · `parentProgress` · `parentGapDetail` · `childToday` ·
+`recordEvidence` · `recordTeacherUpdate` · `learningContext` · `confirmLesson`
+· `meRoles` · `switchWorkspace` · `contextFromToken` (the last three already
+derive identity from a token; the rest take a `RequestContext`).
+
+Production equivalents live on `createProductionApi`:
+`getLearningContext` / `getToday` / `studentGetToday` (delegate to the pipeline
+post-authorize), `teacherSubmitContribution` (replaces `recordTeacherUpdate`).
+`parentHome`/`parentProgress`/`parentGapDetail` production DTOs are the only
+remaining gap → tracked under OD-4.
 
 ---
 

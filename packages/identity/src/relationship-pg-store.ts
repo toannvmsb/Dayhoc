@@ -1,4 +1,5 @@
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
+type Queryable = Pool | PoolClient;
 import type {
   AuditEventRecord,
   AuditEventType,
@@ -138,7 +139,7 @@ function setClause(patch: object, cols: Record<string, string>): { sql: string; 
 }
 
 export class PgRelationshipStore implements RelationshipStore {
-  constructor(private readonly pool: Pool) {}
+  constructor(private readonly pool: Queryable) {}
 
   async insertRequest(r: RelationshipRequestRecord): Promise<void> {
     await this.pool.query(

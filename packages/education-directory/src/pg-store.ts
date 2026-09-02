@@ -1,4 +1,5 @@
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
+type Queryable = Pool | PoolClient;
 import {
   asAcademicYearId,
   asClassroomId,
@@ -179,7 +180,7 @@ function setClause(patch: object, cols: Record<string, string>): { sql: string; 
 
 /** PostgreSQL backend for the education directory + enrollment + progression. */
 export class PgEducationStore implements EducationStore {
-  constructor(private readonly pool: Pool) {}
+  constructor(private readonly pool: Queryable) {}
 
   // --- I2 ---
   async insertSchool(r: SchoolRecord): Promise<void> {

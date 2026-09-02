@@ -1,4 +1,5 @@
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
+type Queryable = Pool | PoolClient;
 import {
   asChildId,
   asProblemTypeId,
@@ -17,7 +18,7 @@ import type { LedgerStore } from './store.js';
  * UPDATE/DELETE regardless of caller (see migration *_evidence_ledger).
  */
 export class PgLedgerStore implements LedgerStore {
-  constructor(private readonly pool: Pool) {}
+  constructor(private readonly pool: Queryable) {}
 
   async appendEvidence(r: Evidence): Promise<void> {
     await this.pool.query(

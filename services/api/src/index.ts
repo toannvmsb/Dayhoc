@@ -8,3 +8,7 @@
  * ledger. An HTTP transport (Fastify) wraps these handlers 1:1 later.
  */
 export * from './api.js';
+export * from './production/production-api.js';
+export * from './production/context.js';
+export * from './production/transaction.js';
+export { resolveChildLearningInputs, syncSchoolGradeCache } from './production/learning-scene.js';
