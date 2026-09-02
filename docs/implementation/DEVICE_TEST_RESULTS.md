@@ -31,7 +31,7 @@ journey broken · **P2** major defect w/ workaround · **P3** polish.
 | 2 | Parent login (`phuhuynh@dayzi.seed`) | ✅ | Retest after D-04/D-05 fixes: login OK, lands on Parent Home, no error. (First pass found D-04 + D-05, both P1, both fixed & confirmed on device.) | P1 (fixed) | `791a1d0` / `e046149` |
 | 3 | Parent Home (context = ESTIMATE, today plan) | ✅ | "Hôm nay dạy con gì?", "Bài đang học" card + today plan render for Bé Lớp 4. Sign-out returns to login. | — | — |
 | 4 | Create / select Child (switcher, 2 children) | 🔄 | Switcher toggles Bé Lớp 4 ↔ Bé Lớp 7, content updates. Bé Lớp 7 has no input data yet → "đang học" empty (expected — seed only added evidence for Bé Lớp 4). *Create-child* still to test. | — | — |
-| 5 | Practice (create → runner → submit → "Xong rồi!") | 🔄 | Runner opens, 2 numeric-entry questions, submit → "Xong rồi!". No result shown (**D-06, P2, fixed** — completion screen now shows "đúng X/Y câu" + review note, respecting M46). Retest pending | P2 | `<pending>` |
+| 5 | Practice (create → runner → submit → "Xong rồi!") | 🔄 | Runner opens, 2 numeric-entry questions, submit → "Xong rồi!". No result shown (**D-06, P2, fixed** — completion screen now shows "đúng X/Y câu" + review note, respecting M46). Retest pending | P2 | `ba59f1a` |
 | 6 | Student access / login (create login, log in as student) | ⏳ | | | |
 | 7 | Student practice (self-luyện → submit) | ⏳ | | | |
 | 8 | Parent Progress updates after student work | ⏳ | | | |
