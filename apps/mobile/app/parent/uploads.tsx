@@ -44,9 +44,14 @@ export default function UploadsScreen() {
       setErr('DạyZi cần quyền camera / ảnh để tải bài của con.');
       return;
     }
+    const opts: ImagePicker.ImagePickerOptions = {
+      base64: true,
+      quality: 0.6,
+      mediaTypes: ['images'],
+    };
     const res = fromCamera
-      ? await ImagePicker.launchCameraAsync({ base64: true, quality: 0.6 })
-      : await ImagePicker.launchImageLibraryAsync({ base64: true, quality: 0.6 });
+      ? await ImagePicker.launchCameraAsync(opts)
+      : await ImagePicker.launchImageLibraryAsync(opts);
     if (res.canceled || !res.assets[0]?.base64) return;
     const asset = res.assets[0];
     setBusy(true);

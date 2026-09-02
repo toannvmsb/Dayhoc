@@ -73,8 +73,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     'expo-router',
     'expo-secure-store',
-    ['expo-camera', { cameraPermission: 'DạyZi cần camera để bạn chụp bài của con.' }],
-    ['expo-image-picker', { photosPermission: 'DạyZi cần truy cập ảnh để bạn tải bài của con lên.' }],
+    [
+      'expo-image-picker',
+      {
+        photosPermission: 'DạyZi cần truy cập ảnh để bạn tải bài của con lên.',
+        cameraPermission: 'DạyZi cần camera để bạn chụp trang vở / bài kiểm tra của con.',
+      },
+    ],
   ],
   extra: {
     ...(config.extra ?? {}),
