@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { Pool } from 'pg';
-import { getApi, parentAuth, preferredAuth, studentAuth, SESSION_COOKIE } from './api';
+import { getApi, parentAuth, preferredAuth, studentAuth, teacherAuth, SESSION_COOKIE } from './api';
 
 function db(): Pool {
   return (globalThis as unknown as { __dzPool: Pool }).__dzPool;
@@ -39,11 +39,12 @@ export async function registerAction(_prev: FormState, form: FormData): Promise<
   const email = String(form.get('email') ?? '').trim();
   const password = String(form.get('password') ?? '');
   const displayName = String(form.get('displayName') ?? '').trim() || undefined;
+  const intendedRole = String(form.get('role') ?? '') === 'TEACHER' ? 'TEACHER' : 'PARENT';
   if (!email || password.length < 8) {
     return { error: 'Email hợp lệ và mật khẩu tối thiểu 8 ký tự.' };
   }
   try {
-    const me = await getApi().register({ email, password, intendedRole: 'PARENT', displayName });
+    const me = await getApi().register({ email, password, intendedRole, displayName });
     setSession(await bearerFor(me.userId));
   } catch (e) {
     return { error: friendly(e) };
@@ -143,6 +144,66 @@ export async function createStudentPracticeAction(
   revalidatePath('/hoc-sinh');
   revalidatePath('/hoc-sinh/bai-tap');
   return { assignmentId: res.assignmentIds[0] ?? null };
+}
+
+// ---- TEACHER ---------------------------------------------------------------
+
+export async function teacherSubmitContributionAction(
+  _prev: FormState,
+  form: FormData,
+): Promise<FormState> {
+  const childId = String(form.get('childId') ?? '');
+  const subjectId = String(form.get('subjectId') ?? '');
+  const contributionType = String(form.get('contributionType') ?? 'CURRENT_LESSON') as
+    | 'CURRENT_LESSON'
+    | 'CURRICULUM_PROGRESS'
+    | 'HOMEWORK'
+    | 'EXAM_NOTICE';
+  const note = String(form.get('note') ?? '').trim();
+  const examDate = String(form.get('examDate') ?? '').trim();
+  if (!childId || !subjectId) return { error: 'Chọn học sinh và môn học.' };
+
+  const observedAt = new Date().toISOString();
+  try {
+    await getApi().teacherSubmitContribution(teacherAuth(), childId, {
+      subjectId,
+      contributionType,
+      observedAt,
+      ...(contributionType === 'HOMEWORK' && note
+        ? { homeworkRefs: note.split(',').map((s) => s.trim()).filter(Boolean) }
+        : {}),
+      ...(contributionType === 'EXAM_NOTICE' && examDate
+        ? { examRef: { date: examDate, ...(note ? { scopeNote: note } : {}) } }
+        : {}),
+    });
+  } catch (e) {
+    return { error: friendly(e) };
+  }
+  revalidatePath('/giao-vien/cap-nhat');
+  return {};
+}
+
+export async function acceptRelationshipRequestAction(requestId: string): Promise<void> {
+  await getApi().acceptRelationshipRequest(teacherAuth(), requestId);
+  revalidatePath('/giao-vien/ket-noi');
+  revalidatePath('/giao-vien');
+}
+
+export async function rejectRelationshipRequestAction(requestId: string): Promise<void> {
+  await getApi().rejectRelationshipRequest(teacherAuth(), requestId);
+  revalidatePath('/giao-vien/ket-noi');
+}
+
+export async function redeemInviteCodeAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const code = String(form.get('code') ?? '').trim().toUpperCase();
+  if (!code) return { error: 'Nhập mã kết nối từ phụ huynh.' };
+  try {
+    await getApi().redeemInviteCode(teacherAuth(), code);
+  } catch (e) {
+    return { error: friendly(e) };
+  }
+  revalidatePath('/giao-vien/ket-noi');
+  return {};
 }
 
 function friendly(e: unknown): string {
