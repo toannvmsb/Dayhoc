@@ -43,6 +43,8 @@ import {
   buildParentProgress,
   buildParentTeachingPlan,
 } from '@copilot/projections';
+import { buildRevisionPlan, diagnoseAssessment, inferExamScope } from '@copilot/revision';
+import type { AssessmentQuestionOutcome, Exam } from '@copilot/domain';
 import { createLogger, type Logger } from '@copilot/observability';
 import { asChildId, type AnswerSpec } from '@copilot/domain';
 import { createApi, AuthzError, NotFoundError, type RequestContext } from '../api.js';
@@ -470,6 +472,50 @@ export function createProductionApi(opts: ProductionApiOptions) {
     };
   };
 
+  const LOST_POINT_LABEL: Record<string, string> = {
+    careless_error: 'Bất cẩn',
+    concept_gap: 'Hổng kiến thức',
+    prerequisite_gap: 'Hổng kiến thức nền',
+    method_gap: 'Sai phương pháp',
+    procedural_gap: 'Sai khâu thực hiện',
+    recognition_gap: 'Không nhận ra dạng',
+    reasoning_gap: 'Lập luận',
+    application_gap: 'Vận dụng',
+    presentation_error: 'Trình bày',
+    reading_error: 'Đọc đề',
+    retention_gap: 'Đã quên',
+  };
+
+  const this_examDiagnosisDto = (d: import('@copilot/domain').AssessmentDiagnosis) => {
+    const byCategory = new Map<string, number>();
+    for (const lp of d.lostPoints) {
+      byCategory.set(lp.classification, (byCategory.get(lp.classification) ?? 0) + lp.lostFraction);
+    }
+    return {
+      examId: d.examId,
+      totalAwardedPercent: Math.round(d.totalAwarded * 100),
+      lostPoints: d.lostPoints.map((lp) => ({
+        questionRef: lp.questionRef,
+        skillId: lp.skillId,
+        skillName: kb.skills.get(lp.skillId)?.name ?? lp.skillId,
+        lostFraction: lp.lostFraction,
+        category: lp.classification,
+        categoryLabel: LOST_POINT_LABEL[lp.classification] ?? lp.classification,
+        note: lp.note,
+      })),
+      byCategory: [...byCategory.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([c, loss]) => ({
+          category: c,
+          categoryLabel: LOST_POINT_LABEL[c] ?? c,
+          lostPoints: Number(loss.toFixed(2)),
+        })),
+      remediation: d.remediationSkillIds
+        .slice(0, 6)
+        .map((id) => ({ skillId: id, name: kb.skills.get(id)?.name ?? id })),
+    };
+  };
+
   // ---- IDENTITY / WORKSPACE ---------------------------------------
 
   return {
@@ -777,6 +823,191 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const view = buildParentTeachingPlan(projInput(s), gapId);
       if (!view) throw new NotFoundError('teaching plan');
       return view;
+    },
+
+    // ---- M6: EXAM INTELLIGENCE --------------------------------------
+
+    async listExams(auth: CallerAuth, childId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'view_child');
+      const rows = (
+        await pool.query(
+          `SELECT e.id, e.exam_date::text AS exam_date, e.subject, e.notes, e.status,
+                  e.scope_skill_ids, (r.id IS NOT NULL) AS has_result
+             FROM exams e LEFT JOIN exam_results r ON r.exam_id = e.id
+            WHERE e.child_id = $1 ORDER BY e.exam_date DESC`,
+          [childId],
+        )
+      ).rows as any[];
+      return rows.map((x) => ({
+        id: x.id,
+        examDate: String(x.exam_date).slice(0, 10),
+        subject: x.subject,
+        notes: x.notes ?? null,
+        status: x.status,
+        hasResult: x.has_result,
+        scopeConfirmed: Array.isArray(x.scope_skill_ids),
+      }));
+    },
+
+    /** POST /children/:childId/exams — create + infer scope from recent context. */
+    async createExam(
+      auth: CallerAuth,
+      childId: string,
+      input: { examDate: string; subject: string; notes?: string; scopeSkillIds?: readonly string[] },
+    ) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'manage_child');
+      const s = await refreshLearningState(childId);
+      const inferred = inferExamScope(s.context, s.twin, kb);
+      const id = cryptoRandom();
+      await pool.query(
+        `INSERT INTO exams (id, child_id, exam_date, subject, notes, scope_skill_ids, inferred_scope, status, created_by_user_id)
+         VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8,$9)`,
+        [
+          id,
+          childId,
+          input.examDate,
+          input.subject,
+          input.notes ?? null,
+          input.scopeSkillIds ? JSON.stringify(input.scopeSkillIds) : null,
+          JSON.stringify(inferred),
+          input.scopeSkillIds ? 'SCOPE_CONFIRMED' : 'SCHEDULED',
+          ctx.userId,
+        ],
+      );
+      return { examId: id, inferredScope: inferred };
+    },
+
+    /** PATCH /exams/:examId/scope — parent confirms / edits the scope. */
+    async confirmExamScope(auth: CallerAuth, childId: string, examId: string, skillIds: readonly string[]) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'manage_child');
+      const r = await pool.query(
+        `UPDATE exams SET scope_skill_ids = $1::jsonb, status = 'SCOPE_CONFIRMED', updated_at = now()
+          WHERE id = $2 AND child_id = $3 RETURNING id`,
+        [JSON.stringify(skillIds), examId, childId],
+      );
+      if (!r.rows[0]) throw new NotFoundError('exam');
+      return { ok: true };
+    },
+
+    /** GET /exams/:examId/revision-map — deterministic, recomputed on read. */
+    async getRevisionMap(auth: CallerAuth, childId: string, examId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'view_child');
+      const row = (
+        await pool.query(
+          `SELECT id, exam_date::text AS exam_date, subject, scope_skill_ids, inferred_scope
+             FROM exams WHERE id = $1 AND child_id = $2`,
+          [examId, childId],
+        )
+      ).rows[0] as any;
+      if (!row) throw new NotFoundError('exam');
+      const s = await refreshLearningState(childId);
+      const exam: Exam = {
+        id: row.id,
+        childId: asChildId(childId),
+        examDate: String(row.exam_date).slice(0, 10),
+        subject: row.subject,
+        ...(Array.isArray(row.scope_skill_ids)
+          ? { scopeSkillIds: row.scope_skill_ids as never }
+          : {}),
+        ...(row.inferred_scope ? { inferredScope: row.inferred_scope } : {}),
+      };
+      const plan = buildRevisionPlan({
+        childId: asChildId(childId),
+        exam,
+        twin: s.twin,
+        gaps: s.gaps,
+        knowledgeBase: kb,
+        asOf: now(),
+      });
+      return {
+        examId,
+        subject: row.subject,
+        examDate: exam.examDate,
+        dayCountdown: plan.dayCountdown,
+        dailyMinutes: plan.dailyMinutes,
+        scopeConfirmed: Array.isArray(row.scope_skill_ids),
+        needsScopeConfirm: !Array.isArray(row.scope_skill_ids) && (row.inferred_scope?.needsParentConfirm ?? true),
+        items: plan.priorityItems.map((it) => ({
+          skillId: it.skillId,
+          name: it.name,
+          band: it.band,
+          reason: it.reason,
+        })),
+      };
+    },
+
+    /**
+     * POST /exams/:examId/result — parent enters per-question awarded scores;
+     * DạyZi classifies every lost point (deterministic — same signal logic as the
+     * gap engine, scoped to this exam). Does NOT mutate the Twin.
+     */
+    async recordExamResult(
+      auth: CallerAuth,
+      childId: string,
+      examId: string,
+      outcomes: readonly {
+        questionRef: string;
+        skillId: string;
+        awardedScore: number;
+        reasoningQuality?: 'weak' | 'adequate' | 'strong';
+        stepsObserved?: readonly string[];
+      }[],
+    ) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'manage_child');
+      const exam = (
+        await pool.query(`SELECT id FROM exams WHERE id = $1 AND child_id = $2`, [examId, childId])
+      ).rows[0];
+      if (!exam) throw new NotFoundError('exam');
+
+      const s = await refreshLearningState(childId);
+      const typed: AssessmentQuestionOutcome[] = outcomes.map((o) => ({
+        questionRef: o.questionRef,
+        skillId: o.skillId as never,
+        awardedScore: Math.max(0, Math.min(1, o.awardedScore)),
+        ...(o.reasoningQuality ? { reasoningQuality: o.reasoningQuality } : {}),
+        ...(o.stepsObserved ? { stepsObserved: [...o.stepsObserved] } : {}),
+      }));
+      const diagnosis = diagnoseAssessment({
+        childId: asChildId(childId),
+        examId,
+        outcomes: typed,
+        twin: s.twin,
+        knowledgeBase: kb,
+      });
+      await pool.query(
+        `INSERT INTO exam_results (exam_id, child_id, outcomes, diagnosis, recorded_by_user_id)
+         VALUES ($1,$2,$3::jsonb,$4::jsonb,$5)
+         ON CONFLICT (exam_id) DO UPDATE SET
+           outcomes = EXCLUDED.outcomes, diagnosis = EXCLUDED.diagnosis,
+           recorded_by_user_id = EXCLUDED.recorded_by_user_id, recorded_at = now()`,
+        [examId, childId, JSON.stringify(typed), JSON.stringify(diagnosis), ctx.userId],
+      );
+      await pool.query(`UPDATE exams SET status = 'COMPLETED', updated_at = now() WHERE id = $1`, [examId]);
+      return this_examDiagnosisDto(diagnosis);
+    },
+
+    async getExamDiagnosis(auth: CallerAuth, childId: string, examId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'view_child');
+      const row = (
+        await pool.query(
+          `SELECT diagnosis FROM exam_results WHERE exam_id = $1 AND child_id = $2`,
+          [examId, childId],
+        )
+      ).rows[0] as { diagnosis: unknown } | undefined;
+      if (!row?.diagnosis) return null;
+      return this_examDiagnosisDto(row.diagnosis as ReturnType<typeof diagnoseAssessment>);
     },
 
     // ---- SCHOOL / CLASS -----------------------------------------

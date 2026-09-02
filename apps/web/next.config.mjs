@@ -23,6 +23,7 @@ const nextConfig = {
     '@copilot/practice',
     '@copilot/projections',
     '@copilot/reference-library',
+    '@copilot/revision',
     '@copilot/schemas',
     '@copilot/uploads',
   ],

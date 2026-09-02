@@ -18,6 +18,8 @@
     { "path": "../../packages/planning" },
     { "path": "../../packages/practice" },
     { "path": "../../packages/projections" },
+    { "path": "../../packages/reference-library" },
+    { "path": "../../packages/revision" },
     { "path": "../../packages/schemas" }
   ],
   "include": ["src/**/*.ts"],

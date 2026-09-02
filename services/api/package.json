@@ -25,6 +25,7 @@
     "@copilot/practice": "0.1.0",
     "@copilot/projections": "0.1.0",
     "@copilot/reference-library": "0.1.0",
+    "@copilot/revision": "0.1.0",
     "@copilot/schemas": "0.1.0",
     "@copilot/uploads": "0.1.0"
   }

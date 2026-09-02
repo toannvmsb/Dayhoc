@@ -146,6 +146,55 @@ export async function createStudentPracticeAction(
   return { assignmentId: res.assignmentIds[0] ?? null };
 }
 
+// ---- PARENT: exam intelligence (M6) -------------------------------------
+
+export async function createExamAction(
+  _prev: FormState & { examId?: string },
+  form: FormData,
+): Promise<FormState & { examId?: string }> {
+  const childId = String(form.get('childId') ?? '');
+  const examDate = String(form.get('examDate') ?? '').trim();
+  const subject = String(form.get('subject') ?? '').trim() || 'Toán';
+  const notes = String(form.get('notes') ?? '').trim() || undefined;
+  if (!childId || !examDate) return { error: 'Chọn ngày kiểm tra.' };
+  try {
+    const res = await getApi().createExam(parentAuth(), childId, {
+      examDate,
+      subject,
+      ...(notes ? { notes } : {}),
+    });
+    revalidatePath(`/be/${childId}/kiem-tra`);
+    return { examId: res.examId };
+  } catch (e) {
+    return { error: friendly(e) };
+  }
+}
+
+export async function confirmExamScopeAction(
+  childId: string,
+  examId: string,
+  skillIds: string[],
+): Promise<void> {
+  await getApi().confirmExamScope(parentAuth(), childId, examId, skillIds);
+  revalidatePath(`/be/${childId}/kiem-tra/${examId}`);
+}
+
+export async function recordExamResultAction(
+  childId: string,
+  examId: string,
+  outcomes: ReadonlyArray<{
+    questionRef: string;
+    skillId: string;
+    awardedScore: number;
+    reasoningQuality?: 'weak' | 'adequate' | 'strong';
+  }>,
+): Promise<{ ok: true }> {
+  await getApi().recordExamResult(parentAuth(), childId, examId, outcomes);
+  revalidatePath(`/be/${childId}/kiem-tra/${examId}`);
+  revalidatePath(`/be/${childId}`);
+  return { ok: true };
+}
+
 // ---- PARENT: evidence upload (M4) ----------------------------------------
 
 const UPLOAD_KINDS = ['NOTEBOOK_PAGE', 'GRADED_TEST', 'HOMEWORK', 'TEACHER_MESSAGE', 'OTHER'] as const;
