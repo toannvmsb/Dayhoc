@@ -220,4 +220,37 @@ describe('Context Resolver hard invariants (doc 13 §2 A–F)', () => {
     });
     expect(observed.resolved.source).toBe('SCHOOLWORK_EVIDENCE');
   });
+
+  it('I5 — an explicit contribution `confidence` tier is honoured (C → not VERIFIED)', () => {
+    const tc = (over: Partial<TeacherContribution> = {}): TeacherContribution => ({
+      id: 'tc1',
+      childId,
+      contributedAs: 'teacher',
+      actorUserId: 'u',
+      occurredOn: new Date(asOf.getTime() - 2 * 86_400_000).toISOString().slice(0, 10),
+      recordedAt: new Date(asOf.getTime() - 2 * 86_400_000).toISOString(),
+      taughtSkillIds: [asSkillId(SK_CH7)],
+      problemTypeIds: [],
+      homeworkRefs: [],
+      ...over,
+    });
+    const dflt = resolveLearningContext({
+      expected: null,
+      contributions: [tc()],
+      evidence: [],
+      knowledgeBase: kb,
+      asOf,
+    });
+    const tierC = resolveLearningContext({
+      expected: null,
+      contributions: [tc({ confidence: 'C' })],
+      evidence: [],
+      knowledgeBase: kb,
+      asOf,
+    });
+    expect(dflt.resolved.lessonId).toBe(nodeOf(SK_CH7));
+    expect(dflt.resolved.confidence).toBe('VERIFIED'); // teacher default
+    expect(tierC.resolved.lessonId).toBe(nodeOf(SK_CH7));
+    expect(tierC.resolved.confidence).not.toBe('VERIFIED'); // explicit C tier
+  });
 });

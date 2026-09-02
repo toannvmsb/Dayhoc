@@ -108,14 +108,15 @@ function evidenceTypeKey(e: Evidence): string {
   }
 }
 
+const TIER_TO_CONFIDENCE: Record<'A' | 'B' | 'C' | 'D', LearningContextConfidence> = {
+  A: 'VERIFIED',
+  B: 'STRONG',
+  C: 'SUPPORTING',
+  D: 'ESTIMATED',
+};
+
 function evidenceConfidence(e: Evidence): LearningContextConfidence {
-  return e.confidenceTier === 'A'
-    ? 'VERIFIED'
-    : e.confidenceTier === 'B'
-      ? 'STRONG'
-      : e.confidenceTier === 'C'
-        ? 'SUPPORTING'
-        : 'ESTIMATED';
+  return TIER_TO_CONFIDENCE[e.confidenceTier];
 }
 
 function sourceOf(typeKey: string): LearningContextSource {
@@ -186,13 +187,19 @@ export function resolveLearningContext(input: ResolveInput): ResolveResult {
     const at = Date.parse(`${c.occurredOn}T00:00:00Z`);
     if (at < cutoff) continue;
     const typeKey = c.contributedAs === 'teacher' ? 'teacher_update' : 'parent_update';
+    // I5: honour an explicit `confidence` tier when present; else default by role.
+    const confidence: LearningContextConfidence = c.confidence
+      ? TIER_TO_CONFIDENCE[c.confidence]
+      : c.contributedAs === 'teacher'
+        ? 'VERIFIED'
+        : 'STRONG';
     for (const sid of c.taughtSkillIds) {
       const lessonId = lessonIdOfSkill(kb, sid);
       if (!lessonId || !inGrade(lessonId) || !eligibleAsContext(lessonId)) continue;
       signals.push({
         lessonId,
         reliability: RELIABILITY[typeKey]!,
-        confidence: c.contributedAs === 'teacher' ? 'VERIFIED' : 'STRONG',
+        confidence,
         source: sourceOf(typeKey),
         at,
         typeKey,

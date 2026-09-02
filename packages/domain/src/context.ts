@@ -2,9 +2,39 @@ import type { ChildId, SkillId } from './identifiers.js';
 import type { Domain } from './taxonomy.js';
 
 /**
+ * A subject-scoped, provenance-rich teacher/parent learning contribution
+ * (migration group I5 — doc 21 §7). The type widened from `TeacherContribution`.
+ */
+export const TEACHER_CONTRIBUTION_TYPES = [
+  'CURRENT_LESSON',
+  'CURRICULUM_PROGRESS',
+  'HOMEWORK',
+  'TEST_RESULT',
+  'EXAM_NOTICE',
+  'EXAM_SCOPE',
+  'SKILL_ASSESSMENT',
+  'LEARNING_OBSERVATION',
+  'STRENGTH',
+  'WEAKNESS',
+  'BEHAVIOUR_OBSERVATION',
+  'ASSIGNMENT',
+  'COMMENT',
+] as const;
+export type TeacherContributionType = (typeof TEACHER_CONTRIBUTION_TYPES)[number];
+
+export const CONTRIBUTION_RELATIONSHIP_SOURCES = ['TEACHER_CHILD_LINK', 'CLASS_ASSIGNMENT'] as const;
+export type ContributionRelationshipSource = (typeof CONTRIBUTION_RELATIONSHIP_SOURCES)[number];
+
+export const CONTRIBUTION_VISIBILITIES = ['PARENT_AND_CHILD', 'PARENT_ONLY'] as const;
+export type ContributionVisibility = (typeof CONTRIBUTION_VISIBILITIES)[number];
+
+/**
  * TeacherContribution — an append-only context event. May be authored by a teacher
  * OR by a parent entering it on the teacher's behalf. It is an *indirect* evidence
  * source (it tells us what was taught), never a direct mastery signal.
+ *
+ * The I5 fields are all optional so pre-I5 rows / callers keep working (doc 13
+ * behaviour is preserved when they are absent).
  */
 export interface TeacherContribution {
   readonly id: string;
@@ -17,7 +47,44 @@ export interface TeacherContribution {
   readonly problemTypeIds: readonly SkillId[];
   readonly homeworkRefs: readonly string[];
   readonly examRef?: { readonly date: string; readonly scopeNote?: string };
+  // --- I5 additive fields ---
+  readonly subjectId?: string;
+  readonly contributionType?: TeacherContributionType;
+  readonly relationshipSourceType?: ContributionRelationshipSource;
+  readonly relationshipSourceId?: string;
+  /** Feeds `evidenceConfidence` in the Resolver — A|B|C|D. Absent → default by role. */
+  readonly confidence?: 'A' | 'B' | 'C' | 'D';
+  readonly visibility?: ContributionVisibility;
+  readonly attachmentId?: string;
 }
+
+/** Map a contribution type to the permission code a teacher needs to submit it. */
+export const CONTRIBUTION_TYPE_TO_PERMISSION: Record<
+  TeacherContributionType,
+  | 'SUBMIT_CURRENT_LESSON'
+  | 'SUBMIT_CURRICULUM_PROGRESS'
+  | 'SUBMIT_HOMEWORK'
+  | 'SUBMIT_TEST_RESULT'
+  | 'SUBMIT_EXAM_NOTICE'
+  | 'SUBMIT_EXAM_SCOPE'
+  | 'SUBMIT_SKILL_ASSESSMENT'
+  | 'SUBMIT_LEARNING_OBSERVATION'
+  | 'CREATE_ASSIGNMENT'
+> = {
+  CURRENT_LESSON: 'SUBMIT_CURRENT_LESSON',
+  CURRICULUM_PROGRESS: 'SUBMIT_CURRICULUM_PROGRESS',
+  HOMEWORK: 'SUBMIT_HOMEWORK',
+  TEST_RESULT: 'SUBMIT_TEST_RESULT',
+  EXAM_NOTICE: 'SUBMIT_EXAM_NOTICE',
+  EXAM_SCOPE: 'SUBMIT_EXAM_SCOPE',
+  SKILL_ASSESSMENT: 'SUBMIT_SKILL_ASSESSMENT',
+  LEARNING_OBSERVATION: 'SUBMIT_LEARNING_OBSERVATION',
+  STRENGTH: 'SUBMIT_LEARNING_OBSERVATION',
+  WEAKNESS: 'SUBMIT_LEARNING_OBSERVATION',
+  BEHAVIOUR_OBSERVATION: 'SUBMIT_LEARNING_OBSERVATION',
+  ASSIGNMENT: 'CREATE_ASSIGNMENT',
+  COMMENT: 'SUBMIT_LEARNING_OBSERVATION',
+};
 
 /** How a learning-context position was established (Pricing v1.1 §2, doc 13). */
 export const LEARNING_CONTEXT_SOURCES = [
