@@ -10,7 +10,7 @@ export default function StudentToday() {
   const q = useQuery<ChildToday>(() => api.get('/student/today'), []);
 
   return (
-    <Screen nav={<StudentNav />} edges={['bottom']}>
+    <Screen nav={<StudentNav />} edges={['bottom']} refreshing={q.loading} onRefresh={q.reload}>
       {q.loading && <Loading />}
       {q.error && <ErrorNote message={q.error} />}
       {q.data && (

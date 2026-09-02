@@ -1,7 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { apiCall, login as apiLogin, register as apiRegister, type Viewer, type Workspace } from './api';
+import {
+  apiCall,
+  login as apiLogin,
+  register as apiRegister,
+  setUnauthorizedHandler,
+  type Viewer,
+  type Workspace,
+} from './api';
 
 const KEY = 'dz.session.v1';
 
@@ -57,6 +64,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await AsyncStorage.removeItem(KEY);
     }
   }, []);
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      void persist(null);
+    });
+    return () => setUnauthorizedHandler(null);
+  }, [persist]);
 
   const value = useMemo<AuthValue>(
     () => ({

@@ -42,7 +42,7 @@ export default function ParentPractice() {
   };
 
   return (
-    <Screen nav={<ParentNav />} edges={['bottom']}>
+    <Screen nav={<ParentNav />} edges={['bottom']} refreshing={list.loading} onRefresh={list.reload}>
       <H1>Bài tập</H1>
       <Card>
         <Overline>Tạo buổi luyện tập</Overline>

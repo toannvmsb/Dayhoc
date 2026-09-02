@@ -21,6 +21,12 @@ export class ApiError extends Error {
   }
 }
 
+let onUnauthorized: (() => void) | null = null;
+/** AuthProvider registers this so any 401 anywhere clears the session. */
+export function setUnauthorizedHandler(fn: (() => void) | null): void {
+  onUnauthorized = fn;
+}
+
 interface CallOpts {
   method?: 'GET' | 'POST';
   body?: unknown;
@@ -50,6 +56,7 @@ export async function apiCall<T>(path: string, opts: CallOpts = {}): Promise<T> 
       json && typeof json === 'object' && 'error' in json
         ? String((json as { error: unknown }).error)
         : `HTTP ${res.status}`;
+    if (res.status === 401 && opts.bearer) onUnauthorized?.();
     throw new ApiError(res.status, msg);
   }
   return json as T;

@@ -1,86 +1,76 @@
-# Test trên thiết bị — iPhone (và Android)
+# Test trên thiết bị — iPhone / Android
 
-Bản demo hiện tại là **web app** (`apps/web`, Next.js) — chạy được ngay trên
-Safari iPhone, thêm được ra màn hình chính như một app (PWA). App native Expo/RN
-là bước sau (S-03).
+Có **hai cách** test DạyZi trên điện thoại:
 
-Dữ liệu là **giả lập nhưng chạy qua đúng engine thật** (twin → gap → planner →
-projection). Chưa có đăng nhập / backend — mỗi màn hình tự dựng cảnh demo.
+1. **Web app** (`apps/web`, Next.js) — mở trên Safari/Chrome điện thoại, thêm ra
+   màn hình chính như PWA. Đầy đủ tính năng, không cần cài gì.
+2. **App native** (`apps/mobile`, Expo) — qua **Expo Go**. Cùng thương hiệu, có
+   camera thật để chụp bài của con.
+
+Cả hai nói chuyện với **cùng một backend** (`createProductionApi` chạy trong
+`apps/web`, cùng Postgres, cùng authorization). App native gọi HTTP `/api/v1/*`;
+web dùng server actions.
 
 ---
 
-## Cách nhanh nhất: cùng Wi-Fi
+## A. Web app (nhanh nhất — không cài gì)
 
-1. **Máy tính và iPhone cùng một mạng Wi-Fi.**
-
-2. Trên máy tính, chạy dev server (đã cấu hình lắng nghe mọi địa chỉ):
+1. Máy tính + điện thoại **cùng Wi-Fi**.
+2. Trên máy tính:
 
    ```bash
    cd "D:/Lap trinh/Claude/Dayhoc"
    npm run dev --workspace @copilot/web
    ```
 
-   Lần đầu Windows có thể hỏi Firewall → chọn **Allow access** cho Node (mạng Private).
+   `apps/web/.env.local` cần `DATABASE_URL` + `DZ_DEV_AUTH=1`. Windows hỏi
+   Firewall → **Allow access** cho Node (mạng Private).
+3. `ipconfig` → **IPv4 Address** của card Wi-Fi (ví dụ `10.16.55.71`).
+4. Trên điện thoại mở `http://<IP>:3100`.
+5. Share ⬆️ → *Add to Home Screen*.
 
-3. Tìm địa chỉ IP nội bộ của máy: `ipconfig` → dòng **IPv4 Address** của card Wi-Fi.
-   Hiện tại máy anh là **`10.16.55.71`** (đổi nếu chuyển mạng).
+Đăng nhập: tạo tài khoản mới trên màn `/welcome` (chế độ dev — email + mật khẩu,
+không cần IdP thật). "Tôi là giáo viên" ở cuối màn để tạo tài khoản giáo viên.
 
-4. Trên **Safari iPhone**, mở:
+Khác mạng: `npx localtunnel --port 3100` hoặc `cloudflared tunnel --url
+http://localhost:3100`.
 
+---
+
+## B. App native (Expo Go)
+
+1. Cài **Expo Go** trên điện thoại (App Store / Play Store).
+2. Chạy backend (web) như mục A — nó phục vụ luôn `/api/v1`.
+3. Sửa `apps/mobile/app.json` → `expo.extra.apiBaseUrl` thành
+   `http://<IP-máy-tính>:3100/api/v1` (KHÔNG dùng `localhost` — điện thoại
+   không hiểu). Ví dụ `http://10.16.55.71:3100/api/v1`.
+4. Trên máy tính:
+
+   ```bash
+   cd "D:/Lap trinh/Claude/Dayhoc/apps/mobile"
+   npm install          # lần đầu
+   npx expo start
    ```
-   http://10.16.55.71:3100
-   ```
 
-5. **Thêm ra màn hình chính** (để chạy toàn màn hình như app):
-   nút Share ⬆️ → *Add to Home Screen* → tên "Học cùng con", icon chữ **H** nền xanh.
-   Mở từ icon đó sẽ ẩn thanh địa chỉ Safari.
+5. Quét QR bằng Expo Go (điện thoại cùng Wi-Fi).
 
-Điều hướng: thanh dưới cùng (Hôm nay · Con · Cập nhật · Tiến bộ · Thêm).
-**"Thêm"** liệt kê tất cả màn hình demo.
+Màn hình: bố mẹ (Hôm nay · Tiến độ · Bài tập · Tài liệu · Cài đặt), học sinh
+(Hôm nay · Bài tập · Tiến bộ), giáo viên (Học sinh). Chụp bài của con ở mục
+**Tài liệu** dùng camera thật.
 
----
+### Giới hạn hiện tại của app native
 
-## Nếu khác mạng / muốn gửi link cho người khác test
-
-Dùng tunnel tạm (không cần deploy):
-
-```bash
-# terminal 1
-npm run dev --workspace @copilot/web
-# terminal 2
-npx localtunnel --port 3100
-```
-
-`localtunnel` in ra một URL `https://….loca.lt` mở được từ bất kỳ đâu (nhập
-password = IP công cộng của máy khi được hỏi). Hoặc `cloudflared tunnel --url
-http://localhost:3100` nếu đã cài `cloudflared`.
+- Dev auth (email + mật khẩu, không IdP). Production cần Supabase
+  (`SUPABASE_URL` / `SUPABASE_JWT_SECRET`).
+- Chưa build store binary (chỉ Expo Go / dev client).
+- Font Be Vietnam Pro chưa bundle — dùng font hệ thống.
+- Chưa có push notification.
+- `apiBaseUrl` cấu hình tay trong `app.json` (chưa có màn nhập server).
 
 ---
 
-## Màn hình có trong demo
+## Kiểm thử tự động
 
-| Đường dẫn | Màn hình |
-|---|---|
-| `/` | Hôm nay (bố mẹ) — tóm tắt con + kế hoạch hôm nay + cần chú ý |
-| `/progress` | Tiến bộ — 3 trục: kiến thức · dạng bài · tư duy, có vạch mục tiêu |
-| `/gap/demo` | Chi tiết một lỗ hổng — "vì sao con sai" + hướng củng cố |
-| `/exam` | Ôn thi — phạm vi suy ra từ ngữ cảnh + kế hoạch ôn |
-| `/weekly` | Báo cáo tuần |
-| `/child` | Màn hình của Con — chỉ bài được giao, **không** có phân tích/mastery |
-| `/child/do`, `/child/challenge`, `/child/result` | Con làm bài · thử thách · kết quả |
-| `/teacher`, `/teacher/update` | Màn hình Giáo viên (chỉ ngữ cảnh được mời) |
-
----
-
-## Giới hạn của bản web demo (sẽ có ở app thật)
-
-- Chưa có đăng nhập, PIN, chuyển hồ sơ con → mỗi màn hình là 1 cảnh cố định.
-- Chưa có scan bài / chụp ảnh (cần OCR provider — P-04, hoãn tới sau pilot).
-- Chưa lưu tiến trình giữa các lần mở.
-- Bàn phím nhập đáp án ở màn "Con làm bài" là bản demo, chưa chấm thật.
-
-## Bước sau
-
-- **App native Expo/RN** (`apps/mobile`) — test qua Expo Go, dùng chung
-  `@copilot/projections` + `@copilot/design-tokens`. (S-03)
-- Nối backend + auth (P-03 đã có schema) để có trạng thái thật.
+- **Web golden journeys**: `npm run test:e2e` — Playwright chạy 8 hành trình
+  vàng qua trình duyệt thật (cần dev server + Postgres).
+- **API/engine**: `npm test` — 621 test.

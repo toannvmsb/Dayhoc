@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,16 +17,29 @@ export function Screen({
   scroll = true,
   nav,
   edges = ['top', 'bottom'],
+  onRefresh,
+  refreshing,
 }: {
   children: ReactNode;
   scroll?: boolean;
   nav?: ReactNode;
   edges?: ('top' | 'bottom')[];
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }) {
   return (
     <SafeAreaView style={styles.screen} edges={edges}>
       {scroll ? (
-        <ScrollView contentContainerStyle={styles.scroll}>{children}</ScrollView>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          refreshControl={
+            onRefresh ? (
+              <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={theme.color.primary} />
+            ) : undefined
+          }
+        >
+          {children}
+        </ScrollView>
       ) : (
         <View style={styles.body}>{children}</View>
       )}

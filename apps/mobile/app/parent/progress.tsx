@@ -44,7 +44,7 @@ export default function ParentProgressScreen() {
   const q = useQuery<ParentProgress>(() => api.get(`/children/${childId}/progress`), [childId]);
 
   return (
-    <Screen nav={<ParentNav />} edges={['bottom']}>
+    <Screen nav={<ParentNav />} edges={['bottom']} refreshing={q.loading} onRefresh={q.reload}>
       <H1>Tiến độ</H1>
       {q.loading && <Loading />}
       {q.error && <ErrorNote message={q.error} />}

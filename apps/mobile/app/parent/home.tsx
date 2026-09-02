@@ -38,7 +38,15 @@ export default function ParentHomeScreen() {
   }
 
   return (
-    <Screen nav={<ParentNav />} edges={['bottom']}>
+    <Screen
+      nav={<ParentNav />}
+      edges={['bottom']}
+      refreshing={home.loading}
+      onRefresh={() => {
+        children.reload();
+        home.reload();
+      }}
+    >
       {(children.data?.length ?? 0) > 1 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={{ flexDirection: 'row', gap: 8 }}>
