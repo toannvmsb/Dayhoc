@@ -52,9 +52,10 @@ export const tokens = {
     attentionDot: palette.amber600,
     attentionIconBg: palette.amberIconBg,
 
-    // Status — on/above target (teal-positive)
-    positiveText: palette.teal700,
-    positiveBar: palette.teal600,
+    // Status — on/above target — Mint (progress)
+    positiveText: palette.mintText,
+    positiveBar: palette.mint600,
+    positiveBg: palette.mintBg,
 
     // Status — unstable / below target (amber bar)
     unstableText: palette.amberWarn,
@@ -67,15 +68,15 @@ export const tokens = {
    * `onLight` for bars on a light card; `onPrimary` for bars sitting on the teal hero card.
    */
   learningMix: {
-    school: { onLight: palette.teal600, onPrimary: palette.white },
-    gapRepair: { onLight: palette.amber500, onPrimary: palette.amberSoft },
-    advanced: { onLight: palette.tealMint, onPrimary: palette.tealMint },
-    thinking: { onLight: palette.tealDeep, onPrimary: palette.tealDeep },
+    school: { onLight: palette.teal600, onPrimary: palette.white }, // cobalt
+    gapRepair: { onLight: palette.amber500, onPrimary: palette.amberSoft }, // coral
+    advanced: { onLight: palette.mint500, onPrimary: palette.tealMint }, // mint
+    thinking: { onLight: palette.tealDeep, onPrimary: palette.tealDeep }, // violet
   },
 
   font: {
     family:
-      "'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+      "'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
     weight: { regular: 400, medium: 500, semibold: 600, bold: 700, extrabold: 800 },
     // px. `child*` sizes are the larger child-app ramp (Child = bigger type, one task per view).
     size: {

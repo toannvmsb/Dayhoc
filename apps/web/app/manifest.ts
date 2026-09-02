@@ -2,13 +2,13 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Học cùng con',
-    short_name: 'Học cùng con',
-    description: 'AI Parent Learning Copilot — bản demo giao diện bố mẹ',
+    name: 'DạyZi — Hôm nay dạy con gì?',
+    short_name: 'DạyZi',
+    description: 'DạyZi — Hiểu con. Dạy đúng. Cùng con tiến bộ mỗi ngày.',
     start_url: '/',
     display: 'standalone',
-    background_color: '#fffbf5',
-    theme_color: '#fffbf5',
+    background_color: '#f7f8fc',
+    theme_color: '#3b5bff',
     lang: 'vi',
     orientation: 'portrait',
     icons: [

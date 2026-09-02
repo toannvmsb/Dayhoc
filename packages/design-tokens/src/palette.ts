@@ -1,55 +1,68 @@
 /**
- * Raw color values — "Hướng 1A · Bình tĩnh & ấm" (locked design direction).
- * Extracted verbatim from the Claude Design handoff (docs/design/handoff/).
- * Do not consume raw values in components — use the semantic `tokens` map.
+ * Raw color values — **DạyZi brand** (2027 product direction).
+ *
+ * Direction: modern · friendly · intelligent · young-parent · warm-but-not-childish
+ * · premium enough for a paid subscription. Electric/Cobalt Blue → Violet, with a
+ * Coral accent and a Mint progress colour. Vietnamese-first UI. Avoids generic-LMS
+ * / school-admin / graduation-cap clichés.
+ *
+ * The semantic key names are kept stable (`teal*` = the primary blue→violet ramp,
+ * `amber*` = the coral status family, `cream/sand` = cool off-white surfaces) so
+ * components keep referencing the `tokens` map, never these raw values.
  */
 export const palette = {
-  // Warm neutrals / surfaces
-  cream: '#FFFBF5',
+  // Cool neutrals / surfaces
+  cream: '#F7F8FC', // app background — a cool near-white with a hint of blue
   white: '#FFFFFF',
-  sand: '#F4F0E8',
-  paper: '#F7F7F5', // teacher surface (more neutral)
+  sand: '#EEF1F8', // subtle raised surface
+  paper: '#F4F5F9', // teacher surface (a touch more neutral)
 
-  // Teal (primary family)
-  teal600: '#0E9384',
-  teal700: '#0B6E62',
-  teal800: '#08544B',
-  tealTint: '#E7F5F3',
-  tealMint: '#7FD1C4',
-  tealDeep: '#3E6E68',
+  // Primary family — Electric/Cobalt Blue → Violet
+  teal600: '#3B5BFF', // primary — electric cobalt
+  teal700: '#2E45D9', // primary strong
+  teal800: '#5A3FE0', // primary hover — leans violet
+  tealTint: '#EAEEFF', // primary tint surface
+  tealMint: '#5FE3C0', // mint — "advanced" learning-mix + progress
+  tealDeep: '#7A5AF8', // violet — "thinking" learning-mix
 
-  // Ink / text
-  ink900: '#14211E',
-  ink700: '#3B4642',
-  ink600: '#4B5563',
-  ink500: '#5B6660',
-  ink400: '#7A8580',
-  ink300: '#9AA3A0',
-  ink200: '#C7CFCB',
+  // Ink / text — cool slate
+  ink900: '#141A2E',
+  ink700: '#333B52',
+  ink600: '#48506B',
+  ink500: '#5A6178',
+  ink400: '#7B8299',
+  ink300: '#9AA1B4',
+  ink200: '#C9CDDA',
 
-  // Warm borders / dividers
-  border: '#EFE4D6',
-  borderSoft: '#F1E8DC',
-  dividerNeutral: '#DCE0E6',
+  // Borders / dividers
+  border: '#E2E6F1',
+  borderSoft: '#EAEDF6',
+  dividerNeutral: '#DDE1EC',
 
-  // Attention / amber (status, never used alone — always paired with text/icon)
-  amber600: '#D97706',
-  amber500: '#F59E0B',
-  amberText: '#92600A',
-  amberWarn: '#B45309',
-  amberBody: '#6B5528',
-  amberHeading: '#3F2D0C',
-  amberBg: '#FFF4E4',
-  amberBorder: '#F3DFC2',
-  amberIconBg: '#F7E4C3',
-  amberSoft: '#FFC46B',
+  // Status — attention / needs work — Coral (status only, never used alone)
+  amber600: '#F5533D',
+  amber500: '#FF6B57',
+  amberText: '#9A2C1E',
+  amberWarn: '#B23A28',
+  amberBody: '#7A2E22',
+  amberHeading: '#5C1E14',
+  amberBg: '#FFEEEB',
+  amberBorder: '#FBD8D1',
+  amberIconBg: '#FCDDD6',
+  amberSoft: '#FF9E8E',
 
-  // Dark surfaces (scan camera, child challenge)
-  night900: '#14211E',
-  night800: '#22332F',
+  // Positive / progress — Mint
+  mint600: '#12B886',
+  mint500: '#2ED3A0',
+  mintBg: '#E5FBF3',
+  mintText: '#0B6B50',
+
+  // Dark surfaces (scan camera, child challenge) — deep indigo, not black
+  night900: '#111633',
+  night800: '#1D2450',
 
   // Child access / web sidebar accent chip
-  childCode: '#3F2D0C',
+  childCode: '#2E45D9',
 } as const;
 
 export type PaletteKey = keyof typeof palette;

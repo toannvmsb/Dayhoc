@@ -4,19 +4,19 @@ import '@copilot/design-tokens/css';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Học cùng con',
-  description: 'AI Parent Learning Copilot — bản demo giao diện bố mẹ (Hướng 1A).',
-  applicationName: 'Học cùng con',
+  title: 'DạyZi — Hôm nay dạy con gì?',
+  description: 'DạyZi — Hiểu con. Dạy đúng. Cùng con tiến bộ mỗi ngày.',
+  applicationName: 'DạyZi',
   appleWebApp: {
     capable: true,
-    title: 'Học cùng con',
+    title: 'DạyZi',
     statusBarStyle: 'default',
   },
   formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#fffbf5',
+  themeColor: '#3b5bff',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,

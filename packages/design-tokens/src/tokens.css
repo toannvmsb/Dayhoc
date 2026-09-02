@@ -7,59 +7,60 @@
  */
 :root {
   /* Surfaces */
-  --c-bg: #fffbf5;
+  --c-bg: #f7f8fc;
   --c-surface: #ffffff;
-  --c-surface-subtle: #f4f0e8;
-  --c-surface-teacher: #f7f7f5;
-  --c-surface-inverse: #14211e;
-  --c-surface-inverse-alt: #22332f;
+  --c-surface-subtle: #eef1f8;
+  --c-surface-teacher: #f4f5f9;
+  --c-surface-inverse: #111633;
+  --c-surface-inverse-alt: #1d2450;
 
   /* Text */
-  --c-text-heading: #14211e;
-  --c-text-body: #4b5563;
-  --c-text-body-strong: #3b4642;
-  --c-text-label: #5b6660;
-  --c-text-muted: #7a8580;
-  --c-text-faint: #9aa3a0;
-  --c-text-disabled: #c7cfcb;
+  --c-text-heading: #141a2e;
+  --c-text-body: #48506b;
+  --c-text-body-strong: #333b52;
+  --c-text-label: #5a6178;
+  --c-text-muted: #7b8299;
+  --c-text-faint: #9aa1b4;
+  --c-text-disabled: #c9cdda;
   --c-text-on-primary: #ffffff;
 
   /* Primary (teal) */
-  --c-primary: #0e9384;
-  --c-primary-strong: #0b6e62;
-  --c-primary-hover: #08544b;
-  --c-primary-tint: #e7f5f3;
-  --c-on-primary-tint: #0b6e62;
+  --c-primary: #3b5bff;
+  --c-primary-strong: #2e45d9;
+  --c-primary-hover: #5a3fe0;
+  --c-primary-tint: #eaeeff;
+  --c-on-primary-tint: #2e45d9;
 
   /* Borders */
-  --c-border: #efe4d6;
-  --c-border-soft: #f1e8dc;
-  --c-divider: #dce0e6;
-  --c-focus-ring: #0e9384;
+  --c-border: #e2e6f1;
+  --c-border-soft: #eaedf6;
+  --c-divider: #dde1ec;
+  --c-focus-ring: #3b5bff;
 
   /* Status — attention */
-  --c-attention-bg: #fff4e4;
-  --c-attention-border: #f3dfc2;
-  --c-attention-text: #92600a;
-  --c-attention-heading: #3f2d0c;
-  --c-attention-body: #6b5528;
-  --c-attention-dot: #d97706;
-  --c-attention-icon-bg: #f7e4c3;
+  --c-attention-bg: #ffeeeb;
+  --c-attention-border: #fbd8d1;
+  --c-attention-text: #9a2c1e;
+  --c-attention-heading: #5c1e14;
+  --c-attention-body: #7a2e22;
+  --c-attention-dot: #f5533d;
+  --c-attention-icon-bg: #fcddd6;
 
   /* Status — target */
-  --c-positive-text: #0b6e62;
-  --c-positive-bar: #0e9384;
-  --c-unstable-text: #b45309;
-  --c-unstable-bar: #f59e0b;
+  --c-positive-text: #0b6b50;
+  --c-positive-bar: #12b886;
+  --c-positive-bg: #e5fbf3;
+  --c-unstable-text: #b23a28;
+  --c-unstable-bar: #ff6b57;
 
   /* Learning mix (light-card variants) */
-  --c-mix-school: #0e9384;
-  --c-mix-gap: #f59e0b;
-  --c-mix-advanced: #7fd1c4;
-  --c-mix-thinking: #3e6e68;
+  --c-mix-school: #3b5bff;
+  --c-mix-gap: #ff6b57;
+  --c-mix-advanced: #2ed3a0;
+  --c-mix-thinking: #7a5af8;
 
   /* Typography */
-  --font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-family: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --fw-regular: 400;
   --fw-medium: 500;
   --fw-semibold: 600;
