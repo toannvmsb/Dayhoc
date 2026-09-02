@@ -115,6 +115,32 @@ Docs mới (spec/plan only): `19_IDENTITY_FAMILY_MODEL.md` · `20_SCHOOL_CLASS_E
 | **OD-6 `class_cohorts`** | deferred (ID-Q7) — deterministic `suggestNextClassName` heuristic | add the table only if a real cohort need appears post-pilot. |
 | **OD-7 message store for `MESSAGE_PARENT`** | permission code + `teacher_parent_links` designed; no message persistence | a later doc + migration. |
 
+### §0d — FULL MVP DEVELOPMENT (F0–F12) progress
+
+| group | status | commit |
+|---|---|---|
+| **F0** app shell + design system | design tokens re-themed to DạyZi brand (Cobalt→Violet / Coral / Mint / Be Vietnam Pro); web manifest/layout/icon rebrand. Full RN/web shared component kit **not built** (reuse existing web components.tsx). | `fe1421f` |
+| **F1 (IX)** learning-state persistence | **DONE** — `@copilot/learning-state` + migration `1757808000000` (derived snapshots + genuine append-only assignments/attempts). | `1548f5e` |
+| **F2** auth + onboarding | Parent web: register/login (dev)/logout + create-child onboarding, zero-data path. `DevAuthAdapter`. **Supabase live = ENV_REQUIRED (OD-3).** | `0a9a830` |
+| **F3** Parent workspace | Home ("Hôm nay dạy con gì?"), Progress, Assignments, profile, connect-explainer + production `getParentHome`/`Progress`/`GapDetail` DTOs. Teaching Copilot (§15) **not built.** | `2b8ab51` / `0a9a830` |
+| **F4** Student workspace | backend `studentGet*` + `submitPractice` done; **Student UI not built** (practice runner `/bai/:id` works for both). |
+| **F5** Teacher workspace | backend `teacher*` handlers done; **Teacher UI not built.** |
+| **F6** relationship / school / class UX | backend (relationship requests, permissions, invite codes, school/class) done; **UI not built** (`/be/:id/ket-noi` is an explainer stub). |
+| **F7** evidence / upload UX + pipeline | **not built.** `uploads` table exists (metadata-only). OCR/vision adapter + upload UI + confirmation state machine = OPEN, **ENV_REQUIRED** for a real provider. |
+| **F8** daily plan + practice | **DONE** (backend + web practice runner). LIVE AI generation stays OFF — legacy reference-library path. |
+| **F9** twin / gap / progress UX | Progress screen done; dedicated gap-detail / teaching-copilot screens **not built** (backend DTO `getParentGapDetail` ready). |
+| **F10** assessment / exam / revision | **not built** (revision engine exists in `@copilot/revision`). |
+| **F11** settings / privacy / account | **not built.** `deletion_state` architecture + rights_requests exist. |
+| **F12** E2E + responsive polish + release | Golden journeys 1 & 7 proven E2E (`practice-loop.integration.test.ts`); 2/3/4/5/8 proven at the API layer (`e2e-security.integration.test.ts`); **not proven through the UI.** |
+
+**Golden E2E status:** J1 (zero-data parent) + J7 (student practice → progress) — GREEN via integration tests. J2/J3/J4 (school context, parent invites teacher, teacher invites) — GREEN at the API/authorization layer. J5 (gap repair), J6 (advanced child), J8 (year transition) — the deterministic pipeline + progression engine are tested; not wired through a UI journey.
+
+**New OPEN_DECISIONs:**
+- **OD-8 dev auth** — `DevAuthAdapter` (`DZ_DEV_AUTH=1`, non-production) treats the bearer as the auth subject id so the browser has a session without Supabase. Production must set `SUPABASE_*` (OD-3). Never active in production.
+- **OD-9 web child route segment** — `/con/:id` renamed to `/be/:id` because `CON` is a reserved Windows device name and broke `git add` / tooling. Product-neutral.
+
+---
+
 ### §0c — routes still on the legacy trusted `RequestContext` (I7.1)
 
 **NON-PRODUCTION** — `createApi` (in `services/api/src/api.ts`) is fail-closed in
