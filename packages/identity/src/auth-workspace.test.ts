@@ -65,6 +65,24 @@ describe('I7 — SupabaseAuthAdapter (HS256 verification)', () => {
     const s = resolveAuthAdapter({ SUPABASE_URL: 'https://x.supabase.co', SUPABASE_JWT_SECRET: 'k' });
     expect(s.kind).toBe('supabase');
   });
+
+  it('M42 — DZ_DEV_AUTH is strictly non-production (fails closed in prod)', () => {
+    // dev auth only when the flag is set AND NODE_ENV !== production
+    expect(resolveAuthAdapter({ DZ_DEV_AUTH: '1', NODE_ENV: 'development' }).kind).toBe('dev');
+    expect(resolveAuthAdapter({ DZ_DEV_AUTH: '1', NODE_ENV: 'test' }).kind).toBe('dev');
+    // production: the flag is IGNORED — never DevAuthAdapter
+    expect(resolveAuthAdapter({ DZ_DEV_AUTH: '1', NODE_ENV: 'production' }).kind).not.toBe('dev');
+    expect(resolveAuthAdapter({ DZ_DEV_AUTH: '1', NODE_ENV: 'production' }).kind).toBe('in-memory');
+    // production WITH Supabase config → supabase, still never dev
+    expect(
+      resolveAuthAdapter({
+        DZ_DEV_AUTH: '1',
+        NODE_ENV: 'production',
+        SUPABASE_URL: 'https://x.supabase.co',
+        SUPABASE_JWT_SECRET: 'k',
+      }).kind,
+    ).toBe('supabase');
+  });
 });
 
 function makeHarness() {
