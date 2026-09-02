@@ -27,7 +27,7 @@ journey broken · **P2** major defect w/ workaround · **P3** polish.
 
 | # | Test case | Result | Observed | Sev | Fix commit |
 |---|---|---|---|---|---|
-| 1 | App startup (open in Expo Go) | ✅ (w/ notes) | Welcome renders; "BẢN DEV" banner shows; form validation works; API reached from device (server returned the register error). Notes: (a) no custom blue splash — **P3**; (b) register endpoint error was English "email + 8-char password required" — **P2, fixed** → Vietnamese | P2 / P3 | `<pending>` |
+| 1 | App startup (open in Expo Go) | ✅ (w/ notes) | Welcome renders; "BẢN DEV" banner shows; form validation works; API reached from device (server returned the register error). Notes: (a) no custom blue splash — **P3**; (b) register endpoint error was English "email + 8-char password required" — **P2, fixed** → Vietnamese | P2 / P3 | `b047c1d` |
 | 2 | Parent login (`phuhuynh@dayzi.seed`) | ⏳ | | | |
 | 3 | Parent Home (context = ESTIMATE, today plan) | ⏳ | | | |
 | 4 | Create / select Child (switcher, 2 children) | ⏳ | | | |
@@ -63,3 +63,4 @@ _(prepared after Android is complete)_
 |---|---|---|---|---|
 | D-01 | P2 | 1 | `/api/v1/auth/*` returned English technical errors ("email + 8-char password required", "no account with this email") to end users | **fixed** — Vietnamese messages in `rest.ts`; verified via LAN |
 | D-02 | P3 | 1 | No custom blue splash screen on native (SDK 54 moved `splash` config to the `expo-splash-screen` plugin; top-level `splash` key ignored) | open — polish batch |
+| D-03 | P0 (infra) | 2 | Device saw stale English + `ENV_REQUIRED` errors — cause: `next build` was run while `next dev` was live on port 3100, corrupting `apps/web/.next` (`Cannot find module './chunks/vendor-chunks/next.js'`). The dev server then served production-mode / stale code | **fixed** — killed 3100, `rm -rf apps/web/.next`, restarted `next dev` clean; auth verified over LAN. **Rule: never run `next build` while `next dev` uses the same `.next`.** |
