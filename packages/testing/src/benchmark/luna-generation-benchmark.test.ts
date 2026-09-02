@@ -6,7 +6,7 @@ import { KB } from '../harness.js';
 import { loadReferenceLibrary } from '@copilot/reference-library';
 import { buildBenchmarkManifest } from './luna-benchmark-manifest.js';
 import { algebraicFrontierTrace, buildHardCaseManifest, type HardCase } from './luna-hardcase-manifest.js';
-import { runLunaBenchmark, formatBenchmarkReport } from './luna-generation-benchmark.js';
+import { runLunaBenchmark, formatBenchmarkReport, selectSmokeCases, SMOKE_CASE_IDS } from './luna-generation-benchmark.js';
 
 const lib = loadReferenceLibrary();
 const kIdx = (k: string) => KNOWLEDGE_LEVELS.indexOf(k as never);
@@ -204,8 +204,29 @@ describe('C5.2 §H — no paid network call unless RUN_LIVE_AI_BENCHMARK=1', () 
   });
 });
 
-describe.skipIf(!liveBenchmarkEnabled())('C5.2 — LIVE Luna benchmark (paid)', () => {
-  it('runs base + hard manifest under the spend guardrail and prints the report', async () => {
+describe('C5 §A2 — smoke case selection (filtering only, no network)', () => {
+  it('selects exactly the 5 representative cases with the required coverage', () => {
+    const { cases, hardCases } = selectSmokeCases(KB);
+    expect(cases.map((c) => c.benchmarkCaseId).concat(hardCases.map((h) => h.hardCaseId)).sort()).toEqual(
+      [...SMOKE_CASE_IDS].sort(),
+    );
+    // 1. grade-4 standard   2. grade-7 standard
+    expect(cases.some((c) => c.grade === 4)).toBe(true);
+    expect(cases.some((c) => c.grade === 7)).toBe(true);
+    // 3. grade-level T5 (HC03)   4. above-grade FRONTIER incl. K5 (HC10)   5. Parallel Gap Repair / frontier safety (HC05)
+    const hc = (id: string) => hardCases.find((h) => h.hardCaseId === id)!.spec;
+    expect(tIdx(hc('HC03').difficulty.tMax)).toBeGreaterThanOrEqual(tIdx('T5'));
+    expect(kIdx(hc('HC03').difficulty.kMax)).toBeLessThanOrEqual(kIdx('K3'));
+    expect(kIdx(hc('HC10').difficulty.kMax)).toBe(kIdx('K5'));
+    expect(hc('HC10').targets.skills.some((s) => s.role === 'FRONTIER')).toBe(true);
+    expect(hc('HC05').generationPlan.distribution.prerequisiteRepair).toBeGreaterThan(0);
+  });
+});
+
+// SMOKE (paid) — exactly 5 cases, STRICT requested, spend guardrail 5 batches / $1.
+// Runs ONLY with RUN_LIVE_AI_BENCHMARK=1 AND a key. Prints requested-vs-actual mode.
+describe.skipIf(!liveBenchmarkEnabled())('C5 §A — LIVE Luna SMOKE (paid, 5 cases)', () => {
+  it('runs the 5 smoke cases under a $1 / 5-batch guardrail and prints the report', async () => {
     const { createOpenAiProviderAdapter } = await import('@copilot/ai');
     const apiKey = resolveLunaApiKey();
     if (!apiKey) return;
@@ -216,18 +237,24 @@ describe.skipIf(!liveBenchmarkEnabled())('C5.2 — LIVE Luna benchmark (paid)', 
       capability: 'generate_problem',
       compliance: { processingRegion: 'us', crossBorder: true, dataCategoriesAllowed: [], providerRetention: '30d', trainingAllowed: false, dpaStatus: 'pending' },
     });
+    const { cases, hardCases } = selectSmokeCases(KB);
     const { report } = await runLunaBenchmark({
       adapter,
-      cases: buildBenchmarkManifest(),
-      hardCases: buildHardCaseManifest(),
-      structuredOutputMode: cfg.structuredOutputMode,
-      maxBatches: cfg.liveBenchmarkMaxBatches,
-      maxCostUsd: cfg.liveBenchmarkMaxCostUsd,
+      cases,
+      hardCases,
+      structuredOutputMode: 'STRICT_JSON_SCHEMA', // A3 — request strict
+      maxBatches: 5, // A2
+      maxCostUsd: 1, // A2
       pricingConfigVersion: cfg.pricingConfigVersion,
       adversarialTestsPassed: true,
       buildGatesGreen: true,
     });
-    process.stdout.write(`\n${formatBenchmarkReport(report)}\n\n${JSON.stringify(report, null, 2)}\n`);
-    expect(report.caseCount).toBeGreaterThan(0);
+    process.stdout.write(
+      `\nSMOKE requested=STRICT_JSON_SCHEMA actual=${report.structuredOutputModeUsed}\n` +
+        `${formatBenchmarkReport(report)}\n\n${JSON.stringify(report, null, 2)}\n`,
+    );
+    // A6 hard-fail conditions the runner can check locally:
+    expect(report.quality.exactReferenceCopyRate).toBe(0);
+    expect(report.caseCount).toBeLessThanOrEqual(5);
   }, 900_000);
 });

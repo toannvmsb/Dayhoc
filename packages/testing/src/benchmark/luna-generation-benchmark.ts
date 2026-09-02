@@ -43,6 +43,25 @@ export {
 };
 
 /**
+ * The 5 representative smoke cases (doc 14 C5 §A2) — filtering ONLY, the cases
+ * themselves are the existing frozen manifest entries:
+ *   1. Grade-4 standard/current curriculum
+ *   2. Grade-7 standard/current curriculum
+ *   3. grade-level T5 thinking
+ *   4. above-grade FRONTIER incl. K5
+ *   5. Parallel Gap Repair / frontier safety
+ */
+export const SMOKE_CASE_IDS = ['BENCH-LT-G4-01', 'BENCH-LT-G7-01', 'HC03', 'HC10', 'HC05'] as const;
+
+export function selectSmokeCases(kb = KB): { cases: BenchmarkCase[]; hardCases: HardCase[] } {
+  const wanted = new Set<string>(SMOKE_CASE_IDS);
+  return {
+    cases: buildBenchmarkManifest(kb).filter((c) => wanted.has(c.benchmarkCaseId)),
+    hardCases: buildHardCaseManifest().filter((h) => wanted.has(h.hardCaseId)),
+  };
+}
+
+/**
  * Luna generation benchmark (doc 14 C5 §19 / C5.1 §6-§9). Runs the FROZEN
  * manifest through the FULL production-like pipeline — spec → grounding →
  * provider adapter → structured output → schema → validator → deterministic
