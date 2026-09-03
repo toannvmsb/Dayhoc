@@ -17,6 +17,7 @@ import {
 import type {
   ChildStub,
   IdentityStore,
+  LegacyUserRole,
   RelationshipPatch,
   StudentLinkPatch,
 } from './store.js';
@@ -81,11 +82,11 @@ function rowToStudentLink(r: any): StudentAccountLinkRecord {
 export class PgIdentityStore implements IdentityStore {
   constructor(private readonly pool: Queryable) {}
 
-  async insertUser(u: UserRecord): Promise<void> {
+  async insertUser(u: UserRecord, legacyRole: LegacyUserRole = 'parent'): Promise<void> {
     await this.pool.query(
       `INSERT INTO users (id, role, auth_user_id, primary_email, primary_phone, display_name, locale, status, created_at)
-       VALUES ($1, 'parent', $2, $3, $4, $5, $6, $7, $8)`,
-      [u.id, u.authUserId, u.primaryEmail, u.primaryPhone, u.displayName, u.locale, u.status, u.createdAt],
+       VALUES ($1, $9, $2, $3, $4, $5, $6, $7, $8)`,
+      [u.id, u.authUserId, u.primaryEmail, u.primaryPhone, u.displayName, u.locale, u.status, u.createdAt, legacyRole],
     );
   }
 

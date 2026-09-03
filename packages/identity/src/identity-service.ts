@@ -19,7 +19,15 @@ import {
   ValidationError,
   WorkspaceNotHeldError,
 } from './errors.js';
-import type { IdentityStore } from './store.js';
+import type { IdentityStore, LegacyUserRole } from './store.js';
+
+/** Maps a workspace role to the legacy `users.role` column (STUDENT → 'child'). */
+const LEGACY_ROLE: Record<WorkspaceRole, LegacyUserRole> = {
+  PARENT: 'parent',
+  TEACHER: 'teacher',
+  ADMIN: 'admin',
+  STUDENT: 'child',
+};
 
 export interface IdentityServiceOptions {
   readonly store: IdentityStore;
@@ -104,7 +112,7 @@ export class IdentityService {
       status: 'ACTIVE',
       createdAt: now,
     };
-    await this.#store.insertUser(user);
+    await this.#store.insertUser(user, LEGACY_ROLE[input.intendedRole]);
     await this.#grantRole(userId, input.intendedRole, null, input.displayName ?? null);
     this.#logger?.info('identity.registered', { userId, role: input.intendedRole });
     return this.getIdentity(userId);

@@ -45,9 +45,17 @@ export interface StudentLinkPatch {
  * Design rule: the store is dumb CRUD. All invariants (Child ≠ User, capability
  * resolution, no-duplicate-child, workspace ∈ roles) live in the services.
  */
+/**
+ * The legacy single-role column on `users`. Kept only so the idempotent
+ * legacy→identity backfill can classify a row; a STUDENT must be written as
+ * `'child'` (backfill skips those) — never `'parent'`, or the backfill would
+ * later grant PARENT to every student account.
+ */
+export type LegacyUserRole = 'parent' | 'teacher' | 'admin' | 'child';
+
 export interface IdentityStore {
   // --- users ---
-  insertUser(user: UserRecord): Promise<void>;
+  insertUser(user: UserRecord, legacyRole?: LegacyUserRole): Promise<void>;
   getUser(id: UserId): Promise<UserRecord | null>;
   findUserByAuthId(authUserId: string): Promise<UserRecord | null>;
   findUserByEmail(email: string): Promise<UserRecord | null>;
@@ -107,7 +115,7 @@ export class InMemoryIdentityStore implements IdentityStore {
   readonly #relationships = new Map<string, ParentChildRelationshipRecord>();
   readonly #studentLinks = new Map<string, StudentAccountLinkRecord>();
 
-  insertUser(user: UserRecord): Promise<void> {
+  insertUser(user: UserRecord, _legacyRole?: LegacyUserRole): Promise<void> {
     if (this.#users.has(user.id)) {
       return Promise.reject(new Error(`user ${user.id} already exists`));
     }
