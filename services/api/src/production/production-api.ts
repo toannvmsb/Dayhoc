@@ -280,6 +280,13 @@ export function createProductionApi(opts: ProductionApiOptions) {
       twinSnap?.stateVersion === TWIN_STATE_VERSION && twinSnap.evidenceCount === evidenceCount;
 
     if (!fresh) {
+      // The persisted snapshots/skill-states/gaps/plan are a CACHE. The scene
+      // `s` above is always freshly computed and correct. Several child screens
+      // (today / progress / review) fire near-simultaneously and each calls
+      // this; right after new evidence they all see `!fresh` and race to write
+      // → a unique-violation on the loser. That's harmless: swallow it and
+      // return the computed scene. The winner populates the cache.
+      try {
       const at = now().toISOString();
       const blob = twinBlob(s.twin);
       await base.learningState.putSnapshot({
@@ -380,6 +387,11 @@ export function createProductionApi(opts: ProductionApiOptions) {
             })),
           })
           .catch(() => undefined);
+      }
+      } catch (e) {
+        const code = (e as { code?: string })?.code;
+        if (code !== '23505') throw e; // only a concurrent-refresh race is expected
+        logger?.debug?.('refreshLearningState: cache write lost a race', { childId });
       }
     }
 

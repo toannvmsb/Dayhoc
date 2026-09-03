@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { StudentNav } from '@/nav';
-import { Body, Card, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/ui';
+import { Body, Button, Card, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/ui';
 import { errText, useClient, useQuery } from '@/useApi';
 import type { ChildToday } from '@/types';
 
@@ -53,7 +53,13 @@ export default function StudentToday() {
 
           {q.data.tasks.length === 0 ? (
             <Card>
-              <Body>Hôm nay con không có bài bắt buộc. Con có thể tự luyện thêm ở mục Bài tập nhé!</Body>
+              <Body>Con có thể làm thêm một buổi luyện tập nếu muốn.</Body>
+              <Button
+                label={busy ? 'Đang mở bài…' : 'Luyện thêm 15 phút'}
+                onPress={startTask}
+                loading={busy}
+                disabled={busy}
+              />
             </Card>
           ) : (
             q.data.tasks.map((t) => (

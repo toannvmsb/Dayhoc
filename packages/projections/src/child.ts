@@ -54,13 +54,19 @@ export function buildChildToday(input: ChildViewInput): ChildTodayView {
       ? input.plan.orderedActions.reduce((s, x) => s + x.estimatedMinutes, 0)
       : 0;
 
+  const summary =
+    tasks.length > 0
+      ? `Hôm nay có ${tasks.length} việc${totalMinutes ? `, khoảng ${totalMinutes} phút` : ''}.`
+      : input.plan.kind === 'no_plan_needed'
+        ? // child-appropriate Vietnamese, explains *why* there's nothing required
+          // (e.g. "phần đang học đã ổn…") — never a bare "nothing to do"
+          input.plan.reason
+        : 'Hôm nay con không có bài bắt buộc. Con có thể tự luyện thêm nhé!';
+
   return {
     greetingName: input.childDisplayName,
     dateLabel: input.dateLabel,
-    summary:
-      tasks.length === 0
-        ? 'Hôm nay con không có bài bắt buộc. Nghỉ ngơi nhé!'
-        : `Hôm nay có ${tasks.length} việc${totalMinutes ? `, khoảng ${totalMinutes} phút` : ''}.`,
+    summary,
     tasks,
     doneCount: tasks.filter((t) => done.has(t.assignmentId)).length,
     totalCount: tasks.length,
