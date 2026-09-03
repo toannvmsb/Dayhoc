@@ -1,15 +1,17 @@
 import { useCallback } from 'react';
 import { Text } from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import { useAuth } from '@/auth';
 import { StudentNav } from '@/nav';
 import { theme } from '@/theme';
-import { Body, Card, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/ui';
+import { Body, Button, Card, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/ui';
 import { useClient, useQuery } from '@/useApi';
 import { WorkspaceSwitcher } from '@/workspace-switcher';
 import type { StudentProgress, StudentReview } from '@/types';
 
 export default function StudentProgressScreen() {
   const api = useClient('STUDENT');
+  const { signOut } = useAuth();
   const p = useQuery<StudentProgress>(() => api.get('/student/progress'), []);
   const r = useQuery<StudentReview>(() => api.get('/student/review'), []);
 
@@ -71,6 +73,11 @@ export default function StudentProgressScreen() {
           )}
         </Card>
       )}
+
+      <Card>
+        <Overline>Tài khoản</Overline>
+        <Button label="Đăng xuất" tone="ghost" onPress={signOut} />
+      </Card>
     </Screen>
   );
 }
