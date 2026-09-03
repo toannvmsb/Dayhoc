@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useChild } from '@/child';
 import { ParentNav } from '@/nav';
 import { theme } from '@/theme';
@@ -23,6 +23,14 @@ export default function ParentPractice() {
   const [err, setErr] = useState<string | undefined>();
 
   const list = useQuery<Assignment[]>(() => api.get(`/children/${childId}/assignments`), [childId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      list.reload();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [childId]),
+  );
+
   const open = (list.data ?? []).filter((a) => a.status !== 'COMPLETED' && a.status !== 'CANCELLED');
   const done = (list.data ?? []).filter((a) => a.status === 'COMPLETED');
 

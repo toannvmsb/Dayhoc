@@ -1,4 +1,6 @@
+import { useCallback } from 'react';
 import { Text, View } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { useChild } from '@/child';
 import { ParentNav } from '@/nav';
 import { theme } from '@/theme';
@@ -42,6 +44,13 @@ export default function ParentProgressScreen() {
   const { childId } = useChild();
   const api = useClient('PARENT');
   const q = useQuery<ParentProgress>(() => api.get(`/children/${childId}/progress`), [childId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      q.reload();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [childId]),
+  );
 
   return (
     <Screen nav={<ParentNav />} edges={['bottom']} refreshing={q.loading} onRefresh={q.reload}>

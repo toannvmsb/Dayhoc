@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/auth';
 import { useChild } from '@/child';
 import { ParentNav } from '@/nav';
@@ -23,6 +23,14 @@ export default function ParentHomeScreen() {
   const known = children.data?.some((c) => c.childId === childId) ? childId : null;
   const activeId = known ?? children.data?.[0]?.childId ?? null;
   const home = useQuery<ParentHome>(() => api.get(`/children/${activeId}/home`), [activeId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      children.reload();
+      home.reload();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeId]),
+  );
 
   if (children.loading) return <Loading />;
 
