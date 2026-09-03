@@ -41,6 +41,13 @@ function db(): Pool {
   return pool();
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** Guard path params that hit uuid columns — a bad id is a 404, not a 500 with a raw PG error. */
+function uuid(v: string | undefined, what = 'mục này'): string {
+  if (!v || !UUID_RE.test(v)) throw new RestError(404, `Không tìm thấy ${what}.`);
+  return v;
+}
+
 async function bearerForUser(userId: string): Promise<string> {
   const r = await db().query<{ auth_user_id: string | null }>(
     'SELECT auth_user_id FROM users WHERE id = $1',
@@ -114,11 +121,12 @@ const ROUTES: Record<string, Handler> = {
   'GET /children/:id/assignments': async (c) => getApi().getChildAssignments(auth(c), c.params[0]!),
   'POST /children/:id/practice': async (c) =>
     getApi().createPracticeAssignment(auth(c), c.params[0]!, { minutes: Number(c.body.minutes ?? 15) }),
-  'GET /assignments/:id': async (c) => getApi().getAssignmentDetail(auth(c), c.params[0]!),
+  'GET /assignments/:id': async (c) =>
+    getApi().getAssignmentDetail(auth(c), uuid(c.params[0], 'bài tập')),
   'POST /assignments/:id/submit': async (c) =>
     getApi().submitPractice(
       auth(c),
-      c.params[0]!,
+      uuid(c.params[0], 'bài tập'),
       (c.body.answers as { assignmentItemId: string; answer: string; hintsUsed?: number }[]) ?? [],
     ),
 

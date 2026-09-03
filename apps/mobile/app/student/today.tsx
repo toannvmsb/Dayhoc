@@ -1,18 +1,50 @@
+import { useState } from 'react';
 import { Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { StudentNav } from '@/nav';
 import { Body, Card, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/ui';
-import { useClient, useQuery } from '@/useApi';
+import { errText, useClient, useQuery } from '@/useApi';
 import type { ChildToday } from '@/types';
 
 export default function StudentToday() {
   const api = useClient('STUDENT');
   const q = useQuery<ChildToday>(() => api.get('/student/today'), []);
+  const me = useQuery<{ childId: string }>(() => api.get('/student/me'), []);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | undefined>();
+
+  // The tasks in /student/today are a plan preview — their ids are ephemeral
+  // (`asg_1`…), not real assignment rows. Tapping one materialises a real
+  // practice session from the child's current plan, then opens the runner.
+  const startTask = async () => {
+    if (!me.data || busy) return;
+    setBusy(true);
+    setErr(undefined);
+    try {
+      const res = await api.post<{ assignmentIds: string[] }>(
+        `/children/${me.data.childId}/practice`,
+        { minutes: 15 },
+      );
+      if (res.assignmentIds[0]) {
+        router.push({
+          pathname: '/run/[assignmentId]',
+          params: { assignmentId: res.assignmentIds[0] },
+        });
+      } else {
+        setErr('Chưa tạo được bài luyện tập. Con thử lại sau nhé.');
+      }
+    } catch (e) {
+      setErr(errText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <Screen nav={<StudentNav />} edges={['bottom']} refreshing={q.loading} onRefresh={q.reload}>
       {q.loading && <Loading />}
       {q.error && <ErrorNote message={q.error} />}
+      {err && <ErrorNote message={err} />}
       {q.data && (
         <>
           <Overline>Xin chào {q.data.greetingName}</Overline>
@@ -25,13 +57,10 @@ export default function StudentToday() {
             </Card>
           ) : (
             q.data.tasks.map((t) => (
-              <Pressable
-                key={t.assignmentId}
-                onPress={() => router.push({ pathname: '/run/[assignmentId]', params: { assignmentId: t.assignmentId } })}
-              >
+              <Pressable key={t.assignmentId} onPress={startTask} disabled={busy}>
                 <Card>
                   <Body>{t.title}</Body>
-                  <Muted>{t.subtitle}</Muted>
+                  <Muted>{busy ? 'Đang mở bài…' : t.subtitle}</Muted>
                 </Card>
               </Pressable>
             ))
