@@ -1,4 +1,6 @@
+import { useCallback } from 'react';
 import { Text } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { StudentNav } from '@/nav';
 import { theme } from '@/theme';
 import { Body, Card, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/ui';
@@ -10,6 +12,14 @@ export default function StudentProgressScreen() {
   const api = useClient('STUDENT');
   const p = useQuery<StudentProgress>(() => api.get('/student/progress'), []);
   const r = useQuery<StudentReview>(() => api.get('/student/review'), []);
+
+  useFocusEffect(
+    useCallback(() => {
+      p.reload();
+      r.reload();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []),
+  );
 
   return (
     <Screen

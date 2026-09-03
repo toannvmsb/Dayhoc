@@ -38,6 +38,7 @@ import { loadReferenceLibrary } from '@copilot/reference-library';
 import { buildDailyPlan } from '@copilot/planning';
 import { buildAssignmentsForPlan } from '@copilot/practice';
 import {
+  assertChildSafe,
   buildParentGapDetail,
   buildParentHome,
   buildParentProgress,
@@ -1441,11 +1442,55 @@ export function createProductionApi(opts: ProductionApiOptions) {
     async studentGetToday(auth: CallerAuth) {
       const ctx = await deriveContext(auth);
       if (ctx.workspace !== 'STUDENT' || !ctx.childScope) throw new ForbiddenError('STUDENT workspace required');
-      const { scoped } = await learningScene(ctx.childScope);
-      return scoped.childToday(
-        { userId: ctx.userId, role: 'child', childScope: ctx.childScope },
-        ctx.childScope,
+      const childId = ctx.childScope;
+      const { scoped } = await learningScene(childId);
+      const preview = await scoped.childToday(
+        { userId: ctx.userId, role: 'child', childScope: childId },
+        childId,
       );
+
+      // Rebuild `tasks` / counts from REAL assignments so a completed task
+      // actually shows as done (the plan preview above always reports 0/0 and
+      // regenerates every load). Assignments the student created today via
+      // `POST /children/:id/practice` are the trackable unit of work.
+      const MODE_LABEL: Record<string, string> = {
+        PRACTICE: 'Bài tập',
+        WORKSHEET: 'Bài tập',
+        GAP_REPAIR: 'Ôn tập',
+        REVISION: 'Ôn tập',
+        CHALLENGE: 'Thử thách',
+        DIAGNOSTIC: 'Bài kiểm tra nhỏ',
+      };
+      const today = now().toISOString().slice(0, 10);
+      const all = await base.learningState.listAssignmentsForChild(childId);
+      const todays = all.filter(
+        (a) => a.createdAt.slice(0, 10) === today && a.status !== 'CANCELLED',
+      );
+      const open = todays.filter((a) => a.status !== 'COMPLETED');
+      const doneCount = todays.length - open.length;
+
+      const tasks = open.map((a) => ({
+        assignmentId: a.id,
+        title: MODE_LABEL[a.mode] ?? 'Bài tập',
+        subtitle: `${a.targetSkillIds.length} kỹ năng`,
+        kind: (a.mode === 'CHALLENGE' ? 'challenge' : a.mode === 'GAP_REPAIR' || a.mode === 'REVISION' ? 'review' : 'practice') as
+          | 'challenge'
+          | 'review'
+          | 'practice',
+        assignedBy: (a.assignedByRole === 'PARENT' ? 'parent' : 'app') as 'parent' | 'app',
+      }));
+
+      let summary: string;
+      if (open.length > 0) summary = `Con còn ${open.length} việc hôm nay.`;
+      else if (doneCount > 0) summary = 'Con đã làm xong bài hôm nay rồi! Giỏi lắm.';
+      else if (preview.tasks.length > 0)
+        // the plan has work but the student hasn't started a session yet
+        summary = 'Hôm nay con có bài để luyện. Nhấn để bắt đầu nhé!';
+      else summary = preview.summary; // `no_plan_needed` reason
+
+      const view = { ...preview, summary, tasks, doneCount, totalCount: todays.length };
+      assertChildSafe(view);
+      return view;
     },
 
     async studentGetAssignments(auth: CallerAuth) {

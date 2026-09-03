@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { StudentNav } from '@/nav';
 import { Body, Button, Card, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/ui';
 import { errText, useClient, useQuery } from '@/useApi';
@@ -13,7 +13,15 @@ export default function StudentPractice() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | undefined>();
 
+  useFocusEffect(
+    useCallback(() => {
+      list.reload();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []),
+  );
+
   const open = (list.data ?? []).filter((a) => a.status !== 'COMPLETED' && a.status !== 'CANCELLED');
+  const done = (list.data ?? []).filter((a) => a.status === 'COMPLETED');
 
   const start = async () => {
     if (!me.data) return;
@@ -57,6 +65,17 @@ export default function StudentPractice() {
       ))}
       {open.length === 0 && !list.loading && (
         <Muted>Con chưa có bài nào đang làm dở. Nhấn “Luyện 15 phút” nhé.</Muted>
+      )}
+
+      {done.length > 0 && (
+        <Card>
+          <Overline>Đã hoàn thành</Overline>
+          {done.slice(0, 5).map((a) => (
+            <Muted key={a.id}>
+              ✓ Buổi luyện tập{a.completedAt ? ` · ${a.completedAt.slice(0, 10)}` : ''}
+            </Muted>
+          ))}
+        </Card>
       )}
     </Screen>
   );
