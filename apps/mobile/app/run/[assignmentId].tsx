@@ -52,22 +52,31 @@ export default function Runner() {
           )}
         </View>
 
-        {res.map((r) => (
-          <Card key={r.assignmentItemId}>
-            <Overline>Câu {numberOf(r.assignmentItemId)}</Overline>
-            {textOf(r.assignmentItemId) ? <Muted>{textOf(r.assignmentItemId)}</Muted> : null}
-            <Body>
-              {r.correct === true
-                ? '✓ Đúng'
-                : r.correct === false
-                  ? '✗ Chưa đúng'
-                  : 'Cần xem lại lời giải cùng con'}
-            </Body>
-            {r.correct === false && r.expectedAnswer ? (
-              <Muted>Đáp án đúng: {r.expectedAnswer}</Muted>
-            ) : null}
-          </Card>
-        ))}
+        {res.map((r) => {
+          const childAnswer = (answers[r.assignmentItemId] ?? '').trim();
+          const showCompare = r.correct !== true;
+          return (
+            <Card key={r.assignmentItemId}>
+              <Overline>Câu {numberOf(r.assignmentItemId)}</Overline>
+              {textOf(r.assignmentItemId) ? <Muted>{textOf(r.assignmentItemId)}</Muted> : null}
+              <Body>
+                {r.correct === true
+                  ? '✓ Đúng'
+                  : r.correct === false
+                    ? '✗ Chưa đúng'
+                    : 'Cần xem lại lời giải cùng con'}
+              </Body>
+              {showCompare && (
+                <View style={{ marginTop: 4 }}>
+                  <Muted>Con trả lời: {childAnswer || '(bỏ trống)'}</Muted>
+                  {r.correct === false && r.expectedAnswer ? (
+                    <Muted>Đáp án đúng: {r.expectedAnswer}</Muted>
+                  ) : null}
+                </View>
+              )}
+            </Card>
+          );
+        })}
 
         {needReview > 0 && (
           <Muted>Câu tự luận DạyZi không tự chấm — bố mẹ xem lời giải và trao đổi với con.</Muted>
