@@ -10,10 +10,9 @@ journey broken · **P2** major defect w/ workaround · **P3** polish.
 |---|---|
 | Baseline commit | `819e1e9` (SDK 54 upgrade) |
 | Expo SDK | **54.0.0** (matches tester's Expo Go) — upgraded from 51 |
-| Machine LAN IP | `192.168.0.194` |
-| Wi-Fi network | `Zin tang 1_5G 2` (Windows profile: Public — Node inbound allowed) |
-| API / web | `http://192.168.0.194:3100` — health ✅ ready ✅ (LAN-verified) |
-| Metro / Expo | `exp://192.168.0.194:8081` — `hostUri 192.168.0.194:8081`, SDK 54.0.0, dev bundle HTTP 200 (6.4MB) + `expo export` iOS+Android OK |
+| Machine LAN IP | `10.0.40.46` (was `192.168.0.194` — router reassigned after sleep 2026-09-03; `apps/mobile/.env` `EXPO_PUBLIC_DEV_HOST` updated, Expo restarted `--clear`) |
+| API / web | `http://10.0.40.46:3100` — health ✅ ready ✅, cold `/auth/login` ✅ (LAN-verified 2026-09-03) |
+| Metro / Expo | `exp://10.0.40.46:8081` — `hostUri 10.0.40.46:8081`, manifest `apiBaseUrl http://10.0.40.46:3100/api/v1`, SDK 54.0.0 |
 | DB | portable PG 16, `parent_copilot`, 20 migrations applied |
 | Seed | `npm run seed:pilot` — parent `phuhuynh@dayzi.seed`/`pilotpass1234`, teacher `giaovien@dayzi.seed`/`pilotpass1234`, student `hs-74471d9c@dayzi.local`/`hocsinh1234`, children *Bé Lớp 4* / *Bé Lớp 7* |
 
