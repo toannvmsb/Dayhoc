@@ -86,6 +86,12 @@ export type AssignmentDetail = {
   }[];
 };
 
+export type StudentAccess = {
+  loginEmail: string;
+  status: string;
+  createdAt: string;
+} | null;
+
 export type PracticeSubmitResult = {
   attemptId: string;
   results: {

@@ -7,7 +7,7 @@ import { theme } from '@/theme';
 import { Body, Button, Card, ErrorNote, Field, H1, Loading, Muted, Overline, Screen } from '@/ui';
 import { errText, useClient, useQuery } from '@/useApi';
 import { WorkspaceSwitcher } from '@/workspace-switcher';
-import type { Child, Entitlements } from '@/types';
+import type { Child, Entitlements, StudentAccess } from '@/types';
 
 const PLAN_LABEL: Record<string, string> = { free: 'Miễn phí', basic: 'Cơ bản', plus: 'Plus', pro: 'Pro' };
 
@@ -18,12 +18,54 @@ export default function SettingsScreen() {
 
   const children = useQuery<Child[]>(() => api.get('/children'), [session?.bearer]);
   const ent = useQuery<Entitlements>(() => api.get('/me/entitlements'), [session?.bearer]);
+  const access = useQuery<StudentAccess>(
+    () => (childId ? api.get(`/children/${childId}/student-access`) : Promise.resolve(null)),
+    [childId, session?.bearer],
+  );
 
   const [name, setName] = useState('');
   const [grade, setGrade] = useState<4 | 7>(4);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | undefined>();
   const [delName, setDelName] = useState('');
+
+  const [saPass, setSaPass] = useState('');
+  const [saShow, setSaShow] = useState(false);
+  const [saBusy, setSaBusy] = useState(false);
+  const [saErr, setSaErr] = useState<string | undefined>();
+
+  const createAccess = async () => {
+    if (!childId) return;
+    if (saPass.length < 8) {
+      setSaErr('Mật khẩu cần tối thiểu 8 ký tự.');
+      return;
+    }
+    setSaBusy(true);
+    setSaErr(undefined);
+    try {
+      await api.post(`/children/${childId}/student-access`, { password: saPass });
+      setSaPass('');
+      setSaShow(false);
+      access.reload();
+    } catch (e) {
+      setSaErr(errText(e));
+    } finally {
+      setSaBusy(false);
+    }
+  };
+  const revokeAccess = async () => {
+    if (!childId) return;
+    setSaBusy(true);
+    setSaErr(undefined);
+    try {
+      await api.post(`/children/${childId}/student-access/revoke`);
+      access.reload();
+    } catch (e) {
+      setSaErr(errText(e));
+    } finally {
+      setSaBusy(false);
+    }
+  };
 
   const addChild = async () => {
     if (!name.trim()) return;
@@ -120,6 +162,52 @@ export default function SettingsScreen() {
         {err && <ErrorNote message={err} />}
         <Button label="Thêm con" onPress={addChild} loading={busy} />
       </Card>
+
+      {childId ? (
+        <Card>
+          <Overline>Tài khoản cho con</Overline>
+          {access.loading && <Loading />}
+          {access.data && access.data.status === 'ACTIVE' ? (
+            <>
+              <Body>Con đăng nhập bằng email:</Body>
+              <Body>{access.data.loginEmail}</Body>
+              <Muted>
+                Con chỉ thấy phần dành cho học sinh — không thấy ghi chú của bố mẹ hay đánh giá của
+                giáo viên.
+              </Muted>
+              {saErr && <ErrorNote message={saErr} />}
+              <Button
+                label="Thu hồi quyền truy cập của con"
+                tone="danger"
+                onPress={revokeAccess}
+                loading={saBusy}
+              />
+              <Muted>Thu hồi có hiệu lực ngay. Hồ sơ học tập của con không bị xoá.</Muted>
+            </>
+          ) : (
+            <>
+              <Muted>
+                Tạo lối đăng nhập riêng để con tự xem bài tập và luyện tập.
+                {access.data ? ' Quyền trước đó đã bị thu hồi.' : ''}
+              </Muted>
+              {saShow ? (
+                <>
+                  <Field
+                    label="Mật khẩu cho con (tối thiểu 8 ký tự)"
+                    value={saPass}
+                    onChangeText={setSaPass}
+                    secureTextEntry
+                  />
+                  {saErr && <ErrorNote message={saErr} />}
+                  <Button label="Tạo lối đăng nhập" onPress={createAccess} loading={saBusy} />
+                </>
+              ) : (
+                <Button label="Tạo tài khoản cho con" tone="ghost" onPress={() => setSaShow(true)} />
+              )}
+            </>
+          )}
+        </Card>
+      ) : null}
 
       <Card>
         <Overline>Gói dịch vụ {ent.data ? `· đang dùng ${PLAN_LABEL[ent.data.plan] ?? ent.data.plan}` : ''}</Overline>
