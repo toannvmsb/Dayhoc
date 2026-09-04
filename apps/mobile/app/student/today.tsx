@@ -1,9 +1,10 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { Pressable } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
 import { StudentNav } from '@/nav';
 import { Body, Button, Card, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/ui';
 import { errText, useClient, useQuery } from '@/useApi';
+import { useReloadOnFocus } from '@/useReloadOnFocus';
 import type { ChildToday } from '@/types';
 
 export default function StudentToday() {
@@ -15,12 +16,7 @@ export default function StudentToday() {
 
   // Refresh when the screen regains focus (e.g. coming back from the runner)
   // so a just-completed task shows as done.
-  useFocusEffect(
-    useCallback(() => {
-      q.reload();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []),
-  );
+  useReloadOnFocus(q.reload);
 
   const openTask = (assignmentId: string) => {
     if (busy) return;

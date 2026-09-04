@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { useFocusEffect } from 'expo-router';
 import { useChild } from '@/child';
 import { theme } from '@/theme';
 import { Body, Button, Card, ErrorNote, Field, H1, Loading, Muted, Overline, Screen } from '@/ui';
 import { errText, useClient, useQuery } from '@/useApi';
+import { useReloadOnFocus } from '@/useReloadOnFocus';
 import type { AcademicYear, Child, ClassRow, EnrollmentInfo, SchoolRow } from '@/types';
 
 const PRIVACY = [
@@ -84,12 +84,7 @@ export default function SchoolScreen() {
   const [classType, setClassType] = useState<string>(hasPrimary ? 'SUPPLEMENTARY' : 'PRIMARY');
   const [privacy, setPrivacy] = useState('LINKED_PRIVATE');
 
-  useFocusEffect(
-    useCallback(() => {
-      enr.reload();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [childId]),
-  );
+  useReloadOnFocus(enr.reload);
 
   // once we know the child already has a primary class, PRIMARY is not an option
   useEffect(() => {

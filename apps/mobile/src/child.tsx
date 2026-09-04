@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { prefStore } from './store';
 
@@ -29,24 +29,26 @@ export function ChildProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // stable across renders — they only use the functional setState form, so
+  // nothing that consumes them (effects, useFocusEffect deps) churns.
+  const setChildId = useCallback((id: string) => {
+    setId(id);
+    void prefStore.set(KEY, id);
+  }, []);
+
+  const reconcile = useCallback((availableIds: string[]) => {
+    if (availableIds.length === 0) return;
+    setId((current) => {
+      if (current && availableIds.includes(current)) return current;
+      const next = availableIds[0]!;
+      void prefStore.set(KEY, next);
+      return next;
+    });
+  }, []);
+
   const value = useMemo<ChildValue>(
-    () => ({
-      childId,
-      setChildId: (id: string) => {
-        setId(id);
-        void prefStore.set(KEY, id);
-      },
-      reconcile: (availableIds: string[]) => {
-        if (availableIds.length === 0) return;
-        setId((current) => {
-          if (current && availableIds.includes(current)) return current;
-          const next = availableIds[0]!;
-          void prefStore.set(KEY, next);
-          return next;
-        });
-      },
-    }),
-    [childId],
+    () => ({ childId, setChildId, reconcile }),
+    [childId, setChildId, reconcile],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

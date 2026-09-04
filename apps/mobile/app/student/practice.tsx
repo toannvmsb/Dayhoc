@@ -1,9 +1,10 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { Pressable } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
 import { StudentNav } from '@/nav';
 import { Body, Button, Card, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/ui';
 import { errText, useClient, useQuery } from '@/useApi';
+import { useReloadOnFocus } from '@/useReloadOnFocus';
 import type { Assignment } from '@/types';
 
 export default function StudentPractice() {
@@ -13,12 +14,7 @@ export default function StudentPractice() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | undefined>();
 
-  useFocusEffect(
-    useCallback(() => {
-      list.reload();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []),
-  );
+  useReloadOnFocus(list.reload);
 
   const open = (list.data ?? []).filter((a) => a.status !== 'COMPLETED' && a.status !== 'CANCELLED');
   const done = (list.data ?? []).filter((a) => a.status === 'COMPLETED');

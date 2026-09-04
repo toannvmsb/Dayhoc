@@ -1,11 +1,10 @@
-import { useCallback } from 'react';
 import { Text } from 'react-native';
-import { useFocusEffect } from 'expo-router';
 import { useAuth } from '@/auth';
 import { StudentNav } from '@/nav';
 import { theme } from '@/theme';
 import { Body, Button, Card, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/ui';
 import { useClient, useQuery } from '@/useApi';
+import { useReloadOnFocus } from '@/useReloadOnFocus';
 import { WorkspaceSwitcher } from '@/workspace-switcher';
 import type { StudentProgress, StudentReview } from '@/types';
 
@@ -15,13 +14,10 @@ export default function StudentProgressScreen() {
   const p = useQuery<StudentProgress>(() => api.get('/student/progress'), []);
   const r = useQuery<StudentReview>(() => api.get('/student/review'), []);
 
-  useFocusEffect(
-    useCallback(() => {
-      p.reload();
-      r.reload();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []),
-  );
+  useReloadOnFocus(() => {
+    p.reload();
+    r.reload();
+  });
 
   return (
     <Screen

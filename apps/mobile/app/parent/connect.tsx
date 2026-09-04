@@ -1,11 +1,10 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import { useFocusEffect } from 'expo-router';
 import { useChild } from '@/child';
-import { theme } from '@/theme';
 import { Body, Button, Card, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/ui';
 import { errText, useClient, useQuery } from '@/useApi';
+import { useReloadOnFocus } from '@/useReloadOnFocus';
 import type {
   InviteCode,
   RelationshipRequest,
@@ -137,13 +136,10 @@ export default function ConnectScreen() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      links.reload();
-      reqs.reload();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [childId]),
-  );
+  useReloadOnFocus(() => {
+    links.reload();
+    reqs.reload();
+  });
 
   const pending = (reqs.data?.inbox ?? []).filter(
     (r) => r.status === 'PENDING' && (!r.targetChildId || r.targetChildId === childId),

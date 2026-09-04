@@ -1,11 +1,12 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
 import { useChild } from '@/child';
 import { ParentNav } from '@/nav';
 import { theme } from '@/theme';
 import { Body, Button, Card, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/ui';
 import { errText, useClient, useQuery } from '@/useApi';
+import { useReloadOnFocus } from '@/useReloadOnFocus';
 import type { Assignment } from '@/types';
 
 const STATUS: Record<string, string> = {
@@ -23,13 +24,7 @@ export default function ParentPractice() {
   const [err, setErr] = useState<string | undefined>();
 
   const list = useQuery<Assignment[]>(() => api.get(`/children/${childId}/assignments`), [childId]);
-
-  useFocusEffect(
-    useCallback(() => {
-      list.reload();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [childId]),
-  );
+  useReloadOnFocus(list.reload);
 
   const open = (list.data ?? []).filter((a) => a.status !== 'COMPLETED' && a.status !== 'CANCELLED');
   const done = (list.data ?? []).filter((a) => a.status === 'COMPLETED');

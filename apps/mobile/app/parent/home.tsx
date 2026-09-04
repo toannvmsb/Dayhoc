@@ -1,12 +1,13 @@
-import { useCallback, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
 import { useAuth } from '@/auth';
 import { useChild } from '@/child';
 import { ParentNav } from '@/nav';
 import { theme } from '@/theme';
 import { Body, Button, Card, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/ui';
 import { useClient, useQuery } from '@/useApi';
+import { useReloadOnFocus } from '@/useReloadOnFocus';
 import type { Child, ParentHome } from '@/types';
 
 export default function ParentHomeScreen() {
@@ -22,17 +23,17 @@ export default function ParentHomeScreen() {
 
   const known = children.data?.some((c) => c.childId === childId) ? childId : null;
   const activeId = known ?? children.data?.[0]?.childId ?? null;
-  const home = useQuery<ParentHome>(() => api.get(`/children/${activeId}/home`), [activeId]);
-
-  useFocusEffect(
-    useCallback(() => {
-      children.reload();
-      home.reload();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeId]),
+  const home = useQuery<ParentHome>(
+    () => (activeId ? api.get(`/children/${activeId}/home`) : Promise.resolve(undefined as never)),
+    [activeId],
   );
 
-  if (children.loading) return <Loading />;
+  useReloadOnFocus(() => {
+    children.reload();
+    home.reload();
+  });
+
+  if (children.loading && !children.data) return <Loading />;
 
   if (children.data && children.data.length === 0) {
     return (

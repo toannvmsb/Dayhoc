@@ -1,11 +1,10 @@
-import { useCallback } from 'react';
 import { Text, View } from 'react-native';
-import { useFocusEffect } from 'expo-router';
 import { useChild } from '@/child';
 import { ParentNav } from '@/nav';
 import { theme } from '@/theme';
 import { Body, Card, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/ui';
 import { useClient, useQuery } from '@/useApi';
+import { useReloadOnFocus } from '@/useReloadOnFocus';
 import type { ParentProgress, SkillRow } from '@/types';
 
 const STATUS: Record<string, string> = {
@@ -44,13 +43,7 @@ export default function ParentProgressScreen() {
   const { childId } = useChild();
   const api = useClient('PARENT');
   const q = useQuery<ParentProgress>(() => api.get(`/children/${childId}/progress`), [childId]);
-
-  useFocusEffect(
-    useCallback(() => {
-      q.reload();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [childId]),
-  );
+  useReloadOnFocus(q.reload);
 
   return (
     <Screen nav={<ParentNav />} edges={['bottom']} refreshing={q.loading} onRefresh={q.reload}>
