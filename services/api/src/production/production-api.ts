@@ -1768,7 +1768,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
       ).rows[0] as { display_name: string } | undefined;
       if (!child) throw new NotFoundError('child');
       if (confirmName.trim() !== child.display_name.trim()) {
-        throw new ForbiddenError('confirmation name does not match');
+        throw new ForbiddenError('Tên bạn nhập chưa khớp với tên hiển thị của con — hãy nhập chính xác để xác nhận xóa.');
       }
 
       const summary = await withTransaction(pool, async (client) => {

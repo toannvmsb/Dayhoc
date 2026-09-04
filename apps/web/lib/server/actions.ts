@@ -175,7 +175,7 @@ export async function confirmChildDeletionAction(
     await getApi().confirmChildDeletion(parentAuth(), childId, confirmName);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    if (/does not match/.test(msg)) return { error: 'Tên không khớp. Nhập đúng tên hiển thị của con.' };
+    if (/does not match|chưa khớp/.test(msg)) return { error: 'Tên không khớp. Nhập đúng tên hiển thị của con.' };
     return { error: friendly(e) };
   }
   return { done: true };

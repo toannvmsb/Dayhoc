@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Alert, Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/auth';
 import { useChild } from '@/child';
@@ -160,7 +160,7 @@ export default function SettingsScreen() {
       setBusy(false);
     }
   };
-  const confirmDeletion = async () => {
+  const doConfirmDeletion = async () => {
     if (!childId) return;
     setBusy(true);
     setDelErr(undefined);
@@ -174,6 +174,19 @@ export default function SettingsScreen() {
     } finally {
       setBusy(false);
     }
+  };
+  // A second, native confirm — tapping "Xóa vĩnh viễn" straight from the form
+  // is one accidental tap away from an irreversible delete (D-35: tester
+  // asked for exactly this safety net).
+  const confirmDeletion = () => {
+    Alert.alert(
+      'Xóa vĩnh viễn?',
+      `Toàn bộ dữ liệu học tập của ${deletion.data?.childName ?? 'con'} sẽ bị xóa vĩnh viễn và không thể khôi phục.`,
+      [
+        { text: 'Hủy', style: 'cancel' },
+        { text: 'Xóa vĩnh viễn', style: 'destructive', onPress: doConfirmDeletion },
+      ],
+    );
   };
 
   return (
