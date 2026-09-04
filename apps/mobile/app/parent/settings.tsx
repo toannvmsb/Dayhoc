@@ -12,6 +12,33 @@ import type { Child, Entitlements, StudentAccess } from '@/types';
 
 const PLAN_LABEL: Record<string, string> = { free: 'Miễn phí', basic: 'Cơ bản', plus: 'Plus', pro: 'Pro' };
 
+/**
+ * A visibly bigger radio indicator than the old `'● '`/`'○ '` text glyphs —
+ * those rendered small and sat inside a Pressable with no padding, so the
+ * actual tap target was just the text's own tight bounding box (device
+ * testing: "nút tròn ... nhấn sẽ không nhạy"). The dot itself is decorative;
+ * the real fix is the parent Pressable now having full-row padding.
+ */
+function RadioDot({ selected }: { selected: boolean }) {
+  return (
+    <View
+      style={{
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        borderWidth: 2,
+        borderColor: selected ? theme.color.primary : theme.color.border,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      {selected && (
+        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: theme.color.primary }} />
+      )}
+    </View>
+  );
+}
+
 export default function SettingsScreen() {
   const { session, signOut } = useAuth();
   const { childId, setChildId } = useChild();
@@ -131,14 +158,31 @@ export default function SettingsScreen() {
       <Card>
         <Overline>Con của bạn</Overline>
         {children.loading && <Loading />}
-        {(children.data ?? []).map((c) => (
-          <Pressable key={c.childId} onPress={() => setChildId(c.childId)}>
-            <Body>
-              {c.childId === childId ? '● ' : '○ '}
-              {c.displayName} — lớp {c.schoolGrade}
-            </Body>
-          </Pressable>
-        ))}
+        {(children.data ?? []).map((c) => {
+          const selected = c.childId === childId;
+          return (
+            <Pressable
+              key={c.childId}
+              onPress={() => setChildId(c.childId)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+                paddingVertical: 12,
+                paddingHorizontal: 10,
+                borderRadius: theme.radius.sm,
+                borderWidth: 1,
+                borderColor: selected ? theme.color.primary : theme.color.border,
+                backgroundColor: selected ? theme.color.primaryTint : theme.color.surface,
+              }}
+            >
+              <RadioDot selected={selected} />
+              <Body>
+                {c.displayName} — lớp {c.schoolGrade}
+              </Body>
+            </Pressable>
+          );
+        })}
         <View style={{ height: 8 }} />
         <Field label="Tên con mới" value={name} onChangeText={setName} />
         <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -246,16 +290,34 @@ export default function SettingsScreen() {
       <Card>
         <Overline>Gói dịch vụ {ent.data ? `· đang dùng ${PLAN_LABEL[ent.data.plan] ?? ent.data.plan}` : ''}</Overline>
         <Muted>Đổi gói không phát sinh thanh toán. Gói không ảnh hưởng chất lượng hay mô hình AI.</Muted>
-        {(ent.data?.options ?? []).map((o) => (
-          <Pressable key={o.plan} onPress={() => setPlan(o.plan)} disabled={o.plan === ent.data?.plan}>
-            <Body>
-              {o.plan === ent.data?.plan ? '● ' : '○ '}
-              {PLAN_LABEL[o.plan] ?? o.plan}
-              {o.recommended ? ' · Khuyên dùng' : ''} —{' '}
-              {o.priceVnd === null ? 'Miễn phí' : `${(o.priceVnd / 1000).toLocaleString('vi-VN')}K/tháng`}
-            </Body>
-          </Pressable>
-        ))}
+        {(ent.data?.options ?? []).map((o) => {
+          const selected = o.plan === ent.data?.plan;
+          return (
+            <Pressable
+              key={o.plan}
+              onPress={() => setPlan(o.plan)}
+              disabled={selected}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+                paddingVertical: 12,
+                paddingHorizontal: 10,
+                borderRadius: theme.radius.sm,
+                borderWidth: 1,
+                borderColor: selected ? theme.color.primary : theme.color.border,
+                backgroundColor: selected ? theme.color.primaryTint : theme.color.surface,
+              }}
+            >
+              <RadioDot selected={selected} />
+              <Body>
+                {PLAN_LABEL[o.plan] ?? o.plan}
+                {o.recommended ? ' · Khuyên dùng' : ''} —{' '}
+                {o.priceVnd === null ? 'Miễn phí' : `${(o.priceVnd / 1000).toLocaleString('vi-VN')}K/tháng`}
+              </Body>
+            </Pressable>
+          );
+        })}
       </Card>
 
       {childId ? (
