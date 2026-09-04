@@ -43,30 +43,34 @@ export function Screen({
   onRefresh?: () => void;
   refreshing?: boolean;
 }) {
+  const body = scroll ? (
+    <ScrollView
+      style={{ flex: 1 }}
+      contentContainerStyle={styles.scroll}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={theme.color.primary} />
+        ) : undefined
+      }
+    >
+      {children}
+    </ScrollView>
+  ) : (
+    <View style={styles.body}>{children}</View>
+  );
+
   return (
     <SafeAreaView style={styles.screen} edges={edges}>
       <StagingBanner />
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
-      >
-        {scroll ? (
-          <ScrollView
-            contentContainerStyle={styles.scroll}
-            keyboardShouldPersistTaps="handled"
-            refreshControl={
-              onRefresh ? (
-                <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={theme.color.primary} />
-              ) : undefined
-            }
-          >
-            {children}
-          </ScrollView>
-        ) : (
-          <View style={styles.body}>{children}</View>
-        )}
-      </KeyboardAvoidingView>
+      {Platform.OS === 'ios' ? (
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding" keyboardVerticalOffset={8}>
+          {body}
+        </KeyboardAvoidingView>
+      ) : (
+        body
+      )}
       {nav}
     </SafeAreaView>
   );
