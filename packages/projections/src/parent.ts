@@ -1,6 +1,7 @@
 import type {
   ChildLearningTwin,
   DailyPlanResult,
+  Evidence,
   LearningContext,
 } from '@copilot/domain';
 import type { GapEngineResult } from '@copilot/gap-engine';
@@ -50,6 +51,14 @@ export interface ParentViewInput {
   readonly plan: DailyPlanResult;
   readonly knowledgeBase: KnowledgeBase;
   readonly examCountdownDays?: number;
+  /**
+   * Most recent evidence (any order) — used to surface real "what just
+   * happened" rows (a practice session, an uploaded page, a graded test)
+   * instead of only inferred signals. Optional so existing callers/tests are
+   * unaffected; when absent, `recentEvidenceRows` falls back to its old
+   * teacher-participation + top-gap summary.
+   */
+  readonly recentEvidence?: readonly Evidence[];
 }
 
 export function buildParentHome(input: ParentViewInput): ParentHomeView {
@@ -248,7 +257,46 @@ function curriculumLessonName(kb: KnowledgeBase, lessonId: string): string | und
   }
 }
 
+const ACTIVITY_LABEL: Record<string, string> = {
+  app_practice: 'Con luyện tập trên app',
+  app_worksheet: 'Con làm bài trên app',
+  notebook_scan: 'Bố mẹ tải bài từ vở của con',
+  teacher_message_scan: 'Tải nội dung giáo viên nhắn',
+  school_test: 'Cập nhật từ bài kiểm tra ở lớp',
+  school_exam: 'Cập nhật từ bài thi ở lớp',
+  school_homework: 'Cập nhật bài tập về nhà',
+  diagnostic: 'Bài đánh giá đầu vào',
+  parent_feedback: 'Bố mẹ ghi nhận',
+  teacher_feedback: 'Giáo viên ghi nhận',
+};
+
+/** Groups evidence recorded within the same action (same source, same minute) into one row. */
+function groupRecentEvidence(
+  kb: KnowledgeBase,
+  evidence: readonly Evidence[],
+): ParentProgressView['recentEvidence'] {
+  const byGroup = new Map<string, { at: string; source: string; skillIds: Set<string>; count: number }>();
+  for (const e of evidence) {
+    const minute = e.recordedAt.slice(0, 16); // group same-batch writes together
+    const key = `${e.source}|${minute}`;
+    const g = byGroup.get(key) ?? { at: e.recordedAt, source: e.source, skillIds: new Set<string>(), count: 0 };
+    g.count += 1;
+    if (e.skillId) g.skillIds.add(e.skillId);
+    if (e.recordedAt > g.at) g.at = e.recordedAt;
+    byGroup.set(key, g);
+  }
+  const groups = [...byGroup.values()].sort((a, b) => (a.at < b.at ? 1 : -1));
+  return groups.slice(0, 4).map((g) => {
+    const names = [...g.skillIds].slice(0, 2).map((id) => kb.skills.get(id as never)?.name ?? id);
+    const detail = names.length > 0 ? `${g.count} câu · ${names.join(', ')}` : `${g.count} câu`;
+    return { label: ACTIVITY_LABEL[g.source] ?? 'Có cập nhật mới', detail, source: g.source };
+  });
+}
+
 function recentEvidenceRows(input: ParentViewInput): ParentProgressView['recentEvidence'] {
+  if (input.recentEvidence && input.recentEvidence.length > 0) {
+    return groupRecentEvidence(input.knowledgeBase, input.recentEvidence);
+  }
   const rows: { label: string; detail: string; source: string }[] = [];
   if (input.context.teacherParticipated) {
     rows.push({ label: 'Giáo viên cập nhật', detail: 'Nội dung đã dạy gần đây', source: 'teacher' });

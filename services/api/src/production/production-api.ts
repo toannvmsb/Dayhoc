@@ -858,7 +858,9 @@ export function createProductionApi(opts: ProductionApiOptions) {
       if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
       await authorizeChild(ctx, childId, 'view_child');
       const s = await refreshLearningState(childId);
-      return buildParentProgress(projInput(s));
+      const all = await base.ledger.listEvidence(asChildId(childId));
+      const recentEvidence = all.slice(-40); // listEvidence is occurredAt/recordedAt ASC
+      return buildParentProgress({ ...projInput(s), recentEvidence });
     },
 
     /** GET /children/:childId/gaps/:gapId */
@@ -1870,7 +1872,13 @@ export function createProductionApi(opts: ProductionApiOptions) {
           createdAt: u.createdAt,
           state: a?.state ?? 'UPLOAD_CREATED',
           confidence: a?.confidence ?? null,
-          itemCount: a?.extraction?.items.length ?? 0,
+          // once confirmed, itemCount is how many items the parent actually
+          // kept (became evidence) — not the raw extraction count, which
+          // includes items the parent unticked
+          itemCount:
+            a?.state === 'CONFIRMED'
+              ? (a.resultingEvidenceIds?.length ?? 0)
+              : (a?.extraction?.items.length ?? 0),
           errorMessage: a?.errorMessage ?? null,
         });
       }
