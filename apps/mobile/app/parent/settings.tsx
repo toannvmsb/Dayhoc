@@ -218,6 +218,14 @@ export default function SettingsScreen() {
         </Card>
       ) : null}
 
+      {childId ? (
+        <Card>
+          <Overline>Trường & lớp</Overline>
+          <Muted>Khai báo trường/lớp để DạyZi ước lượng tiến độ theo lịch năm học.</Muted>
+          <Button label="Mở" tone="ghost" onPress={() => router.push('/parent/school')} />
+        </Card>
+      ) : null}
+
       <Card>
         <Overline>Gói dịch vụ {ent.data ? `· đang dùng ${PLAN_LABEL[ent.data.plan] ?? ent.data.plan}` : ''}</Overline>
         <Muted>Đổi gói không phát sinh thanh toán. Gói không ảnh hưởng chất lượng hay mô hình AI.</Muted>

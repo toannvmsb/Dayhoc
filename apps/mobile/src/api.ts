@@ -60,7 +60,7 @@ function friendlyFor(status: number, serverMessage: string): string {
 }
 
 interface CallOpts {
-  method?: 'GET' | 'POST';
+  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   body?: unknown;
   bearer?: string | null;
   workspace?: Workspace;
@@ -119,6 +119,8 @@ export function client(bearer: string | null, workspace: Workspace) {
       apiCall<T>(path, { bearer, workspace, query }),
     post: <T>(path: string, body?: unknown) =>
       apiCall<T>(path, { method: 'POST', bearer, workspace, body }),
+    patch: <T>(path: string, body?: unknown) =>
+      apiCall<T>(path, { method: 'PATCH', bearer, workspace, body }),
   };
 }
 

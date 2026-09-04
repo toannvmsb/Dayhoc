@@ -39,6 +39,27 @@ export type TeacherLinkPermissions = {
 
 export type InviteCode = { code: string; expiresAt: string; proposedPermissions: string[] };
 
+export type EnrollmentInfo = {
+  school: { id: string; schoolId: string; grade: number; status: string; schoolName: string | null }[];
+  class: {
+    id: string;
+    classroomId: string;
+    enrollmentType: string;
+    privacyMode: string;
+    status: string;
+    className: string | null;
+  }[];
+};
+export type SchoolRow = {
+  id: string;
+  officialName: string;
+  province: string | null;
+  district: string | null;
+  verificationStatus: string;
+};
+export type AcademicYear = { id: string; label: string; status: string };
+export type ClassRow = { id: string; grade: number; className: string; displayName: string; verificationStatus: string };
+
 export type ParentHome = {
   child: { childId: string; displayName: string; schoolGrade: number; schoolContext: string };
   learningContext: {

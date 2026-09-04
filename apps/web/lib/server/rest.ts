@@ -117,6 +117,50 @@ const ROUTES: Record<string, Handler> = {
     getApi().getParentTeachingPlan(auth(c, 'PARENT'), c.params[0]!, c.query.get('gapId') ?? undefined),
   'GET /children/:id/enrollments': async (c) => getApi().listEnrollments(auth(c, 'PARENT'), c.params[0]!),
 
+  // ---- school / class directory (M3) ----
+  'GET /schools': async (c) =>
+    getApi().searchSchools(auth(c, 'PARENT'), {
+      nameFragment: c.query.get('q') ?? undefined,
+      province: c.query.get('province') ?? undefined,
+      district: c.query.get('district') ?? undefined,
+    }),
+  'POST /schools': async (c) =>
+    getApi().proposeSchool(auth(c, 'PARENT'), {
+      officialName: String(c.body.officialName ?? '').trim(),
+      province: c.body.province ? String(c.body.province) : undefined,
+      district: c.body.district ? String(c.body.district) : undefined,
+      schoolType: (c.body.schoolType as never) ?? undefined,
+    }),
+  'GET /academic-years': async (c) => getApi().listAcademicYears(auth(c, 'PARENT')),
+  'GET /schools/:id/classes': async (c) =>
+    getApi().listClasses(auth(c, 'PARENT'), c.params[0]!, c.query.get('academicYearId') ?? ''),
+  'POST /schools/:id/classes': async (c) =>
+    getApi().proposeClass(auth(c, 'PARENT'), c.params[0]!, {
+      academicYearId: String(c.body.academicYearId ?? ''),
+      grade: Number(c.body.grade),
+      className: String(c.body.className ?? '').trim(),
+    }),
+  'POST /children/:id/enrollments/school': async (c) =>
+    getApi().createSchoolEnrollment(auth(c, 'PARENT'), c.params[0]!, {
+      schoolId: String(c.body.schoolId ?? ''),
+      academicYearId: String(c.body.academicYearId ?? ''),
+      grade: Number(c.body.grade),
+    }),
+  'POST /children/:id/enrollments/class': async (c) =>
+    getApi().createClassEnrollment(auth(c, 'PARENT'), c.params[0]!, {
+      classroomId: String(c.body.classroomId ?? ''),
+      academicYearId: String(c.body.academicYearId ?? ''),
+      enrollmentType: (c.body.enrollmentType as never) ?? 'PRIMARY',
+      privacyMode: (c.body.privacyMode as never) ?? 'LINKED_PRIVATE',
+    }),
+  'PATCH /children/:id/class-enrollments/:eid/privacy': async (c) =>
+    getApi().setClassPrivacy(
+      auth(c, 'PARENT'),
+      c.params[0]!,
+      c.params[1]!,
+      String(c.body.privacyMode ?? 'LINKED_PRIVATE') as never,
+    ),
+
   // ---- practice ----
   'GET /children/:id/assignments': async (c) => getApi().getChildAssignments(auth(c), c.params[0]!),
   'POST /children/:id/practice': async (c) =>

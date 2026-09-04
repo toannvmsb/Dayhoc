@@ -100,6 +100,7 @@ export default function RootLayout() {
             <Stack.Screen name="parent/exams" options={{ title: 'Kiểm tra & ôn thi' }} />
             <Stack.Screen name="parent/settings" options={{ title: 'Cài đặt' }} />
             <Stack.Screen name="parent/connect" options={{ title: 'Giáo viên của con' }} />
+            <Stack.Screen name="parent/school" options={{ title: 'Trường & lớp' }} />
             <Stack.Screen name="parent/gap/[gapId]" options={{ title: 'Điểm cần cải thiện' }} />
             <Stack.Screen name="parent/teach" options={{ title: 'Cách dạy con' }} />
             <Stack.Screen name="run/[assignmentId]" options={{ headerShown: false, presentation: 'modal' }} />

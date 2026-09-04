@@ -716,7 +716,23 @@ export function createProductionApi(opts: ProductionApiOptions) {
         base.enrollments.listClassEnrollments(childId),
         base.progression.listTransitions(childId),
       ]);
-      return { school, class: cls, transitions };
+      const schoolNamed = await Promise.all(
+        school.map(async (s) => ({
+          ...s,
+          schoolName: s.schoolId
+            ? ((await base.directory.getSchool(String(s.schoolId)).catch(() => null))?.officialName ?? null)
+            : null,
+        })),
+      );
+      const clsNamed = await Promise.all(
+        cls.map(async (c) => {
+          const room = c.classroomId
+            ? await base.directory.getClassroom(String(c.classroomId)).catch(() => null)
+            : null;
+          return { ...c, className: room?.displayName ?? room?.className ?? null };
+        }),
+      );
+      return { school: schoolNamed, class: clsNamed, transitions };
     },
 
     /** POST /children/:childId/enrollments/school */
