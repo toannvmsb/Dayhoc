@@ -8,11 +8,11 @@ journey broken · **P2** major defect w/ workaround · **P3** polish.
 
 | | |
 |---|---|
-| Baseline commit | `819e1e9` (SDK 54 upgrade) |
-| Expo SDK | **54.0.0** (matches tester's Expo Go) — upgraded from 51 |
-| Machine LAN IP | `10.0.40.46` (was `192.168.0.194` — router reassigned after sleep 2026-09-03; `apps/mobile/.env` `EXPO_PUBLIC_DEV_HOST` updated, Expo restarted `--clear`) |
-| API / web | `http://10.0.40.46:3100` — health ✅ ready ✅, cold `/auth/login` ✅ (LAN-verified 2026-09-03) |
-| Metro / Expo | `exp://10.0.40.46:8081` — `hostUri 10.0.40.46:8081`, manifest `apiBaseUrl http://10.0.40.46:3100/api/v1`, SDK 54.0.0 |
+| Baseline commit | `04a8cdd` (SDK 57 upgrade) |
+| Expo SDK | **57.0.0** (tester's Expo Go auto-updated 54→57; project upgraded to match — RN 0.86.3, React 19.2.3). Was 54, was 51. |
+| Connection | **USB / `adb reverse`** (machine on corporate Wi-Fi `f88.corp` with client isolation — phone can't reach the LAN IP). `adb reverse tcp:8081 tcp:8081` + `tcp:3100 tcp:3100`; `apps/mobile/.env` `EXPO_PUBLIC_DEV_HOST=localhost`; open `exp://localhost:8081`. adb at `/d/dev/android-sdk/platform-tools/adb`, device `RF8RC0ZJGEX` (SM-N980F, Android 13). |
+| API / web | `http://localhost:3100` (via adb reverse) — ready ✅, on `parent_copilot_pilot` |
+| Metro / Expo | `exp://localhost:8081` — manifest `sdkVersion exposdk:57.0.0`, `hostUri localhost:8081`, `apiBaseUrl http://localhost:3100/api/v1`. Metro started with `--lan` (binds 0.0.0.0 IPv4 so `adb reverse` works — `--localhost` binds `::1` only on Windows) + `REACT_NATIVE_PACKAGER_HOSTNAME=localhost`. Android bundle compiles (6.7MB). |
 | DB | portable PG 16, **`parent_copilot_pilot`** — a dedicated DB for device testing (2026-09-03), 20 migrations. The test suite still uses `parent_copilot`; `pg-store.integration.test.ts` runs the legacy→identity backfill on whatever DB `DATABASE_URL` points at, so a `vitest run` was mutating the device-test seed. Launch the API with **`bash scripts/dev-pilot.sh`** (supervises `next dev` on the pilot DB, auto-restarts on crash — see D-17). |
 | Seed | **Re-seeded clean 2026-09-03** (DB had ~13 duplicate `@dayzi.seed`/`@dayzi.local` users from repeated integration-test + partial-seed runs → non-deterministic dev-auth login; manually purged, then `seed:pilot`). Re-seeded 2026-09-03 (tester's app held a valid student session; reset to force login). `parent_copilot_pilot`: parent `phuhuynh@dayzi.seed`/`pilotpass1234`, teacher `giaovien@dayzi.seed`/`pilotpass1234`, seed student `hs-e4d80635@dayzi.local`/`hocsinh1234` (Bé Lớp 7), children *Bé Lớp 4* `92394c49-ad28-4920-8daa-a2798b70e11d` (has evidence/gap, **no** student login yet) / *Bé Lớp 7* `e4d80635-787d-4492-b2c8-10027f9435ea`. Roles verified parent/teacher/child + `[PARENT]`/`[TEACHER]`/`[STUDENT]`. |
 
