@@ -1412,6 +1412,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
         .slice(0, 12)
         .map(([skillId, s]) => ({
           skillId,
+          skillName: kb.skills.get(skillId)?.name ?? skillId,
           band: s.mastery >= 75 ? 'vững' : s.mastery >= 50 ? 'đang_ổn_định' : 'cần_củng_cố',
         }));
       return { childId, skills };
@@ -1424,9 +1425,12 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const { gaps } = await refreshLearningState(childId);
       return {
         childId,
-        gaps: gaps.gaps
-          .slice(0, 12)
-          .map((g) => ({ skillId: g.targetSkillId, type: g.type, lifecycleState: g.lifecycleState })),
+        gaps: gaps.gaps.slice(0, 12).map((g) => ({
+          skillId: g.targetSkillId,
+          skillName: kb.skills.get(g.targetSkillId)?.name ?? g.targetSkillId,
+          type: g.type,
+          lifecycleState: g.lifecycleState,
+        })),
       };
     },
 

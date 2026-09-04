@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useFocusEffect } from 'expo-router';
 import { useChild } from '@/child';
 import { theme } from '@/theme';
@@ -125,8 +126,16 @@ export default function ConnectScreen() {
 
   const [open, setOpen] = useState<string | null>(null);
   const [invite, setInvite] = useState<InviteCode | null>(null);
+  const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | undefined>();
+
+  const copyCode = async () => {
+    if (!invite) return;
+    await Clipboard.setStringAsync(invite.code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -159,6 +168,7 @@ export default function ConnectScreen() {
     setErr(undefined);
     try {
       setInvite(await api.post<InviteCode>(`/children/${childId}/invite-code`));
+      setCopied(false);
     } catch (e) {
       setErr(errText(e));
     } finally {
@@ -214,10 +224,15 @@ export default function ConnectScreen() {
         <Overline>Mời giáo viên mới</Overline>
         <Muted>Tạo mã kết nối và gửi cho giáo viên. Giáo viên nhập mã, bạn sẽ nhận yêu cầu để chấp thuận.</Muted>
         {invite ? (
-          <>
+          <View style={{ gap: 6, marginVertical: 4 }}>
             <Body>Mã: {invite.code}</Body>
             <Muted>Hết hạn: {invite.expiresAt.slice(0, 10)}</Muted>
-          </>
+            <Button
+              label={copied ? '✓ Đã sao chép' : 'Sao chép mã'}
+              tone="ghost"
+              onPress={copyCode}
+            />
+          </View>
         ) : null}
         <Button label={invite ? 'Tạo mã mới' : 'Tạo mã kết nối'} onPress={makeCode} loading={busy} />
       </Card>

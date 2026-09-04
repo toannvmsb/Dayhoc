@@ -13,10 +13,18 @@ const PERM_LABEL: Record<string, string> = {
   VIEW_LEARNING_TWIN_SUMMARY: 'Xem tóm tắt mức độ nắm bài',
 };
 const BAND: Record<string, string> = { vững: 'Vững', đang_ổn_định: 'Đang ổn định', cần_củng_cố: 'Cần củng cố' };
+const LIFECYCLE: Record<string, string> = {
+  DETECTED: 'Mới phát hiện',
+  CONFIRMED: 'Đã xác nhận',
+  TREATING: 'Đang củng cố',
+  IMPROVING: 'Đang tiến bộ',
+  CLOSED: 'Đã khắc phục',
+  MONITORING: 'Đang theo dõi',
+};
 
 type Perms = { codes: string[] };
-type Twin = { skills: { skillId: string; band: string }[] };
-type Gaps = { gaps: { skillId: string }[] };
+type Twin = { skills: { skillId: string; skillName?: string; band: string }[] };
+type Gaps = { gaps: { skillId: string; skillName?: string; lifecycleState?: string }[] };
 
 export default function TeacherChildDetail() {
   const { childId } = useLocalSearchParams<{ childId: string }>();
@@ -54,7 +62,7 @@ export default function TeacherChildDetail() {
         ) : (
           (twin.data?.skills ?? []).map((s) => (
             <Body key={s.skillId}>
-              {s.skillId} — {BAND[s.band] ?? s.band}
+              {s.skillName ?? s.skillId} — {BAND[s.band] ?? s.band}
             </Body>
           ))
         )}
@@ -64,7 +72,10 @@ export default function TeacherChildDetail() {
         <Card>
           <Overline>Điểm cần củng cố (phụ huynh chọn chia sẻ)</Overline>
           {(gaps.data?.gaps ?? []).map((g, i) => (
-            <Body key={i}>• {g.skillId}</Body>
+            <Body key={i}>
+              • {g.skillName ?? g.skillId}
+              {g.lifecycleState ? ` — ${LIFECYCLE[g.lifecycleState] ?? g.lifecycleState}` : ''}
+            </Body>
           ))}
         </Card>
       )}
