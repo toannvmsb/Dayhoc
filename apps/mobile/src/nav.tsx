@@ -14,7 +14,12 @@ function Bar({ items }: { items: Item[] }) {
           <Pressable
             key={it.href}
             style={styles.item}
-            onPress={() => router.replace(it.href as never)}
+            // navigate (not replace): pops back to an existing instance of the
+            // tab if it's already in the stack, else pushes — far more robust
+            // on expo-router 7 than replacing the stack top every tap.
+            onPress={() => {
+              if (!active) router.navigate(it.href as never);
+            }}
           >
             <Text style={[styles.glyph, active && styles.activeText]}>{it.glyph}</Text>
             <Text style={[styles.label, active && styles.activeText]}>{it.label}</Text>

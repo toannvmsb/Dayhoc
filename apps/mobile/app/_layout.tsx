@@ -103,7 +103,7 @@ export default function RootLayout() {
             <Stack.Screen name="parent/school" options={{ title: 'Trường & lớp' }} />
             <Stack.Screen name="parent/gap/[gapId]" options={{ title: 'Điểm cần cải thiện' }} />
             <Stack.Screen name="parent/teach" options={{ title: 'Cách dạy con' }} />
-            <Stack.Screen name="run/[assignmentId]" options={{ headerShown: false, presentation: 'modal' }} />
+            <Stack.Screen name="run/[assignmentId]" options={{ headerShown: false }} />
             <Stack.Screen name="student/today" options={{ title: 'Hôm nay' }} />
             <Stack.Screen name="student/practice" options={{ title: 'Bài tập' }} />
             <Stack.Screen name="student/progress" options={{ title: 'Tiến bộ' }} />

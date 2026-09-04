@@ -26,8 +26,9 @@ export function WorkspaceSwitcher() {
             <Pressable
               key={w}
               onPress={() => {
+                if (on) return;
                 setWorkspace(w);
-                router.replace(HOME[w] as never);
+                router.navigate(HOME[w] as never);
               }}
               style={{
                 flex: 1,
