@@ -3,6 +3,7 @@ import type {
   DailyPlanResult,
   Evidence,
   LearningContext,
+  ThinkingDimension,
 } from '@copilot/domain';
 import type { GapEngineResult } from '@copilot/gap-engine';
 import type { KnowledgeBase } from '@copilot/math-data';
@@ -325,7 +326,7 @@ function domainVi(d: string): string {
   return map[d] ?? d;
 }
 function thinkingDimVi(d: string): string {
-  const map: Record<string, string> = {
+  const map: Record<ThinkingDimension, string> = {
     algebraic_thinking: 'Tư duy đại số',
     strategic_choice: 'Chọn chiến lược',
     problem_representation: 'Biểu diễn bài toán',
@@ -333,6 +334,9 @@ function thinkingDimVi(d: string): string {
     proof_explanation: 'Giải thích, chứng minh',
     number_sense: 'Cảm giác số',
     reverse_reasoning: 'Suy luận ngược',
+    logical_reasoning: 'Tư duy logic',
+    spatial_reasoning: 'Tư duy không gian',
+    combinatorial_thinking: 'Tư duy tổ hợp, đếm',
   };
-  return map[d] ?? d;
+  return map[d as ThinkingDimension] ?? d;
 }
