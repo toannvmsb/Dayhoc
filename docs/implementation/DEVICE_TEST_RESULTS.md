@@ -54,7 +54,46 @@ Legend: ⏳ not started · 🔄 in progress · ✅ pass · ❌ fail
 
 ## iOS
 
-_(prepared after Android is complete)_
+Android is complete (all 19 tests, 36 defects found and fixed — see below). iOS
+testing started 2026-09-05. No Mac/Xcode on this machine, so a native dev-client
+build (like the Android APK) isn't possible here — testing uses **Expo Go** from
+the App Store instead. `expo-dev-client` is not a project dependency, so `expo
+start` serves Expo Go-compatible manifests by default. The Android freeze (D-22)
+was an Android-specific `ExperienceActivity` recreation bug — iOS has no
+equivalent lifecycle event, so Expo Go is expected to behave normally here, but
+this needs confirming on the device like everything else.
+
+| | |
+|---|---|
+| Baseline commit | `14dcc1c` (same source as the end of Android testing) |
+| Expo SDK | **57.0.0**, via Expo Go (App Store) — no dev-client build |
+| Connection | Same LAN as the Android testing machine — home Wi-Fi "Zin tang 1_5G 2", machine at `192.168.0.194`. Metro (`expo start --lan`, port 8081) and the API (`scripts/dev-pilot.sh`, port 3100, `parent_copilot_pilot` DB) are the same running servers Android used — no restart needed to add iOS. |
+| API / web | `http://192.168.0.194:3100` |
+| Device | _(pending — tester to fill: model, iOS version)_ |
+
+| # | Test case | Result | Observed | Sev | Fix commit |
+|---|---|---|---|---|---|
+| 1 | App startup (open in Expo Go) | ⏳ | | | |
+| 2 | Parent login (`phuhuynh@dayzi.seed`) | ⏳ | | | |
+| 3 | Parent Home (context = ESTIMATE, today plan) | ⏳ | | | |
+| 4 | Create / select Child (switcher, 2 children) | ⏳ | | | |
+| 5 | Practice (create → runner → submit → "Xong rồi!") | ⏳ | | | |
+| 6 | Student access / login (create login, log in as student) | ⏳ | | | |
+| 7 | Student "Hôm nay" (tasks, empty state, challenge) | ⏳ | | | |
+| 8 | Gap Detail (parent teaching copilot) | ⏳ | | | |
+| 9 | Teacher login (`giaovien@dayzi.seed`) | ⏳ | | | |
+| 10 | Parent ↔ Teacher connection (invite code → approve) | ⏳ | | | |
+| 11 | Permission grant / revoke (sensitive toggle reflects for teacher) | ⏳ | | | |
+| 12 | School / Class (propose school, "Thêm lớp", gán con, privacy) | ⏳ | | | |
+| 13 | Camera (deny permission → grant → take photo → upload) | ⏳ | | | |
+| 14 | Photo-library upload | ⏳ | | | |
+| 15 | Evidence confirmation (untick wrong item, fix skill, confirm) | ⏳ | | | |
+| 16 | Exam / Revision (create → revision map → result → diagnosis) | ⏳ | | | |
+| 17 | Settings (plan change = no payment; privacy copy) | ⏳ | | | |
+| 18 | Child deletion (request → cancel; re-request → wrong name → correct name) | ⏳ | | | |
+| 19 | Network / error states (airplane mode, expired session, 429) | ⏳ | | | |
+
+Legend: ⏳ not started · 🔄 in progress · ✅ pass · ❌ fail
 
 ---
 
