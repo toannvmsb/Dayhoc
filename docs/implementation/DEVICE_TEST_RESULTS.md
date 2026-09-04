@@ -73,25 +73,8 @@ this needs confirming on the device like everything else.
 
 | # | Test case | Result | Observed | Sev | Fix commit |
 |---|---|---|---|---|---|
-| 1 | App startup (open in Expo Go) | ⏳ | | | |
-| 2 | Parent login (`phuhuynh@dayzi.seed`) | ⏳ | | | |
-| 3 | Parent Home (context = ESTIMATE, today plan) | ⏳ | | | |
-| 4 | Create / select Child (switcher, 2 children) | ⏳ | | | |
-| 5 | Practice (create → runner → submit → "Xong rồi!") | ⏳ | | | |
-| 6 | Student access / login (create login, log in as student) | ⏳ | | | |
-| 7 | Student "Hôm nay" (tasks, empty state, challenge) | ⏳ | | | |
-| 8 | Gap Detail (parent teaching copilot) | ⏳ | | | |
-| 9 | Teacher login (`giaovien@dayzi.seed`) | ⏳ | | | |
-| 10 | Parent ↔ Teacher connection (invite code → approve) | ⏳ | | | |
-| 11 | Permission grant / revoke (sensitive toggle reflects for teacher) | ⏳ | | | |
-| 12 | School / Class (propose school, "Thêm lớp", gán con, privacy) | ⏳ | | | |
-| 13 | Camera (deny permission → grant → take photo → upload) | ⏳ | | | |
-| 14 | Photo-library upload | ⏳ | | | |
-| 15 | Evidence confirmation (untick wrong item, fix skill, confirm) | ⏳ | | | |
-| 16 | Exam / Revision (create → revision map → result → diagnosis) | ⏳ | | | |
-| 17 | Settings (plan change = no payment; privacy copy) | ⏳ | | | |
-| 18 | Child deletion (request → cancel; re-request → wrong name → correct name) | ⏳ | | | |
-| 19 | Network / error states (airplane mode, expired session, 429) | ⏳ | | | |
+| 1–19 | Full pass over Android's 19 test cases, on Expo Go over LAN | ✅ | Tester: "mọi chức năng như của Android đều chạy tốt" — broad confirmation across the whole suite (connect via QR into Expo Go worked first try; no Android-style freeze, consistent with D-22 being an Android-specific `ExperienceActivity` recreation bug). Not re-itemized row-by-row like Android — see note under Test 16 for the one finding from this pass. | — | — |
+| 16 | Exam / Revision — found during the broad iOS pass | ✅ (w/ UX fix) | Tester: "Ưu tiên ôn" priority list read as a flat run of titles + explanations, hard to tell items apart. Fixed — each item's skill name is now numbered ("1. …") and bold (theme heading weight/color), with the reason line unchanged (muted) directly below it. | P3 (UX) | `61f4f27` |
 
 Legend: ⏳ not started · 🔄 in progress · ✅ pass · ❌ fail
 
@@ -114,6 +97,7 @@ Legend: ⏳ not started · 🔄 in progress · ✅ pass · ❌ fail
 | D-13 | P2 | 7 | The child today/progress/review screens each call `refreshLearningState`; right after new evidence they all see the snapshot cache stale and race to persist it → the loser hits a unique violation (`23505`), surfaced as a 409 on the student Progress screen (self-heals on pull-to-refresh) | **fixed** — the persisted snapshots/skill-states/gaps/plan are a cache and the computed scene is always correct, so the write block swallows `23505` and returns. Verified: 9 concurrent post-submit reads, 0×23505 |
 | D-14 | P3 | 7 | After a child finishes the day's work the plan becomes `no_plan_needed`; the student "Hôm nay" then showed a flat "không có bài bắt buộc. Nghỉ ngơi nhé!" and the previously-listed optional "Thử thách" disappeared with no explanation | **fixed** — `buildChildToday` now uses the plan's own child-appropriate `reason` ("phần đang học đã ổn… có thể cho con làm 1 bài thử thách tư duy…"); the mobile empty state offers a "Luyện thêm 15 phút" button |
 | D-17 | P2 (infra) | 7 | Submitting the 2nd task showed "Không có kết nối mạng" on every screen; other sites worked fine. Cause: the long-running `next dev` API server process died (clean-ish exit, no stack — likely OOM / webpack-worker crash after ~1h on this monorepo; ~13 orphan node processes had also accumulated across restarts/reboots). The mobile client's 20s timeout surfaces as `OfflineError` | **mitigated** — `scripts/dev-pilot.sh` supervises `next dev` (2GB heap, auto-relaunch in 2s on exit) so a crash costs a tester seconds, not the session. Not a product bug: resumed the exact crashed submit over LAN, `done 2/2` correct |
+| D-37 | P3 | iOS 16 | Tester (UX): "Ưu tiên ôn" priority list in Bản đồ ôn tập had no numbering, titles and explanation lines read as one flat block, hard to tell items apart | **fixed** — `apps/mobile/app/parent/exams.tsx` numbers each item ("1. <skill name>") and renders it bold in the theme's heading weight/color, reason line unchanged directly below |
 | D-36 | P2 | 18 | Tester asked for a safety net: "Xóa vĩnh viễn" fired the irreversible delete straight from the confirm-name form, one accidental tap | **fixed** — added a native `Alert.alert` second confirm (childName + "không thể khôi phục", Hủy · Xóa vĩnh viễn-destructive) between the button and the actual API call |
 | D-35 | P2 | 18 | I3 (wrong confirm name) rejection was in English — `confirmChildDeletion` threw the raw `'confirmation name does not match'`; web only looked fixed because of a regex fallback intercepting it, mobile had no such fallback and showed it raw | **fixed** — throws the Vietnamese message directly at the source; web's fallback regex extended to match either wording so a future rewording can't silently regress it again |
 | D-34 | P1 | 18 | Mobile "Xóa hồ sơ của con" always showed "Bắt đầu quy trình xóa" AND the confirm-name field simultaneously, no cancel action, no deletion-state awareness — `POST /children/:id/deletion/cancel` existed and was wired on web since M7 but never surfaced on mobile; checklist I2 not attemptable | **fixed** — mobile mirrors web's state machine via `GET /children/:id/deletion`: no request → only "Bắt đầu quy trình xóa"; pending request → confirm-name field + "Xóa vĩnh viễn" + "Hủy — giữ lại hồ sơ của con". Errors now render in the deletion card via a dedicated `delErr` state |
