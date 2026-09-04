@@ -235,6 +235,15 @@ export default function SettingsScreen() {
       ) : null}
 
       <Card>
+        <Overline>Quyền riêng tư & dữ liệu</Overline>
+        <Muted>
+          Bài con làm và bằng chứng học tập là nhật ký chỉ-thêm. Dữ liệu suy ra (mức độ nắm bài,
+          điểm cần cải thiện) được tính lại từ nhật ký đó. DạyZi không dùng dữ liệu của con để
+          huấn luyện mô hình AI.
+        </Muted>
+      </Card>
+
+      <Card>
         <Overline>Gói dịch vụ {ent.data ? `· đang dùng ${PLAN_LABEL[ent.data.plan] ?? ent.data.plan}` : ''}</Overline>
         <Muted>Đổi gói không phát sinh thanh toán. Gói không ảnh hưởng chất lượng hay mô hình AI.</Muted>
         {(ent.data?.options ?? []).map((o) => (
