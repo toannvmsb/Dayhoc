@@ -12,6 +12,12 @@ import type { Child, Entitlements, StudentAccess } from '@/types';
 
 const PLAN_LABEL: Record<string, string> = { free: 'Miễn phí', basic: 'Cơ bản', plus: 'Plus', pro: 'Pro' };
 
+type DeletionStatus = {
+  childName: string;
+  deletionState: string;
+  request: { state: 'REQUESTED' | 'CONFIRMED'; requestedAt: string } | null;
+} | null;
+
 /**
  * A visibly bigger radio indicator than the old `'● '`/`'○ '` text glyphs —
  * those rendered small and sat inside a Pressable with no padding, so the
@@ -50,12 +56,17 @@ export default function SettingsScreen() {
     () => (childId ? api.get(`/children/${childId}/student-access`) : Promise.resolve(null)),
     [childId, session?.bearer],
   );
+  const deletion = useQuery<DeletionStatus>(
+    () => (childId ? api.get(`/children/${childId}/deletion`) : Promise.resolve(null)),
+    [childId, session?.bearer],
+  );
 
   const [name, setName] = useState('');
   const [grade, setGrade] = useState<4 | 7>(4);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | undefined>();
   const [delName, setDelName] = useState('');
+  const [delErr, setDelErr] = useState<string | undefined>();
 
   const [saPass, setSaPass] = useState('');
   const [saShow, setSaShow] = useState(false);
@@ -124,19 +135,42 @@ export default function SettingsScreen() {
 
   const requestDeletion = async () => {
     if (!childId) return;
-    await api.post(`/children/${childId}/deletion/request`);
-    setErr(undefined);
+    setBusy(true);
+    setDelErr(undefined);
+    try {
+      await api.post(`/children/${childId}/deletion/request`);
+      deletion.reload();
+    } catch (e) {
+      setDelErr(errText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const cancelDeletion = async () => {
+    if (!childId) return;
+    setBusy(true);
+    setDelErr(undefined);
+    try {
+      await api.post(`/children/${childId}/deletion/cancel`);
+      setDelName('');
+      deletion.reload();
+    } catch (e) {
+      setDelErr(errText(e));
+    } finally {
+      setBusy(false);
+    }
   };
   const confirmDeletion = async () => {
     if (!childId) return;
     setBusy(true);
-    setErr(undefined);
+    setDelErr(undefined);
     try {
       await api.post(`/children/${childId}/deletion/confirm`, { confirmName: delName });
+      setDelName('');
       setChildId('');
       children.reload();
     } catch (e) {
-      setErr(errText(e));
+      setDelErr(errText(e));
     } finally {
       setBusy(false);
     }
@@ -323,10 +357,25 @@ export default function SettingsScreen() {
       {childId ? (
         <Card tone="attention">
           <Overline>Xóa hồ sơ của con</Overline>
-          <Muted>Xóa vĩnh viễn toàn bộ dữ liệu học tập. Không khôi phục được.</Muted>
-          <Button label="Bắt đầu quy trình xóa" tone="danger" onPress={requestDeletion} />
-          <Field label="Nhập tên hiển thị của con để xác nhận" value={delName} onChangeText={setDelName} />
-          <Button label="Xóa vĩnh viễn" tone="danger" onPress={confirmDeletion} loading={busy} />
+          {deletion.data?.request ? (
+            <>
+              <Muted>
+                Đã bắt đầu quy trình xóa. Nhập chính xác tên hiển thị của con —{' '}
+                <Body>{deletion.data.childName}</Body> — để xóa vĩnh viễn, hoặc hủy để giữ lại hồ
+                sơ.
+              </Muted>
+              <Field label="Nhập tên hiển thị của con để xác nhận" value={delName} onChangeText={setDelName} />
+              {delErr && <ErrorNote message={delErr} />}
+              <Button label="Xóa vĩnh viễn" tone="danger" onPress={confirmDeletion} loading={busy} />
+              <Button label="Hủy — giữ lại hồ sơ của con" tone="ghost" onPress={cancelDeletion} loading={busy} />
+            </>
+          ) : (
+            <>
+              <Muted>Xóa vĩnh viễn toàn bộ dữ liệu học tập. Không khôi phục được.</Muted>
+              {delErr && <ErrorNote message={delErr} />}
+              <Button label="Bắt đầu quy trình xóa" tone="danger" onPress={requestDeletion} loading={busy} />
+            </>
+          )}
         </Card>
       ) : null}
     </Screen>
