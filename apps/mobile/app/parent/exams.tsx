@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useChild } from '@/child';
 import { ParentNav } from '@/nav';
 import { theme } from '@/theme';
@@ -90,9 +90,11 @@ export default function ExamsScreen() {
         <H1>Bản đồ ôn tập</H1>
         <Card>
           <Overline>Ưu tiên ôn · {map.dailyMinutes} phút/ngày</Overline>
-          {map.items.map((it) => (
+          {map.items.map((it, i) => (
             <View key={it.skillId} style={{ gap: 2 }}>
-              <Body>{it.name}</Body>
+              <Text style={{ fontSize: 14, fontFamily: theme.font.bold, color: theme.color.textHeading }}>
+                {i + 1}. {it.name}
+              </Text>
               <Muted>{it.reason}</Muted>
             </View>
           ))}
