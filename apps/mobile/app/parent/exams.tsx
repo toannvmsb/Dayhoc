@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useChild } from '@/child';
 import { ParentNav } from '@/nav';
 import { theme } from '@/theme';
@@ -89,10 +89,10 @@ export default function ExamsScreen() {
         </Overline>
         <H1>Bản đồ ôn tập</H1>
         <Card>
-          <Overline>Ưu tiên ôn · {map.dailyMinutes} phút/ngày</Overline>
+          <Text style={styles.sectionTitle}>Ưu tiên ôn · {map.dailyMinutes} phút/ngày</Text>
           {map.items.map((it, i) => (
             <View key={it.skillId} style={{ gap: 2 }}>
-              <Text style={{ fontSize: 14, fontFamily: theme.font.bold, color: theme.color.textHeading }}>
+              <Text style={styles.itemTitle}>
                 {i + 1}. {it.name}
               </Text>
               <Muted>{it.reason}</Muted>
@@ -102,7 +102,7 @@ export default function ExamsScreen() {
 
         {diagnosis ? (
           <Card>
-            <Overline>Chẩn đoán — đạt {diagnosis.totalAwardedPercent}%</Overline>
+            <Text style={styles.sectionTitle}>Chẩn đoán — đạt {diagnosis.totalAwardedPercent}%</Text>
             {diagnosis.byCategory.map((c) => (
               <Body key={c.category}>
                 {c.categoryLabel}: mất {c.lostPoints} điểm
@@ -176,3 +176,8 @@ export default function ExamsScreen() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  sectionTitle: { fontSize: 15, fontFamily: theme.font.bold, color: theme.color.textHeading },
+  itemTitle: { fontSize: 14, fontFamily: theme.font.bold, color: theme.color.textHeading },
+});
