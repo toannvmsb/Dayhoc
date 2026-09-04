@@ -55,6 +55,77 @@ const DOMAIN_MAP = {
   algebra_polynomials: 'algebraic_thinking',
 };
 
+/**
+ * grade7/problem_types.yaml `families:` slugs double as the `id` suffix
+ * (`M7.PT.<FAMILY>.<SLUG>`) AND, until now, the raw `name` shown to parents —
+ * so the "Dạng bài" (problem type) axis on Progress showed English snake_case
+ * like `direct_sum_difference`/`fraction_rational_operations` (D-24/D-30).
+ * The `id` must stay the stable English slug (it's referenced as free-text
+ * `problem_type_id` on evidence — see CLAUDE.md); only the display `name`
+ * is translated here, by lookup, so nothing that stores/matches on the id
+ * is affected. A slug missing from this map falls back to itself so a new
+ * slug never crashes the build — it just needs a translation added.
+ */
+const G7_PROBLEM_TYPE_NAME_VN = {
+  fraction_rational_operations: 'Phép tính với số hữu tỉ',
+  fast_calculation_by_structure: 'Tính nhanh theo cấu trúc biểu thức',
+  powers_zero_exponent: 'Lũy thừa với số mũ 0',
+  sign_rules: 'Quy tắc dấu',
+  nested_rational_expressions: 'Biểu thức hữu tỉ lồng nhau',
+  one_step_rational_equation: 'Phương trình hữu tỉ một bước',
+  multi_step_linear_equation: 'Phương trình bậc nhất nhiều bước',
+  distributive_equation: 'Phương trình dùng tính chất phân phối',
+  rational_expression_equation: 'Phương trình chứa biểu thức hữu tỉ',
+  square_or_quadratic_structure: 'Cấu trúc bình phương / bậc hai',
+  equation_in_ratio_or_system: 'Phương trình trong tỉ lệ thức / hệ phương trình',
+  direct_ratio: 'Tỉ lệ thuận trực tiếp',
+  equal_ratio: 'Dãy tỉ số bằng nhau',
+  chained_ratio: 'Tỉ số liên hoàn',
+  ratio_linear_constraint: 'Tỉ lệ thức có ràng buộc bậc nhất',
+  ratio_product_constraint: 'Tỉ lệ thức có ràng buộc về tích',
+  ratio_quadratic_constraint: 'Tỉ lệ thức có ràng buộc bậc hai',
+  transformed_denominators: 'Biến đổi mẫu số',
+  multivariable_nonlinear_reasoning: 'Suy luận phi tuyến nhiều biến',
+  equal_ratio_xyz: 'Dãy tỉ số bằng nhau với x, y, z',
+  multiple_chained_ratios: 'Nhiều tỉ số liên hoàn',
+  ratio_linear_equation: 'Tỉ lệ thức kết hợp phương trình bậc nhất',
+  ratio_xyz_constraint: 'Ràng buộc tỉ lệ giữa x, y, z',
+  ratio_quadratic_form: 'Tỉ lệ thức dạng bậc hai',
+  shifted_variable_ratio: 'Tỉ lệ thức khi biến bị dịch chuyển',
+  rational_denominator_systems: 'Hệ phương trình với mẫu số hữu tỉ',
+  distributive_property: 'Tính chất phân phối',
+  polynomial_expansion: 'Khai triển đa thức',
+  common_factor_extraction: 'Đặt nhân tử chung',
+  algebraic_identity: 'Hằng đẳng thức đáng nhớ',
+  symmetric_expression: 'Biểu thức đối xứng',
+  factorization: 'Phân tích đa thức thành nhân tử',
+  conditional_simplification: 'Rút gọn có điều kiện',
+  proof: 'Chứng minh',
+  nonlinear_system_HSG: 'Hệ phi tuyến (nâng cao)',
+  derive_from_sum_product: 'Suy ra từ tổng và tích',
+  x_plus_inverse_x: 'Biểu thức x + 1/x',
+  ab_bc_ca_condition: 'Điều kiện ab + bc + ca',
+  cyclic_symmetric_rational: 'Biểu thức hữu tỉ đối xứng vòng quanh',
+  sum_zero_identity: 'Hằng đẳng thức khi tổng bằng 0',
+  common_factor: 'Nhân tử chung',
+  grouping: 'Nhóm hạng tử',
+  identities: 'Dùng hằng đẳng thức',
+  cyclic_symmetric: 'Đối xứng vòng quanh',
+  under_condition: 'Phân tích có điều kiện',
+  identity_proof: 'Chứng minh đẳng thức',
+  derive_invariant: 'Suy ra đại lượng không đổi',
+  inequality_sign_reasoning: 'Suy luận dấu của bất đẳng thức',
+  integer_perfect_power: 'Số nguyên là lũy thừa đúng',
+  HSG_transformation: 'Biến đổi nâng cao (HSG)',
+  angles_parallel_lines: 'Góc tạo bởi đường thẳng song song',
+  congruent_triangles: 'Tam giác bằng nhau',
+  midpoint_ray_segment: 'Trung điểm, tia, đoạn thẳng',
+  triangle_relationships: 'Quan hệ giữa các yếu tố trong tam giác',
+  practical_solids: 'Hình khối trong thực tế',
+  choose_two_endpoints: 'Chọn hai đầu mút',
+  systematic_counting: 'Đếm có hệ thống',
+};
+
 /** curriculum_origin string → numeric grade (curriculumOrigin). */
 function originToGrade(origin, gradeContext) {
   if (!origin) return gradeContext;
@@ -243,7 +314,7 @@ function buildGrade(gradeContext) {
         problemTypes.push({
           id: `M7.PT.${family.replace(/^G7\./, '').replace(/\./g, '_')}.${slug.toUpperCase()}`,
           skillId,
-          name: slug,
+          name: G7_PROBLEM_TYPE_NAME_VN[slug] ?? slug,
           knowledgeLevel: deriveKnowledge(origin, gradeContext, thinkingLevel),
           thinkingLevel,
         });

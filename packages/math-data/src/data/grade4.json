@@ -1610,112 +1610,112 @@
     {
       "id": "M4.PT.DIST.DIRECT",
       "skillId": "M4.ARITH.DISTRIBUTIVE",
-      "name": "direct_use",
+      "name": "Áp dụng trực tiếp tính chất phân phối",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T2"
     },
     {
       "id": "M4.PT.DIST.COMMON_FACTOR",
       "skillId": "M4.ARITH.DISTRIBUTIVE",
-      "name": "recognize_common_factor",
+      "name": "Nhận ra thừa số chung",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T2"
     },
     {
       "id": "M4.PT.DIST.CONVENIENT",
       "skillId": "M4.ARITH.DISTRIBUTIVE",
-      "name": "convenient_calculation",
+      "name": "Tính nhanh, tính hợp lý",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T3"
     },
     {
       "id": "M4.PT.DIST.HIDDEN_FACTOR",
       "skillId": "M4.ARITH.DISTRIBUTIVE",
-      "name": "hidden_common_factor",
+      "name": "Thừa số chung bị ẩn",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T4"
     },
     {
       "id": "M4.PT.DIST.MULTI_TERM",
       "skillId": "M4.ARITH.DISTRIBUTIVE",
-      "name": "three_or_more_terms",
+      "name": "Từ ba số hạng trở lên",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T4"
     },
     {
       "id": "M4.PT.DIST.EQUATION",
       "skillId": "M4.ARITH.DISTRIBUTIVE",
-      "name": "equation_with_common_factor",
+      "name": "Tìm x có thừa số chung",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T4"
     },
     {
       "id": "M4.PT.DIST.CREATE",
       "skillId": "M4.ARITH.DISTRIBUTIVE",
-      "name": "create_own_expression",
+      "name": "Tự đặt biểu thức",
       "knowledgeLevel": "K3",
       "thinkingLevel": "T5"
     },
     {
       "id": "M4.PT.SD.DIRECT",
       "skillId": "M4.WORD.SUM_DIFF",
-      "name": "direct_sum_difference",
+      "name": "Tìm hai số biết tổng và hiệu",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T2"
     },
     {
       "id": "M4.PT.SD.HIDDEN_SUM",
       "skillId": "M4.WORD.SUM_DIFF",
-      "name": "hidden_sum",
+      "name": "Tổng bị ẩn",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T3"
     },
     {
       "id": "M4.PT.SD.HIDDEN_DIFF",
       "skillId": "M4.WORD.SUM_DIFF",
-      "name": "hidden_difference",
+      "name": "Hiệu bị ẩn",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T3"
     },
     {
       "id": "M4.PT.SD.TRANSFER",
       "skillId": "M4.WORD.SUM_DIFF",
-      "name": "after_transfer",
+      "name": "Sau khi chuyển bớt giữa hai số",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T4"
     },
     {
       "id": "M4.PT.SD.BEFORE_AFTER",
       "skillId": "M4.WORD.SUM_DIFF",
-      "name": "before_after_change",
+      "name": "So sánh trước và sau khi thay đổi",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T4"
     },
     {
       "id": "M4.PT.UR.ONE_MANY",
       "skillId": "M4.WORD.UNIT_RATE",
-      "name": "find_one_then_many",
+      "name": "Tìm một đơn vị rồi suy ra nhiều đơn vị",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T2"
     },
     {
       "id": "M4.PT.UR.MANY_ONE",
       "skillId": "M4.WORD.UNIT_RATE",
-      "name": "find_many_then_one",
+      "name": "Tìm nhiều đơn vị rồi suy ra một đơn vị",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T2"
     },
     {
       "id": "M4.PT.UR.INVERSE",
       "skillId": "M4.WORD.UNIT_RATE",
-      "name": "inverse_unit_rate",
+      "name": "Rút về đơn vị — tỉ lệ nghịch",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T3"
     },
     {
       "id": "M4.PT.UR.MULTISTEP",
       "skillId": "M4.WORD.UNIT_RATE",
-      "name": "multi_step_unit_rate",
+      "name": "Rút về đơn vị nhiều bước",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T3"
     }

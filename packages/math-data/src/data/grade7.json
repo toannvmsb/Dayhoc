@@ -1297,399 +1297,399 @@
     {
       "id": "M7.PT.RAT.FRACTION_RATIONAL_OPERATIONS",
       "skillId": "M7.QNUM.OPERATIONS",
-      "name": "fraction_rational_operations",
+      "name": "Phép tính với số hữu tỉ",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T2"
     },
     {
       "id": "M7.PT.RAT.FAST_CALCULATION_BY_STRUCTURE",
       "skillId": "M7.QNUM.OPERATIONS",
-      "name": "fast_calculation_by_structure",
+      "name": "Tính nhanh theo cấu trúc biểu thức",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T2"
     },
     {
       "id": "M7.PT.RAT.POWERS_ZERO_EXPONENT",
       "skillId": "M7.QNUM.OPERATIONS",
-      "name": "powers_zero_exponent",
+      "name": "Lũy thừa với số mũ 0",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T3"
     },
     {
       "id": "M7.PT.RAT.SIGN_RULES",
       "skillId": "M7.QNUM.OPERATIONS",
-      "name": "sign_rules",
+      "name": "Quy tắc dấu",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T3"
     },
     {
       "id": "M7.PT.RAT.NESTED_RATIONAL_EXPRESSIONS",
       "skillId": "M7.QNUM.OPERATIONS",
-      "name": "nested_rational_expressions",
+      "name": "Biểu thức hữu tỉ lồng nhau",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T4"
     },
     {
       "id": "M7.PT.EQ.ONE_STEP_RATIONAL_EQUATION",
       "skillId": "M7.QNUM.ORDER_TRANSPOSE",
-      "name": "one_step_rational_equation",
+      "name": "Phương trình hữu tỉ một bước",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T2"
     },
     {
       "id": "M7.PT.EQ.MULTI_STEP_LINEAR_EQUATION",
       "skillId": "M7.QNUM.ORDER_TRANSPOSE",
-      "name": "multi_step_linear_equation",
+      "name": "Phương trình bậc nhất nhiều bước",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T2"
     },
     {
       "id": "M7.PT.EQ.DISTRIBUTIVE_EQUATION",
       "skillId": "M7.QNUM.ORDER_TRANSPOSE",
-      "name": "distributive_equation",
+      "name": "Phương trình dùng tính chất phân phối",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T3"
     },
     {
       "id": "M7.PT.EQ.RATIONAL_EXPRESSION_EQUATION",
       "skillId": "M7.QNUM.ORDER_TRANSPOSE",
-      "name": "rational_expression_equation",
+      "name": "Phương trình chứa biểu thức hữu tỉ",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T3"
     },
     {
       "id": "M7.PT.EQ.SQUARE_OR_QUADRATIC_STRUCTURE",
       "skillId": "M7.QNUM.ORDER_TRANSPOSE",
-      "name": "square_or_quadratic_structure",
+      "name": "Cấu trúc bình phương / bậc hai",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T4"
     },
     {
       "id": "M7.PT.EQ.EQUATION_IN_RATIO_OR_SYSTEM",
       "skillId": "M7.QNUM.ORDER_TRANSPOSE",
-      "name": "equation_in_ratio_or_system",
+      "name": "Phương trình trong tỉ lệ thức / hệ phương trình",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T4"
     },
     {
       "id": "M7.PT.RATIO.DIRECT_RATIO",
       "skillId": "M7.RATIO.EQUAL_CHAIN",
-      "name": "direct_ratio",
+      "name": "Tỉ lệ thuận trực tiếp",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T2"
     },
     {
       "id": "M7.PT.RATIO.EQUAL_RATIO",
       "skillId": "M7.RATIO.EQUAL_CHAIN",
-      "name": "equal_ratio",
+      "name": "Dãy tỉ số bằng nhau",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T2"
     },
     {
       "id": "M7.PT.RATIO.CHAINED_RATIO",
       "skillId": "M7.RATIO.EQUAL_CHAIN",
-      "name": "chained_ratio",
+      "name": "Tỉ số liên hoàn",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T3"
     },
     {
       "id": "M7.PT.RATIO.RATIO_LINEAR_CONSTRAINT",
       "skillId": "M7.RATIO.EQUAL_CHAIN",
-      "name": "ratio_linear_constraint",
+      "name": "Tỉ lệ thức có ràng buộc bậc nhất",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T3"
     },
     {
       "id": "M7.PT.RATIO.RATIO_PRODUCT_CONSTRAINT",
       "skillId": "M7.RATIO.EQUAL_CHAIN",
-      "name": "ratio_product_constraint",
+      "name": "Tỉ lệ thức có ràng buộc về tích",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T4"
     },
     {
       "id": "M7.PT.RATIO.RATIO_QUADRATIC_CONSTRAINT",
       "skillId": "M7.RATIO.EQUAL_CHAIN",
-      "name": "ratio_quadratic_constraint",
+      "name": "Tỉ lệ thức có ràng buộc bậc hai",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T4"
     },
     {
       "id": "M7.PT.RATIO.TRANSFORMED_DENOMINATORS",
       "skillId": "M7.RATIO.EQUAL_CHAIN",
-      "name": "transformed_denominators",
+      "name": "Biến đổi mẫu số",
       "knowledgeLevel": "K3",
       "thinkingLevel": "T5"
     },
     {
       "id": "M7.PT.RATIO.MULTIVARIABLE_NONLINEAR_REASONING",
       "skillId": "M7.RATIO.EQUAL_CHAIN",
-      "name": "multivariable_nonlinear_reasoning",
+      "name": "Suy luận phi tuyến nhiều biến",
       "knowledgeLevel": "K3",
       "thinkingLevel": "T5"
     },
     {
       "id": "M7.PT.MULTIVAR.EQUAL_RATIO_XYZ",
       "skillId": "M7.RATIO.MULTIVAR",
-      "name": "equal_ratio_xyz",
+      "name": "Dãy tỉ số bằng nhau với x, y, z",
       "knowledgeLevel": "K4",
       "thinkingLevel": "T2"
     },
     {
       "id": "M7.PT.MULTIVAR.MULTIPLE_CHAINED_RATIOS",
       "skillId": "M7.RATIO.MULTIVAR",
-      "name": "multiple_chained_ratios",
+      "name": "Nhiều tỉ số liên hoàn",
       "knowledgeLevel": "K4",
       "thinkingLevel": "T2"
     },
     {
       "id": "M7.PT.MULTIVAR.RATIO_LINEAR_EQUATION",
       "skillId": "M7.RATIO.MULTIVAR",
-      "name": "ratio_linear_equation",
+      "name": "Tỉ lệ thức kết hợp phương trình bậc nhất",
       "knowledgeLevel": "K4",
       "thinkingLevel": "T3"
     },
     {
       "id": "M7.PT.MULTIVAR.RATIO_XYZ_CONSTRAINT",
       "skillId": "M7.RATIO.MULTIVAR",
-      "name": "ratio_xyz_constraint",
+      "name": "Ràng buộc tỉ lệ giữa x, y, z",
       "knowledgeLevel": "K4",
       "thinkingLevel": "T3"
     },
     {
       "id": "M7.PT.MULTIVAR.RATIO_QUADRATIC_FORM",
       "skillId": "M7.RATIO.MULTIVAR",
-      "name": "ratio_quadratic_form",
+      "name": "Tỉ lệ thức dạng bậc hai",
       "knowledgeLevel": "K4",
       "thinkingLevel": "T4"
     },
     {
       "id": "M7.PT.MULTIVAR.SHIFTED_VARIABLE_RATIO",
       "skillId": "M7.RATIO.MULTIVAR",
-      "name": "shifted_variable_ratio",
+      "name": "Tỉ lệ thức khi biến bị dịch chuyển",
       "knowledgeLevel": "K4",
       "thinkingLevel": "T4"
     },
     {
       "id": "M7.PT.MULTIVAR.RATIONAL_DENOMINATOR_SYSTEMS",
       "skillId": "M7.RATIO.MULTIVAR",
-      "name": "rational_denominator_systems",
+      "name": "Hệ phương trình với mẫu số hữu tỉ",
       "knowledgeLevel": "K4",
       "thinkingLevel": "T5"
     },
     {
       "id": "M7.PT.ALG_IDENTITY.DISTRIBUTIVE_PROPERTY",
       "skillId": "M7.ALG.IDENTITY",
-      "name": "distributive_property",
+      "name": "Tính chất phân phối",
       "knowledgeLevel": "K4",
       "thinkingLevel": "T2"
     },
     {
       "id": "M7.PT.ALG_IDENTITY.POLYNOMIAL_EXPANSION",
       "skillId": "M7.ALG.IDENTITY",
-      "name": "polynomial_expansion",
+      "name": "Khai triển đa thức",
       "knowledgeLevel": "K4",
       "thinkingLevel": "T2"
     },
     {
       "id": "M7.PT.ALG_IDENTITY.COMMON_FACTOR_EXTRACTION",
       "skillId": "M7.ALG.IDENTITY",
-      "name": "common_factor_extraction",
+      "name": "Đặt nhân tử chung",
       "knowledgeLevel": "K4",
       "thinkingLevel": "T3"
     },
     {
       "id": "M7.PT.ALG_IDENTITY.ALGEBRAIC_IDENTITY",
       "skillId": "M7.ALG.IDENTITY",
-      "name": "algebraic_identity",
+      "name": "Hằng đẳng thức đáng nhớ",
       "knowledgeLevel": "K4",
       "thinkingLevel": "T3"
     },
     {
       "id": "M7.PT.ALG_IDENTITY.SYMMETRIC_EXPRESSION",
       "skillId": "M7.ALG.IDENTITY",
-      "name": "symmetric_expression",
+      "name": "Biểu thức đối xứng",
       "knowledgeLevel": "K4",
       "thinkingLevel": "T4"
     },
     {
       "id": "M7.PT.ALG_IDENTITY.FACTORIZATION",
       "skillId": "M7.ALG.IDENTITY",
-      "name": "factorization",
+      "name": "Phân tích đa thức thành nhân tử",
       "knowledgeLevel": "K4",
       "thinkingLevel": "T4"
     },
     {
       "id": "M7.PT.ALG_IDENTITY.CONDITIONAL_SIMPLIFICATION",
       "skillId": "M7.ALG.IDENTITY",
-      "name": "conditional_simplification",
+      "name": "Rút gọn có điều kiện",
       "knowledgeLevel": "K4",
       "thinkingLevel": "T5"
     },
     {
       "id": "M7.PT.ALG_IDENTITY.PROOF",
       "skillId": "M7.ALG.IDENTITY",
-      "name": "proof",
+      "name": "Chứng minh",
       "knowledgeLevel": "K4",
       "thinkingLevel": "T5"
     },
     {
       "id": "M7.PT.ALG_IDENTITY.NONLINEAR_SYSTEM_HSG",
       "skillId": "M7.ALG.IDENTITY",
-      "name": "nonlinear_system_HSG",
+      "name": "Hệ phi tuyến (nâng cao)",
       "knowledgeLevel": "K4",
       "thinkingLevel": "T5"
     },
     {
       "id": "M7.PT.SYM.DERIVE_FROM_SUM_PRODUCT",
       "skillId": "M7.ALG.SYMMETRIC",
-      "name": "derive_from_sum_product",
+      "name": "Suy ra từ tổng và tích",
       "knowledgeLevel": "K5",
       "thinkingLevel": "T2"
     },
     {
       "id": "M7.PT.SYM.X_PLUS_INVERSE_X",
       "skillId": "M7.ALG.SYMMETRIC",
-      "name": "x_plus_inverse_x",
+      "name": "Biểu thức x + 1/x",
       "knowledgeLevel": "K5",
       "thinkingLevel": "T2"
     },
     {
       "id": "M7.PT.SYM.AB_BC_CA_CONDITION",
       "skillId": "M7.ALG.SYMMETRIC",
-      "name": "ab_bc_ca_condition",
+      "name": "Điều kiện ab + bc + ca",
       "knowledgeLevel": "K5",
       "thinkingLevel": "T3"
     },
     {
       "id": "M7.PT.SYM.CYCLIC_SYMMETRIC_RATIONAL",
       "skillId": "M7.ALG.SYMMETRIC",
-      "name": "cyclic_symmetric_rational",
+      "name": "Biểu thức hữu tỉ đối xứng vòng quanh",
       "knowledgeLevel": "K5",
       "thinkingLevel": "T3"
     },
     {
       "id": "M7.PT.SYM.SUM_ZERO_IDENTITY",
       "skillId": "M7.ALG.SYMMETRIC",
-      "name": "sum_zero_identity",
+      "name": "Hằng đẳng thức khi tổng bằng 0",
       "knowledgeLevel": "K5",
       "thinkingLevel": "T4"
     },
     {
       "id": "M7.PT.FACTOR.COMMON_FACTOR",
       "skillId": "M7.ALG.FACTOR",
-      "name": "common_factor",
+      "name": "Nhân tử chung",
       "knowledgeLevel": "K4",
       "thinkingLevel": "T2"
     },
     {
       "id": "M7.PT.FACTOR.GROUPING",
       "skillId": "M7.ALG.FACTOR",
-      "name": "grouping",
+      "name": "Nhóm hạng tử",
       "knowledgeLevel": "K4",
       "thinkingLevel": "T2"
     },
     {
       "id": "M7.PT.FACTOR.IDENTITIES",
       "skillId": "M7.ALG.FACTOR",
-      "name": "identities",
+      "name": "Dùng hằng đẳng thức",
       "knowledgeLevel": "K4",
       "thinkingLevel": "T3"
     },
     {
       "id": "M7.PT.FACTOR.CYCLIC_SYMMETRIC",
       "skillId": "M7.ALG.FACTOR",
-      "name": "cyclic_symmetric",
+      "name": "Đối xứng vòng quanh",
       "knowledgeLevel": "K4",
       "thinkingLevel": "T3"
     },
     {
       "id": "M7.PT.FACTOR.UNDER_CONDITION",
       "skillId": "M7.ALG.FACTOR",
-      "name": "under_condition",
+      "name": "Phân tích có điều kiện",
       "knowledgeLevel": "K4",
       "thinkingLevel": "T4"
     },
     {
       "id": "M7.PT.PROOF.IDENTITY_PROOF",
       "skillId": "M7.PROOF.ALGEBRA",
-      "name": "identity_proof",
+      "name": "Chứng minh đẳng thức",
       "knowledgeLevel": "K5",
       "thinkingLevel": "T2"
     },
     {
       "id": "M7.PT.PROOF.DERIVE_INVARIANT",
       "skillId": "M7.PROOF.ALGEBRA",
-      "name": "derive_invariant",
+      "name": "Suy ra đại lượng không đổi",
       "knowledgeLevel": "K5",
       "thinkingLevel": "T2"
     },
     {
       "id": "M7.PT.PROOF.INEQUALITY_SIGN_REASONING",
       "skillId": "M7.PROOF.ALGEBRA",
-      "name": "inequality_sign_reasoning",
+      "name": "Suy luận dấu của bất đẳng thức",
       "knowledgeLevel": "K5",
       "thinkingLevel": "T3"
     },
     {
       "id": "M7.PT.PROOF.INTEGER_PERFECT_POWER",
       "skillId": "M7.PROOF.ALGEBRA",
-      "name": "integer_perfect_power",
+      "name": "Số nguyên là lũy thừa đúng",
       "knowledgeLevel": "K5",
       "thinkingLevel": "T3"
     },
     {
       "id": "M7.PT.PROOF.HSG_TRANSFORMATION",
       "skillId": "M7.PROOF.ALGEBRA",
-      "name": "HSG_transformation",
+      "name": "Biến đổi nâng cao (HSG)",
       "knowledgeLevel": "K5",
       "thinkingLevel": "T4"
     },
     {
       "id": "M7.PT.GEO.ANGLES_PARALLEL_LINES",
       "skillId": "M7.GEO.PARALLEL_CRITERIA",
-      "name": "angles_parallel_lines",
+      "name": "Góc tạo bởi đường thẳng song song",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T2"
     },
     {
       "id": "M7.PT.GEO.CONGRUENT_TRIANGLES",
       "skillId": "M7.GEO.PARALLEL_CRITERIA",
-      "name": "congruent_triangles",
+      "name": "Tam giác bằng nhau",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T2"
     },
     {
       "id": "M7.PT.GEO.MIDPOINT_RAY_SEGMENT",
       "skillId": "M7.GEO.PARALLEL_CRITERIA",
-      "name": "midpoint_ray_segment",
+      "name": "Trung điểm, tia, đoạn thẳng",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T3"
     },
     {
       "id": "M7.PT.GEO.TRIANGLE_RELATIONSHIPS",
       "skillId": "M7.GEO.PARALLEL_CRITERIA",
-      "name": "triangle_relationships",
+      "name": "Quan hệ giữa các yếu tố trong tam giác",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T3"
     },
     {
       "id": "M7.PT.GEO.PRACTICAL_SOLIDS",
       "skillId": "M7.GEO.PARALLEL_CRITERIA",
-      "name": "practical_solids",
+      "name": "Hình khối trong thực tế",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T4"
     },
     {
       "id": "M7.PT.COMB.CHOOSE_TWO_ENDPOINTS",
       "skillId": "M7.TRI.CONGRUENCE_1",
-      "name": "choose_two_endpoints",
+      "name": "Chọn hai đầu mút",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T2"
     },
     {
       "id": "M7.PT.COMB.SYSTEMATIC_COUNTING",
       "skillId": "M7.TRI.CONGRUENCE_1",
-      "name": "systematic_counting",
+      "name": "Đếm có hệ thống",
       "knowledgeLevel": "K2",
       "thinkingLevel": "T2"
     }

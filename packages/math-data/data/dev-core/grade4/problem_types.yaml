@@ -3,54 +3,54 @@ rule: track_problem_type_mastery_separately_from_skill_mastery
 problem_type_families:
   M4.ARITH.DISTRIBUTIVE:
   - id: M4.PT.DIST.DIRECT
-    name: direct_use
+    name: Áp dụng trực tiếp tính chất phân phối
     thinking_level: T2
   - id: M4.PT.DIST.COMMON_FACTOR
-    name: recognize_common_factor
+    name: Nhận ra thừa số chung
     thinking_level: T2
   - id: M4.PT.DIST.CONVENIENT
-    name: convenient_calculation
+    name: Tính nhanh, tính hợp lý
     thinking_level: T3
   - id: M4.PT.DIST.HIDDEN_FACTOR
-    name: hidden_common_factor
+    name: Thừa số chung bị ẩn
     thinking_level: T4
   - id: M4.PT.DIST.MULTI_TERM
-    name: three_or_more_terms
+    name: Từ ba số hạng trở lên
     thinking_level: T4
   - id: M4.PT.DIST.EQUATION
-    name: equation_with_common_factor
+    name: Tìm x có thừa số chung
     thinking_level: T4
   - id: M4.PT.DIST.CREATE
-    name: create_own_expression
+    name: Tự đặt biểu thức
     thinking_level: T5
   M4.WORD.SUM_DIFF:
   - id: M4.PT.SD.DIRECT
-    name: direct_sum_difference
+    name: Tìm hai số biết tổng và hiệu
     thinking_level: T2
   - id: M4.PT.SD.HIDDEN_SUM
-    name: hidden_sum
+    name: Tổng bị ẩn
     thinking_level: T3
   - id: M4.PT.SD.HIDDEN_DIFF
-    name: hidden_difference
+    name: Hiệu bị ẩn
     thinking_level: T3
   - id: M4.PT.SD.TRANSFER
-    name: after_transfer
+    name: Sau khi chuyển bớt giữa hai số
     thinking_level: T4
   - id: M4.PT.SD.BEFORE_AFTER
-    name: before_after_change
+    name: So sánh trước và sau khi thay đổi
     thinking_level: T4
   M4.WORD.UNIT_RATE:
   - id: M4.PT.UR.ONE_MANY
-    name: find_one_then_many
+    name: Tìm một đơn vị rồi suy ra nhiều đơn vị
     thinking_level: T2
   - id: M4.PT.UR.MANY_ONE
-    name: find_many_then_one
+    name: Tìm nhiều đơn vị rồi suy ra một đơn vị
     thinking_level: T2
   - id: M4.PT.UR.INVERSE
-    name: inverse_unit_rate
+    name: Rút về đơn vị — tỉ lệ nghịch
     thinking_level: T3
   - id: M4.PT.UR.MULTISTEP
-    name: multi_step_unit_rate
+    name: Rút về đơn vị nhiều bước
     thinking_level: T3
 advanced_families:
 - fast_calculation_add_sub
