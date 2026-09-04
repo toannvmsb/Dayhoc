@@ -1,13 +1,13 @@
 grade: 4
 skills:
   M4.NUM.001:
-    name: Place value up to 100000
+    name: Hàng của số đến 100 000
     domain: number_sense
     prerequisites: []
     status: source_backed_initial_core
     curriculum_origin: G4_STANDARD
   M4.NUM.010:
-    name: Six-digit numbers and 1,000,000
+    name: Số có sáu chữ số và số 1 000 000
     domain: number_sense
     prerequisites:
     - M4.NUM.001
@@ -21,21 +21,21 @@ skills:
     status: source_backed_initial_core
     curriculum_origin: G4_STANDARD
   M4.NUM.030:
-    name: Numbers in millions class
+    name: Các số trong lớp triệu
     domain: number_sense
     prerequisites:
     - M4.NUM.020
     status: source_backed_initial_core
     curriculum_origin: G4_STANDARD
   M4.NUM.040:
-    name: Compare multi-digit numbers
+    name: So sánh các số có nhiều chữ số
     domain: number_sense
     prerequisites:
     - M4.NUM.020
     status: source_backed_initial_core
     curriculum_origin: G4_STANDARD
   M4.NUM.050:
-    name: Round to hundred-thousands
+    name: Làm tròn số đến hàng trăm nghìn
     domain: number_sense
     prerequisites:
     - M4.NUM.020
@@ -43,45 +43,45 @@ skills:
     status: source_backed_initial_core
     curriculum_origin: G4_STANDARD
   M4.NUM.060:
-    name: Natural-number sequence
+    name: Dãy số tự nhiên
     domain: pattern_reasoning
     prerequisites: []
     status: source_backed_initial_core
     curriculum_origin: G4_STANDARD
   M4.NUM.070:
-    name: Even and odd numbers
+    name: Số chẵn, số lẻ
     domain: number_sense
     prerequisites: []
     status: source_backed_initial_core
     curriculum_origin: G4_STANDARD
   M4.ARITH.ADD_MULTI:
-    name: Multi-digit addition
+    name: Phép cộng các số có nhiều chữ số
     domain: arithmetic
     prerequisites: []
     status: source_backed_initial_core
     curriculum_origin: G4_STANDARD
   M4.ARITH.SUB_MULTI:
-    name: Multi-digit subtraction
+    name: Phép trừ các số có nhiều chữ số
     domain: arithmetic
     prerequisites: []
     status: source_backed_initial_core
     curriculum_origin: G4_STANDARD
   M4.ARITH.ADD_COMM:
-    name: Commutative property of addition
+    name: Tính chất giao hoán của phép cộng
     domain: arithmetic
     prerequisites:
     - M4.ARITH.ADD_MULTI
     status: source_backed_initial_core
     curriculum_origin: G4_STANDARD
   M4.ARITH.ADD_ASSOC:
-    name: Associative property of addition
+    name: Tính chất kết hợp của phép cộng
     domain: arithmetic
     prerequisites:
     - M4.ARITH.ADD_MULTI
     status: source_backed_initial_core
     curriculum_origin: G4_STANDARD
   M4.ARITH.ADD_FAST:
-    name: Strategic fast addition
+    name: Cộng nhẩm, cộng nhanh
     domain: arithmetic
     prerequisites:
     - M4.ARITH.ADD_COMM
@@ -89,63 +89,63 @@ skills:
     status: source_backed_initial_core
     curriculum_origin: G4_STANDARD
   M4.ARITH.MUL_1DIGIT:
-    name: Multiply by one-digit number
+    name: Nhân với số có một chữ số
     domain: arithmetic
     prerequisites: []
     status: source_backed_initial_core
     curriculum_origin: G4_STANDARD
   M4.ARITH.DIV_1DIGIT:
-    name: Divide by one-digit number
+    name: Chia cho số có một chữ số
     domain: arithmetic
     prerequisites: []
     status: source_backed_initial_core
     curriculum_origin: G4_STANDARD
   M4.ARITH.MUL_COMM:
-    name: Commutative property of multiplication
+    name: Tính chất giao hoán của phép nhân
     domain: arithmetic
     prerequisites: []
     status: source_backed_initial_core
     curriculum_origin: G4_STANDARD
   M4.ARITH.MUL_ASSOC:
-    name: Associative property of multiplication
+    name: Tính chất kết hợp của phép nhân
     domain: arithmetic
     prerequisites: []
     status: source_backed_initial_core
     curriculum_origin: G4_STANDARD
   M4.ARITH.POW10:
-    name: Multiply/divide by 10, 100, 1000...
+    name: Nhân, chia với 10, 100, 1000, …
     domain: arithmetic
     prerequisites: []
     status: source_backed_initial_core
     curriculum_origin: G4_STANDARD
   M4.ARITH.DISTRIBUTIVE:
-    name: Distributive property
+    name: Nhân một số với một tổng
     domain: algebraic_thinking
     prerequisites: []
     status: source_backed_initial_core
     curriculum_origin: G4_STANDARD
   M4.ARITH.MUL_2DIGIT:
-    name: Multiply by two-digit number
+    name: Nhân với số có hai chữ số
     domain: arithmetic
     prerequisites:
     - M4.ARITH.MUL_1DIGIT
     status: source_backed_initial_core
     curriculum_origin: G4_STANDARD
   M4.ARITH.DIV_2DIGIT:
-    name: Divide by two-digit number
+    name: Chia cho số có hai chữ số
     domain: arithmetic
     prerequisites:
     - M4.ARITH.DIV_1DIGIT
     status: source_backed_initial_core
     curriculum_origin: G4_STANDARD
   M4.ARITH.ESTIMATE:
-    name: Estimation in calculation
+    name: Ước lượng trong tính toán
     domain: number_sense
     prerequisites: []
     status: source_backed_initial_core
     curriculum_origin: G4_STANDARD
   M4.ARITH.AVERAGE:
-    name: Arithmetic mean
+    name: Số trung bình cộng
     domain: word_problems
     prerequisites: []
     status: source_backed_initial_core
