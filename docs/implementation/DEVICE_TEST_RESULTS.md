@@ -52,16 +52,17 @@ Legend: ⏳ not started · 🔄 in progress · ✅ pass · ❌ fail
 
 ---
 
-## iOS
+## iOS — ✅ DONE (2026-09-05)
 
 Android is complete (all 19 tests, 36 defects found and fixed — see below). iOS
-testing started 2026-09-05. No Mac/Xcode on this machine, so a native dev-client
-build (like the Android APK) isn't possible here — testing uses **Expo Go** from
-the App Store instead. `expo-dev-client` is not a project dependency, so `expo
-start` serves Expo Go-compatible manifests by default. The Android freeze (D-22)
-was an Android-specific `ExperienceActivity` recreation bug — iOS has no
-equivalent lifecycle event, so Expo Go is expected to behave normally here, but
-this needs confirming on the device like everything else.
+testing (2026-09-05) used **Expo Go** from the App Store over LAN (no Mac/Xcode
+on this machine for a native dev-client build; `expo-dev-client` isn't a project
+dependency so `expo start` serves Expo Go-compatible manifests by default).
+Connected via QR code first try, no Android-style freeze (D-22 was an
+Android-specific `ExperienceActivity` recreation bug, doesn't apply to iOS).
+Tester confirmed the full app works on iOS with no functional gaps found; the
+only findings were two UX polish items (D-37) fixed during this pass. Tester:
+**"anh thấy mọi thứ ổn rồi, thiết bị iphone coi như done nhé."**
 
 | | |
 |---|---|
