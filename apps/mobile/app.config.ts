@@ -74,7 +74,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     'expo-router',
     'expo-secure-store',
-    ['expo-splash-screen', { backgroundColor: '#3B5BFF', resizeMode: 'contain' }],
+    ['expo-splash-screen', { backgroundColor: '#3B5BFF', image: './assets/splash.png', imageWidth: 160 }],
     [
       'expo-image-picker',
       {
