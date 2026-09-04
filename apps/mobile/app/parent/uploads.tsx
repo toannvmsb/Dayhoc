@@ -106,7 +106,12 @@ export default function UploadsScreen() {
     return (
       <Screen>
         <H1>Xem lại nội dung</H1>
-        <Muted>Ô đã tích là phần DạyZi khá chắc. Bỏ tích câu không đúng. Chỉ mục bạn xác nhận mới được ghi nhận.</Muted>
+        {review.items.length > 0 ? (
+          <Muted>Ô đã tích là phần DạyZi khá chắc. Bỏ tích câu không đúng. Chỉ mục bạn xác nhận mới được ghi nhận.</Muted>
+        ) : (
+          <Muted>Ảnh này không có câu bài tập để ghi nhận (ví dụ: tin nhắn của giáo viên). Không có gì được lưu vào hồ sơ.</Muted>
+        )}
+        {review.teacherNote && <Card><Overline>Ghi chú</Overline><Body>{review.teacherNote}</Body></Card>}
         {review.items.map((it) => {
           const t = ticked[it.index] ?? { confirm: false };
           return (

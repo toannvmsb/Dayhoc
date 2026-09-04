@@ -44,6 +44,24 @@ const SCENARIOS: readonly MockScenario[] = [
   { documentType: 'TEACHER_NOTE', kind: 'TEACHER_MESSAGE', itemCount: 0, graded: false, teacherNote: 'Tuần này lớp học phép cộng phân số khác mẫu.', baseConfidence: 0.55 },
 ];
 
+/** Scenarios that actually produce items to review — every kind except a bare teacher message. */
+const SCENARIOS_WITH_ITEMS = SCENARIOS.filter((s) => s.itemCount > 0);
+
+/**
+ * Pick the mock scenario for this upload. The scenario MUST match what the
+ * parent told us they were uploading (`kindHint`) — earlier this picked a
+ * scenario purely from a content hash, so a parent uploading a "Bài kiểm tra
+ * đã chấm" could randomly land on the zero-item TEACHER_MESSAGE scenario and
+ * see a review screen with no items to tick, only the note + Confirm/Later.
+ * Randomness (via the hash) is kept only for `OTHER`, and only among
+ * scenarios that actually have items.
+ */
+function pickScenario(kindHint: UploadKind, bytes: Uint8Array): MockScenario {
+  const byKind = SCENARIOS.find((s) => s.kind === kindHint);
+  if (byKind) return byKind;
+  return SCENARIOS_WITH_ITEMS[hashInt(bytes, 'scenario') % SCENARIOS_WITH_ITEMS.length]!;
+}
+
 /**
  * Deterministic mock vision adapter — the DEV/LOCAL default. Same bytes → same
  * extraction. Produces a realistic mix of high- and low-confidence item
@@ -56,7 +74,7 @@ export class MockDocumentVisionAdapter implements DocumentVisionAdapter {
   readonly model = 'mock';
 
   analyze(input: VisionAnalyzeInput): Promise<DocumentExtraction> {
-    const scenario = SCENARIOS[hashInt(input.bytes, 'scenario') % SCENARIOS.length]!;
+    const scenario = pickScenario(input.kindHint, input.bytes);
     const skills = input.knownSkillIds.length > 0 ? input.knownSkillIds : ['UNKNOWN_SKILL'];
 
     const items: ExtractedItem[] = [];
