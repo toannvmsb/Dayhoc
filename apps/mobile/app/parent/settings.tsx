@@ -226,6 +226,14 @@ export default function SettingsScreen() {
         </Card>
       ) : null}
 
+      {childId ? (
+        <Card>
+          <Overline>Kiểm tra & ôn thi</Overline>
+          <Muted>Khai báo kỳ kiểm tra để có bản đồ ôn tập, rồi nhập kết quả để xem chẩn đoán mất điểm.</Muted>
+          <Button label="Mở" tone="ghost" onPress={() => router.push('/parent/exams')} />
+        </Card>
+      ) : null}
+
       <Card>
         <Overline>Gói dịch vụ {ent.data ? `· đang dùng ${PLAN_LABEL[ent.data.plan] ?? ent.data.plan}` : ''}</Overline>
         <Muted>Đổi gói không phát sinh thanh toán. Gói không ảnh hưởng chất lượng hay mô hình AI.</Muted>
