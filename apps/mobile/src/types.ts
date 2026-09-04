@@ -7,6 +7,38 @@
 
 export type Child = { childId: string; displayName: string; schoolGrade: number };
 
+export type TeacherLink = {
+  id: string;
+  teacherUserId: string;
+  teacherName: string;
+  subjectId: string | null;
+  relationshipType: string;
+  status: string;
+  needsGuardianReview: boolean;
+  acceptedAt: string | null;
+};
+
+export type RelationshipRequest = {
+  id: string;
+  relationshipKind: string;
+  relationshipType: string;
+  requesterRole: string;
+  targetType: string;
+  targetChildId: string | null;
+  proposedPermissions: string[];
+  status: string;
+  expiresAt: string | null;
+  createdAt: string;
+};
+
+export type TeacherLinkPermissions = {
+  linkId: string;
+  subjectId: string | null;
+  grants: { code: string; accessSource: string }[];
+};
+
+export type InviteCode = { code: string; expiresAt: string; proposedPermissions: string[] };
+
 export type ParentHome = {
   child: { childId: string; displayName: string; schoolGrade: number; schoolContext: string };
   learningContext: {

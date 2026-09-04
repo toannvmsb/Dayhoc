@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
+import { router } from 'expo-router';
 import { useAuth } from '@/auth';
 import { useChild } from '@/child';
 import { ParentNav } from '@/nav';
@@ -206,6 +207,14 @@ export default function SettingsScreen() {
               )}
             </>
           )}
+        </Card>
+      ) : null}
+
+      {childId ? (
+        <Card>
+          <Overline>Giáo viên của con</Overline>
+          <Muted>Kết nối giáo viên, duyệt yêu cầu và chọn giáo viên thấy được gì.</Muted>
+          <Button label="Mở" tone="ghost" onPress={() => router.push('/parent/connect')} />
         </Card>
       ) : null}
 
