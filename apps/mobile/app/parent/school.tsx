@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useChild } from '@/child';
@@ -70,13 +70,18 @@ export default function SchoolScreen() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | undefined>();
 
+  const hasPrimary = (enr.data?.class ?? []).some(
+    (c) => c.enrollmentType === 'PRIMARY' && c.status === 'ACTIVE',
+  );
+  const typeOptions = hasPrimary ? CLASS_TYPES.filter((t) => t.value !== 'PRIMARY') : CLASS_TYPES;
+
   const [q, setQ] = useState('');
   const [results, setResults] = useState<SchoolRow[] | null>(null);
   const [picked, setPicked] = useState<SchoolRow | null>(null);
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [newSchool, setNewSchool] = useState('');
   const [newClass, setNewClass] = useState('');
-  const [classType, setClassType] = useState('PRIMARY');
+  const [classType, setClassType] = useState<string>(hasPrimary ? 'SUPPLEMENTARY' : 'PRIMARY');
   const [privacy, setPrivacy] = useState('LINKED_PRIVATE');
 
   useFocusEffect(
@@ -85,6 +90,11 @@ export default function SchoolScreen() {
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [childId]),
   );
+
+  // once we know the child already has a primary class, PRIMARY is not an option
+  useEffect(() => {
+    if (hasPrimary && classType === 'PRIMARY') setClassType('SUPPLEMENTARY');
+  }, [hasPrimary, classType]);
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -241,7 +251,8 @@ export default function SchoolScreen() {
             {classes.length === 0 && <Muted>Chưa có lớp nào. Thêm lớp bên dưới.</Muted>}
 
             <Overline>Loại lớp</Overline>
-            <Chips options={CLASS_TYPES} value={classType} onChange={setClassType} />
+            {hasPrimary && <Muted>Con đã có lớp chính — chỉ thêm được lớp học thêm / đội tuyển.</Muted>}
+            <Chips options={typeOptions} value={classType} onChange={setClassType} />
             <Overline>Chế độ chia sẻ khi gán</Overline>
             <Chips options={PRIVACY} value={privacy} onChange={setPrivacy} />
 

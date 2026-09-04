@@ -140,19 +140,43 @@ const ROUTES: Record<string, Handler> = {
       grade: Number(c.body.grade),
       className: String(c.body.className ?? '').trim(),
     }),
-  'POST /children/:id/enrollments/school': async (c) =>
-    getApi().createSchoolEnrollment(auth(c, 'PARENT'), c.params[0]!, {
-      schoolId: String(c.body.schoolId ?? ''),
-      academicYearId: String(c.body.academicYearId ?? ''),
-      grade: Number(c.body.grade),
-    }),
-  'POST /children/:id/enrollments/class': async (c) =>
-    getApi().createClassEnrollment(auth(c, 'PARENT'), c.params[0]!, {
-      classroomId: String(c.body.classroomId ?? ''),
-      academicYearId: String(c.body.academicYearId ?? ''),
-      enrollmentType: (c.body.enrollmentType as never) ?? 'PRIMARY',
-      privacyMode: (c.body.privacyMode as never) ?? 'LINKED_PRIVATE',
-    }),
+  'POST /children/:id/enrollments/school': async (c) => {
+    try {
+      return await getApi().createSchoolEnrollment(auth(c, 'PARENT'), c.params[0]!, {
+        schoolId: String(c.body.schoolId ?? ''),
+        academicYearId: String(c.body.academicYearId ?? ''),
+        grade: Number(c.body.grade),
+      });
+    } catch (e) {
+      const m = e instanceof Error ? e.message : String(e);
+      if (/already has an ACTIVE school enrollment/i.test(m)) {
+        throw new RestError(409, 'Con đã được ghi nhận học ở một trường trong năm học này.');
+      }
+      throw e;
+    }
+  },
+  'POST /children/:id/enrollments/class': async (c) => {
+    try {
+      return await getApi().createClassEnrollment(auth(c, 'PARENT'), c.params[0]!, {
+        classroomId: String(c.body.classroomId ?? ''),
+        academicYearId: String(c.body.academicYearId ?? ''),
+        enrollmentType: (c.body.enrollmentType as never) ?? 'PRIMARY',
+        privacyMode: (c.body.privacyMode as never) ?? 'LINKED_PRIVATE',
+      });
+    } catch (e) {
+      const m = e instanceof Error ? e.message : String(e);
+      if (/PRIMARY class enrollment|PRIMARY_ENROLLMENT_EXISTS/i.test(m)) {
+        throw new RestError(
+          409,
+          'Con đã có một lớp chính trong năm học này. Chọn loại lớp khác (học thêm, đội tuyển…) hoặc bỏ gán lớp chính cũ trước.',
+        );
+      }
+      if (/already has an ACTIVE school enrollment/i.test(m)) {
+        throw new RestError(409, 'Con đã được ghi nhận học ở một trường trong năm học này.');
+      }
+      throw e;
+    }
+  },
   'PATCH /children/:id/class-enrollments/:eid/privacy': async (c) =>
     getApi().setClassPrivacy(
       auth(c, 'PARENT'),
