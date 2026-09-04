@@ -10,10 +10,19 @@ import {
   useFonts,
 } from '@expo-google-fonts/be-vietnam-pro';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { enableFreeze, enableScreens } from 'react-native-screens';
 import { AuthProvider, useAuth } from '@/auth';
 import { ChildProvider } from '@/child';
 import { configStatus } from '@/config';
 import { theme } from '@/theme';
+
+// On Expo Go SDK 57 (RN 0.86, New Architecture) the native rn-screens layer
+// froze the screen underneath after a router.back() ("Tried to enqueue runnable
+// on already finished thread"). Turning off native screens + the react-freeze
+// optimisation makes navigation JS-driven — slightly less slick transitions,
+// but the app stays responsive. Stability > polish for the pilot.
+enableScreens(false);
+enableFreeze(false);
 
 void SplashScreen.preventAutoHideAsync();
 
