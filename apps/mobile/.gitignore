@@ -1,0 +1,23 @@
+# Generated native projects (Continuous Native Generation — run `npx expo prebuild`)
+/android
+/ios
+
+# Expo
+.expo/
+expo-env.d.ts
+dist/
+web-build/
+
+# Native build artefacts
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# local env
+.env
