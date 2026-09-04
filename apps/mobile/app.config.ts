@@ -51,7 +51,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   version: '0.1.0',
   orientation: 'portrait',
   userInterfaceStyle: 'light',
-  splash: { backgroundColor: '#3B5BFF', resizeMode: 'contain' },
+  // SDK 57 removed the top-level `splash` key — splash config now lives in the
+  // `expo-splash-screen` plugin (see plugins below).
   assetBundlePatterns: ['**/*'],
   ios: {
     supportsTablet: true,
@@ -73,6 +74,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     'expo-router',
     'expo-secure-store',
+    ['expo-splash-screen', { backgroundColor: '#3B5BFF', resizeMode: 'contain' }],
     [
       'expo-image-picker',
       {
