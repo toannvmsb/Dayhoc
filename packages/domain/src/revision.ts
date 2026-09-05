@@ -79,10 +79,12 @@ export interface WeeklyReport {
 export const NOTIFICATION_TYPES = [
   'gap_detected',
   'exam_upcoming',
+  'revision_reminder',
   'plan_ready',
   'weekly_report_ready',
   'teacher_updated',
   'child_finished_tasks',
+  'relationship_request_received',
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
