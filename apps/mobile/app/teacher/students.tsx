@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Pressable } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/auth';
 import { TeacherNav } from '@/nav';
-import { Body, Button, Card, ErrorNote, Field, H1, Loading, Muted, Overline, Screen } from '@/ui';
+import { theme } from '@/theme';
+import { Avatar, Button, Card, Chip, ErrorNote, Field, H1, Loading, Muted, Overline, Screen } from '@/ui';
 import { errText, useClient, useQuery } from '@/useApi';
 import { WorkspaceSwitcher } from '@/workspace-switcher';
 import type { TeacherChildRow } from '@/types';
@@ -56,8 +57,13 @@ export default function TeacherStudents() {
           onPress={() => router.push({ pathname: '/teacher/[childId]', params: { childId: c.childId } })}
         >
           <Card>
-            <Body>{c.displayName}</Body>
-            <Muted>{c.subjectId ? 'Có phân môn' : 'Chưa gắn môn'}</Muted>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Avatar label={c.displayName} size={38} />
+              <Text style={{ flex: 1, fontSize: 15.5, fontWeight: '700', color: theme.color.textHeading }}>
+                {c.displayName}
+              </Text>
+              <Chip label={c.subjectId ? 'Có phân môn' : 'Chưa gắn môn'} tone={c.subjectId ? 'primary' : 'neutral'} />
+            </View>
           </Card>
         </Pressable>
       ))}
