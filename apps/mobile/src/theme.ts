@@ -35,6 +35,8 @@ export const theme = {
     attentionBorder: '#F3DFC2',
     attentionText: '#6B5528', // amber-brown — attention-card body text, form errors
     attentionHeading: '#3F2D0C',
+    warn: '#B45309', // punchier amber — inline status labels ("Chưa ổn định"), not a full card
+    warnFill: '#F59E0B', // matching progress-bar fill for a below-target skill
     danger: '#C0392B', // destructive actions only (irreversible delete) — kept apart
     // from the calm amber "attention" system so a real destructive button still
     // reads as more serious than a routine warning.
