@@ -111,11 +111,25 @@ export function buildItemGenerationSpecs(
     const domain = slot.target.domain;
     const answerKind = answerKindFor(structure, domain);
 
-    const { knowledgeLevel, thinkingLevel } = pinLevels(spec, slot, isStretch);
-    const problemTypeId = pickProblemType(kb, slot.target.skillId, knowledgeLevel, thinkingLevel);
+    let { knowledgeLevel } = pinLevels(spec, slot, isStretch);
+    const { thinkingLevel } = pinLevels(spec, slot, isStretch);
 
     const skill = kb.skills.get(slot.target.skillId);
     const closure = new Set<string>(skill ? kb.prerequisiteClosure(slot.target.skillId) : []);
+
+    // A non-repair item whose target still sits on a BLOCKING prerequisite gap
+    // must stay at concept-intro K1 (exempt from PREREQUISITE_SAFE, and
+    // pedagogically right for parallel-repair): don't ask for K2+ fluency on a
+    // skill whose foundation the child hasn't secured (doc 56 §0 / §10).
+    if (
+      slot.bucket !== 'prerequisiteRepair' &&
+      kIdx(knowledgeLevel) >= kIdx('K2') &&
+      blockingPrereqs.some((b) => closure.has(b))
+    ) {
+      knowledgeLevel = kLevel(Math.max(kIdx(spec.difficulty.kMin), kIdx('K1')));
+    }
+
+    const problemTypeId = pickProblemType(kb, slot.target.skillId, knowledgeLevel, thinkingLevel);
     const supportingSkillIds = [...closure]
       .filter((p) => masteredSet.has(p) && !weakSet.has(p))
       .slice(0, 2) as SkillId[];

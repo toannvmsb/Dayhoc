@@ -60,10 +60,34 @@ const T_PROPER_NOUN_NEAR = 0.6;
 /** number tuple identical AND this much lexical overlap → COPY (not coincidence). */
 const T_JACCARD_WITH_SAME_NUMBERS = 0.45;
 
+/**
+ * Vietnamese instructional / answer-format boilerplate. Shared across many
+ * legitimate items ("Theo em … Giải thích và cho ví dụ", "Viết dưới dạng phân số
+ * tối giản", "Chọn đáp án đúng"), so it inflates token/trigram similarity
+ * between items that are actually about different problems. Removed BEFORE the
+ * `token_jaccard` / `trigram_dice` signals only — `near_copy`, `template_match`,
+ * `number_tuple` and `proper_noun` stay strict. This is IR stop-word removal,
+ * not a loosened safety threshold (doc 56 §0).
+ */
+const INSTRUCTIONAL_STOPWORDS = new Set([
+  'theo', 'em', 'hãy', 'cho', 'biết', 'hỏi', 'vì', 'sao', 'tại', 'không', 'đúng',
+  'sai', 'nào', 'bao', 'nhiêu', 'mấy', 'là', 'của', 'và', 'một', 'các', 'có',
+  'được', 'bằng', 'thì', 'khi', 'nếu', 'rằng', 'ra',
+  'tính', 'giá', 'trị', 'kết', 'quả', 'biểu', 'thức', 'phép', 'thực', 'hiện',
+  'viết', 'dưới', 'dạng', 'phân', 'số', 'tối', 'giản', 'tỉ', 'chọn', 'đáp', 'án',
+  'giải', 'thích', 'ví', 'dụ', 'nhận', 'định', 'luôn', 'khẳng', 'kỹ', 'năng',
+  'trình', 'bày', 'lời', 'từng', 'bước', 'nêu', 'kể', 'tìm', 'phần', 'trên', 'tổng',
+]);
+
 function words(s: string): string[] {
   return normalizeForSimilarity(s)
     .split(/\s+/)
     .filter((w) => w.length > 1 && w !== '#');
+}
+
+/** Content words only — instructional boilerplate removed (for jaccard/trigram). */
+function contentWords(s: string): string[] {
+  return words(s).filter((w) => !INSTRUCTIONAL_STOPWORDS.has(w));
 }
 
 /** Lexical content words below this → treat the prompt as a bare computation. */
@@ -95,7 +119,8 @@ function jaccard(a: readonly string[], b: readonly string[]): number {
 }
 
 function trigrams(s: string): Set<string> {
-  const t = normalizeForSimilarity(s).replace(/\s+/g, ' ');
+  // trigrams over the content words only (boilerplate stripped)
+  const t = contentWords(s).join(' ');
   const out = new Set<string>();
   for (let i = 0; i < t.length - 2; i += 1) out.add(t.slice(i, i + 3));
   return out;
@@ -151,7 +176,8 @@ function compareOne(
     push('template_match', 1, 'COPY');
   }
 
-  const j = jaccard(w1, w2);
+  // token_jaccard / trigram_dice compare CONTENT only (boilerplate stripped)
+  const j = jaccard(contentWords(prompt), contentWords(other.prompt));
   if (j >= T_JACCARD_COPY) push('token_jaccard', j, 'COPY');
   else if (j >= T_JACCARD_NEAR) push('token_jaccard', j, 'NEAR');
 

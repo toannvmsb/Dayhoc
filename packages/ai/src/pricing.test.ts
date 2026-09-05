@@ -19,11 +19,21 @@ describe('AI pricing registry (§2, §10.6)', () => {
     expect(reg.priceAt('google-document-ai-enterprise-ocr').freeUnits).toBe(1000);
   });
 
-  it('every entry has an effective date and a source (external config, not constants)', () => {
+  it('every entry has an effective date and a documented source (external config, not constants)', () => {
     for (const e of DEFAULT_PRICE_TABLE) {
       expect(e.effectiveDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-      expect(e.source).toContain('Pricing_AI_Cost_Guardrails');
+      // v1.0 guardrails table OR a real provider list price (doc 56 §1)
+      expect(e.source).toMatch(/Pricing_AI_Cost_Guardrails|OpenAI API pricing/);
     }
+  });
+
+  it('carries real OpenAI list prices for the doc 56 benchmark (standard tier)', () => {
+    const reg = new PricingRegistry();
+    expect(reg.priceAt('gpt-4o-mini').inputPerMillionUsd).toBe(0.15);
+    expect(reg.priceAt('gpt-4o-mini').outputPerMillionUsd).toBe(0.6);
+    expect(reg.priceAt('gpt-4.1-mini').outputPerMillionUsd).toBe(1.6);
+    expect(reg.priceAt('gpt-5-mini').outputPerMillionUsd).toBe(2);
+    expect(reg.priceAt('gpt-4o').inputPerMillionUsd).toBe(2.5);
   });
 
   it('priceAt resolves the entry effective on a given date, not a future one', () => {

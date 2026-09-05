@@ -129,7 +129,11 @@ export function acceptItem(
   }
   gate('CURRICULUM_SAFE', curriculumSafe, curriculumDetail, 'Không dùng kiến thức vượt lớp cho câu này.');
 
-  // 6. PREREQUISITE_SAFE — a blocking prereq gap must not sit in the required closure
+  // 6. PREREQUISITE_SAFE — a blocking prereq gap must not sit in the required
+  //    PREREQUISITE closure. The skill the item PRACTISES is excluded: an item
+  //    for a weak skill is not "unsafe" — that is the point of practice (the
+  //    planner already decided to work on it). Only genuine prerequisites of
+  //    the required skills count. Mirrors C5 UNLEARNED_REQUIRED_KNOWLEDGE.
   const blocking = new Set(itemSpec.curriculumSafety.blockingPrerequisiteSkillIds as readonly string[]);
   let prereqSafe = true;
   let prereqDetail = 'ok';
@@ -139,11 +143,16 @@ export function acceptItem(
     ki >= kIdx('K2') &&
     blocking.size > 0
   ) {
-    const closure = new Set<string>(exercise.requiredSkillIds as readonly string[]);
+    const closure = new Set<string>();
     for (const rs of exercise.requiredSkillIds) {
+      if (rs === exercise.skillId) continue; // the skill being practised is not a prerequisite
+      closure.add(rs);
       if (kb.skills.has(rs)) for (const p of kb.prerequisiteClosure(rs)) closure.add(p);
     }
-    const hit = [...blocking].filter((b) => closure.has(b));
+    if (kb.skills.has(exercise.skillId)) {
+      for (const p of kb.prerequisiteClosure(exercise.skillId)) closure.add(p);
+    }
+    const hit = [...blocking].filter((b) => b !== exercise.skillId && closure.has(b));
     if (hit.length > 0) {
       prereqSafe = false;
       prereqDetail = `requires blocking prerequisite(s) ${hit.join(', ')}`;

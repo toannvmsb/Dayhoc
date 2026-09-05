@@ -141,6 +141,28 @@ describe('doc 56 §6 — similarity / leakage gate (model-independent)', () => {
     });
     expect(r.verdict).toBe('COPY');
   });
+
+  // --- calibration (doc 56 §0) — shared instructional boilerplate must NOT
+  //     inflate similarity between items about genuinely different problems ---
+  it('does not flag two "giải thích" items with different problem stems (boilerplate is not content)', () => {
+    const a =
+      'Một tòa nhà có 5 tầng, mỗi tầng 12 phòng. Bạn Huy cho rằng đáp số chia hết cho 5. Theo em nhận định đó luôn đúng không? Giải thích và cho ví dụ.';
+    const b =
+      'Bể nước chứa 40 lít, mỗi phút chảy ra 3 lít. Bạn Lan cho rằng kết quả luôn là số chẵn. Theo em nhận định đó luôn đúng không? Giải thích và cho ví dụ.';
+    expect(checkItemSimilarity({ prompt: a, references: [], worksheetSiblings: [{ id: 'S1', prompt: b }] }).verdict).toBe('PASS');
+  });
+
+  it('does not flag two fraction items sharing "Viết dưới dạng phân số tối giản" but different stems', () => {
+    const a = 'Mỗi giờ máy đóng gói 37 hộp. Sau 6 giờ máy đóng bao nhiêu hộp? Viết kết quả dưới dạng phân số tối giản.';
+    const b = 'Kho lạnh có 68 thùng cá, mỗi ngày xuất 10 thùng. Sau một ngày còn bao nhiêu thùng? Viết kết quả dưới dạng phân số tối giản.';
+    expect(checkItemSimilarity({ prompt: a, references: [], worksheetSiblings: [{ id: 'S1', prompt: b }] }).verdict).toBe('PASS');
+  });
+
+  it('STILL flags a real template reuse even with boilerplate stripped', () => {
+    const a = 'An có 5 quả táo, cho Bình 2 quả. Hỏi An còn lại mấy quả táo?';
+    const b = 'Lan có 8 quả cam, cho Hoa 3 quả. Hỏi Lan còn lại mấy quả cam?';
+    expect(checkItemSimilarity({ prompt: a, references: [], worksheetSiblings: [{ id: 'S1', prompt: b }] }).verdict).toBe('COPY');
+  });
 });
 
 describe('doc 56 §1/§2 — composeExercise (deterministic answer coercion)', () => {

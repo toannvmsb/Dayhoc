@@ -35,6 +35,23 @@ export const PLANNING_FX_VND_PER_USD = 26_000;
 const SRC = 'Pricing_AI_Cost_Guardrails_Model_Routing_v1.0 §2 (2026-08-31)';
 
 /**
+ * Real OpenAI standard-tier API list prices for the doc 56 exercise-generation
+ * benchmark (§1). Standard tier only — NOT Batch, NOT Priority/Fast. Confirm
+ * against platform.openai.com/pricing immediately before a paid run; if a rate
+ * has moved, add a NEW effective-dated entry rather than editing these.
+ */
+const SRC_OPENAI_LIST = 'OpenAI API pricing (platform.openai.com/pricing), standard tier — doc 56 §1';
+const OPENAI_LIST_EFFECTIVE = '2026-01-15';
+
+export const OPENAI_BENCHMARK_PRICES: readonly PriceEntry[] = [
+  { model: 'gpt-4o-mini', provider: 'openai', unit: 'per_million_tokens', inputPerMillionUsd: 0.15, outputPerMillionUsd: 0.60, effectiveDate: OPENAI_LIST_EFFECTIVE, source: SRC_OPENAI_LIST },
+  { model: 'gpt-4.1-mini', provider: 'openai', unit: 'per_million_tokens', inputPerMillionUsd: 0.40, outputPerMillionUsd: 1.60, effectiveDate: OPENAI_LIST_EFFECTIVE, source: SRC_OPENAI_LIST },
+  { model: 'gpt-5-mini', provider: 'openai', unit: 'per_million_tokens', inputPerMillionUsd: 0.25, outputPerMillionUsd: 2.00, effectiveDate: OPENAI_LIST_EFFECTIVE, source: SRC_OPENAI_LIST },
+  // control only — not run without explicit approval (doc 56 §7)
+  { model: 'gpt-4o', provider: 'openai', unit: 'per_million_tokens', inputPerMillionUsd: 2.50, outputPerMillionUsd: 10.00, effectiveDate: OPENAI_LIST_EFFECTIVE, source: SRC_OPENAI_LIST },
+] as const;
+
+/**
  * Documented default price table (v1.0). Prices are candidates for planning;
  * the advanced-model choice (Sonnet 5 vs Terra) is benchmark-gated (§3.2, §11).
  */
@@ -44,6 +61,7 @@ export const DEFAULT_PRICE_TABLE: readonly PriceEntry[] = [
   { model: 'gpt-5.6-sol', provider: 'openai', unit: 'per_million_tokens', inputPerMillionUsd: 4.0, outputPerMillionUsd: 20.0, effectiveDate: '2026-08-31', source: SRC },
   { model: 'claude-sonnet-5', provider: 'anthropic', unit: 'per_million_tokens', inputPerMillionUsd: 2.0, outputPerMillionUsd: 10.0, effectiveDate: '2026-08-31', source: SRC },
   { model: 'google-document-ai-enterprise-ocr', provider: 'google', unit: 'per_1000_pages', pagesPerThousandUsd: 1.5, freeUnits: 1000, effectiveDate: '2026-08-31', source: SRC },
+  ...OPENAI_BENCHMARK_PRICES,
 ] as const;
 
 export class PricingRegistry {

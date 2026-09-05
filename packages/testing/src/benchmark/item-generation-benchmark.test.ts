@@ -45,9 +45,13 @@ describe('doc 56 §9 — benchmark run (offline, mock generators)', () => {
     });
     expect(report.byModelMode.length).toBe(2 * ITEM_BENCHMARK_MODES.length);
     for (const m of report.byModelMode) {
-      expect(m.finalAcceptanceRate).toBeGreaterThan(0.5);
+      // after the doc 56 §0 validator calibration the deterministic mock clears
+      // every gate on the representative slice
+      expect(m.finalAcceptanceRate).toBe(1);
       expect(m.costPerAcceptedItemVnd).toBe(0); // mock is free
-      expect(m.schemaPassRate).toBeGreaterThan(0.9);
+      expect(m.schemaPassRate).toBe(1);
+      expect(m.referenceLeakagePassRate).toBe(1);
+      expect(m.prerequisiteSafePassRate).toBe(1);
     }
     // mock is free → cost gate trivially fine; text report renders
     expect(formatItemBenchmarkReport(report)).toContain('COST PER ACCEPTED ITEM');
