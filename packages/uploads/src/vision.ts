@@ -139,6 +139,15 @@ export interface OpenAiVisionConfig {
  * Live OpenAI vision adapter. Present for completeness; it is only ever
  * constructed when a key exists AND `DZ_LIVE_VISION=1`. It is never the default,
  * so no upload triggers a paid call unless an operator opts in.
+ *
+ * KNOWN GAP, not yet fixed: the response below is `JSON.parse`d and cast
+ * straight to `Partial<DocumentExtraction>` with NO schema validation —
+ * unlike every other AI-output boundary in this codebase (e.g.
+ * `generatedExerciseSchema` for exercise generation), which CLAUDE.md's
+ * "AI chỉ hỗ trợ... luôn qua JSON schema validation" invariant requires. A
+ * malformed or partial model response is not currently caught before it
+ * reaches the parent-review screen. Do not flip `DZ_LIVE_VISION=1` in a
+ * context anyone relies on before adding that validation.
  */
 export class OpenAiVisionAdapter implements DocumentVisionAdapter {
   readonly name = 'openai';
@@ -151,7 +160,11 @@ export class OpenAiVisionAdapter implements DocumentVisionAdapter {
   constructor(cfg: OpenAiVisionConfig) {
     if (!cfg.apiKey) throw new VisionCredentialsRequiredError();
     this.#apiKey = cfg.apiKey;
-    this.model = cfg.model ?? 'gpt-5.6-luna';
+    // `gpt-5.6-luna` (this codebase's "Luna" — see @copilot/ai pricing.ts) is
+    // a FICTIONAL model id used for cost-simulation only; calling the real
+    // OpenAI API with it would 404. Default to a real, vision-capable,
+    // low-cost model instead; override via `OPENAI_VISION_MODEL` or `cfg.model`.
+    this.model = cfg.model ?? 'gpt-4o-mini';
     this.#fetch = cfg.fetchImpl ?? globalThis.fetch;
   }
 
@@ -197,6 +210,7 @@ export class OpenAiVisionAdapter implements DocumentVisionAdapter {
 export interface VisionEnv {
   readonly DZ_LIVE_VISION?: string | undefined;
   readonly OPENAI_API_KEY?: string | undefined;
+  readonly OPENAI_VISION_MODEL?: string | undefined;
 }
 
 /**
@@ -209,7 +223,10 @@ export function resolveDocumentVisionAdapter(env: VisionEnv): {
   kind: 'mock' | 'openai';
 } {
   if (env.DZ_LIVE_VISION === '1' && env.OPENAI_API_KEY) {
-    return { adapter: new OpenAiVisionAdapter({ apiKey: env.OPENAI_API_KEY }), kind: 'openai' };
+    return {
+      adapter: new OpenAiVisionAdapter({ apiKey: env.OPENAI_API_KEY, ...(env.OPENAI_VISION_MODEL ? { model: env.OPENAI_VISION_MODEL } : {}) }),
+      kind: 'openai',
+    };
   }
   return { adapter: new MockDocumentVisionAdapter(), kind: 'mock' };
 }
