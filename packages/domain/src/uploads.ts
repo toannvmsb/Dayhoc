@@ -122,6 +122,13 @@ export interface UploadAnalysisRecord {
   readonly confirmedByUserId: string | null;
   readonly confirmedAt: string | null;
   readonly resultingEvidenceIds: readonly string[];
+  /** Parent removed this upload from their list (declutter / uploaded by
+   * mistake). The raw `uploads` ledger row and any evidence already produced
+   * from it are append-only and untouched — this only hides the row from
+   * `listUploads` and best-effort purges the stored bytes. Not a data-subject
+   * deletion (that's the privileged child-deletion workflow). */
+  readonly dismissedAt: string | null;
+  readonly dismissedByUserId: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
 }

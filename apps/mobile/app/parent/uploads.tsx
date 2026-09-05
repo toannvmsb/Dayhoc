@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useChild } from '@/child';
@@ -35,6 +35,28 @@ export default function UploadsScreen() {
   const [err, setErr] = useState<string | undefined>();
   const [review, setReview] = useState<UploadAnalysis | null>(null);
   const [ticked, setTicked] = useState<Record<number, { confirm: boolean; skillId?: string }>>({});
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const deleteUpload = (uploadId: string) => {
+    Alert.alert('Xoá tài liệu này?', 'Tài liệu sẽ được xoá khỏi danh sách. Thao tác này không thể hoàn tác.', [
+      { text: 'Huỷ', style: 'cancel' },
+      {
+        text: 'Xoá',
+        style: 'destructive',
+        onPress: async () => {
+          setDeletingId(uploadId);
+          try {
+            await api.del(`/children/${childId}/uploads/${uploadId}`);
+            list.reload();
+          } catch (e) {
+            setErr(errText(e));
+          } finally {
+            setDeletingId(null);
+          }
+        },
+      },
+    ]);
+  };
 
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraErr, setCameraErr] = useState<string | undefined>();
@@ -345,9 +367,16 @@ export default function UploadsScreen() {
       {list.loading && <Loading />}
       {(list.data ?? []).map((u) => (
         <Card key={u.id}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Body>{KINDS.find((k) => k.value === u.kind)?.label ?? u.kind}</Body>
-            <Chip label={STATE[u.state] ?? u.state} tone={u.state === 'CONFIRMED' ? 'positive' : u.state === 'NEEDS_CONFIRMATION' ? 'primary' : 'neutral'} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Body>{KINDS.find((k) => k.value === u.kind)?.label ?? u.kind}</Body>
+              <Chip label={STATE[u.state] ?? u.state} tone={u.state === 'CONFIRMED' ? 'positive' : u.state === 'NEEDS_CONFIRMATION' ? 'primary' : 'neutral'} />
+            </View>
+            <Pressable onPress={() => deleteUpload(u.id)} disabled={deletingId === u.id} hitSlop={10}>
+              <Text style={{ fontSize: 18, color: deletingId === u.id ? theme.color.textFaint : theme.color.danger }}>
+                {deletingId === u.id ? '…' : '🗑'}
+              </Text>
+            </Pressable>
           </View>
           {u.itemCount > 0 && <Muted>{u.itemCount} câu</Muted>}
         </Card>

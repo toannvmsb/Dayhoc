@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
 import type { GradeContext } from '@copilot/domain';
 import type { EnrollmentService } from '@copilot/education-directory';
-import type { KnowledgeBase } from '@copilot/math-data';
+import { curriculumLabel, type KnowledgeBase } from '@copilot/math-data';
 import type { ChildProfileInput } from '@copilot/projections';
 import { NotFoundError } from '../api.js';
 
@@ -48,9 +48,13 @@ export async function resolveChildLearningInputs(
   const active = await enrollments.resolveActiveEnrollment(childId, asOf);
 
   const grade = (active?.grade ?? row.school_grade) as GradeContext;
+  // `school_context` is a curriculum ID ("KET_NOI_TRI_THUC"), never something
+  // to show a parent directly — always resolve it to its human label. A
+  // `school_context` column value that's already a display name (an object
+  // with `.name`, from an older/manual row) is honoured as-is.
   const schoolContext =
     (typeof row.school_context === 'object' && row.school_context?.name) ||
-    (active ? active.curriculumId : 'Kết nối tri thức');
+    curriculumLabel(active ? active.curriculumId : 'KET_NOI_TRI_THUC');
 
   let enrollment:
     | { readonly curriculum: string; readonly academicYear: string; readonly calendarId?: string }

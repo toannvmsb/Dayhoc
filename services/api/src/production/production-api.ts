@@ -33,7 +33,7 @@ import {
   type UploadStorageAdapter,
 } from '@copilot/uploads';
 import { PgUploadAnalysisStore } from '@copilot/uploads/pg';
-import { loadKnowledgeBase, type KnowledgeBase } from '@copilot/math-data';
+import { curriculumLabel, getCurriculumCalendar, loadKnowledgeBase, type KnowledgeBase } from '@copilot/math-data';
 import { loadReferenceLibrary } from '@copilot/reference-library';
 import { buildDailyPlan } from '@copilot/planning';
 import { buildAssignmentsForPlan } from '@copilot/practice';
@@ -237,6 +237,17 @@ export function createProductionApi(opts: ProductionApiOptions) {
     [...kb.skills.entries()]
       .filter(([, s]) => Number((s as { gradeContext?: unknown }).gradeContext) === Number(grade))
       .map(([id]) => String(id));
+
+  /** Every skill this curriculum node introduces — for the teacher curriculum
+   * picker (a ticked lesson maps to these `taughtSkillIds`). Built once at
+   * startup; the KB is small (~94 skills) but no reason to redo this per call. */
+  const skillIdsByCurriculumNode = new Map<string, string[]>();
+  for (const [skillId, skill] of kb.skills) {
+    const list = skillIdsByCurriculumNode.get(skill.curriculumNodeId) ?? [];
+    list.push(String(skillId));
+    skillIdsByCurriculumNode.set(skill.curriculumNodeId, list);
+  }
+  const skillIdsForCurriculumNode = (nodeId: string): string[] => skillIdsByCurriculumNode.get(nodeId) ?? [];
 
   // ---- helpers -------------------------------------------------------
 
@@ -1539,13 +1550,91 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const links = (await base.relStore.listTeacherChildLinks({ teacherUserId: ctx.userId })).filter(
         (l) => l.status === 'ACCEPTED',
       );
-      const out: Array<{ childId: string; displayName: string; subjectId: string | null }> = [];
+      const out: Array<{ childId: string; displayName: string; subjectId: string | null; schoolGrade: number }> = [];
       for (const l of links) {
-        const row = (await pool.query(`SELECT display_name FROM child_profiles WHERE id = $1`, [l.childId]))
+        const row = (await pool.query(`SELECT display_name, school_grade FROM child_profiles WHERE id = $1`, [l.childId]))
           .rows[0] as any;
-        if (row) out.push({ childId: l.childId, displayName: row.display_name, subjectId: l.subjectId });
+        if (row) {
+          out.push({
+            childId: l.childId,
+            displayName: row.display_name,
+            subjectId: l.subjectId,
+            schoolGrade: row.school_grade,
+          });
+        }
       }
       return out;
+    },
+
+    /**
+     * GET /teacher/curriculum-program?grade=4|7 — the SGK chapter/lesson list
+     * for the "Bài đang dạy" / "Tiến độ chương trình" pickers, so a teacher
+     * ticks lessons instead of typing free text. Static curriculum content
+     * (no child data) — any authenticated teacher may read it. Only one
+     * curriculum series (Kết nối tri thức) is seeded today; a grade with no
+     * calendar yet returns an empty chapter list rather than an error, so a
+     * future gap in the data shows as "nothing to pick" not a crash.
+     */
+    async teacherGetCurriculumProgram(auth: CallerAuth, grade: number) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'TEACHER') throw new ForbiddenError('TEACHER workspace required');
+      if (grade !== 4 && grade !== 7) throw new ForbiddenError('grade phải là 4 hoặc 7');
+      const ay = (
+        await pool.query(`SELECT label FROM academic_years WHERE status = 'ACTIVE' ORDER BY label DESC LIMIT 1`)
+      ).rows[0] as { label: string } | undefined;
+      const academicYear = ay?.label ?? '2026-2027';
+      const cal = getCurriculumCalendar('KET_NOI_TRI_THUC', grade, academicYear);
+      if (!cal) return { curriculum: curriculumLabel('KET_NOI_TRI_THUC'), academicYear, chapters: [] };
+      const chapters = [...cal.pacing]
+        .sort((a, b) => a.chapter - b.chapter)
+        .map((p) => ({
+          chapter: p.chapter,
+          name: p.name,
+          lessons: p.lesson_ids.map((id) => {
+            const node = kb.curriculum.get(id);
+            return {
+              lessonId: id,
+              name: node?.lesson ?? id,
+              skillIds: skillIdsForCurriculumNode(id),
+            };
+          }),
+        }));
+      return { curriculum: curriculumLabel(cal.curriculum), academicYear, chapters };
+    },
+
+    /**
+     * POST /teacher/children/:childId/ocr-homework — best-effort OCR read of a
+     * homework-sheet photo into free text the teacher can review/edit before
+     * submitting a HOMEWORK contribution. Nothing is persisted here — no
+     * upload ledger row, no evidence, no skill mapping kept — this only fills
+     * a text field faster than typing. Reuses the SAME document-vision
+     * adapter as the parent evidence-upload flow (mock by default; never a
+     * paid call unless the operator explicitly wired + enabled a live one).
+     */
+    async teacherOcrHomework(auth: CallerAuth, childId: string, input: { mimeType: string; contentBase64: string }) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'TEACHER') throw new ForbiddenError('TEACHER workspace required');
+      const links = (
+        await base.relStore.listTeacherChildLinks({ teacherUserId: ctx.userId, childId })
+      ).filter((l) => l.status === 'ACCEPTED');
+      if (links.length === 0) throw new ForbiddenError('chưa được phụ huynh chấp thuận kết nối với học sinh này');
+      const bytes = new Uint8Array(Buffer.from(input.contentBase64, 'base64'));
+      if (bytes.byteLength === 0) throw new ForbiddenError('ảnh trống');
+      if (bytes.byteLength > 12 * 1024 * 1024) throw new ForbiddenError('ảnh quá lớn (tối đa 12MB)');
+      const row = (
+        await pool.query(`SELECT school_grade FROM child_profiles WHERE id = $1`, [childId])
+      ).rows[0] as { school_grade: number } | undefined;
+      const grade = row?.school_grade ?? 4;
+      const extraction = await documentVision.analyze({
+        bytes,
+        mimeType: input.mimeType,
+        childGrade: grade,
+        kindHint: 'HOMEWORK',
+        knownSkillIds: gradeBandSkillIds(grade),
+      });
+      const text =
+        extraction.items.map((it, i) => `${i + 1}. ${it.prompt}`).join('\n') || extraction.teacherNote || '';
+      return { text, itemCount: extraction.items.length };
     },
 
     async teacherGetPermissions(auth: CallerAuth, childId: string, subjectId?: string) {
@@ -2123,6 +2212,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const out = [];
       for (const u of uploads) {
         const a = await uploadStore.getAnalysisByUpload(u.id);
+        if (a?.dismissedAt) continue; // parent removed this from their list
         out.push({
           id: u.id,
           kind: u.kind,
@@ -2268,6 +2358,36 @@ export function createProductionApi(opts: ProductionApiOptions) {
         evidenceRecorded: evidenceIds.length,
         teacherNote,
       };
+    },
+
+    /**
+     * DELETE /children/:childId/uploads/:uploadId — parent-facing "xoá khỏi
+     * danh sách". `uploads` is INSERT-only (a DB trigger rejects UPDATE/DELETE
+     * on it — see the evidence-ledger migration), so this can never be a real
+     * row delete; it sets `dismissedAt` on the (mutable) analysis row, which
+     * `listUploads` then filters out, and best-effort purges the stored bytes
+     * to actually shrink storage. Any evidence already produced from a
+     * CONFIRMED upload is untouched (append-only) — this is a declutter /
+     * "uploaded by mistake" action, not the data-subject deletion workflow.
+     */
+    async deleteUpload(auth: CallerAuth, childId: string, uploadId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'manage_child');
+      const upload = await uploadStore.getUpload(uploadId);
+      if (!upload || upload.childId !== childId) throw new NotFoundError('upload');
+      const analysis = await uploadStore.getAnalysisByUpload(uploadId);
+      if (!analysis) throw new NotFoundError('upload analysis');
+      await uploadStore.updateAnalysis(analysis.id, {
+        dismissedAt: now().toISOString(),
+        dismissedByUserId: ctx.userId,
+      });
+      try {
+        await uploadStorage.remove(upload.storageKey);
+      } catch {
+        // best-effort — the row is already hidden from the parent's list either way
+      }
+      return { ok: true as const };
     },
 
     // ---- PRACTICE LOOP (F8 / F30) — assignment → attempt → evidence ----

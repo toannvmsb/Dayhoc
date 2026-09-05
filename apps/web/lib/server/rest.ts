@@ -221,6 +221,8 @@ const ROUTES: Record<string, Handler> = {
       c.params[1]!,
       (c.body.corrections as { index: number; confirm: boolean; skillId?: string }[]) ?? [],
     ),
+  'DELETE /children/:id/uploads/:uploadId': async (c) =>
+    getApi().deleteUpload(auth(c, 'PARENT'), c.params[0]!, c.params[1]!),
 
   // ---- exams (M6) ----
   'GET /children/:id/exams': async (c) => getApi().listExams(auth(c, 'PARENT'), c.params[0]!),
@@ -292,6 +294,13 @@ const ROUTES: Record<string, Handler> = {
     getApi().teacherGetGaps(auth(c, 'TEACHER'), c.params[0]!, c.query.get('subjectId') ?? undefined),
   'POST /teacher/redeem-code': async (c) =>
     getApi().redeemInviteCode(auth(c, 'TEACHER'), String(c.body.code ?? '')),
+  'GET /teacher/curriculum-program': async (c) =>
+    getApi().teacherGetCurriculumProgram(auth(c, 'TEACHER'), Number(c.query.get('grade') ?? 4)),
+  'POST /teacher/children/:id/ocr-homework': async (c) =>
+    getApi().teacherOcrHomework(auth(c, 'TEACHER'), c.params[0]!, {
+      mimeType: String(c.body.mimeType ?? 'image/jpeg'),
+      contentBase64: String(c.body.contentBase64 ?? ''),
+    }),
   'POST /teacher/children/:id/contributions': async (c) => {
     const contributionType = String(c.body.contributionType ?? 'CURRENT_LESSON') as
       | 'CURRENT_LESSON'
@@ -300,10 +309,17 @@ const ROUTES: Record<string, Handler> = {
       | 'EXAM_NOTICE';
     const note = String(c.body.note ?? '').trim();
     const examDate = String(c.body.examDate ?? '').trim();
+    const taughtSkillIds = Array.isArray(c.body.taughtSkillIds)
+      ? (c.body.taughtSkillIds as unknown[]).map((s) => String(s)).filter(Boolean)
+      : [];
     return getApi().teacherSubmitContribution(auth(c, 'TEACHER'), c.params[0]!, {
       subjectId: String(c.body.subjectId ?? ''),
       contributionType,
       observedAt: new Date().toISOString(),
+      ...((contributionType === 'CURRENT_LESSON' || contributionType === 'CURRICULUM_PROGRESS') &&
+      taughtSkillIds.length > 0
+        ? { taughtSkillIds }
+        : {}),
       ...(contributionType === 'HOMEWORK' && note
         ? { homeworkRefs: note.split(',').map((s) => s.trim()).filter(Boolean) }
         : {}),

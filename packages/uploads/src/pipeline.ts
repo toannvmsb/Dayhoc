@@ -148,6 +148,8 @@ export class UploadIngestionService {
       confirmedByUserId: null,
       confirmedAt: null,
       resultingEvidenceIds: [],
+      dismissedAt: null,
+      dismissedByUserId: null,
       createdAt: at,
       updatedAt: at,
     };

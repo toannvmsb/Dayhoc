@@ -12,6 +12,8 @@ export interface AnalysisPatch {
   readonly confirmedByUserId?: string | null;
   readonly confirmedAt?: string | null;
   readonly resultingEvidenceIds?: readonly string[];
+  readonly dismissedAt?: string | null;
+  readonly dismissedByUserId?: string | null;
 }
 
 /**
@@ -84,6 +86,8 @@ export class InMemoryUploadAnalysisStore implements UploadAnalysisStore {
       ...('resultingEvidenceIds' in patch && patch.resultingEvidenceIds
         ? { resultingEvidenceIds: [...patch.resultingEvidenceIds] }
         : {}),
+      ...('dismissedAt' in patch ? { dismissedAt: patch.dismissedAt ?? null } : {}),
+      ...('dismissedByUserId' in patch ? { dismissedByUserId: patch.dismissedByUserId ?? null } : {}),
       updatedAt: new Date().toISOString(),
     };
     this.#analyses.set(id, next);

@@ -181,11 +181,16 @@ function HomeBody({
             ))}
           </View>
 
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {/* All buckets on ONE row, even 3-4 of them — flexShrink + a single
+             line lets the labels compress rather than wrap to a 2nd row. */}
+          <View style={{ flexDirection: 'row', gap: 6 }}>
             {buckets.map((b) => (
-              <View key={b} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: '45%' }}>
-                <Dot color={BUCKET_COLOR[b]} size={9} />
-                <Text style={{ fontSize: 12.5, fontWeight: '600', color: theme.color.onDark }}>
+              <View key={b} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Dot color={BUCKET_COLOR[b]} size={8} />
+                <Text
+                  numberOfLines={1}
+                  style={{ flexShrink: 1, fontSize: 11.5, fontWeight: '600', color: theme.color.onDark }}
+                >
                   {b} {minutesByBucket.get(b)}′
                 </Text>
               </View>
@@ -243,10 +248,10 @@ function HomeBody({
       )}
 
       {(data.progressInsights[0] || data.thinkingChallenge) && (
-        <View style={{ flexDirection: 'row', gap: 10 }}>
+        <View style={{ flexDirection: 'row', gap: 10, alignItems: 'stretch' }}>
           {data.progressInsights[0] ? (
             <View style={{ flex: 1 }}>
-              <Card>
+              <Card style={{ flex: 1 }}>
                 <Overline>Tiến bộ</Overline>
                 <Text style={{ fontSize: 13.5, fontWeight: '600', lineHeight: 19, color: theme.color.textHeading }}>
                   {data.progressInsights[0]}
@@ -255,17 +260,18 @@ function HomeBody({
             </View>
           ) : null}
           {data.thinkingChallenge ? (
-            <View style={{ flex: 1 }}>
-              <Pressable onPress={() => data.thinkingChallenge!.available && router.push('/parent/practice')}>
-                <Card>
-                  <Overline>Thử thách</Overline>
-                  <Text style={{ fontSize: 13.5, fontWeight: '600', lineHeight: 19, color: theme.color.textHeading }}>
-                    {data.thinkingChallenge.title}
-                    {data.thinkingChallenge.available ? ' · Giao cho con' : ''}
-                  </Text>
-                </Card>
-              </Pressable>
-            </View>
+            <Pressable
+              style={{ flex: 1 }}
+              onPress={() => data.thinkingChallenge!.available && router.push('/parent/practice')}
+            >
+              <Card style={{ flex: 1 }}>
+                <Overline>Thử thách</Overline>
+                <Text style={{ fontSize: 13.5, fontWeight: '600', lineHeight: 19, color: theme.color.textHeading }}>
+                  {data.thinkingChallenge.title}
+                  {data.thinkingChallenge.available ? ' · Giao cho con' : ''}
+                </Text>
+              </Card>
+            </Pressable>
           ) : null}
         </View>
       )}

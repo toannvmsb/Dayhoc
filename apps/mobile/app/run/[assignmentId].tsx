@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { theme } from '@/theme';
 import { Body, Button, Card, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/ui';
@@ -246,9 +246,30 @@ export default function Runner() {
     }
   };
 
+  const confirmLeave = () => {
+    Alert.alert('Thoát bài tập?', 'Con chưa làm xong. Bạn có thể quay lại làm tiếp sau.', [
+      { text: 'Ở lại', style: 'cancel' },
+      { text: 'Thoát', style: 'destructive', onPress: () => router.back() },
+    ]);
+  };
+
   return (
     <Screen scroll={false}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <Pressable
+          onPress={confirmLeave}
+          hitSlop={10}
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 12,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: theme.color.surfaceRaised,
+          }}
+        >
+          <Text style={{ fontSize: 18, fontWeight: '800', color: theme.color.textHeading }}>‹</Text>
+        </Pressable>
         <View style={{ flex: 1, height: 8, borderRadius: 4, backgroundColor: theme.color.surfaceRaised, overflow: 'hidden' }}>
           <View style={{ width: `${pct}%`, height: '100%', backgroundColor: theme.color.primary }} />
         </View>

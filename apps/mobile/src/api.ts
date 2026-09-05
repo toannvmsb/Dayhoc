@@ -121,6 +121,7 @@ export function client(bearer: string | null, workspace: Workspace) {
       apiCall<T>(path, { method: 'POST', bearer, workspace, body }),
     patch: <T>(path: string, body?: unknown) =>
       apiCall<T>(path, { method: 'PATCH', bearer, workspace, body }),
+    del: <T>(path: string) => apiCall<T>(path, { method: 'DELETE', bearer, workspace }),
   };
 }
 

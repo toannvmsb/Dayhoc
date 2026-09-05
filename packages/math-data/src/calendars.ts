@@ -90,3 +90,18 @@ export function calendarLessonOrder(cal: CurriculumCalendar): readonly string[] 
     .sort((a, b) => a.from_week - b.from_week)
     .flatMap((p) => p.lesson_ids);
 }
+
+/**
+ * Human label for a curriculum id — for display only (`ParentHome.child.
+ * schoolContext`, the teacher curriculum-program picker). Only one SGK series
+ * is seeded today; an id with no known label falls back to itself rather than
+ * throwing, so a future curriculum never breaks a screen while it's being
+ * added.
+ */
+export const CURRICULUM_LABELS: Readonly<Record<string, string>> = {
+  KET_NOI_TRI_THUC: 'Kết nối tri thức',
+};
+
+export function curriculumLabel(curriculumId: string): string {
+  return CURRICULUM_LABELS[curriculumId] ?? curriculumId;
+}

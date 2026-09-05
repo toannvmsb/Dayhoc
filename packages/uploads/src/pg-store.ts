@@ -39,6 +39,8 @@ function rowToAnalysis(x: any): UploadAnalysisRecord {
     confirmedByUserId: x.confirmed_by_user_id ?? null,
     confirmedAt: isoN(x.confirmed_at),
     resultingEvidenceIds: (x.resulting_evidence_ids ?? []) as string[],
+    dismissedAt: isoN(x.dismissed_at),
+    dismissedByUserId: x.dismissed_by_user_id ?? null,
     createdAt: iso(x.created_at),
     updatedAt: iso(x.updated_at),
   };
@@ -115,6 +117,8 @@ export class PgUploadAnalysisStore implements UploadAnalysisStore {
     if (patch.resultingEvidenceIds) {
       put('resulting_evidence_ids', JSON.stringify(patch.resultingEvidenceIds), '::jsonb');
     }
+    if ('dismissedAt' in patch) put('dismissed_at', patch.dismissedAt ?? null);
+    if ('dismissedByUserId' in patch) put('dismissed_by_user_id', patch.dismissedByUserId ?? null);
     sets.push(`updated_at = now()`);
     vals.push(id);
     const r = await this.pool.query(

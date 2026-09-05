@@ -263,5 +263,17 @@ export type Entitlements = {
   usage: { children: number; maxChildren: number };
 };
 
-export type TeacherChildRow = { childId: string; displayName: string; subjectId: string | null };
+export type TeacherChildRow = { childId: string; displayName: string; subjectId: string | null; schoolGrade: number };
 export type Subject = { id: string; code: string; name: string; status: string };
+
+export type CurriculumProgram = {
+  curriculum: string;
+  academicYear: string;
+  chapters: {
+    chapter: number;
+    name: string;
+    lessons: { lessonId: string; name: string; skillIds: string[] }[];
+  }[];
+};
+
+export type OcrHomeworkResult = { text: string; itemCount: number };

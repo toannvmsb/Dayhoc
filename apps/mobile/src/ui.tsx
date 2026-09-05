@@ -10,6 +10,8 @@ import {
   Text,
   TextInput,
   View,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
 import Constants from 'expo-constants';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -92,9 +94,12 @@ export function Body({ children }: { children: ReactNode }) {
 export function Card({
   children,
   tone = 'default',
+  style,
 }: {
   children: ReactNode;
   tone?: 'default' | 'primary' | 'attention';
+  /** Extra style, e.g. `{ flex: 1 }` to match height with a sibling card in a row. */
+  style?: StyleProp<ViewStyle>;
 }) {
   return (
     <View
@@ -102,6 +107,7 @@ export function Card({
         styles.card,
         tone === 'primary' && styles.cardPrimary,
         tone === 'attention' && styles.cardAttention,
+        style,
       ]}
     >
       {children}
@@ -246,7 +252,9 @@ const styles = StyleSheet.create({
     fontFamily: theme.font.bold,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
-    color: theme.color.textFaint,
+    // Brand teal, not the faint grey body text uses — a box title should pop
+    // and read as a distinct label, not blend into the muted copy below it.
+    color: theme.color.primary,
   },
   muted: { fontSize: 12.5, color: theme.color.textMuted, fontFamily: theme.font.regular },
   bodyText: { fontSize: 14, color: theme.color.textBody, lineHeight: 20, fontFamily: theme.font.regular },
