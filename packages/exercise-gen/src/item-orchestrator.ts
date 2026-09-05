@@ -83,6 +83,10 @@ export interface ItemRunRecord {
   readonly composeFailure: string | null;
   readonly answerVerificationLevel: AnswerVerificationLevel | null;
   readonly finalPrompt: string | null;
+  /** Last attempt's composed prompt + worked solution — accepted or not — so a
+   *  re-score / audit does not need a paid re-run (doc 59). */
+  readonly lastPrompt: string | null;
+  readonly lastWorkedSolution: string | null;
 }
 
 export interface ItemGenerationTrace {
@@ -186,6 +190,7 @@ export async function orchestrateItemGeneration(
   const lastFailedGates = new Map<string, readonly ItemAcceptanceGate[]>();
   const lastFailureDetail = new Map<string, string>();
   const composeFailure = new Map<string, string | null>();
+  const lastExercise = new Map<string, GeneratedExercise>();
   const answerLevel = new Map<string, AnswerVerificationLevel | null>();
   const answerStatusById = new Map<string, ItemAnswerStatus>();
   const productionReadyById = new Map<string, boolean>();
@@ -287,6 +292,7 @@ export async function orchestrateItemGeneration(
         continue;
       }
       composeFailure.set(is.itemId, null);
+      lastExercise.set(is.itemId, composed.exercise);
       const siblings: SimilarityComparand[] = [...accepted.values()].map((e) => asComparand({ id: e.id, prompt: e.prompt }));
       const dna = dnaFor.get(is.itemId)!;
       const result = acceptItem(composed.exercise, is, input.spec, input.knowledgeBase, {
@@ -344,6 +350,8 @@ export async function orchestrateItemGeneration(
     composeFailure: composeFailure.get(is.itemId) ?? null,
     answerVerificationLevel: answerLevel.get(is.itemId) ?? null,
     finalPrompt: accepted.get(is.itemId)?.prompt ?? null,
+    lastPrompt: lastExercise.get(is.itemId)?.prompt ?? null,
+    lastWorkedSolution: lastExercise.get(is.itemId)?.workedSolution ?? null,
   }));
 
   const batch: GeneratedExerciseBatch = {

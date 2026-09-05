@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, appendFileSync, rmSync } from 'node:fs';
 import {
   createOpenAiProviderAdapter,
   PricingRegistry,
@@ -29,9 +29,10 @@ const MODELS = (process.env.ROUND2_MODELS?.split(',').filter(Boolean) ?? [
   'gpt-5-mini',
 ]) as readonly string[];
 const HARD_CAP_USD = 1.0;
-const RUN_BUDGET_USD = 0.9;
+const RUN_BUDGET_USD = Number(process.env.ROUND2_BUDGET_USD ?? '0.9');
 const WALL_CLOCK_MS = 55 * 60 * 1000;
 const OUT_PATH = 'D:/Lap trinh/Claude/Dayhoc/ROUND2.txt';
+const RAW_PATH = 'D:/Lap trinh/Claude/Dayhoc/ROUND2_raw.jsonl';
 
 const COMPLIANCE: Omit<ProviderCompliance, 'provider'> = {
   processingRegion: 'benchmark',
@@ -58,7 +59,9 @@ type FailCat =
 function classify(it: ItemRunRecord): FailCat {
   const d = it.failureDetail ?? '';
   const g = it.failedGates;
-  if (/provider error|max_tokens|max_completion_tokens|\b4\d\d\b|rate limit|timeout/i.test(d)) return 'INFRA';
+  if (/provider error|max_tokens|max_completion_tokens|HTTP \d{3}|status \d{3}|\b(429|4\d\d|5\d\d) (error|response|status)|rate limit|timeout|ECONN|network/i.test(d)) {
+    return 'INFRA';
+  }
   // a kernel CONTRADICTION when the item HAS a kernel: is it the model drifting,
   // or the kernel itself being wrong? The independent integrity gate proved the
   // kernels correct, so a contradiction here = the model changed the maths.
@@ -88,6 +91,7 @@ describe('doc 58 §6 — ROUND 2 (paid)', () => {
     let spentUsd = 0;
     let stopReason: string | null = null;
     const report: string[] = [];
+    try { rmSync(RAW_PATH); } catch { /* first run */ }
 
     const flush = () => {
       writeFileSync(
@@ -187,6 +191,24 @@ describe('doc 58 §6 — ROUND 2 (paid)', () => {
         if (kernelItems.length > 0 && wsKernelProdRetry) wsAfterRetryFull += 1;
 
         for (const rec of result.perItem) {
+          // raw sidecar — full prompt + worked solution for offline re-score / audit
+          appendFileSync(
+            RAW_PATH,
+            JSON.stringify({
+              model,
+              specId: bs.id,
+              itemId: rec.itemId,
+              kernelFamily: rec.kernelFamily,
+              accepted: rec.accepted,
+              productionReady: rec.productionReady,
+              answerStatus: rec.answerStatus,
+              attempts: rec.attempts,
+              failedGates: rec.failedGates,
+              failureDetail: rec.failureDetail,
+              prompt: rec.lastPrompt,
+              workedSolution: rec.lastWorkedSolution,
+            }) + '\n',
+          );
           requested += 1;
           retrySum += Math.max(0, rec.attempts - 1);
           if (rec.kernelFamily) kernelCovered += 1;

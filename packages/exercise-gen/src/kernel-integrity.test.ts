@@ -182,6 +182,39 @@ describe('doc 58 §3 — semantic preservation (the "36 / 9" → "36 plus 9" cas
     expect(v.consistent).toBe(true);
   });
 
+  it('a multi-step solution that MENTIONS an operand before stating the right answer does NOT flag (Round 2 regression)', () => {
+    // the Round 2 killer: DISTRIBUTIVE solutions list a factor ("11 × 69 …")
+    // then reach the answer ("… = 759"). The old extractor grabbed "11".
+    const r = buildKernelOfFamily('DISTRIBUTIVE', probeSpec('DISTRIBUTIVE', 3));
+    expect(r.ok).toBe(true);
+    if (!r.ok || r.kernel.expectedAnswer.kind !== 'numeric') return;
+    const k = r.kernel;
+    const ans = k.expectedAnswer.value;
+    const [a, b] = k.requiredNumbersInPrompt;
+    const ex = exFrom(k, `Tính bằng cách thuận tiện: ${a} × ${b}`, ans);
+    const good = {
+      ...ex,
+      workedSolution: `Ta có ${a} × ${b}. Vậy tách ${b} thành các số tròn chục rồi cộng lại. Kết quả các bước: rồi được ${ans}. Đáp số: ${ans}.`,
+    };
+    const v = validateAgainstKernel(good, k);
+    expect(v.codes).not.toContain('SOLUTION_CONTRADICTS_KERNEL');
+  });
+
+  it('a LINEAR_EQ negative constant rendered as subtraction ("x - 14") is NOT a KERNEL_NUMBER_DROPPED (Round 2 regression)', () => {
+    let k: MathKernel | null = null;
+    for (let i = 0; i < 200 && !k; i += 1) {
+      const r = buildKernelOfFamily('LINEAR_EQ', probeSpec('LINEAR_EQ', i));
+      if (r.ok && r.kernel.requiredNumbersInPrompt.some((n) => n < 0)) k = r.kernel;
+    }
+    if (!k) return; // no negative-constant instance in the sample — nothing to assert
+    const neg = k.requiredNumbersInPrompt.find((n) => n < 0)!;
+    const pos = k.requiredNumbersInPrompt.find((n) => n > 0) ?? 21;
+    const ans = k.expectedAnswer.kind === 'numeric' ? k.expectedAnswer.value : 0;
+    const ex = exFrom(k, `Tìm x, biết: x ${Math.abs(neg)} = ${pos}`.replace(`x ${Math.abs(neg)}`, `x - ${Math.abs(neg)}`), ans);
+    const v = validateAgainstKernel({ ...ex, workedSolution: `Giải: x = ${pos} + ${Math.abs(neg)}. Đáp số: ${ans}.` }, k);
+    expect(v.codes).not.toContain('KERNEL_NUMBER_DROPPED');
+  });
+
   it('a worked solution that concludes the WRONG number is a SOLUTION_CONTRADICTS_KERNEL', () => {
     const r = buildKernelOfFamily('INT_ARITH', probeSpec('INT_ARITH', 7));
     expect(r.ok).toBe(true);
@@ -189,7 +222,7 @@ describe('doc 58 §3 — semantic preservation (the "36 / 9" → "36 plus 9" cas
     const k = r.kernel;
     const ans = k.expectedAnswer.value;
     const ex = exFrom(k, `Tính: ${k.canonicalVerificationExpression} = ?`, ans);
-    const bad = { ...ex, workedSolution: `Ta có phép tính. Vậy kết quả là ${ans + 1}.` };
+    const bad = { ...ex, workedSolution: `Ta có phép tính. Đáp số: ${ans + 1}.` };
     const v = validateAgainstKernel(bad, k);
     expect(v.consistent).toBe(false);
     expect(v.codes).toContain('SOLUTION_CONTRADICTS_KERNEL');

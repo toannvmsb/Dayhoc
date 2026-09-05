@@ -63,5 +63,6 @@ packages/testing/vision-benchmark-data/images/
 File du an/BaiTap4/
 CALIB*.txt
 ROUND*.txt
+ROUND*.jsonl
 INSP.txt
 PICK.txt

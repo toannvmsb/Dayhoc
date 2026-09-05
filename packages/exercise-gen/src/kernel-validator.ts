@@ -103,9 +103,12 @@ export function validateAgainstKernel(
     );
   }
 
-  // 2. every GIVEN number must appear in the prompt
+  // 2. every GIVEN number must appear in the prompt. A negative operand rendered
+  //    as a subtraction ("x − 14" for the required token -14) is NOT a drop.
   const promptNums = numbersIn(exercise.prompt);
-  const dropped = kernel.requiredNumbersInPrompt.filter((n) => !promptNums.has(n));
+  const dropped = kernel.requiredNumbersInPrompt.filter(
+    (n) => !promptNums.has(n) && !(n < 0 && promptNums.has(Math.abs(n))),
+  );
   if (dropped.length > 0) {
     codes.push('KERNEL_NUMBER_DROPPED');
     details.push(`prompt is missing given number(s): ${dropped.join(', ')}`);
@@ -121,25 +124,28 @@ export function validateAgainstKernel(
     }
   }
 
-  // 4. worked-solution consistency (doc 58 §4) — its FINAL result claim must be
-  //    the kernel's answer, not a different value.
+  // 4. worked-solution consistency (doc 58 §4) — CONSERVATIVE: only a contradiction
+  //    we can be sure of. (a) the correct result must appear SOMEWHERE in the
+  //    solution; (b) an EXPLICIT final-answer statement ("Đáp số: X", "Đáp số là
+  //    X", "kết luận … X") near the end must not state a different value — and
+  //    only when the correct value does not also appear after it (a step, not the
+  //    conclusion).
   if (kernel.expectedAnswer.kind === 'numeric' && exercise.workedSolution.trim().length > 0) {
     const sol = exercise.workedSolution;
+    const want = kernel.expectedAnswer.value;
     const solNums = numbersIn(sol);
-    if (!solNums.has(kernel.expectedAnswer.value)) {
+    if (!solNums.has(want)) {
       codes.push('SOLUTION_CONTRADICTS_KERNEL');
-      details.push(`worked solution never states the correct result ${kernel.expectedAnswer.value}`);
+      details.push(`worked solution never states the correct result ${want}`);
     } else {
-      // the last "= <n>" or "Đáp số: <n>" must be the expected answer
-      const finalClaim =
-        /(?:đáp\s*số|kết\s*quả|vậy)[^0-9-]*(-?\d+(?:[.,]\d+)?)/i.exec(sol)?.[1] ??
-        [...sol.matchAll(/=\s*(-?\d+(?:[.,]\d+)?)/g)].at(-1)?.[1] ??
-        null;
-      if (finalClaim !== null) {
-        const claimed = Number(finalClaim.replace(',', '.'));
-        if (Number.isFinite(claimed) && Math.abs(claimed - kernel.expectedAnswer.value) > 1e-9) {
+      const m = /(?:đáp\s*số|đáp\s*án|kết\s*luận)\s*(?:là|:|=)?\s*(-?\d+(?:[.,]\d+)?)/i.exec(sol);
+      if (m) {
+        const claimed = Number(m[1]!.replace(',', '.'));
+        const afterStatement = sol.slice(m.index + m[0].length);
+        const wantAppearsAfter = numbersIn(afterStatement).has(want);
+        if (Number.isFinite(claimed) && Math.abs(claimed - want) > 1e-9 && !wantAppearsAfter) {
           codes.push('SOLUTION_CONTRADICTS_KERNEL');
-          details.push(`worked solution concludes ${claimed}, kernel answer is ${kernel.expectedAnswer.value}`);
+          details.push(`worked solution's stated đáp số is ${claimed}, kernel answer is ${want}`);
         }
       }
     }
