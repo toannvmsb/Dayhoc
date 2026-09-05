@@ -100,6 +100,7 @@ const ROUTES: Record<string, Handler> = {
   'GET /me': async (c) => getApi().whoami(auth(c).bearer),
   'GET /me/entitlements': async (c) => getApi().getEntitlements(auth(c)),
   'POST /me/plan': async (c) => getApi().setPlan(auth(c, 'PARENT'), String(c.body.plan ?? 'free')),
+  'POST /me/push-token': async (c) => getApi().registerPushToken(auth(c), String(c.body.expoPushToken ?? '')),
 
   // ---- parent: children + learning ----
   'GET /children': async (c) => getApi().listChildren(auth(c, 'PARENT')),

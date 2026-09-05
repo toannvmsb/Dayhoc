@@ -1,0 +1,31 @@
+{
+  "documentType": "HOMEWORK",
+  "problemCount": 7,
+  "itemTexts": [
+    "Câu 1. Số lẻ bé nhất có hai chữ số là: A. 10  B. 11  C. 13  D. 12",
+    "Câu 2. Làm tròn số 18 375 đến chữ số hàng nghìn là: A. 19 000  B. 18 300  C. 18 000  D. 18 400",
+    "Câu 3. Viết kí hiệu 80 độ như thế nào là đúng? A. 80*  B. 80 độ  C. 80-  D. 80°",
+    "Câu 4. Giá trị biểu thức: a + b − 2023 với a = 2000; b = 50 là: A. 27  B. 37  C. 1027  D. 137",
+    "Câu 5. Biểu thức nào có giá trị bé nhất? A. 20 000 + 1000 × 6  B. 4000 × 7 + 30 000  C. 90 000 + 2000 × 2",
+    "Câu 6. Chu vi hình chữ nhật có chiều dài 23cm, chiều rộng 15cm là: A. 38cm  B. 76  C. 76cm  D. 38",
+    "Câu 7. Một hình chữ nhật có chiều dài 24cm, chiều rộng bằng một nửa chiều dài. Một hình vuông có chu vi bằng 64cm. Hỏi chu vi hình chữ nhật lớn hơn chu vi hình vuông bao nhiêu xăng-ti-mét? A. 6  B. 8cm  C. 8  D. 6cm"
+  ],
+  "itemMathExpressions": [
+    null,
+    null,
+    null,
+    "2000+50-2023",
+    null,
+    null,
+    null
+  ],
+  "itemSkillIds": [
+    "M4.NUM.070",
+    "M4.NUM.050",
+    "M4.GEO.ANGLE_MEASURE",
+    "M4.ALG.EXPR_VAR",
+    "M4.ALG.EXPR_VAR",
+    null,
+    null
+  ]
+}

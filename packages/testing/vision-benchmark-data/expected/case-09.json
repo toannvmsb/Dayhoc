@@ -1,0 +1,25 @@
+{
+  "documentType": "HOMEWORK",
+  "problemCount": 5,
+  "itemTexts": [
+    "Câu 8. Đội một trồng được 30 cây, đội hai trồng được gấp đôi đội một, đội ba trồng nhiều hơn đội một 20 cây. Cả ba đội trồng được số cây là: A. 140 cây  B. 100 cây  C. 110 cây",
+    "Bài 1. Tính giá trị của biểu thức: 7500 − 1500 × 5",
+    "Bài 1. Tính giá trị của biểu thức: (7500 − 1500) × 5",
+    "Bài 2. Một nhà máy có 3 tổ công nhân, tổ 1 có số người bằng tổ 2, tổ 2 có số người bằng một nửa số người của tổ 3. Tổ 3 có 54 người. Hỏi nhà máy đó có bao nhiêu công nhân?",
+    "Bài 3. Một trang trại nuôi 188 con vịt và ít hơn số gà là 34 con. Sau đó, họ đem bán đi một nửa số con gà. Hỏi sau khi bán thì trang trại còn lại bao nhiêu con gà và vịt?"
+  ],
+  "itemMathExpressions": [
+    null,
+    "7500-1500*5",
+    "(7500-1500)*5",
+    null,
+    null
+  ],
+  "itemSkillIds": [
+    "M4.WORD.3STEP",
+    "M4.ALG.EXPR_VAR",
+    "M4.ALG.EXPR_VAR",
+    "M4.WORD.3STEP",
+    "M4.WORD.3STEP"
+  ]
+}

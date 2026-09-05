@@ -1,0 +1,65 @@
+[
+  {
+    "id": "case-01",
+    "imageFile": "case-01.jpg",
+    "mimeType": "image/jpeg",
+    "childGrade": 4,
+    "kindHint": "GRADED_TEST"
+  },
+  {
+    "id": "case-02",
+    "imageFile": "case-02.jpg",
+    "mimeType": "image/jpeg",
+    "childGrade": 4,
+    "kindHint": "GRADED_TEST"
+  },
+  {
+    "id": "case-03",
+    "imageFile": "case-03.jpg",
+    "mimeType": "image/jpeg",
+    "childGrade": 4,
+    "kindHint": "GRADED_TEST"
+  },
+  {
+    "id": "case-04",
+    "imageFile": "case-04.jpg",
+    "mimeType": "image/jpeg",
+    "childGrade": 4,
+    "kindHint": "GRADED_TEST"
+  },
+  {
+    "id": "case-05",
+    "imageFile": "case-05.jpg",
+    "mimeType": "image/jpeg",
+    "childGrade": 4,
+    "kindHint": "GRADED_TEST"
+  },
+  {
+    "id": "case-06",
+    "imageFile": "case-06.jpg",
+    "mimeType": "image/jpeg",
+    "childGrade": 4,
+    "kindHint": "GRADED_TEST"
+  },
+  {
+    "id": "case-07",
+    "imageFile": "case-07.jpg",
+    "mimeType": "image/jpeg",
+    "childGrade": 4,
+    "kindHint": "GRADED_TEST"
+  },
+  {
+    "id": "case-08",
+    "imageFile": "case-08.jpg",
+    "mimeType": "image/jpeg",
+    "childGrade": 4,
+    "kindHint": "HOMEWORK"
+  },
+  {
+    "id": "case-09",
+    "imageFile": "case-09.jpg",
+    "mimeType": "image/jpeg",
+    "childGrade": 4,
+    "kindHint": "HOMEWORK"
+  }
+]

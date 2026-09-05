@@ -1,0 +1,16 @@
+{
+  "documentType": "GRADED_TEST",
+  "problemCount": 2,
+  "itemTexts": [
+    "Bài 5. Có hai xe chở hàng, xe thứ nhất chở nhiều hơn xe thứ hai 600kg gạo. Xe thứ nhất chở 8 bao, xe thứ hai chở 6 bao gạo. Hỏi mỗi xe chở được bao nhiêu ki-lô-gam gạo? Biết số gạo đựng trong mỗi bao là như nhau.",
+    "Bài 6. Mẹ cho Hoa tiền tiêu vặt là 100 000 đồng trong 5 ngày trong tuần, nhưng cô ấy chỉ tiêu 8 000 đồng mỗi ngày và cô ấy tiết kiệm số tiền còn lại. Cô ấy đã tiết kiệm được bao nhiêu tiền sau 5 ngày?"
+  ],
+  "itemMathExpressions": [
+    null,
+    null
+  ],
+  "itemSkillIds": [
+    "M4.WORD.UNIT_RATE",
+    "M4.WORD.3STEP"
+  ]
+}

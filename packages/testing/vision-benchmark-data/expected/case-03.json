@@ -1,0 +1,31 @@
+{
+  "documentType": "GRADED_TEST",
+  "problemCount": 7,
+  "itemTexts": [
+    "Bài 2. Đặt tính rồi tính: 43925 + 32289",
+    "Bài 2. Đặt tính rồi tính: 95245 − 72842",
+    "Bài 2. Đặt tính rồi tính: 23408 × 4",
+    "Bài 2. Đặt tính rồi tính: 46104 : 8",
+    "Bài 3. Tìm x: a) x − 862 = 9342",
+    "Bài 3. Tìm x: b) 5423 + x = 6532",
+    "Bài 4. Một quyển truyện có giá 36 000 đồng, giá một cặp sách nhiều hơn giá một quyển truyện 114 000 đồng. Bố mua cho Lan một quyển truyện và một cặp sách. Bố đưa cho người bán hàng 200 000 đồng thì người bán hàng phải trả lại cho bố bao nhiêu tiền?"
+  ],
+  "itemMathExpressions": [
+    "43925+32289",
+    "95245-72842",
+    "23408*4",
+    "46104/8",
+    "x-862=9342",
+    "5423+x=6532",
+    null
+  ],
+  "itemSkillIds": [
+    "M4.ARITH.ADD_MULTI",
+    "M4.ARITH.SUB_MULTI",
+    "M4.ARITH.MUL_1DIGIT",
+    "M4.ARITH.DIV_1DIGIT",
+    "M4.ALG.FIND_X",
+    "M4.ALG.FIND_X",
+    "M4.WORD.3STEP"
+  ]
+}

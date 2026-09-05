@@ -5,6 +5,22 @@ photos used to evaluate a real `DocumentVisionAdapter` before ever turning
 paid OCR on for a pilot family. The harness itself lives in
 [`../src/benchmark/vision-benchmark.ts`](../src/benchmark/vision-benchmark.ts).
 
+> **Status (2026-09-05):** 9 real cases (`case-01`..`case-09`, anh's Grade-4
+> homework, "Toán 4 — Hệ thống trường liên cấp Newton – Pascal", 3 weekly
+> worksheets) are in `manifest.json` + `expected/*.json` — 46 items total.
+> **`expected/*.json` was drafted by Claude reading the photos, NOT reviewed
+> by anh** — treat it as a first draft, not verified ground truth, until
+> someone double-checks it (some items are deliberately `null`-mapped where
+> no confident production skill id exists, e.g. grade-3-review perimeter
+> questions this KB doesn't have a skill for). Run
+> `node scripts/run-vision-benchmark.mjs` to smoke-test the harness against
+> these 9 files with the free `MockDocumentVisionAdapter` — that run scores
+> low on every metric by construction (the mock never looks at real pixels)
+> and proves the PIPELINE works, not OCR accuracy. No real (paid) vision call
+> has been made against these images — that needs an actual
+> `DocumentVisionAdapter` implementation plus anh's explicit go-ahead (real
+> money, a real API call per image).
+
 ## Why this isn't just "add sample images to the repo"
 
 - **Privacy.** Real homework/test pages are a child's handwriting, name, and

@@ -1,0 +1,19 @@
+{
+  "documentType": "GRADED_TEST",
+  "problemCount": 3,
+  "itemTexts": [
+    "Bài 3. Một người đã mua một hộp bút chì màu giá 8000 đồng. Hai hộp bút sáp màu mỗi hộp giá 12 000 đồng. Hỏi người đó phải trả cô bán hàng bao nhiêu tiền?",
+    "Bài 4. Tổng số tuổi của ông và cháu là số chẵn lớn nhất có 2 chữ số. Biết số tuổi của cháu là số lẻ nhỏ nhất có 2 chữ số khác nhau. Hỏi ông bao nhiêu tuổi?",
+    "Bài 5. Có 4 bao gạo và 3 bao ngô. Mỗi bao gạo nặng 45kg và mỗi bao ngô nặng 38kg. Có tất cả bao nhiêu ki-lô-gam gạo và ngô?"
+  ],
+  "itemMathExpressions": [
+    null,
+    null,
+    null
+  ],
+  "itemSkillIds": [
+    "M4.WORD.3STEP",
+    "M4.WORD.3STEP",
+    "M4.WORD.3STEP"
+  ]
+}

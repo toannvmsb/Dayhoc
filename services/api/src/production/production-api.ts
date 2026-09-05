@@ -45,7 +45,15 @@ import {
   buildParentTeachingPlan,
   buildWeeklyReportView,
 } from '@copilot/projections';
-import { buildRevisionPlan, buildWeeklyReport, diagnoseAssessment, inferExamScope } from '@copilot/revision';
+import {
+  buildRevisionPlan,
+  buildWeeklyReport,
+  diagnoseAssessment,
+  inferExamScope,
+  makeNotification,
+  resolveNotificationProvider,
+  type UserContactLookup,
+} from '@copilot/revision';
 import { buildLearningTwin } from '@copilot/learning-twin';
 import type { AssessmentQuestionOutcome, Exam } from '@copilot/domain';
 import { createHash } from 'node:crypto';
@@ -219,6 +227,25 @@ export function createProductionApi(opts: ProductionApiOptions) {
   // `restorePurchase` only reads back a purchase the user already made in
   // the store's own UI, it never creates one.
   const receiptValidation = resolveReceiptValidationAdapter(process.env);
+
+  // ---- P7: notification delivery (@copilot/revision) -----------------
+  // `contacts` is the DB-backed UserContactLookup the pure @copilot/revision
+  // package can't supply on its own. Real channels only activate once
+  // RESEND_API_KEY/NOTIFICATION_FROM_EMAIL (email) or DZ_PUSH_NOTIFICATIONS=1
+  // (push) are set — see resolveNotificationProvider's own doc comment.
+  const notificationContacts: UserContactLookup = {
+    getEmail: async (userId) => {
+      const r = (await pool.query(`SELECT notification_email FROM users WHERE id = $1`, [userId]))
+        .rows[0] as { notification_email: string | null } | undefined;
+      return r?.notification_email ?? null;
+    },
+    getExpoPushToken: async (userId) => {
+      const r = (await pool.query(`SELECT expo_push_token FROM users WHERE id = $1`, [userId]))
+        .rows[0] as { expo_push_token: string | null } | undefined;
+      return r?.expo_push_token ?? null;
+    },
+  };
+  const notifications = resolveNotificationProvider(process.env, notificationContacts).adapter;
 
   // ---- M4: upload / document-vision ingestion ----------------------
   const uploadStorage =
@@ -697,7 +724,27 @@ export function createProductionApi(opts: ProductionApiOptions) {
     }) {
       const r = await registrar.register(input);
       analytics.track({ category: 'auth', action: 'signup', actorRef: actorRef(r.user.id), metadata: { role: input.intendedRole } });
+      // Same email the user already gave to sign up — not a new collection.
+      // Kept separate from the auth provider's own copy (data minimization;
+      // see the notification_email migration's doc comment).
+      if (input.email) {
+        await pool.query(`UPDATE users SET notification_email = $1 WHERE id = $2`, [input.email, r.user.id]);
+      }
       return meDto(r);
+    },
+
+    /**
+     * POST /me/push-token — a device registers its Expo push token after the
+     * user grants OS notification permission. Same flow as the Tuzi
+     * project's `registerForPush()`. No-op-safe: push notifications stay
+     * inert (DZ_PUSH_NOTIFICATIONS unset) even once tokens exist.
+     */
+    async registerPushToken(auth: CallerAuth, expoPushToken: string) {
+      const ctx = await deriveContext(auth);
+      const token = expoPushToken.trim();
+      if (!token) throw new ForbiddenError('expoPushToken trống');
+      await pool.query(`UPDATE users SET expo_push_token = $1 WHERE id = $2`, [token, ctx.userId]);
+      return { ok: true as const };
     },
 
     /** GET /me */
@@ -1533,6 +1580,27 @@ export function createProductionApi(opts: ProductionApiOptions) {
     async redeemInviteCode(auth: CallerAuth, code: string) {
       const ctx = await deriveContext(auth);
       const req = await base.relationships.redeemInviteCode(code, ctx.userId);
+      // Notify every ACTIVE guardian of the target child that a request is
+      // waiting on them — first concrete `NotificationDeliveryAdapter` call
+      // site (P7). Best-effort: a delivery failure never fails the redeem.
+      if (req.targetChildId) {
+        const guardians = (
+          await pool.query(
+            `SELECT parent_user_id FROM parent_child_relationships WHERE child_id = $1 AND status = 'ACTIVE'`,
+            [req.targetChildId],
+          )
+        ).rows as { parent_user_id: string }[];
+        const notif = makeNotification('relationship_request_received', {
+          targetUserId: '', // overwritten per guardian below
+          at: now().toISOString(),
+          newId: () => globalThis.crypto.randomUUID(),
+        });
+        await Promise.all(
+          guardians.map((g) =>
+            notifications.send(g.parent_user_id, { ...notif, targetUserId: g.parent_user_id }).catch(() => undefined),
+          ),
+        );
+      }
       return requestDto(req);
     },
 

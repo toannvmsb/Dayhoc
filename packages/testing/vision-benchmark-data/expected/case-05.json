@@ -1,0 +1,16 @@
+{
+  "documentType": "GRADED_TEST",
+  "problemCount": 2,
+  "itemTexts": [
+    "Câu 1. Trong các số sau: 567; 765; 766; 767. Số nào là số chẵn? A. 567  B. 765  C. 766  D. 767",
+    "Câu 2. Từ 23 đến 30 có bao nhiêu số chẵn? A. 6  B. 7  C. 4  D. 8"
+  ],
+  "itemMathExpressions": [
+    null,
+    null
+  ],
+  "itemSkillIds": [
+    "M4.NUM.070",
+    "M4.NUM.070"
+  ]
+}

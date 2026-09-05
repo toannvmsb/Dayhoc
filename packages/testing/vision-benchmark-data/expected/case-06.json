@@ -1,0 +1,43 @@
+{
+  "documentType": "GRADED_TEST",
+  "problemCount": 11,
+  "itemTexts": [
+    "Câu 3. Hai số chẵn liên tiếp hơn kém nhau mấy đơn vị? A. 1  B. 2  C. 3  D. 4",
+    "Câu 4. Cho biểu thức (24 + b) × 3. Với b = 3 thì biểu thức có giá trị là: A. 72  B. 27  C. 81  D. 63",
+    "Câu 5. Trong dịp Tết, lớp 4A tham gia trồng cây. Số cây hoa trồng được là số lẻ lớn nhất có hai chữ số, số cây bóng mát trồng được ít hơn số cây hoa 14 cây. Hỏi lớp 4A trồng được tất cả bao nhiêu cây? A. 107 cây  B. 104 cây  C. 184 cây",
+    "Câu 6. Chu vi hình vuông có cạnh 49cm là: A. 98cm  B. 98  C. 196cm  D. 196",
+    "Câu 7. Một hình chữ nhật có chiều rộng 25cm, chiều dài hơn chiều rộng 10cm. Tính chu vi hình chữ nhật đó? A. 60cm  B. 60  C. 120cm  D. 120",
+    "Câu 8. Trong số 428 365, giá trị của chữ số 3 gấp giá trị của chữ số 5 số lần là: A. 6  B. 60  C. 300  D. 30",
+    "Bài 1. Với 6 chữ số 0; 2; 4; 6; 8; 9 lập được: a. Số chẵn lớn nhất có năm chữ số khác nhau là: …",
+    "Bài 1. b. Số lẻ bé nhất có năm chữ số khác nhau là: …",
+    "Bài 1. c. Tính tổng của hai số vừa tìm được: …",
+    "Bài 2. Tính giá trị của biểu thức 135 × a + 127. a, Với a = 6",
+    "Bài 2. Tính giá trị của biểu thức 135 × a + 127. b, Với a = 8"
+  ],
+  "itemMathExpressions": [
+    null,
+    "(24+3)*3",
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    "135*6+127",
+    "135*8+127"
+  ],
+  "itemSkillIds": [
+    "M4.NUM.070",
+    "M4.ALG.EXPR_VAR",
+    "M4.NUM.070",
+    null,
+    null,
+    "M4.NUM.020",
+    "M4.NUM.070",
+    "M4.NUM.070",
+    "M4.ARITH.ADD_MULTI",
+    "M4.ALG.EXPR_VAR",
+    "M4.ALG.EXPR_VAR"
+  ]
+}

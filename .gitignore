@@ -57,3 +57,7 @@ apps/mobile/dist/
 # children. Never enters git history. expected/ + manifest.json (no image
 # bytes) ARE committed — see packages/testing/vision-benchmark-data/README.md.
 packages/testing/vision-benchmark-data/images/
+
+# anh's original real homework photos (source for the copies above) — same
+# reason, never enters git history.
+File du an/BaiTap4/

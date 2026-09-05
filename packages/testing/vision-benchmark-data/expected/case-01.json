@@ -1,0 +1,16 @@
+{
+  "documentType": "GRADED_TEST",
+  "problemCount": 2,
+  "itemTexts": [
+    "Câu 1. Biết số gồm bảy trăm nghìn, hai chục nghìn, chín trăm, ba chục, hai đơn vị. Số đó được viết là: A. 7903  B. 72 932  C. 720 932  D. 729 032",
+    "Câu 2. Số 65 243 được đọc là: A. Sáu mươi năm nghìn hai trăm tư ba  B. Sáu mươi lăm nghìn hai trăm bốn mươi ba  C. Sáu năm nghìn hai trăm bốn mươi ba  D. Sáu lăm nghìn hai trăm bốn mươi ba"
+  ],
+  "itemMathExpressions": [
+    null,
+    null
+  ],
+  "itemSkillIds": [
+    "M4.NUM.020",
+    "M4.NUM.001"
+  ]
+}
