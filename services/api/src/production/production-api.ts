@@ -2192,20 +2192,55 @@ export function createProductionApi(opts: ProductionApiOptions) {
       } else {
         await authorizeChild(ctx, childId, 'view_child');
       }
-      // child-safe item shape — no worked solution, hint ladder is progressive client-side
+      // child-safe item shape — the 5 progressive hints (rungs 1-5, §17) ARE
+      // sent, so the ladder can reveal real guidance client-side
+      // (packages/practice/src/hint-ladder.ts). The 6th rung — the full
+      // worked solution — is deliberately NEVER included here (reference
+      // library questions fix `hints` at exactly 6 strings; index 5 is the
+      // solution): a child reaching that rung calls
+      // getAssignmentItemSolution below, a narrow, separately-authorized
+      // reveal so the answer is never sitting in a payload before it's
+      // actually earned.
       return {
         id: full.assignment.id,
         status: full.assignment.status,
         mode: full.assignment.mode,
-        items: full.items.map((it) => ({
-          id: it.id,
-          orderIndex: it.orderIndex,
-          prompt: it.prompt,
-          answerKind: (it.answerSpec as { kind?: string })?.kind ?? 'exact',
-          options: (it.answerSpec as { options?: string[] })?.options ?? null,
-          hintCount: it.hints.length,
-        })),
+        items: full.items.map((it) => {
+          const h = it.hints as readonly string[];
+          return {
+            id: it.id,
+            orderIndex: it.orderIndex,
+            prompt: it.prompt,
+            answerKind: (it.answerSpec as { kind?: string })?.kind ?? 'exact',
+            options: (it.answerSpec as { options?: string[] })?.options ?? null,
+            hintCount: it.hints.length,
+            hints: h.slice(0, 5),
+            hasWorkedSolution: h.length > 5,
+          };
+        }),
       };
+    },
+
+    /**
+     * The 6th hint rung ("full_solution") — revealed only on explicit
+     * request, once the child's local ladder state has actually reached it.
+     * Kept out of getAssignmentDetail's payload entirely (see comment above)
+     * so the answer is never present in a response before it's earned.
+     */
+    async getAssignmentItemSolution(auth: CallerAuth, assignmentId: string, itemId: string) {
+      const ctx = await deriveContext(auth);
+      const full = await base.learningState.getAssignment(assignmentId);
+      if (!full) throw new NotFoundError('assignment');
+      const childId = full.assignment.childId;
+      if (ctx.workspace === 'STUDENT') {
+        if (ctx.childScope !== childId) throw new ForbiddenError('student scoped to another child');
+      } else {
+        await authorizeChild(ctx, childId, 'view_child');
+      }
+      const item = full.items.find((it) => it.id === itemId);
+      if (!item) throw new NotFoundError('assignment item');
+      const h = item.hints as readonly string[];
+      return { solution: h[5] ?? null };
     },
 
     /**

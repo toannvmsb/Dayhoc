@@ -143,6 +143,12 @@ export type AssignmentDetail = {
     answerKind: string;
     options: string[] | null;
     hintCount: number;
+    /** Up to 5 progressive hints (rungs 1-5 of the 6-rung ladder — §17). */
+    hints: string[];
+    /** Rung 6 (the full worked solution) exists but is never sent here —
+     * fetch it via GET /assignments/:id/items/:itemId/solution only once the
+     * child's local ladder state actually reaches it. */
+    hasWorkedSolution: boolean;
   }[];
 };
 

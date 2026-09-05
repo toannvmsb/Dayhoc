@@ -191,6 +191,8 @@ const ROUTES: Record<string, Handler> = {
     getApi().createPracticeAssignment(auth(c), c.params[0]!, { minutes: Number(c.body.minutes ?? 15) }),
   'GET /assignments/:id': async (c) =>
     getApi().getAssignmentDetail(auth(c), uuid(c.params[0], 'bài tập')),
+  'GET /assignments/:id/items/:itemId/solution': async (c) =>
+    getApi().getAssignmentItemSolution(auth(c), uuid(c.params[0], 'bài tập'), c.params[1]!),
   'POST /assignments/:id/submit': async (c) =>
     getApi().submitPractice(
       auth(c),
