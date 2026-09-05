@@ -149,6 +149,34 @@ function asComparand(x: { id: string; prompt: string }): SimilarityComparand {
  * A failed item never discards a good one. Fully deterministic except for the
  * injected generator's own output.
  */
+/**
+ * Deterministically rebuild the `itemId → MathKernel` map for a spec, exactly as
+ * the orchestrator does before any AI call. Exported so an offline re-score /
+ * audit can reconstruct the kernels that a past run used (doc 62 §5).
+ */
+export function reconstructKernels(
+  spec: ExerciseGenerationSpec,
+  kb: KnowledgeBase,
+  referenceLibrary: readonly ReferenceExample[],
+): Map<string, MathKernel | null> {
+  const out = new Map<string, MathKernel | null>();
+  const usedTuples: number[][] = [];
+  for (const is of buildItemGenerationSpecs(spec, kb)) {
+    const refs = referenceLibrary.filter((r) => r.skillId === is.skillId);
+    const refTuples = refs
+      .map((r) => [...r.prompt.matchAll(/\d+/g)].map((m) => Number(m[0])))
+      .filter((t) => t.length > 0);
+    const kres = generateMathKernel(is, kb, {
+      forbiddenNumberTuples: refTuples,
+      recentNumberTuples: usedTuples,
+    });
+    const kernel = kres.ok ? kres.kernel : null;
+    if (kernel) usedTuples.push([...kernel.requiredNumbersInPrompt]);
+    out.set(is.itemId, kernel);
+  }
+  return out;
+}
+
 export async function orchestrateItemGeneration(
   input: ItemOrchestratorInput,
 ): Promise<ItemOrchestratorResult> {
@@ -160,9 +188,8 @@ export async function orchestrateItemGeneration(
 
   const itemSpecs = buildItemGenerationSpecs(input.spec, input.knowledgeBase);
   const dnaFor = new Map<string, ProblemDNA>();
-  const kernelFor = new Map<string, MathKernel | null>();
+  const kernelFor = reconstructKernels(input.spec, input.knowledgeBase, input.referenceLibrary);
   const refComparands = new Map<string, SimilarityComparand[]>(); // skillId → refs
-  const usedTuples: number[][] = [];
   for (const is of itemSpecs) {
     const refs = input.referenceLibrary.filter((r) => r.skillId === is.skillId);
     if (!refComparands.has(is.skillId)) {
@@ -171,17 +198,7 @@ export async function orchestrateItemGeneration(
         refs.map((r) => ({ id: r.id, prompt: r.prompt })),
       );
     }
-    const refTuples = refs
-      .map((r) => [...r.prompt.matchAll(/\d+/g)].map((m) => Number(m[0])))
-      .filter((t) => t.length > 0);
-    const kres = generateMathKernel(is, input.knowledgeBase, {
-      forbiddenNumberTuples: refTuples,
-      recentNumberTuples: usedTuples,
-    });
-    const kernel = kres.ok ? kres.kernel : null;
-    if (kernel) usedTuples.push([...kernel.requiredNumbersInPrompt]);
-    kernelFor.set(is.itemId, kernel);
-    dnaFor.set(is.itemId, buildProblemDNA(is, input.knowledgeBase, refs, { mathKernel: kernel }));
+    dnaFor.set(is.itemId, buildProblemDNA(is, input.knowledgeBase, refs, { mathKernel: kernelFor.get(is.itemId) ?? null }));
   }
 
   const accepted = new Map<string, GeneratedExercise>();

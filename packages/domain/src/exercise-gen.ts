@@ -640,15 +640,25 @@ export interface ItemGateResult {
  *   CROSSCHECK_REQUIRED   — no deterministic path (reasoning, or the verifier
  *                           can't parse a valid problem) → content OK, NOT
  *                           production-ready until an AI/human confirms it
+ *   SEMANTIC_UNKNOWN      — the answer is not proven wrong, but a bounded
+ *                           semantic-preservation check could not prove the
+ *                           prose preserves the kernel's meaning → NOT accepted,
+ *                           retry / escalation eligible (doc 62 §3). Distinct
+ *                           from DETERMINISTIC_WRONG: the model may be right.
  *   MALFORMED             — the answer key itself is not well-formed → HARD FAIL
  */
 export const ITEM_ANSWER_STATUSES = [
   'DETERMINISTIC_CORRECT',
   'DETERMINISTIC_WRONG',
   'CROSSCHECK_REQUIRED',
+  'SEMANTIC_UNKNOWN',
   'MALFORMED',
 ] as const;
 export type ItemAnswerStatus = (typeof ITEM_ANSWER_STATUSES)[number];
+
+/** Three-way verdict of the bounded semantic-preservation check (doc 62 §3). */
+export const SEMANTIC_VERDICTS = ['PASS', 'FAIL', 'UNKNOWN'] as const;
+export type SemanticVerdict = (typeof SEMANTIC_VERDICTS)[number];
 
 // ======================================================================
 // ANSWER VERIFICATION ARCHITECTURE (doc 58) — deterministic MathKernel
@@ -809,6 +819,16 @@ export interface KernelConsistencyResult {
   readonly consistent: boolean;
   readonly codes: readonly KernelConsistencyCode[];
   readonly detail: string;
+  /**
+   * Overall verdict of the reconciliation layer (doc 62). PASS = every check
+   * proven consistent. FAIL = a deterministic contradiction (→ DETERMINISTIC_WRONG).
+   * UNKNOWN = no contradiction proven, but a prose-preservation check could not
+   * be resolved either way (→ SEMANTIC_UNKNOWN, retry/escalate). Absent on the
+   * back-compat path = derive from `consistent`.
+   */
+  readonly semanticVerdict?: SemanticVerdict;
+  /** reconcilable codes the normalizer PROVED consistent (informational). */
+  readonly reconciled?: readonly string[];
 }
 
 /** AI answer-crosscheck verdict (doc 58 §8). FALLBACK only — never the default path. */

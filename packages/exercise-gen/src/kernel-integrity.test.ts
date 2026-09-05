@@ -267,12 +267,38 @@ describe('doc 59 P1 — LINEAR_EQ semantic handling by mathematical role', () =>
     expect(v.codes).not.toContain('SEMANTIC_STRUCTURE_MISMATCH');
   });
 
-  it('a SOLVE_EQUATION prompt with no equation and no "tìm" language still flags', () => {
+  it('a garbage SOLVE_EQUATION prompt (no numbers, no equation) is still rejected', () => {
     const k = findLinear(() => true);
     expect(k).not.toBeNull();
     if (!k) return;
     const ans = k.expectedAnswer.kind === 'numeric' ? k.expectedAnswer.value : 0;
     const v = validateAgainstKernel(linEx(k, `Một cửa hàng bán được một số hàng trong ngày.`, ans), k);
-    expect(v.codes).toContain('SEMANTIC_STRUCTURE_MISMATCH');
+    expect(v.consistent).toBe(false); // via KERNEL_NUMBER_DROPPED — the given numbers are absent
+  });
+
+  it('a word problem whose worked solution sets up a DIFFERENT equation is a FAIL, not UNKNOWN', () => {
+    const k = findLinear((kk) => kk.requiredNumbersInPrompt.every((n) => n > 0));
+    expect(k).not.toBeNull();
+    if (!k) return;
+    const [a, b, c] = k.requiredNumbersInPrompt as [number, number, number];
+    const wrongAns = (k.expectedAnswer.kind === 'numeric' ? k.expectedAnswer.value : 0) + 7;
+    // prompt lists every given number but the solution solves a different eq → wrong x
+    const ex = linEx(k, `Một cửa hàng bán ${a} hộp mỗi ngày, sau khi bớt ${b} còn ${c}. Tìm số ngày.`, wrongAns);
+    const v = validateAgainstKernel(
+      { ...ex, workedSolution: `Ta có ${a}x + ${b} = ${c}. Vậy x = ${wrongAns}.` },
+      k,
+    );
+    expect(v.semanticVerdict).toBe('FAIL');
+    expect(v.consistent).toBe(false);
+  });
+
+  it('reconciled findings are reported and do not block', () => {
+    const k = findLinear((kk) => kk.requiredNumbersInPrompt.some((n) => n < 0));
+    if (!k) return;
+    const [a, b, c] = k.requiredNumbersInPrompt as [number, number, number];
+    const ans = k.expectedAnswer.kind === 'numeric' ? k.expectedAnswer.value : 0;
+    const v = validateAgainstKernel(linEx(k, `Tìm x, biết: ${a}x - ${Math.abs(b)} = ${c}`, ans), k);
+    expect(v.semanticVerdict).toBe('PASS');
+    expect(v.consistent).toBe(true);
   });
 });

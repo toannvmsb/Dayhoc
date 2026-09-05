@@ -4,9 +4,15 @@ import type {
   KernelConsistencyResult,
   KernelOperation,
   MathKernel,
+  SemanticVerdict,
 } from '@copilot/domain';
+import {
+  reconcileEquationForm,
+  reconcileNumberDrop,
+  reconcileOperandCollision,
+} from './semantic-normalizer.js';
 
-export const KERNEL_VALIDATOR_VERSION = 'kernel-validator.v2';
+export const KERNEL_VALIDATOR_VERSION = 'kernel-validator.v3';
 
 /**
  * Bounded Vietnamese keyword contract per operation (doc 58 §3). NOT NLP — a
@@ -84,65 +90,79 @@ function answersEqual(a: MathKernel['expectedAnswer'], ex: GeneratedExercise): b
   }
 }
 
+/** codes that are ALWAYS a hard contradiction — never reconcilable. */
+const HARD_CODES = new Set<KernelConsistencyCode>([
+  'ANSWER_MISMATCH',
+  'SOLUTION_CONTRADICTS_KERNEL',
+  'DISTRACTOR_INCLUDES_ANSWER',
+  'UNIT_INCONSISTENT',
+  'PROMPT_NOT_SOLVABLE',
+]);
+
 /**
- * validateAgainstKernel (doc 58 §6) — deterministic. Every mathematically
- * authoritative fact the kernel owns must survive the AI's verbalization. Any
- * contradiction is a HARD FAIL (→ `DETERMINISTIC_WRONG`), regenerate that item.
+ * validateAgainstKernel (doc 58 §6, doc 62 reconciliation layer). Deterministic.
+ *
+ * Hard codes (answer / worked-solution / units) are always a contradiction.
+ * "Prose-preservation" codes (KERNEL_NUMBER_DROPPED, SEMANTIC_STRUCTURE_MISMATCH,
+ * OPERAND_MUTATION) are first passed through the bounded Vietnamese normalizer:
+ *   normalizer PASS    → the code is dropped (valid alternative phrasing)
+ *   normalizer FAIL    → the code stays as a hard contradiction
+ *   normalizer UNKNOWN → the code stays, `semanticVerdict='UNKNOWN'` — the item
+ *                        is NOT accepted but is retry/escalation eligible, NOT
+ *                        marked DETERMINISTIC_WRONG.
  */
 export function validateAgainstKernel(
   exercise: GeneratedExercise,
   kernel: MathKernel,
 ): KernelConsistencyResult {
-  const codes: KernelConsistencyCode[] = [];
+  const hard: KernelConsistencyCode[] = [];
+  const unknown: KernelConsistencyCode[] = [];
+  const reconciled: string[] = [];
   const details: string[] = [];
 
-  // 1. the returned answer must match the kernel's expected answer
+  // 1. the returned answer must match the kernel's expected answer  (HARD)
   if (!answersEqual(kernel.expectedAnswer, exercise)) {
-    codes.push('ANSWER_MISMATCH');
+    hard.push('ANSWER_MISMATCH');
     details.push(
       `answer ${JSON.stringify(exercise.answerSpec)} ≠ kernel ${JSON.stringify(kernel.expectedAnswer)}`,
     );
   }
 
-  // 2. every GIVEN number must appear in the prompt — by MATHEMATICAL ROLE, not
-  //    raw signed-token match (doc 58 §3 / doc 59 P1):
-  //    - a 0 operand is implicit (never written);
-  //    - for LINEAR_EQ the constant b is carried by the ± sign of the equation,
-  //      so "x - 14 = 21" preserves the role of b = -14.
   const promptNums = numbersIn(exercise.prompt);
-  const dropped = kernel.requiredNumbersInPrompt.filter((n) => {
+
+  // 2. every GIVEN number must appear in the prompt — RECONCILABLE. Raw digit
+  //    check first, then the normalizer (number words, "gấp N", signed language).
+  const rawMissing = kernel.requiredNumbersInPrompt.filter((n) => {
     if (n === 0) return false;
     if (promptNums.has(n)) return false;
     if (kernel.family === 'LINEAR_EQ' && n < 0 && promptNums.has(-n)) return false;
     return true;
   });
-  if (dropped.length > 0) {
-    codes.push('KERNEL_NUMBER_DROPPED');
-    details.push(`prompt is missing given number(s): ${dropped.join(', ')}`);
+  if (rawMissing.length > 0) {
+    const rec = reconcileNumberDrop(rawMissing, exercise.prompt, '');
+    if (rec.resolved.length > 0) reconciled.push(`KERNEL_NUMBER_DROPPED: ${rec.resolved.join(',')} present as words/signed language`);
+    if (rec.stillMissing.length > 0) {
+      hard.push('KERNEL_NUMBER_DROPPED');
+      details.push(`prompt is missing given number(s): ${rec.stillMissing.join(', ')}`);
+    }
   }
 
-  // 3. units — if the kernel carries an authoritative unit, the prompt/solution
-  //    should mention it (a light check — absence of the unit token)
+  // 3. units — HARD (light absence check).
   if (kernel.units && kernel.units !== '°') {
     const hay = `${exercise.prompt} ${exercise.workedSolution}`.toLowerCase();
     if (!hay.includes(kernel.units.toLowerCase())) {
-      codes.push('UNIT_INCONSISTENT');
+      hard.push('UNIT_INCONSISTENT');
       details.push(`authoritative unit "${kernel.units}" not mentioned`);
     }
   }
 
-  // 4. worked-solution consistency (doc 58 §4) — CONSERVATIVE: only a contradiction
-  //    we can be sure of. (a) the correct result must appear SOMEWHERE in the
-  //    solution; (b) an EXPLICIT final-answer statement ("Đáp số: X", "Đáp số là
-  //    X", "kết luận … X") near the end must not state a different value — and
-  //    only when the correct value does not also appear after it (a step, not the
-  //    conclusion).
+  // 4. worked-solution consistency — HARD, conservative (doc 59 P0).
   if (kernel.expectedAnswer.kind === 'numeric' && exercise.workedSolution.trim().length > 0) {
     const sol = exercise.workedSolution;
     const want = kernel.expectedAnswer.value;
     const solNums = numbersIn(sol);
     if (!solNums.has(want)) {
-      codes.push('SOLUTION_CONTRADICTS_KERNEL');
+      hard.push('SOLUTION_CONTRADICTS_KERNEL');
       details.push(`worked solution never states the correct result ${want}`);
     } else {
       const m = /(?:đáp\s*số|đáp\s*án|kết\s*luận)\s*(?:là|:|=)?\s*(-?\d+(?:[.,]\d+)?)/i.exec(sol);
@@ -151,15 +171,15 @@ export function validateAgainstKernel(
         const afterStatement = sol.slice(m.index + m[0].length);
         const wantAppearsAfter = numbersIn(afterStatement).has(want);
         if (Number.isFinite(claimed) && Math.abs(claimed - want) > 1e-9 && !wantAppearsAfter) {
-          codes.push('SOLUTION_CONTRADICTS_KERNEL');
+          hard.push('SOLUTION_CONTRADICTS_KERNEL');
           details.push(`worked solution's stated đáp số is ${claimed}, kernel answer is ${want}`);
         }
       }
     }
   }
 
-  // 4b. OPERAND_MUTATION — the answer must not be leaked into the prompt as a
-  //     "given", and a given number must not appear arithmetically altered.
+  // 4b. OPERAND_MUTATION — RECONCILABLE (a value collision with a structural count
+  //     is not leaked answer data).
   if (kernel.expectedAnswer.kind === 'numeric') {
     const given = new Set(kernel.requiredNumbersInPrompt);
     if (
@@ -167,35 +187,46 @@ export function validateAgainstKernel(
       promptNums.has(kernel.expectedAnswer.value) &&
       kernel.semantics.scenarioType !== 'CLOSED_EXPRESSION'
     ) {
-      codes.push('OPERAND_MUTATION');
-      details.push(`the answer ${kernel.expectedAnswer.value} appears in the prompt as if it were given data`);
+      const verdict = reconcileOperandCollision(kernel.expectedAnswer.value, exercise.prompt);
+      if (verdict === 'PASS') {
+        reconciled.push(`OPERAND_MUTATION: ${kernel.expectedAnswer.value} is a structural count in the prompt, not leaked`);
+      } else {
+        hard.push('OPERAND_MUTATION');
+        details.push(`the answer ${kernel.expectedAnswer.value} appears in the prompt as if it were given data`);
+      }
     }
   }
 
-  // 5. SEMANTIC_STRUCTURE_MISMATCH (doc 58 §3) — for a single-operation family,
-  //    the prose must imply the kernel's operation, not a different one.
+  // 5. SEMANTIC_STRUCTURE_MISMATCH.
   const op = kernel.semantics.operation;
   const p = exercise.prompt;
   if (op === 'SOLVE_EQUATION') {
-    // An equation prompt legitimately reads with +/- language ("x - 14 = 21").
-    // It is satisfied by equation SHAPE, not by the absence of arithmetic words —
-    // the a·x ± b = c operands do NOT combine to the answer (doc 59 P1).
+    // RECONCILABLE: a word problem is a valid realization of a LINEAR_EQ kernel.
+    // Accept when the prompt has an equation shape OR the worked solution sets up
+    // an equation consistent with the kernel / reaches the kernel's x.
     const hasEquationShape =
       /[a-zA-Z]\s*[-+×·*/:]?\s*\d[\d\s.,]*=\s*[-+]?\d/.test(p) ||
       /=\s*[-+]?\d[\d\s.,]*[.);]?\s*$/im.test(p) ||
       OP_KEYWORDS.SOLVE_EQUATION.test(p);
     if (!hasEquationShape) {
-      codes.push('SEMANTIC_STRUCTURE_MISMATCH');
-      details.push('kernel operation is SOLVE_EQUATION but the prompt shows no equation to solve');
+      const verdict: SemanticVerdict = reconcileEquationForm(exercise.workedSolution, kernel);
+      if (verdict === 'PASS') {
+        reconciled.push('SEMANTIC_STRUCTURE_MISMATCH: word problem, worked solution sets up the kernel equation');
+      } else if (verdict === 'FAIL') {
+        hard.push('SEMANTIC_STRUCTURE_MISMATCH');
+        details.push('word problem whose worked solution sets up a DIFFERENT equation than the kernel');
+      } else {
+        unknown.push('SEMANTIC_STRUCTURE_MISMATCH');
+        details.push('SOLVE_EQUATION kernel realized as prose; could not prove the setup matches the kernel');
+      }
     }
   } else if (STRICT_OPS.has(op)) {
+    // HARD: a conflicting arithmetic reading whose result differs from the kernel.
     const impliesExpected = OP_KEYWORDS[op].test(p);
     const conflicting: KernelOperation[] = [];
     for (const other of STRICT_OPS) {
-      if (other === op || other === 'SOLVE_EQUATION') continue; // equation-shape, not a competing arithmetic reading
+      if (other === op || other === 'SOLVE_EQUATION') continue;
       if (!OP_KEYWORDS[other].test(p)) continue;
-      // only a CONFLICT if applying `other` to the two operands would give a
-      // different answer than the kernel's
       if (
         kernel.expectedAnswer.kind === 'numeric' &&
         kernel.requiredNumbersInPrompt.length >= 2 &&
@@ -209,33 +240,38 @@ export function validateAgainstKernel(
       }
     }
     if (conflicting.length > 0 && !impliesExpected) {
-      codes.push('SEMANTIC_STRUCTURE_MISMATCH');
+      hard.push('SEMANTIC_STRUCTURE_MISMATCH');
       details.push(
         `kernel operation is ${op} but the prose reads as ${conflicting.join('/')} and shows no ${op} language`,
       );
     }
   }
 
-  // 5. a choice item's distractors must not contain the correct answer
+  // 6. a choice item's distractors must not contain the correct answer  (HARD)
   if (exercise.answerSpec.kind === 'choice') {
     const correct = exercise.answerSpec.correct.trim().toLowerCase();
     const dups = exercise.answerSpec.options.filter((o) => o.trim().toLowerCase() === correct).length;
     if (dups !== 1) {
-      codes.push('DISTRACTOR_INCLUDES_ANSWER');
+      hard.push('DISTRACTOR_INCLUDES_ANSWER');
       details.push('the correct option appears zero or multiple times among the options');
     }
   }
 
-  // 6. solvability — with every given number present (checked in 2), the kernel
-  //    guarantees the problem is solvable. Only fail here if 2 failed AND the
-  //    prompt has fewer numbers than the kernel needs.
-  if (dropped.length > 0 && promptNums.size < kernel.requiredNumbersInPrompt.length) {
-    codes.push('PROMPT_NOT_SOLVABLE');
+  // 7. solvability — HARD, only when a real drop AND too few numbers.
+  const realDrop = hard.includes('KERNEL_NUMBER_DROPPED');
+  if (realDrop && promptNums.size < kernel.requiredNumbersInPrompt.length - 1) {
+    hard.push('PROMPT_NOT_SOLVABLE');
   }
 
+  const hardDedup = [...new Set(hard)].filter((c) => HARD_CODES.has(c) || c === 'KERNEL_NUMBER_DROPPED' || c === 'OPERAND_MUTATION' || c === 'SEMANTIC_STRUCTURE_MISMATCH');
+  const semanticVerdict: SemanticVerdict =
+    hardDedup.length > 0 ? 'FAIL' : unknown.length > 0 ? 'UNKNOWN' : 'PASS';
+
   return {
-    consistent: codes.length === 0,
-    codes: [...new Set(codes)],
+    consistent: hardDedup.length === 0 && unknown.length === 0,
+    codes: [...new Set([...hardDedup, ...unknown])],
     detail: details.join(' | ') || 'consistent with the kernel',
+    semanticVerdict,
+    reconciled,
   };
 }

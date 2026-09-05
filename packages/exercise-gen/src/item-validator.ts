@@ -186,7 +186,17 @@ export function acceptItem(
     const kv = validateAgainstKernel(exercise, ctx.mathKernel);
     if (kv.consistent) {
       answerStatus = 'DETERMINISTIC_CORRECT';
-      answerDetail = `kernel(${ctx.mathKernel.family}) consistent`;
+      answerDetail =
+        kv.reconciled && kv.reconciled.length > 0
+          ? `kernel(${ctx.mathKernel.family}) consistent (reconciled: ${kv.reconciled.join('; ')})`
+          : `kernel(${ctx.mathKernel.family}) consistent`;
+    } else if (kv.semanticVerdict === 'UNKNOWN') {
+      // not proven wrong — a bounded semantic check could not confirm the prose
+      // preserves the kernel meaning. NOT accepted, but retry/escalation eligible
+      // (doc 62 §3) — do NOT brand the model as producing a wrong answer.
+      answerStatus = 'SEMANTIC_UNKNOWN';
+      answerPass = false;
+      answerDetail = `kernel semantic UNKNOWN [${kv.codes.join(',')}]: ${kv.detail}`;
     } else {
       answerStatus = 'DETERMINISTIC_WRONG';
       answerPass = false;

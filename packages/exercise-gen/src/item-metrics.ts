@@ -41,6 +41,8 @@ export interface ItemQualityMetrics {
   readonly deterministicWrongRate: number;
   /** Of content-accepted items, fraction still PENDING_CROSSCHECK. */
   readonly crosscheckRequiredRate: number;
+  /** Of ALL generated attempts, fraction left SEMANTIC_UNKNOWN (retry/escalate, doc 62 §3). */
+  readonly semanticUnknownRate: number;
 
   // --- acceptance, two-tier ---
   /** content-accepted / requested — every gate passed. */
@@ -112,6 +114,7 @@ export function aggregateItemQuality(runs: readonly ItemBenchmarkRun[]): ItemQua
   let detCorrect = 0;
   let detWrongAllAttempts = 0;
   let crosscheckRequired = 0;
+  let semanticUnknown = 0;
   let kernelCovered = 0;
   let kernelContentAccepted = 0;
   let kernelProdReady = 0;
@@ -134,6 +137,7 @@ export function aggregateItemQuality(runs: readonly ItemBenchmarkRun[]): ItemQua
       if (it.accepted) acceptedAttemptSum += it.attempts;
       if (it.productionReady) productionReady += 1;
       if (it.answerStatus === 'DETERMINISTIC_WRONG') detWrongAllAttempts += 1;
+      if (it.answerStatus === 'SEMANTIC_UNKNOWN') semanticUnknown += 1;
       if (it.kernelFamily) {
         kernelCovered += 1;
         if (it.accepted) kernelContentAccepted += 1;
@@ -175,6 +179,7 @@ export function aggregateItemQuality(runs: readonly ItemBenchmarkRun[]): ItemQua
     deterministicCorrectRate: verifierRuled > 0 ? detCorrect / verifierRuled : 1,
     deterministicWrongRate: rawGenerations > 0 ? detWrongAllAttempts / rawGenerations : 0,
     crosscheckRequiredRate: accepted > 0 ? crosscheckRequired / accepted : 0,
+    semanticUnknownRate: rawGenerations > 0 ? semanticUnknown / rawGenerations : 0,
     contentAcceptanceRate: requested > 0 ? accepted / requested : 0,
     productionAcceptanceRate: requested > 0 ? productionReady / requested : 0,
     finalAcceptanceRate: requested > 0 ? accepted / requested : 0,
