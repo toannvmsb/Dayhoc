@@ -1,8 +1,10 @@
 import type {
+  AnswerKind,
   AnswerSpec,
   GeneratedExercise,
   GeneratedItemContent,
   ItemGenerationSpec,
+  MathKernel,
 } from '@copilot/domain';
 
 /**
@@ -43,12 +45,15 @@ function parseFraction(raw: string): { numerator: number; denominator: number } 
 export function composeExercise(
   itemSpec: ItemGenerationSpec,
   content: GeneratedItemContent,
+  kernel?: MathKernel | null,
 ): ComposeResult {
   const fail = (reason: string, regenerationInstruction: string): ComposeResult => ({
     ok: false,
     reason,
     regenerationInstruction,
   });
+  // when a kernel covers the item, the kernel's answer family is authoritative
+  const answerKind: AnswerKind = kernel?.answerKind ?? itemSpec.answerKind;
 
   if (content.hints.length !== 6 || content.hints.some((h) => h.trim().length === 0)) {
     return fail(
@@ -61,7 +66,7 @@ export function composeExercise(
   }
 
   let answerSpec: AnswerSpec;
-  switch (itemSpec.answerKind) {
+  switch (answerKind) {
     case 'numeric': {
       const n = parseNumber(content.answer);
       if (n === null) {
@@ -104,17 +109,17 @@ export function composeExercise(
       break;
     }
     case 'reasoning': {
-      if (!content.rubric || content.rubric.trim().length === 0) {
+      if (!content.rubric || content.rubric.trim().length < 10) {
         return fail(
-          'reasoning item — no grading rubric',
-          'Kèm "rubric": cách chấm điểm phần lập luận (mỗi ý cho bao nhiêu điểm).',
+          'reasoning item — rubric is null / empty / too short',
+          'BẮT BUỘC: trường "rubric" phải là một chuỗi mô tả cách chấm điểm (ví dụ "Nêu đúng tính chất 0,5đ; lập luận chặt chẽ 0,5đ"), KHÔNG được để null hay rỗng.',
         );
       }
       answerSpec = { kind: 'reasoning' };
       break;
     }
     default:
-      return fail(`unknown answer kind ${itemSpec.answerKind as string}`, 'Sinh lại câu hỏi.');
+      return fail(`unknown answer kind ${answerKind as string}`, 'Sinh lại câu hỏi.');
   }
 
   const exercise: GeneratedExercise = {
@@ -131,7 +136,7 @@ export function composeExercise(
     answerSpec,
     hints: content.hints,
     workedSolution: content.workedSolution,
-    ...(itemSpec.answerKind === 'reasoning' && content.rubric ? { rubric: content.rubric } : {}),
+    ...(answerKind === 'reasoning' && content.rubric ? { rubric: content.rubric } : {}),
     origin: 'ai_generated',
   };
   return { ok: true, exercise };

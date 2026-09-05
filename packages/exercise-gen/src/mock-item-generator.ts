@@ -113,7 +113,127 @@ function pickTemplate(
   return pool[start % pool.length]!(a, b, s);
 }
 
+const KERNEL_NOUNS = [
+  'quầy sách', 'bến phà', 'vườn ươm', 'kho thóc', 'trạm bơm', 'xưởng gỗ', 'quán phở',
+  'bãi giữ xe', 'lò bánh', 'trại gà', 'hồ cá', 'sạp rau', 'nhà kính', 'bến xe', 'kho vật tư', 'ruộng ngô',
+] as const;
+const KERNEL_THINGS = ['thùng hàng', 'phần quà', 'quyển vở', 'chiếc bút', 'ki-lô-gam gạo', 'lít nước', 'viên gạch', 'hộp bánh'] as const;
+
+/** Content that honours a MathKernel: use its numbers + its exact answer, with a varied scenario. */
+function buildFromKernel(dna: ProblemDNA): GeneratedItemContent {
+  const k = dna.mathKernel!;
+  const n = ordinal(dna);
+  const noun = KERNEL_NOUNS[(n - 1) % KERNEL_NOUNS.length]!;
+  const thing = KERNEL_THINGS[(n * 3) % KERNEL_THINGS.length]!;
+  const nums = k.requiredNumbersInPrompt;
+  const ans = k.expectedAnswer;
+  const answerStr =
+    ans.kind === 'numeric'
+      ? String(ans.value)
+      : ans.kind === 'fraction'
+        ? `${ans.numerator}/${ans.denominator}`
+        : ans.kind === 'exact'
+          ? ans.value
+          : ans.kind === 'choice'
+            ? ans.correct
+            : '';
+  const distractors = ans.kind === 'choice' ? [...ans.distractors] : undefined;
+
+  let prompt: string;
+  switch (k.family) {
+    case 'INT_ARITH':
+    case 'DISTRIBUTIVE':
+      prompt = `Tính${n % 2 ? '' : ' giá trị của biểu thức'}: ${k.canonicalVerificationExpression ?? nums.join(' + ')} = ?`;
+      break;
+    case 'ANGLE_TYPE':
+      prompt = `Cho một góc có số đo ${nums[0]}°. Hỏi góc đó thuộc loại nào? Chọn đáp án đúng.`;
+      break;
+    case 'ANGLE_SUM':
+      prompt = `Một tam giác có hai góc bằng ${nums[0]}° và ${nums[1]}°. Tính số đo góc còn lại.`;
+      break;
+    case 'RATIO_SHARE': {
+      const ratio = nums.slice(1).join(' : ');
+      const grp = nums.length > 3 ? 'ba' : 'hai';
+      const N = nums[0];
+      prompt = [
+        `${noun.charAt(0).toUpperCase() + noun.slice(1)} chia ${N} ${thing} cho ${grp} nhóm theo tỉ lệ ${ratio}. Hỏi nhóm thứ nhất nhận được bao nhiêu ${thing}?`,
+        `Người ta cần phân phối ${N} ${thing} sao cho ${grp} tổ nhận theo tỉ lệ ${ratio}. Tổ đầu tiên được bao nhiêu ${thing}?`,
+        `Ba bạn góp chung ${N} ${thing} rồi chia lại theo tỉ lệ ${ratio}. Phần của bạn thứ nhất là bao nhiêu ${thing}?`,
+        `Số ${thing} tổng cộng là ${N}. Nếu chia theo tỉ lệ ${ratio} thì phần đầu tiên bằng bao nhiêu?`,
+        `Một sợi dây gồm ${N} đơn vị được cắt thành ${grp} đoạn theo tỉ lệ ${ratio}; đoạn thứ nhất dài bao nhiêu đơn vị?`,
+        `Cho ${N} ${thing} và tỉ lệ chia ${ratio}. Tính số ${thing} ứng với thành phần thứ nhất của tỉ lệ.`,
+      ][(n - 1) % 6]!;
+      break;
+    }
+    case 'SUM_DIFF':
+      prompt = `Tổng hai số là ${nums[0]}, hiệu của chúng là ${nums[1]}. Tìm số lớn.`;
+      break;
+    case 'UNIT_RATE':
+      prompt = `Ở ${noun}, ${nums[0]} ${thing} có giá ${nums[1]} nghìn đồng. Hỏi ${nums[2]} ${thing} như thế có giá bao nhiêu nghìn đồng?`;
+      break;
+    case 'FRACTION_ARITH':
+      prompt = `Thực hiện phép tính: ${nums[0]}/${nums[1]} ${k.operationGraph[0]?.match(/[+\-×]/)?.[0] ?? '+'} ${nums[2]}/${nums[3]}. Viết kết quả ở dạng phân số tối giản.`;
+      break;
+    case 'LINEAR_EQ':
+      prompt = `Tìm x, biết ${nums[0]}x + (${nums[1]}) = ${nums[2]}.`;
+      break;
+    case 'PERCENT':
+      prompt = `Tính ${nums[0]}% của ${nums[1]}.`;
+      break;
+    case 'UNIT_CONVERSION':
+      prompt = `Đổi ${nums[0]} ${k.operands[0]?.unit ?? ''} ra ${k.units}.`;
+      break;
+    case 'RECT_GEOMETRY':
+      prompt = `Một hình chữ nhật có chiều dài ${nums[0]} cm và chiều rộng ${nums[1]} cm. ${k.units === 'cm²' ? 'Tính diện tích' : 'Tính chu vi'} của hình.`;
+      break;
+    case 'WORD_2STEP':
+      prompt = `Buổi sáng ${noun} nhập ${nums[0]} ${thing}, buổi chiều nhập thêm ${nums[1]} ${thing}. Sau đó toàn bộ số ${thing} vừa nhập được nhân lên ${nums[2]} lần khi đóng gói. Hỏi cuối cùng có bao nhiêu ${thing}?`;
+      break;
+    default: {
+      // WORD_1STEP — op-aware scenario (the kernel guarantees exactly one of + - ×)
+      const op = /[+\-*]/.exec(k.canonicalVerificationExpression ?? '+')?.[0] ?? '+';
+      const [a1, b1] = nums;
+      if (op === '+') {
+        prompt = [
+          `${noun.charAt(0).toUpperCase() + noun.slice(1)} có ${a1} ${thing}, nhận thêm ${b1} ${thing} nữa. Hỏi ${noun} có tất cả bao nhiêu ${thing}?`,
+          `Sáng nay ${noun} nhập ${a1} ${thing}; đến trưa nhập thêm ${b1} ${thing}. Tổng số ${thing} đã nhập là bao nhiêu?`,
+          `Tổ Một góp ${a1} ${thing}, tổ Hai góp ${b1} ${thing}. Cả hai tổ góp bao nhiêu ${thing}?`,
+        ][(n - 1) % 3]!;
+      } else if (op === '-') {
+        prompt = [
+          `${noun.charAt(0).toUpperCase() + noun.slice(1)} có ${a1} ${thing}, đã dùng hết ${b1} ${thing}. Hỏi còn lại bao nhiêu ${thing}?`,
+          `Ban đầu có ${a1} ${thing}; sau khi chuyển đi ${b1} ${thing} thì còn lại bao nhiêu ${thing}?`,
+          `Trên xe có ${a1} ${thing}, xuống bến bớt ${b1} ${thing}. Trên xe còn bao nhiêu ${thing}?`,
+        ][(n - 1) % 3]!;
+      } else {
+        prompt = [
+          `Mỗi hộp có ${a1} ${thing}. Có ${b1} hộp như thế. Hỏi tất cả bao nhiêu ${thing}?`,
+          `${noun.charAt(0).toUpperCase() + noun.slice(1)} đóng ${b1} thùng, mỗi thùng ${a1} ${thing}. Tổng số ${thing} là bao nhiêu?`,
+          `Có ${b1} nhóm, mỗi nhóm ${a1} ${thing}. Cả ${b1} nhóm có bao nhiêu ${thing}?`,
+        ][(n - 1) % 3]!;
+      }
+    }
+  }
+
+  return {
+    itemId: dna.itemId,
+    prompt,
+    answer: answerStr,
+    ...(distractors && distractors.length > 0 ? { distractors } : {}),
+    hints: [
+      'Đọc kỹ đề, ghi lại các số đã cho.',
+      'Xác định phép tính / bước làm chính.',
+      k.operationGraph[0] ?? 'Thực hiện phép tính.',
+      'Thử với số nhỏ hơn cho dễ hình dung.',
+      'Làm lại cẩn thận với số liệu của đề.',
+      `Lời giải: ${k.solutionOutline}`,
+    ],
+    workedSolution: `${k.operationGraph.join('\n')}\nĐáp số: ${answerStr}${k.units && k.units !== '°' ? ' ' + k.units : k.units === '°' ? '°' : ''}.`,
+  };
+}
+
 function buildContent(dna: ProblemDNA): GeneratedItemContent {
+  if (dna.mathKernel) return buildFromKernel(dna);
   const n = ordinal(dna);
   const { a, b } = operands(dna, n);
   const skillName = dna.skill.name;

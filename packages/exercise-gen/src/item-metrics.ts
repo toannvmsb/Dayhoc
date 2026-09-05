@@ -50,6 +50,16 @@ export interface ItemQualityMetrics {
   /** @deprecated == contentAcceptanceRate. */
   readonly finalAcceptanceRate: number;
 
+  // --- MathKernel-supported subset (doc 58 §10.F) ---
+  /** items a kernel covered / requested. */
+  readonly kernelCoverageRate: number;
+  /** of kernel-covered items that were CONTENT-accepted, fraction PRODUCTION-ready. */
+  readonly kernelSupportedProductionRate: number;
+  /** of kernel-covered items, fraction the kernel validator proved WRONG (any attempt). */
+  readonly kernelSupportedWrongRate: number;
+  /** of kernel-covered items, fraction that reached PRODUCTION-ready over ALL requested. */
+  readonly kernelSupportedProductionOverAllRate: number;
+
   readonly averageRetriesPerAcceptedItem: number;
   readonly latencyMsPerAcceptedItem: number;
 
@@ -102,6 +112,10 @@ export function aggregateItemQuality(runs: readonly ItemBenchmarkRun[]): ItemQua
   let detCorrect = 0;
   let detWrongAllAttempts = 0;
   let crosscheckRequired = 0;
+  let kernelCovered = 0;
+  let kernelContentAccepted = 0;
+  let kernelProdReady = 0;
+  let kernelWrong = 0;
 
   for (const r of runs) {
     requested += r.result.requestedCount;
@@ -120,6 +134,12 @@ export function aggregateItemQuality(runs: readonly ItemBenchmarkRun[]): ItemQua
       if (it.accepted) acceptedAttemptSum += it.attempts;
       if (it.productionReady) productionReady += 1;
       if (it.answerStatus === 'DETERMINISTIC_WRONG') detWrongAllAttempts += 1;
+      if (it.kernelFamily) {
+        kernelCovered += 1;
+        if (it.accepted) kernelContentAccepted += 1;
+        if (it.productionReady) kernelProdReady += 1;
+        if (it.answerStatus === 'DETERMINISTIC_WRONG') kernelWrong += 1;
+      }
       if (it.accepted) {
         if (it.answerStatus === 'CROSSCHECK_REQUIRED') crosscheckRequired += 1;
         if (it.answerKind !== 'reasoning') {
@@ -158,6 +178,10 @@ export function aggregateItemQuality(runs: readonly ItemBenchmarkRun[]): ItemQua
     contentAcceptanceRate: requested > 0 ? accepted / requested : 0,
     productionAcceptanceRate: requested > 0 ? productionReady / requested : 0,
     finalAcceptanceRate: requested > 0 ? accepted / requested : 0,
+    kernelCoverageRate: requested > 0 ? kernelCovered / requested : 0,
+    kernelSupportedProductionRate: kernelContentAccepted > 0 ? kernelProdReady / kernelContentAccepted : 0,
+    kernelSupportedWrongRate: kernelCovered > 0 ? kernelWrong / kernelCovered : 0,
+    kernelSupportedProductionOverAllRate: kernelCovered > 0 ? kernelProdReady / kernelCovered : 0,
     averageRetriesPerAcceptedItem: accepted > 0 ? (acceptedAttemptSum - accepted) / accepted : 0,
     latencyMsPerAcceptedItem: accepted > 0 ? latencyMs / accepted : 0,
     inputTokens,

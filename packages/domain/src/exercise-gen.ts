@@ -599,6 +599,13 @@ export interface ProblemDNA {
   readonly rawReference:
     | { readonly prompt: string; readonly justification: string; readonly leakageRisk: 'ELEVATED' }
     | null;
+  /**
+   * The deterministic MathKernel for this item (doc 58). When present, the AI
+   * MUST reproduce `requiredNumbersInPrompt` and `expectedAnswer` exactly — it
+   * only writes the scenario / wording. `null` → open item, the AI supplies the
+   * answer and it stays `AI_CROSSCHECK_REQUIRED`.
+   */
+  readonly mathKernel: MathKernel | null;
   readonly dnaHash: string;
 }
 
@@ -642,6 +649,125 @@ export const ITEM_ANSWER_STATUSES = [
   'MALFORMED',
 ] as const;
 export type ItemAnswerStatus = (typeof ITEM_ANSWER_STATUSES)[number];
+
+// ======================================================================
+// ANSWER VERIFICATION ARCHITECTURE (doc 58) — deterministic MathKernel
+// ----------------------------------------------------------------------
+// A deterministic layer between ItemGenerationSpec and AI content
+// generation. The kernel OWNS the mathematically authoritative facts
+// (operands, operation graph, expected answer, units). The AI turns the
+// kernel into prose (scenario, wording, distractors, hints, solution) and
+// may NOT change any authoritative fact. When a kernel exists, an item is
+// production-ready only if its answer matches `kernel.expectedAnswer`.
+// ======================================================================
+
+/**
+ * Math family a `MathKernel` implements. `null` (no kernel) → the item is
+ * `AI_CROSSCHECK_REQUIRED`, an acceptable intermediate but not production-ready.
+ * A — fully deterministic; B — deterministic math, prose framing varies;
+ * C — open / reasoning, no kernel.
+ */
+export const MATH_KERNEL_FAMILIES = [
+  'INT_ARITH', // A — closed integer expression (+ - × :), 1-3 ops
+  'DISTRIBUTIVE', // A — a×(b+c) = a×b + a×c
+  'SUM_DIFF', // A — two numbers from sum + difference
+  'UNIT_RATE', // A — N units → M units at a fixed rate
+  'FRACTION_ARITH', // A — a/b (op) c/d, simplified
+  'RATIO_SHARE', // A — divide a quantity in a ratio
+  'LINEAR_EQ', // A — ax + b = c → x
+  'ANGLE_SUM', // A — third angle of a triangle
+  'ANGLE_TYPE', // A — classify an angle by its measure (choice)
+  'PERCENT', // A — p% of N
+  'UNIT_CONVERSION', // A — convert a measure between units
+  'RECT_GEOMETRY', // A — perimeter / area of a rectangle
+  'WORD_1STEP', // B — one arithmetic operation wrapped in a scenario
+  'WORD_2STEP', // B — two chained operations, deterministic graph
+] as const;
+export type MathKernelFamily = (typeof MATH_KERNEL_FAMILIES)[number];
+
+export const MATH_KERNEL_GROUP: Record<MathKernelFamily, 'A' | 'B'> = {
+  INT_ARITH: 'A',
+  DISTRIBUTIVE: 'A',
+  SUM_DIFF: 'A',
+  UNIT_RATE: 'A',
+  FRACTION_ARITH: 'A',
+  RATIO_SHARE: 'A',
+  LINEAR_EQ: 'A',
+  ANGLE_SUM: 'A',
+  ANGLE_TYPE: 'A',
+  PERCENT: 'A',
+  UNIT_CONVERSION: 'A',
+  RECT_GEOMETRY: 'A',
+  WORD_1STEP: 'B',
+  WORD_2STEP: 'B',
+};
+
+/** The mathematically authoritative answer the AI must reproduce. */
+export type KernelAnswer =
+  | { readonly kind: 'numeric'; readonly value: number; readonly tolerance: number }
+  | { readonly kind: 'fraction'; readonly numerator: number; readonly denominator: number }
+  | { readonly kind: 'exact'; readonly value: string }
+  | { readonly kind: 'choice'; readonly correct: string; readonly distractors: readonly string[] };
+
+export interface KernelOperand {
+  readonly name: string; // 'a', 'S', 'length', …
+  readonly value: number;
+  readonly unit?: string;
+}
+
+/**
+ * MathKernel (doc 58 §2) — the deterministic ProblemInstance. Pure output of
+ * (ItemGenerationSpec, deterministic RNG, uniqueness/forbidden constraints).
+ * Generated BEFORE any AI call. Everything here is authoritative.
+ */
+export interface MathKernel {
+  readonly family: MathKernelFamily;
+  readonly problemTypeId: string | null;
+  readonly answerKind: AnswerKind; // authoritative — overrides the itemSpec's pin
+  readonly operands: readonly KernelOperand[];
+  /** Deterministic step graph, e.g. ["S = a + b", "x = (S + D) / 2"]. */
+  readonly operationGraph: readonly string[];
+  readonly intermediateValues: Readonly<Record<string, number>>;
+  readonly expectedAnswer: KernelAnswer;
+  /** An expression the deterministic evaluator can re-check, when the family has one. */
+  readonly canonicalVerificationExpression: string | null;
+  readonly units: string | null;
+  /** Numbers the AI MUST include verbatim in the prompt (the given data). */
+  readonly requiredNumbersInPrompt: readonly number[];
+  readonly constraints: {
+    readonly integerResult: boolean;
+    readonly fractionSimplified: boolean;
+    readonly numberRange: { readonly min: number; readonly max: number };
+  };
+  /** A deterministic Vietnamese step summary — the AI's worked solution must not contradict it. */
+  readonly solutionOutline: string;
+  readonly kernelHash: string;
+}
+
+export type MathKernelResult =
+  | { readonly ok: true; readonly kernel: MathKernel }
+  | { readonly ok: false; readonly reason: string };
+
+/** Reason codes for a kernel-consistency contradiction (doc 58 §6). Any → HARD FAIL. */
+export const KERNEL_CONSISTENCY_CODES = [
+  'ANSWER_MISMATCH', // returned answer ≠ kernel.expectedAnswer
+  'KERNEL_NUMBER_DROPPED', // a required given number is missing from the prompt
+  'UNIT_INCONSISTENT',
+  'SOLUTION_CONTRADICTS_KERNEL',
+  'DISTRACTOR_INCLUDES_ANSWER',
+  'PROMPT_NOT_SOLVABLE',
+] as const;
+export type KernelConsistencyCode = (typeof KERNEL_CONSISTENCY_CODES)[number];
+
+export interface KernelConsistencyResult {
+  readonly consistent: boolean;
+  readonly codes: readonly KernelConsistencyCode[];
+  readonly detail: string;
+}
+
+/** AI answer-crosscheck verdict (doc 58 §8). FALLBACK only — never the default path. */
+export const CROSSCHECK_VERDICTS = ['PASS', 'FAIL', 'UNCERTAIN'] as const;
+export type CrosscheckVerdict = (typeof CROSSCHECK_VERDICTS)[number];
 
 export interface ItemAcceptanceResult {
   readonly itemId: string;

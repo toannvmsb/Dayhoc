@@ -39,12 +39,19 @@ const STRUCTURE_ROTATION: Record<keyof ExerciseDistribution, readonly ProblemStr
 
 const FRACTION_DOMAINS = new Set(['fractions']);
 
-/** Answer family from the problem structure + skill domain — never the model's choice. */
-function answerKindFor(structure: ProblemStructure, domain: string): AnswerKind {
+/**
+ * Skills whose task is to CLASSIFY / NAME an object (identify the angle type,
+ * recognise parallel/perpendicular lines, name a quadrilateral) — the answer is
+ * a category label, not a number (doc 58 §1.A). Matched on the skill name.
+ */
+const CLASSIFICATION_NAME_RE =
+  /góc (nhọn|tù|bẹt|vuông)|nhọn.*tù.*bẹt|vuông góc|song song|dấu hiệu nhận biết|nhận biết|phân loại|gọi tên|loại (góc|tam giác|tứ giác)/i;
+
+/** Answer family from the problem structure + skill — never the model's choice. */
+function answerKindFor(structure: ProblemStructure, domain: string, skillName: string): AnswerKind {
   switch (structure) {
     case 'explain_or_justify':
     case 'find_the_error':
-      return 'reasoning';
     case 'construct_an_example':
       return 'reasoning';
     case 'compare_and_decide':
@@ -53,6 +60,9 @@ function answerKindFor(structure: ProblemStructure, domain: string): AnswerKind 
     case 'single_step_word_problem':
     case 'multi_step_word_problem':
     case 'work_backwards':
+      if ((domain === 'geometry' || domain === 'logical_reasoning') && CLASSIFICATION_NAME_RE.test(skillName)) {
+        return 'choice'; // "which type is this?" — a labelled choice, never a number
+      }
       return FRACTION_DOMAINS.has(domain) ? 'fraction' : 'numeric';
     default:
       return 'numeric';
@@ -109,12 +119,11 @@ export function buildItemGenerationSpecs(
     const structure =
       STRUCTURE_ROTATION[slot.bucket][slot.ordinalInBucket % STRUCTURE_ROTATION[slot.bucket].length]!;
     const domain = slot.target.domain;
-    const answerKind = answerKindFor(structure, domain);
+    const skill = kb.skills.get(slot.target.skillId);
+    const answerKind = answerKindFor(structure, domain, skill?.name ?? '');
 
     let { knowledgeLevel } = pinLevels(spec, slot, isStretch);
     const { thinkingLevel } = pinLevels(spec, slot, isStretch);
-
-    const skill = kb.skills.get(slot.target.skillId);
     const closure = new Set<string>(skill ? kb.prerequisiteClosure(slot.target.skillId) : []);
 
     // A non-repair item whose target still sits on a BLOCKING prerequisite gap

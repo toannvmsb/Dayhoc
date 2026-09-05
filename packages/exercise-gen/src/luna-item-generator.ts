@@ -34,7 +34,8 @@ Với mỗi ProblemDNA, trả về một item gồm:
 - distractors: CHỈ khi problemStructure là "compare_and_decide" — 2–3 phương án nhiễu khác đáp án; nếu không áp dụng thì null.
 - hints: ĐÚNG 6 bậc gợi ý, tăng dần, bậc 6 là lời giải đầy đủ.
 - workedSolution: lời giải đầy đủ theo từng bước.
-- rubric: CHỈ khi answer là chuỗi rỗng (bài giải thích) — cách chấm điểm phần lập luận; nếu không thì null.
+- rubric: khi answer là chuỗi rỗng (bài giải thích/chứng minh) thì rubric BẮT BUỘC là một chuỗi mô tả cách chấm điểm từng ý (ví dụ "Nêu đúng tính chất 0,5đ; lập luận chặt chẽ 0,5đ") — TUYỆT ĐỐI không để null/rỗng. Với các loại khác thì rubric = null.
+- mathKernel (nếu có trong ProblemDNA): đề bài PHẢI dùng đúng các số đã cho trong "requiredNumbersInPrompt" và dẫn tới đúng "expectedAnswer" của kernel. Bạn CHỈ viết bối cảnh/câu chữ, KHÔNG được đổi số, phép tính hay đáp số.
 
 TUYỆT ĐỐI:
 - KHÔNG dùng lại bối cảnh / nhân vật / bộ số trong "forbiddenSimilarities". Đổi hẳn tình huống thực tế, không chỉ đổi số.

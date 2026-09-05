@@ -9,10 +9,12 @@ import {
   type ItemAnswerStatus,
   type ItemGateResult,
   type ItemGenerationSpec,
+  type MathKernel,
 } from '@copilot/domain';
 import type { KnowledgeBase } from '@copilot/math-data';
 import { generatedExerciseSchema } from '@copilot/schemas';
 import { verifyItemAnswer } from './answer-verification.js';
+import { validateAgainstKernel } from './kernel-validator.js';
 import {
   checkItemSimilarity,
   promptContentSignature,
@@ -35,6 +37,8 @@ export interface AcceptItemContext {
   readonly acceptedSiblings: readonly SimilarityComparand[];
   readonly recentItems?: readonly SimilarityComparand[];
   readonly forbiddenNumberTuples?: readonly (readonly number[])[];
+  /** The deterministic MathKernel for this item, when one covers it (doc 58 §6). */
+  readonly mathKernel?: MathKernel | null;
 }
 
 /**
@@ -161,21 +165,33 @@ export function acceptItem(
   }
   gate('PREREQUISITE_SAFE', prereqSafe, prereqDetail, 'Chỉ dùng kiến thức tiên quyết học sinh đã nắm.');
 
-  // 7. ANSWER_VERIFIED — two-tier (doc 56 §ANSWER VERIFICATION POLICY):
+  // 7. ANSWER_VERIFIED — two-tier (doc 56 §POLICY / doc 58 §6/§7):
   //    DETERMINISTIC_CORRECT → content PASS + production-ready
-  //    DETERMINISTIC_WRONG   → HARD FAIL (content + production)
-  //    UNSUPPORTED / reasoning → content PASS, answerStatus CROSSCHECK_REQUIRED
-  //                              (PENDING_CROSSCHECK — NOT production-ready)
+  //    DETERMINISTIC_WRONG   → HARD FAIL
+  //    CROSSCHECK_REQUIRED   → content PASS, NOT production-ready (PENDING_CROSSCHECK)
   //    MALFORMED key         → HARD FAIL
+  //  When a MathKernel covers the item, IT is the authority — the AI's answer
+  //  must match `kernel.expectedAnswer` and every given number must survive.
   const av = verifyItemAnswer(exercise);
   const answerVerificationLevel: AnswerVerificationLevel = av.level;
   let answerStatus: ItemAnswerStatus;
   let answerPass = true;
   let answerDetail = `level=${av.level}`;
+
   if (!av.formatValid) {
     answerStatus = 'MALFORMED';
     answerPass = false;
     answerDetail = 'answer key is malformed';
+  } else if (ctx.mathKernel) {
+    const kv = validateAgainstKernel(exercise, ctx.mathKernel);
+    if (kv.consistent) {
+      answerStatus = 'DETERMINISTIC_CORRECT';
+      answerDetail = `kernel(${ctx.mathKernel.family}) consistent`;
+    } else {
+      answerStatus = 'DETERMINISTIC_WRONG';
+      answerPass = false;
+      answerDetail = `kernel contradiction [${kv.codes.join(',')}]: ${kv.detail}`;
+    }
   } else if (av.math.verdict === 'INCORRECT') {
     answerStatus = 'DETERMINISTIC_WRONG';
     answerPass = false;
@@ -184,9 +200,16 @@ export function acceptItem(
     answerStatus = 'DETERMINISTIC_CORRECT';
   } else {
     answerStatus = 'CROSSCHECK_REQUIRED';
-    answerDetail = `${av.level} — deterministic verifier could not rule; PENDING_CROSSCHECK`;
+    answerDetail = `${av.level} — no kernel, deterministic verifier could not rule; PENDING_CROSSCHECK`;
   }
-  gate('ANSWER_VERIFIED', answerPass, answerDetail, 'Đảm bảo đáp số và lời giải nhất quán với đề.');
+  gate(
+    'ANSWER_VERIFIED',
+    answerPass,
+    answerDetail,
+    ctx.mathKernel
+      ? `Đề phải dùng đúng các số ${ctx.mathKernel.requiredNumbersInPrompt.join(', ')} và cho đáp số đúng như kernel.`
+      : 'Đảm bảo đáp số và lời giải nhất quán với đề.',
+  );
 
   // safety / language (fold into SCHEMA_VALID-adjacent basic checks; report under CURRICULUM_SAFE bucket only if unsafe)
   const text = `${exercise.prompt}\n${exercise.workedSolution}`;

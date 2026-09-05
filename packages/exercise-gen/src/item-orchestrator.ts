@@ -7,6 +7,7 @@ import type {
   ItemAcceptanceGate,
   ItemAnswerStatus,
   ItemGenerationSpec,
+  MathKernel,
   ProblemDNA,
 } from '@copilot/domain';
 import type { KnowledgeBase } from '@copilot/math-data';
@@ -14,6 +15,7 @@ import { PricingRegistry } from '@copilot/ai';
 import type { ReferenceExample } from '@copilot/reference-library';
 import { buildItemGenerationSpecs, ITEM_SPEC_BUILDER_VERSION } from './item-spec.js';
 import { buildProblemDNA, PROBLEM_DNA_BUILDER_VERSION } from './problem-dna.js';
+import { generateMathKernel, MATH_KERNEL_BUILDER_VERSION } from './math-kernel.js';
 import { composeExercise } from './compose.js';
 import { acceptItem, ITEM_VALIDATOR_VERSION } from './item-validator.js';
 import type { SimilarityComparand } from './similarity-gate.js';
@@ -72,6 +74,8 @@ export interface ItemRunRecord {
   /** PRODUCTION-READY — content-accepted AND answer independently verified correct. */
   readonly productionReady: boolean;
   readonly answerStatus: ItemAnswerStatus | null;
+  /** The MathKernel family that covered this item, or null (open / reasoning). */
+  readonly kernelFamily: string | null;
   readonly attempts: number;
   readonly failedGates: readonly ItemAcceptanceGate[];
   readonly composeFailure: string | null;
@@ -85,9 +89,12 @@ export interface ItemGenerationTrace {
   readonly fallbackGeneratorName: string | null;
   readonly itemSpecBuilderVersion: string;
   readonly problemDnaBuilderVersion: string;
+  readonly mathKernelBuilderVersion: string;
   readonly itemValidatorVersion: string;
   readonly config: ItemOrchestratorConfig;
   readonly totalModelCalls: number;
+  /** Fraction of items a deterministic MathKernel covered (doc 58 §5/§10). */
+  readonly kernelCoverageRate: number;
   readonly createdAt: string;
 }
 
@@ -147,7 +154,9 @@ export async function orchestrateItemGeneration(
 
   const itemSpecs = buildItemGenerationSpecs(input.spec, input.knowledgeBase);
   const dnaFor = new Map<string, ProblemDNA>();
+  const kernelFor = new Map<string, MathKernel | null>();
   const refComparands = new Map<string, SimilarityComparand[]>(); // skillId → refs
+  const usedTuples: number[][] = [];
   for (const is of itemSpecs) {
     const refs = input.referenceLibrary.filter((r) => r.skillId === is.skillId);
     if (!refComparands.has(is.skillId)) {
@@ -156,7 +165,17 @@ export async function orchestrateItemGeneration(
         refs.map((r) => ({ id: r.id, prompt: r.prompt })),
       );
     }
-    dnaFor.set(is.itemId, buildProblemDNA(is, input.knowledgeBase, refs));
+    const refTuples = refs
+      .map((r) => [...r.prompt.matchAll(/\d+/g)].map((m) => Number(m[0])))
+      .filter((t) => t.length > 0);
+    const kres = generateMathKernel(is, input.knowledgeBase, {
+      forbiddenNumberTuples: refTuples,
+      recentNumberTuples: usedTuples,
+    });
+    const kernel = kres.ok ? kres.kernel : null;
+    if (kernel) usedTuples.push([...kernel.requiredNumbersInPrompt]);
+    kernelFor.set(is.itemId, kernel);
+    dnaFor.set(is.itemId, buildProblemDNA(is, input.knowledgeBase, refs, { mathKernel: kernel }));
   }
 
   const accepted = new Map<string, GeneratedExercise>();
@@ -255,7 +274,8 @@ export async function orchestrateItemGeneration(
         stillUnaccepted.push(is);
         continue;
       }
-      const composed = composeExercise(is, content);
+      const kernel = kernelFor.get(is.itemId) ?? null;
+      const composed = composeExercise(is, content, kernel);
       if (!composed.ok) {
         composeFailure.set(is.itemId, composed.reason);
         lastInstructions.set(is.itemId, [composed.regenerationInstruction]);
@@ -271,6 +291,7 @@ export async function orchestrateItemGeneration(
         acceptedSiblings: siblings,
         ...(input.recentItems ? { recentItems: input.recentItems } : {}),
         forbiddenNumberTuples: dna.forbiddenSimilarities.numberTuples,
+        mathKernel: kernel,
       });
       answerLevel.set(is.itemId, result.answerVerificationLevel);
       answerStatusById.set(is.itemId, result.answerStatus);
@@ -309,6 +330,7 @@ export async function orchestrateItemGeneration(
     accepted: accepted.has(is.itemId),
     productionReady: productionReadyById.get(is.itemId) ?? false,
     answerStatus: answerStatusById.get(is.itemId) ?? null,
+    kernelFamily: kernelFor.get(is.itemId)?.family ?? null,
     attempts: attempts.get(is.itemId) ?? 0,
     failedGates: lastFailedGates.get(is.itemId) ?? [],
     composeFailure: composeFailure.get(is.itemId) ?? null,
@@ -329,9 +351,14 @@ export async function orchestrateItemGeneration(
     fallbackGeneratorName: input.fallbackGenerator?.name ?? null,
     itemSpecBuilderVersion: ITEM_SPEC_BUILDER_VERSION,
     problemDnaBuilderVersion: PROBLEM_DNA_BUILDER_VERSION,
+    mathKernelBuilderVersion: MATH_KERNEL_BUILDER_VERSION,
     itemValidatorVersion: ITEM_VALIDATOR_VERSION,
     config: cfg,
     totalModelCalls,
+    kernelCoverageRate:
+      itemSpecs.length > 0
+        ? [...kernelFor.values()].filter((k) => k !== null).length / itemSpecs.length
+        : 0,
     createdAt: now().toISOString(),
   };
 

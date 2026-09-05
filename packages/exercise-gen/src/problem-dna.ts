@@ -4,6 +4,7 @@ import {
   THINKING_LEVEL_MEANING,
   type ItemGenerationSpec,
   type KnowledgeLevel,
+  type MathKernel,
   type ProblemDNA,
   type ProblemStructure,
   type ThinkingLevel,
@@ -164,6 +165,8 @@ export interface BuildProblemDnaOptions {
    * never include raw reference text (doc 56 §5).
    */
   readonly rawReferenceJustification?: (spec: ItemGenerationSpec) => string | null;
+  /** The deterministic MathKernel for this item, if one covers it (doc 58). */
+  readonly mathKernel?: MathKernel | null;
 }
 
 /**
@@ -215,6 +218,8 @@ export function buildProblemDNA(
       ? { prompt: refs[0].prompt, justification: rawJustification, leakageRisk: 'ELEVATED' as const }
       : null;
 
+  const mathKernel = opts.mathKernel ?? null;
+
   const body = {
     itemId: itemSpec.itemId,
     generationSpecId: itemSpec.generationSpecId,
@@ -247,6 +252,7 @@ export function buildProblemDNA(
     },
     styleHints,
     rawReference,
+    mathKernel,
   };
 
   return { ...body, dnaHash: stableHash(body) };
