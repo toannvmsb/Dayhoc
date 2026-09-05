@@ -33,6 +33,7 @@ export const theme = {
     border: '#EFE4D6', // warm cream border — cards
     attentionBg: '#FFF4E4', // "cần chú ý" amber-cream
     attentionBorder: '#F3DFC2',
+    attentionChipBg: '#F7E4C3', // deeper amber chip on top of attentionBg (e.g. "ƯU TIÊN CAO")
     attentionText: '#6B5528', // amber-brown — attention-card body text, form errors
     attentionHeading: '#3F2D0C',
     warn: '#B45309', // punchier amber — inline status labels ("Chưa ổn định"), not a full card
