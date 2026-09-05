@@ -87,6 +87,16 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         cameraPermission: 'DạyZi cần camera để bạn chụp trang vở / bài kiểm tra của con.',
       },
     ],
+    [
+      'expo-camera',
+      {
+        // In-app viewfinder for uploads (D05 · Cập nhật việc học). Photos
+        // only — no barcode scanning, no audio recording.
+        cameraPermission: 'DạyZi cần camera để bạn chụp trang vở / bài kiểm tra của con.',
+        recordAudioAndroid: false,
+        barcodeScannerEnabled: false,
+      },
+    ],
   ],
   extra: {
     ...(config.extra ?? {}),

@@ -13,6 +13,7 @@
     "@expo-google-fonts/be-vietnam-pro": "^0.4.1",
     "@react-native-async-storage/async-storage": "2.2.0",
     "expo": "^57.0.0",
+    "expo-camera": "~57.0.4",
     "expo-clipboard": "~57.0.1",
     "expo-constants": "~57.0.17",
     "expo-font": "~57.0.3",

@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useChild } from '@/child';
 import { ParentNav } from '@/nav';
 import { theme } from '@/theme';
@@ -35,32 +36,21 @@ export default function UploadsScreen() {
   const [review, setReview] = useState<UploadAnalysis | null>(null);
   const [ticked, setTicked] = useState<Record<number, { confirm: boolean; skillId?: string }>>({});
 
-  const pick = async (fromCamera: boolean) => {
-    setErr(undefined);
-    const perm = fromCamera
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      setErr('DạyZi cần quyền camera / ảnh để tải bài của con.');
-      return;
-    }
-    const opts: ImagePicker.ImagePickerOptions = {
-      base64: true,
-      quality: 0.6,
-      mediaTypes: ['images'],
-    };
-    const res = fromCamera
-      ? await ImagePicker.launchCameraAsync(opts)
-      : await ImagePicker.launchImageLibraryAsync(opts);
-    if (res.canceled || !res.assets[0]?.base64) return;
-    const asset = res.assets[0];
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraErr, setCameraErr] = useState<string | undefined>();
+  const [capturing, setCapturing] = useState(false);
+  const [permission, requestPermission] = useCameraPermissions();
+  const cameraRef = useRef<CameraView>(null);
+
+  const uploadAndAnalyze = async (base64: string, fileName: string, mimeType: string) => {
     setBusy(true);
+    setErr(undefined);
     try {
       const up = await api.post<{ uploadId: string }>(`/children/${childId}/uploads`, {
         kind,
-        filename: asset.fileName ?? 'anh.jpg',
-        mimeType: asset.mimeType ?? 'image/jpeg',
-        contentBase64: asset.base64,
+        filename: fileName,
+        mimeType,
+        contentBase64: base64,
       });
       const analysis = await api.post<UploadAnalysis>(
         `/children/${childId}/uploads/${up.uploadId}/analyze`,
@@ -79,6 +69,46 @@ export default function UploadsScreen() {
       setErr(errText(e));
     } finally {
       setBusy(false);
+    }
+  };
+
+  const pickFromLibrary = async () => {
+    setErr(undefined);
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      setErr('DạyZi cần quyền truy cập ảnh để tải bài của con.');
+      return;
+    }
+    const res = await ImagePicker.launchImageLibraryAsync({ base64: true, quality: 0.6, mediaTypes: ['images'] });
+    const asset = res.canceled ? undefined : res.assets[0];
+    if (!asset?.base64) return;
+    await uploadAndAnalyze(asset.base64, asset.fileName ?? 'anh.jpg', asset.mimeType ?? 'image/jpeg');
+  };
+
+  const openCamera = async () => {
+    setErr(undefined);
+    setCameraErr(undefined);
+    const perm = permission?.granted ? permission : await requestPermission();
+    if (!perm.granted) {
+      setErr('DạyZi cần quyền camera để bạn chụp bài của con.');
+      return;
+    }
+    setCameraOpen(true);
+  };
+
+  const capturePhoto = async () => {
+    if (!cameraRef.current || capturing) return;
+    setCapturing(true);
+    try {
+      const photo = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.6 });
+      if (photo?.base64) {
+        setCameraOpen(false);
+        await uploadAndAnalyze(photo.base64, 'anh.jpg', 'image/jpeg');
+      }
+    } catch (e) {
+      setCameraErr(errText(e));
+    } finally {
+      setCapturing(false);
     }
   };
 
@@ -101,6 +131,97 @@ export default function UploadsScreen() {
       setBusy(false);
     }
   };
+
+  if (cameraOpen) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.color.night }}>
+        <View style={{ paddingTop: 50, paddingHorizontal: 20, paddingBottom: 10, flexDirection: 'row', alignItems: 'center' }}>
+          <Pressable onPress={() => setCameraOpen(false)} hitSlop={12}>
+            <Text style={{ fontSize: 22, color: theme.color.onDark }}>✕</Text>
+          </Pressable>
+          <Text style={{ flex: 1, textAlign: 'center', fontSize: 15, fontWeight: '700', color: theme.color.onDark }}>
+            Cập nhật việc học
+          </Text>
+          <View style={{ width: 22 }} />
+        </View>
+
+        <View style={{ flex: 1, margin: 20, borderRadius: 24, overflow: 'hidden' }}>
+          <CameraView ref={cameraRef} style={{ flex: 1 }} facing="back" />
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              top: 26,
+              left: 26,
+              right: 26,
+              bottom: 26,
+              borderRadius: 18,
+              borderWidth: 2,
+              borderStyle: 'dashed',
+              borderColor: 'rgba(255,255,255,.4)',
+            }}
+          />
+          <View
+            pointerEvents="none"
+            style={{ position: 'absolute', left: 0, right: 0, bottom: 26, alignItems: 'center', gap: 4, paddingHorizontal: 40 }}
+          >
+            <Text style={{ fontSize: 15.5, fontWeight: '700', color: theme.color.onDark, textAlign: 'center' }}>
+              Đưa trang vở vào khung
+            </Text>
+            <Text style={{ fontSize: 12.5, lineHeight: 18, color: 'rgba(255,255,255,.7)', textAlign: 'center' }}>
+              Chụp rõ đề bài và phần con làm.
+            </Text>
+          </View>
+        </View>
+
+        <View style={{ paddingHorizontal: 20 }}>
+          <View style={{ flexDirection: 'row', gap: 8, paddingBottom: 12 }}>
+            {KINDS.map((k) => (
+              <Pressable
+                key={k.value}
+                onPress={() => setKind(k.value)}
+                style={{
+                  paddingHorizontal: 13,
+                  paddingVertical: 10,
+                  borderRadius: 12,
+                  backgroundColor: kind === k.value ? theme.color.primary : 'rgba(255,255,255,.1)',
+                }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '700', color: kind === k.value ? theme.color.onDark : '#DCE7E4' }}>
+                  {k.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        {cameraErr && (
+          <View style={{ paddingHorizontal: 20 }}>
+            <ErrorNote message={cameraErr} />
+          </View>
+        )}
+
+        <View style={{ paddingHorizontal: 20, paddingBottom: 34, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+          <Pressable onPress={capturePhoto} disabled={capturing}>
+            <View
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: 40,
+                borderWidth: 4,
+                borderColor: 'rgba(255,255,255,.35)',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: capturing ? 0.6 : 1,
+              }}
+            >
+              <View style={{ width: 62, height: 62, borderRadius: 31, backgroundColor: theme.color.onDark }} />
+            </View>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   if (review && review.state === 'NEEDS_CONFIRMATION') {
     return (
@@ -217,8 +338,8 @@ export default function UploadsScreen() {
           ))}
         </View>
         {err && <ErrorNote message={err} />}
-        <Button label="Chụp ảnh" onPress={() => pick(true)} loading={busy} />
-        <Button label="Chọn từ thư viện" tone="ghost" onPress={() => pick(false)} />
+        <Button label="Chụp ảnh" onPress={openCamera} loading={busy} />
+        <Button label="Chọn từ thư viện" tone="ghost" onPress={pickFromLibrary} />
       </Card>
 
       {list.loading && <Loading />}
