@@ -26,7 +26,7 @@ interface AuthValue {
   workspace: Workspace;
   availableWorkspaces: Workspace[];
   setWorkspace: (w: Workspace) => void;
-  signIn: (email: string) => Promise<void>;
+  signIn: (email: string, password?: string) => Promise<void>;
   signUp: (i: { email: string; password: string; displayName?: string; role?: 'PARENT' | 'TEACHER' }) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -106,8 +106,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       workspace,
       availableWorkspaces: session ? workspacesOf(session.viewer) : ['PARENT'],
       setWorkspace,
-      signIn: async (email) => {
-        await persist(await apiLogin(email));
+      signIn: async (email, password) => {
+        await persist(await apiLogin(email, password));
       },
       signUp: async (i) => {
         await persist(await apiRegister(i));

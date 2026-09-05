@@ -27,7 +27,7 @@ export default function Welcome() {
     setBusy(true);
     setErr(undefined);
     try {
-      if (mode === 'login') await signIn(email.trim());
+      if (mode === 'login') await signIn(email.trim(), password || undefined);
       else
         await signUp({
           email: email.trim(),
@@ -109,14 +109,12 @@ export default function Welcome() {
             />
           )}
           <Field label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" />
-          {mode !== 'login' && (
-            <Field
-              label="Mật khẩu (tối thiểu 8 ký tự)"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-          )}
+          <Field
+            label={mode === 'login' ? 'Mật khẩu' : 'Mật khẩu (tối thiểu 8 ký tự)'}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
           {err && <ErrorNote message={err} />}
           <Button
             label={mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản'}

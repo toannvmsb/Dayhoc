@@ -140,8 +140,14 @@ export async function register(input: {
   return apiCall('/auth/register', { method: 'POST', body: input });
 }
 
-export async function login(email: string): Promise<{ bearer: string; viewer: Viewer }> {
-  return apiCall('/auth/login', { method: 'POST', body: { email } });
+/**
+ * `password` is optional at the wire level (still true for a dev/in-memory
+ * backend), but a REAL Supabase login requires it — always pass it from the
+ * UI so a returning user actually gets a working real session, not just a
+ * fresh register() (see the 2026-09-05 auth fix on the API side).
+ */
+export async function login(email: string, password?: string): Promise<{ bearer: string; viewer: Viewer }> {
+  return apiCall('/auth/login', { method: 'POST', body: { email, ...(password ? { password } : {}) } });
 }
 
 /** Re-validate the stored token; returns the fresh viewer or throws 401. */
