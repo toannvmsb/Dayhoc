@@ -6,6 +6,7 @@ import {
   type GeneratedExercise,
   type ItemAcceptanceGate,
   type ItemAcceptanceResult,
+  type ItemAnswerStatus,
   type ItemGateResult,
   type ItemGenerationSpec,
 } from '@copilot/domain';
@@ -160,23 +161,30 @@ export function acceptItem(
   }
   gate('PREREQUISITE_SAFE', prereqSafe, prereqDetail, 'Chỉ dùng kiến thức tiên quyết học sinh đã nắm.');
 
-  // 7. ANSWER_VERIFIED (doc 56 §7). A malformed key fails. A PROVEN-WRONG answer
-  //    (`INCORRECT`) fails regardless of policy. When the deterministic verifier
-  //    CANNOT parse the item (`UNSUPPORTED`), the item is accepted at its honest
-  //    lower level — a narrow verifier must not punish a valid word problem or a
-  //    division-notation expression it simply doesn't handle. Correctness of
-  //    those still needs a downstream AI/human cross-check (recorded on the
-  //    level), never claimed as deterministically verified.
+  // 7. ANSWER_VERIFIED — two-tier (doc 56 §ANSWER VERIFICATION POLICY):
+  //    DETERMINISTIC_CORRECT → content PASS + production-ready
+  //    DETERMINISTIC_WRONG   → HARD FAIL (content + production)
+  //    UNSUPPORTED / reasoning → content PASS, answerStatus CROSSCHECK_REQUIRED
+  //                              (PENDING_CROSSCHECK — NOT production-ready)
+  //    MALFORMED key         → HARD FAIL
   const av = verifyItemAnswer(exercise);
   const answerVerificationLevel: AnswerVerificationLevel = av.level;
+  let answerStatus: ItemAnswerStatus;
   let answerPass = true;
   let answerDetail = `level=${av.level}`;
   if (!av.formatValid) {
+    answerStatus = 'MALFORMED';
     answerPass = false;
     answerDetail = 'answer key is malformed';
   } else if (av.math.verdict === 'INCORRECT') {
+    answerStatus = 'DETERMINISTIC_WRONG';
     answerPass = false;
     answerDetail = `deterministic check: ${av.math.detail}`;
+  } else if (av.math.verdict === 'CORRECT') {
+    answerStatus = 'DETERMINISTIC_CORRECT';
+  } else {
+    answerStatus = 'CROSSCHECK_REQUIRED';
+    answerDetail = `${av.level} — deterministic verifier could not rule; PENDING_CROSSCHECK`;
   }
   gate('ANSWER_VERIFIED', answerPass, answerDetail, 'Đảm bảo đáp số và lời giải nhất quán với đề.');
 
@@ -222,9 +230,12 @@ export function acceptItem(
   );
 
   const failedGates = [...new Set(gates.filter((g) => !g.pass).map((g) => g.gate))];
+  const accepted = failedGates.length === 0;
   return {
     itemId: exercise.id,
-    accepted: failedGates.length === 0,
+    accepted,
+    productionReady: accepted && answerStatus === 'DETERMINISTIC_CORRECT',
+    answerStatus,
     gates,
     failedGates,
     answerVerificationLevel,

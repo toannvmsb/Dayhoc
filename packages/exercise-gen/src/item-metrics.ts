@@ -25,10 +25,6 @@ export interface ItemQualityMetrics {
 
   readonly schemaPassRate: number;
   readonly skillAlignmentPassRate: number;
-  /** Of items the deterministic verifier ruled on, fraction it confirmed CORRECT (doc 56 §7). */
-  readonly answerCorrectnessPassRate: number;
-  /** Fraction of accepted items whose answer a deterministic checker actually re-derived. */
-  readonly deterministicallyCheckedRate: number;
   readonly referenceLeakagePassRate: number;
   readonly withinWorksheetUniquenessPassRate: number;
   readonly kLevelPassRate: number;
@@ -36,8 +32,24 @@ export interface ItemQualityMetrics {
   readonly curriculumSafePassRate: number;
   readonly prerequisiteSafePassRate: number;
 
-  /** acceptedItems / requestedItems — the headline. */
+  // --- answer verification, two-tier (doc 56 §ANSWER VERIFICATION POLICY) ---
+  /** Of non-reasoning content-accepted items, fraction the verifier RULED on. */
+  readonly deterministicVerifierCoverageRate: number;
+  /** Of ruled items, fraction CORRECT. */
+  readonly deterministicCorrectRate: number;
+  /** Of ALL generated attempts, fraction the verifier proved WRONG. */
+  readonly deterministicWrongRate: number;
+  /** Of content-accepted items, fraction still PENDING_CROSSCHECK. */
+  readonly crosscheckRequiredRate: number;
+
+  // --- acceptance, two-tier ---
+  /** content-accepted / requested — every gate passed. */
+  readonly contentAcceptanceRate: number;
+  /** production-ready / requested — content-accepted AND answer verified correct. */
+  readonly productionAcceptanceRate: number;
+  /** @deprecated == contentAcceptanceRate. */
   readonly finalAcceptanceRate: number;
+
   readonly averageRetriesPerAcceptedItem: number;
   readonly latencyMsPerAcceptedItem: number;
 
@@ -45,9 +57,12 @@ export interface ItemQualityMetrics {
   readonly outputTokens: number;
   readonly totalCostUsd: number;
   readonly totalCostVnd: number;
-  /** PRIMARY production metric (doc 56 §9). */
+  /** cost / CONTENT-accepted item. */
   readonly costPerAcceptedItemVnd: number;
   readonly costPerAcceptedItemUsd: number;
+  /** cost / PRODUCTION-ready item (doc 56 §9 primary). */
+  readonly costPerProductionItemVnd: number;
+  readonly costPerProductionItemUsd: number;
 }
 
 const gatePassRate = (
@@ -81,12 +96,12 @@ export function aggregateItemQuality(runs: readonly ItemBenchmarkRun[]): ItemQua
   let costVnd = 0;
   let acceptedAttemptSum = 0;
 
-  // answer-correctness: of items the deterministic verifier RULED on
-  // (CORRECT or proven-wrong), how many were correct
-  let detRuled = 0;
+  let productionReady = 0;
+  let nonReasoningContentAccepted = 0;
+  let verifierRuled = 0; // CORRECT or WRONG among non-reasoning content-accepted
   let detCorrect = 0;
-  let acceptedNonReasoning = 0;
-  let acceptedDetVerified = 0;
+  let detWrongAllAttempts = 0;
+  let crosscheckRequired = 0;
 
   for (const r of runs) {
     requested += r.result.requestedCount;
@@ -103,15 +118,19 @@ export function aggregateItemQuality(runs: readonly ItemBenchmarkRun[]): ItemQua
     }
     for (const it of r.result.perItem) {
       if (it.accepted) acceptedAttemptSum += it.attempts;
-      if (it.answerProvenWrong) {
-        detRuled += 1; // ruled: WRONG
-      } else if (it.answerVerificationLevel === 'DETERMINISTIC_CORRECTNESS_VERIFIED') {
-        detRuled += 1;
-        detCorrect += 1;
-      }
-      if (it.accepted && it.answerKind !== 'reasoning') {
-        acceptedNonReasoning += 1;
-        if (it.answerVerificationLevel === 'DETERMINISTIC_CORRECTNESS_VERIFIED') acceptedDetVerified += 1;
+      if (it.productionReady) productionReady += 1;
+      if (it.answerStatus === 'DETERMINISTIC_WRONG') detWrongAllAttempts += 1;
+      if (it.accepted) {
+        if (it.answerStatus === 'CROSSCHECK_REQUIRED') crosscheckRequired += 1;
+        if (it.answerKind !== 'reasoning') {
+          nonReasoningContentAccepted += 1;
+          if (it.answerStatus === 'DETERMINISTIC_CORRECT') {
+            verifierRuled += 1;
+            detCorrect += 1;
+          }
+          // a content-accepted item is never DETERMINISTIC_WRONG (hard-failed),
+          // so among content-accepted, "ruled" == "correct"
+        }
       }
     }
   }
@@ -125,14 +144,19 @@ export function aggregateItemQuality(runs: readonly ItemBenchmarkRun[]): ItemQua
     rawGenerations,
     schemaPassRate: totalOps > 0 ? schemaValidOps / totalOps : 0,
     skillAlignmentPassRate: gatePassRate(runs, 'SKILL_ALIGNED'),
-    answerCorrectnessPassRate: detRuled > 0 ? detCorrect / detRuled : 1,
-    deterministicallyCheckedRate: acceptedNonReasoning > 0 ? acceptedDetVerified / acceptedNonReasoning : 0,
     referenceLeakagePassRate: gatePassRate(runs, 'SIMILARITY_OK'),
     withinWorksheetUniquenessPassRate: gatePassRate(runs, 'UNIQUENESS_OK'),
     kLevelPassRate: gatePassRate(runs, 'K_LEVEL_OK'),
     tLevelPassRate: gatePassRate(runs, 'T_LEVEL_OK'),
     curriculumSafePassRate: gatePassRate(runs, 'CURRICULUM_SAFE'),
     prerequisiteSafePassRate: gatePassRate(runs, 'PREREQUISITE_SAFE'),
+    deterministicVerifierCoverageRate:
+      nonReasoningContentAccepted > 0 ? verifierRuled / nonReasoningContentAccepted : 0,
+    deterministicCorrectRate: verifierRuled > 0 ? detCorrect / verifierRuled : 1,
+    deterministicWrongRate: rawGenerations > 0 ? detWrongAllAttempts / rawGenerations : 0,
+    crosscheckRequiredRate: accepted > 0 ? crosscheckRequired / accepted : 0,
+    contentAcceptanceRate: requested > 0 ? accepted / requested : 0,
+    productionAcceptanceRate: requested > 0 ? productionReady / requested : 0,
     finalAcceptanceRate: requested > 0 ? accepted / requested : 0,
     averageRetriesPerAcceptedItem: accepted > 0 ? (acceptedAttemptSum - accepted) / accepted : 0,
     latencyMsPerAcceptedItem: accepted > 0 ? latencyMs / accepted : 0,
@@ -142,21 +166,23 @@ export function aggregateItemQuality(runs: readonly ItemBenchmarkRun[]): ItemQua
     totalCostVnd: costVnd,
     costPerAcceptedItemVnd: accepted > 0 ? costVnd / accepted : 0,
     costPerAcceptedItemUsd: accepted > 0 ? costUsd / accepted : 0,
+    costPerProductionItemVnd: productionReady > 0 ? costVnd / productionReady : 0,
+    costPerProductionItemUsd: productionReady > 0 ? costUsd / productionReady : 0,
   };
 }
 
-/** Minimum quality thresholds a model/mode must clear before cost is compared (doc 56 §9/§10). */
+/** Minimum quality thresholds a production-default candidate should clear (doc 56 §5/§10). */
 export const ITEM_QUALITY_THRESHOLDS = {
-  schemaPassRate: 0.98,
-  skillAlignmentPassRate: 1,
-  answerCorrectnessPassRate: 1,
-  referenceLeakagePassRate: 1,
-  withinWorksheetUniquenessPassRate: 1,
-  kLevelPassRate: 1,
-  tLevelPassRate: 1,
+  schemaPassRate: 1,
+  skillAlignmentPassRate: 0.98,
   curriculumSafePassRate: 1,
   prerequisiteSafePassRate: 1,
-  finalAcceptanceRate: 0.9,
+  deterministicCorrectRate: 1, // when the verifier CAN rule, it must be right
+  referenceLeakagePassRate: 0.99,
+  withinWorksheetUniquenessPassRate: 0.99,
+  kLevelPassRate: 0.95,
+  tLevelPassRate: 0.95,
+  contentAcceptanceRate: 0.9, // first-pass CONTENT target (doc 56 §5)
 } as const;
 
 export interface ItemQualityGateResult {

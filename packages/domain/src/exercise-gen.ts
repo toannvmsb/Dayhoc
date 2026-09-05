@@ -624,9 +624,40 @@ export interface ItemGateResult {
   readonly regenerationInstruction?: string;
 }
 
+/**
+ * Answer status for the two-tier acceptance model (doc 56 §ANSWER VERIFICATION
+ * POLICY). An item can pass CONTENT acceptance while its answer is only
+ * PENDING_CROSSCHECK for production.
+ *   DETERMINISTIC_CORRECT — an independent checker re-derived the answer → OK
+ *   DETERMINISTIC_WRONG   — an independent checker proved it wrong → HARD FAIL
+ *   CROSSCHECK_REQUIRED   — no deterministic path (reasoning, or the verifier
+ *                           can't parse a valid problem) → content OK, NOT
+ *                           production-ready until an AI/human confirms it
+ *   MALFORMED             — the answer key itself is not well-formed → HARD FAIL
+ */
+export const ITEM_ANSWER_STATUSES = [
+  'DETERMINISTIC_CORRECT',
+  'DETERMINISTIC_WRONG',
+  'CROSSCHECK_REQUIRED',
+  'MALFORMED',
+] as const;
+export type ItemAnswerStatus = (typeof ITEM_ANSWER_STATUSES)[number];
+
 export interface ItemAcceptanceResult {
   readonly itemId: string;
+  /**
+   * CONTENT acceptance — every gate passes (ANSWER_VERIFIED here means "not
+   * malformed AND not proven wrong"; an unverifiable-but-valid answer passes).
+   * Kept as `accepted` for back-compat with the C4 pipeline.
+   */
   readonly accepted: boolean;
+  /**
+   * PRODUCTION-READY — content-accepted AND the answer is independently
+   * verified correct. A content-accepted item that is only
+   * `CROSSCHECK_REQUIRED` is PENDING_CROSSCHECK, not production-ready.
+   */
+  readonly productionReady: boolean;
+  readonly answerStatus: ItemAnswerStatus;
   readonly gates: readonly ItemGateResult[];
   readonly failedGates: readonly ItemAcceptanceGate[];
   readonly answerVerificationLevel: AnswerVerificationLevel;

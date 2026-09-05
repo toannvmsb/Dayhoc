@@ -226,17 +226,19 @@ export function formatItemBenchmarkReport(r: ItemBenchmarkReport): string {
     r.stoppedEarly ? `  STOPPED EARLY: ${r.stopReason}` : '  (ran to completion)',
     '',
   ];
-  for (const m of [...r.byModelMode].sort((a, b) => a.costPerAcceptedItemVnd - b.costPerAcceptedItemVnd)) {
+  for (const m of [...r.byModelMode].sort((a, b) => b.productionAcceptanceRate - a.productionAcceptanceRate)) {
     lines.push(
       `${m.model}  [${m.mode}]  ${m.meetsThresholds ? 'MEETS THRESHOLDS' : 'FAILS: ' + m.failedThresholds.join(', ')}`,
-      `  final acceptance:        ${pct(m.finalAcceptanceRate)}   (accepted ${m.acceptedItems}/${m.requestedItems})`,
-      `  schema / skill / K / T:  ${pct(m.schemaPassRate)} / ${pct(m.skillAlignmentPassRate)} / ${pct(m.kLevelPassRate)} / ${pct(m.tLevelPassRate)}`,
-      `  answer / leakage / uniq: ${pct(m.answerCorrectnessPassRate)} / ${pct(m.referenceLeakagePassRate)} / ${pct(m.withinWorksheetUniquenessPassRate)}`,
-      `  curriculum / prereq:     ${pct(m.curriculumSafePassRate)} / ${pct(m.prerequisiteSafePassRate)}`,
-      `  retries/accepted item:   ${m.averageRetriesPerAcceptedItem.toFixed(2)}   latency/item ms: ${m.latencyMsPerAcceptedItem.toFixed(0)}`,
-      `  tokens in/out:           ${m.inputTokens} / ${m.outputTokens}`,
-      `  TOTAL COST USD/VND:      ${m.totalCostUsd.toFixed(4)} / ${m.totalCostVnd.toFixed(0)}`,
-      `  >>> COST PER ACCEPTED ITEM: ${m.costPerAcceptedItemVnd.toFixed(1)} VND (${m.costPerAcceptedItemUsd.toFixed(5)} USD)`,
+      `  CONTENT acceptance:       ${pct(m.contentAcceptanceRate)}   (${m.acceptedItems}/${m.requestedItems})`,
+      `  PRODUCTION-ready:         ${pct(m.productionAcceptanceRate)}   (pending crosscheck: ${pct(m.crosscheckRequiredRate)} of accepted)`,
+      `  schema / skill / K / T:   ${pct(m.schemaPassRate)} / ${pct(m.skillAlignmentPassRate)} / ${pct(m.kLevelPassRate)} / ${pct(m.tLevelPassRate)}`,
+      `  leakage / uniqueness:     ${pct(m.referenceLeakagePassRate)} / ${pct(m.withinWorksheetUniquenessPassRate)}`,
+      `  curriculum / prereq:      ${pct(m.curriculumSafePassRate)} / ${pct(m.prerequisiteSafePassRate)}`,
+      `  verifier coverage / correct / wrong: ${pct(m.deterministicVerifierCoverageRate)} / ${pct(m.deterministicCorrectRate)} / ${pct(m.deterministicWrongRate)}`,
+      `  retries/accepted item:    ${m.averageRetriesPerAcceptedItem.toFixed(2)}   latency/item ms: ${m.latencyMsPerAcceptedItem.toFixed(0)}`,
+      `  tokens in/out:            ${m.inputTokens} / ${m.outputTokens}   cost USD/VND: ${m.totalCostUsd.toFixed(4)} / ${m.totalCostVnd.toFixed(0)}`,
+      `  cost / CONTENT item:      ${m.costPerAcceptedItemVnd.toFixed(1)} VND`,
+      `  >>> cost / PRODUCTION item: ${m.costPerProductionItemVnd.toFixed(1)} VND (${m.costPerProductionItemUsd.toFixed(5)} USD)`,
       '',
     );
   }

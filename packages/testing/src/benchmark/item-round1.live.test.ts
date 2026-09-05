@@ -12,33 +12,33 @@ import {
   buildProblemDNA,
   composeExercise,
   createLunaItemContentGenerator,
-  orchestrateItemGeneration,
 } from '@copilot/exercise-gen';
 import { loadKnowledgeBase } from '@copilot/math-data';
 import { loadReferenceLibrary } from '@copilot/reference-library';
 import { buildItemBenchmarkSpecs } from './item-generation-benchmark.js';
 
 /**
- * doc 56 §2 — ROUND 1 architecture smoke. PAID. Runs ONLY when
+ * doc 56 §2 — ROUND 1 architecture smoke (RE-RUN). PAID. Runs ONLY when
  * `RUN_ITEM_ROUND1=1` and `OPENAI_API_KEY` are set. 6 representative specs,
- * MODE A (1 item/call), 3 mini models, `maxRetriesPerItem: 1`, NO fallback, NO
- * gpt-4o. Hard spend cap enforced per-call.
+ * MODE A (1 item/call), 3 mini models, 1 retry, NO fallback, NO gpt-4o.
+ * Two-tier acceptance: CONTENT vs PRODUCTION-READY (doc 56 §ANSWER
+ * VERIFICATION POLICY). Hard spend cap enforced per-call.
  */
 
 const LIVE = process.env.RUN_ITEM_ROUND1 === '1' && !!process.env.OPENAI_API_KEY;
 
 const ROUND1_SPEC_IDS = [
   'BENCH-LT-G4-02', // G4 basic / current curriculum
-  'BENCH-LT-G4-03', // G4 application (application + variation + light gap repair)
-  'HC01', // G4 thinking — strong thinking, K stays grade-level, T4/T5
-  'BENCH-LT-G7-06', // G7 application (current + variation + application + 1 prereq)
+  'BENCH-LT-G4-03', // G4 application
+  'HC01', // G4 thinking — strong thinking, K grade-level, T4/T5
+  'BENCH-LT-G7-06', // G7 application
   'HC05', // G7 gap / frontier safety — Parallel Gap Repair
   'HC10', // G7 advanced / HSG — legitimate K5 frontier
 ] as const;
 
 const MODELS = ['gpt-4o-mini', 'gpt-4.1-mini', 'gpt-5-mini'] as const;
 const HARD_CAP_USD = 0.5;
-const RUN_BUDGET_USD = 0.45; // stop new calls before this; leaves headroom under the cap
+const RUN_BUDGET_USD = 0.45;
 
 const COMPLIANCE: Omit<ProviderCompliance, 'provider'> = {
   processingRegion: 'benchmark',
@@ -49,10 +49,33 @@ const COMPLIANCE: Omit<ProviderCompliance, 'provider'> = {
   dpaStatus: 'not_applicable',
 };
 
-describe('doc 56 §2 — ROUND 1 (paid smoke)', () => {
+type FailCategory = 'MODEL' | 'VALIDATOR' | 'VERIFIER_LIMITATION' | 'INFRA' | 'LEAKAGE' | 'OTHER';
+
+function classify(gates: readonly string[], reason: string, simAgainst: string | null): FailCategory {
+  if (/provider error|max_tokens|max_completion_tokens|4\d\d:|rate limit/i.test(reason)) return 'INFRA';
+  if (gates.includes('SIMILARITY_OK')) return simAgainst === 'reference' ? 'LEAKAGE' : 'MODEL';
+  if (gates.includes('ANSWER_VERIFIED') && /deterministic check:/.test(reason)) return 'MODEL'; // proven wrong
+  if (/could not rule|PENDING_CROSSCHECK/.test(reason)) return 'VERIFIER_LIMITATION';
+  if (
+    gates.includes('SCHEMA_VALID') ||
+    /hint rung|rubric|answer .* is not|not a number|not a fraction|Vietnamese|JSON/.test(reason)
+  ) {
+    return 'MODEL';
+  }
+  if (
+    gates.some((g) =>
+      ['SKILL_ALIGNED', 'K_LEVEL_OK', 'T_LEVEL_OK', 'CURRICULUM_SAFE', 'PREREQUISITE_SAFE'].includes(g),
+    )
+  ) {
+    return 'VALIDATOR'; // post-compose these are deterministic — a hit means a spec/validator issue
+  }
+  return 'OTHER';
+}
+
+describe('doc 56 §2 — ROUND 1 RE-RUN (paid smoke)', () => {
   it.skipIf(!LIVE)(
     'runs 6 specs × MODE A × 3 mini models under a $0.50 hard cap',
-    { timeout: 900_000 },
+    { timeout: 1_200_000 },
     async () => {
       const kb = loadKnowledgeBase();
       const lib = loadReferenceLibrary();
@@ -66,7 +89,6 @@ describe('doc 56 §2 — ROUND 1 (paid smoke)', () => {
 
       let spentUsd = 0;
       const report: string[] = [];
-      const perModel: Record<string, unknown>[] = [];
 
       for (const model of MODELS) {
         const adapter = createOpenAiProviderAdapter({
@@ -78,9 +100,11 @@ describe('doc 56 §2 — ROUND 1 (paid smoke)', () => {
         const generator = createLunaItemContentGenerator({ adapter, structuredOutputMode: 'STRICT_JSON_SCHEMA' });
 
         let requested = 0;
-        let firstPassAccepted = 0;
-        let acceptedAfterRetry = 0;
-        let totalAccepted = 0;
+        let contentFirstPass = 0;
+        let contentAfterRetry = 0;
+        let contentTotal = 0;
+        let prodFirstPass = 0;
+        let prodTotal = 0;
         let modelCalls = 0;
         let schemaOkCalls = 0;
         let retrySum = 0;
@@ -88,7 +112,14 @@ describe('doc 56 §2 — ROUND 1 (paid smoke)', () => {
         let inTok = 0;
         let outTok = 0;
         let modelCostUsd = 0;
+        // answer verification tallies
+        let verifierRuled = 0; // among non-reasoning content-accepted: verifier returned a verdict
+        let verifierCorrect = 0;
+        let provenWrongAllAttempts = 0;
+        let crosscheckRequired = 0; // content-accepted, PENDING_CROSSCHECK
+        let nonReasoningContentAccepted = 0;
         const gateFails: Record<string, number> = {};
+        const failCats: Record<FailCategory, number> = { MODEL: 0, VALIDATOR: 0, VERIFIER_LIMITATION: 0, INFRA: 0, LEAKAGE: 0, OTHER: 0 };
         const failedItems: string[] = [];
         let structuredModeUsed: string | null = null;
 
@@ -106,17 +137,19 @@ describe('doc 56 §2 — ROUND 1 (paid smoke)', () => {
             requested += 1;
             if (spentUsd >= RUN_BUDGET_USD) {
               failedItems.push(`${bs.id} ${is.itemId} — BUDGET STOP (not attempted)`);
+              failCats.OTHER += 1;
               continue;
             }
             const refs = lib.filter((l) => l.skillId === is.skillId).map((l) => ({ id: l.id, prompt: l.prompt }));
-            let itemAccepted = false;
+            let contentOk = false;
+            let prodReady = false;
             let attempt = 0;
             let lastReason = '';
             let lastGates: string[] = [];
-            const maxAttempts = 2; // first pass + 1 retry
+            let lastSimAgainst: string | null = null;
             let retryInstr: string[] = [];
 
-            while (attempt < maxAttempts && !itemAccepted) {
+            while (attempt < 2 && !contentOk) {
               attempt += 1;
               const started = Date.now();
               const out = await generator.generate({
@@ -128,17 +161,14 @@ describe('doc 56 §2 — ROUND 1 (paid smoke)', () => {
               if (out.usage) {
                 inTok += out.usage.inputTokens;
                 outTok += out.usage.outputTokens;
-                const c = pricing.has(model)
-                  ? (() => {
-                      const e = pricing.priceAt(model);
-                      return (
-                        (out.usage.inputTokens / 1e6) * (e.inputPerMillionUsd ?? 0) +
-                        (out.usage.outputTokens / 1e6) * (e.outputPerMillionUsd ?? 0)
-                      );
-                    })()
-                  : 0;
-                modelCostUsd += c;
-                spentUsd += c;
+                if (pricing.has(model)) {
+                  const e = pricing.priceAt(model);
+                  const c =
+                    (out.usage.inputTokens / 1e6) * (e.inputPerMillionUsd ?? 0) +
+                    (out.usage.outputTokens / 1e6) * (e.outputPerMillionUsd ?? 0);
+                  modelCostUsd += c;
+                  spentUsd += c;
+                }
               }
               if (out.providerMeta?.structuredOutputMode) structuredModeUsed = out.providerMeta.structuredOutputMode;
 
@@ -167,17 +197,31 @@ describe('doc 56 §2 — ROUND 1 (paid smoke)', () => {
                 acceptedSiblings: accepted,
                 forbiddenNumberTuples: dnaFor.get(is.itemId)!.forbiddenSimilarities.numberTuples,
               });
+              if (acc.answerStatus === 'DETERMINISTIC_WRONG') provenWrongAllAttempts += 1;
+
               if (acc.accepted) {
-                itemAccepted = true;
+                contentOk = true;
+                prodReady = acc.productionReady;
                 accepted.push({ id: comp.exercise.id, prompt: comp.exercise.prompt });
-                if (attempt === 1) firstPassAccepted += 1;
-                else acceptedAfterRetry += 1;
+                if (is.answerKind !== 'reasoning') {
+                  nonReasoningContentAccepted += 1;
+                  if (acc.answerStatus === 'DETERMINISTIC_CORRECT') {
+                    verifierRuled += 1;
+                    verifierCorrect += 1;
+                  }
+                }
+                if (acc.answerStatus === 'CROSSCHECK_REQUIRED') crosscheckRequired += 1;
+                if (attempt === 1) contentFirstPass += 1;
+                else contentAfterRetry += 1;
+                if (prodReady && attempt === 1) prodFirstPass += 1;
               } else {
                 lastGates = [...acc.failedGates];
                 lastReason = acc.gates
                   .filter((g) => !g.pass)
                   .map((g) => `${g.gate}: ${g.detail}`)
                   .join(' | ');
+                const sim = acc.gates.find((g) => g.gate === 'SIMILARITY_OK' && !g.pass);
+                lastSimAgainst = sim ? (/vs reference/.test(sim.detail) ? 'reference' : 'sibling') : null;
                 retryInstr = acc.gates
                   .filter((g) => !g.pass && g.regenerationInstruction)
                   .map((g) => g.regenerationInstruction!);
@@ -185,16 +229,15 @@ describe('doc 56 §2 — ROUND 1 (paid smoke)', () => {
             }
 
             retrySum += attempt - 1;
-            if (itemAccepted) {
-              totalAccepted += 1;
+            if (contentOk) {
+              contentTotal += 1;
+              if (prodReady) prodTotal += 1;
             } else {
               for (const g of lastGates) gateFails[g] = (gateFails[g] ?? 0) + 1;
-              const modelRelated =
-                lastGates.some((g) => ['SCHEMA_VALID', 'ANSWER_VERIFIED', 'SIMILARITY_OK', 'UNIQUENESS_OK'].includes(g)) ||
-                lastReason.includes('generator inability') ||
-                lastReason.includes('compose');
+              const cat = classify(lastGates, lastReason, lastSimAgainst);
+              failCats[cat] += 1;
               failedItems.push(
-                `${bs.id} :: ${is.itemId}\n      gate(s): [${lastGates.join(',')}]  attempts: ${attempt}\n      reason: ${lastReason}\n      classification: ${modelRelated ? 'MODEL-RELATED' : 'VALIDATOR/SPEC-RELATED'}`,
+                `${bs.id} :: ${is.itemId}  [${cat}]  gates:[${lastGates.join(',')}]  attempts:${attempt}\n        ${lastReason}`,
               );
             }
           }
@@ -203,34 +246,46 @@ describe('doc 56 §2 — ROUND 1 (paid smoke)', () => {
         const pct = (n: number, d: number) => (d > 0 ? ((n / d) * 100).toFixed(1) + '%' : 'n/a');
         const sorted = [...latencies].sort((a, b) => a - b);
         const p = (q: number) => sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))] ?? 0;
-        perModel.push({ model, requested, totalAccepted, firstPassAccepted, acceptedAfterRetry, modelCostUsd });
         report.push(
           `\n================ ${model} ================`,
           `structured output mode used: ${structuredModeUsed ?? 'n/a'}`,
-          `requested items:            ${requested}`,
-          `1. schema pass (calls):     ${pct(schemaOkCalls, modelCalls)}  (${schemaOkCalls}/${modelCalls})`,
-          `2. skill alignment:         ${pct(requested - (gateFails.SKILL_ALIGNED ?? 0), requested)}`,
-          `3. answer verification:     ${pct(requested - (gateFails.ANSWER_VERIFIED ?? 0), requested)}`,
-          `4. leakage pass:            ${pct(requested - (gateFails.SIMILARITY_OK ?? 0), requested)}`,
-          `5. uniqueness:              ${pct(requested - (gateFails.UNIQUENESS_OK ?? 0), requested)}`,
-          `6. curriculum / prereq:     ${pct(requested - (gateFails.CURRICULUM_SAFE ?? 0), requested)} / ${pct(requested - (gateFails.PREREQUISITE_SAFE ?? 0), requested)}`,
-          `7. K / T conformity:        ${pct(requested - (gateFails.K_LEVEL_OK ?? 0), requested)} / ${pct(requested - (gateFails.T_LEVEL_OK ?? 0), requested)}`,
-          `8. first-pass acceptance:   ${pct(firstPassAccepted, requested)}  (${firstPassAccepted}/${requested})`,
-          `9. accepted after retry:    +${acceptedAfterRetry}  → total ${pct(totalAccepted, requested)}  (${totalAccepted}/${requested})`,
-          `10. retries (total/avg):    ${retrySum} / ${(retrySum / Math.max(1, requested)).toFixed(2)}`,
-          `11. latency p50/p95 ms:     ${p(0.5)} / ${p(0.95)}   (avg ${(sorted.reduce((s, x) => s + x, 0) / Math.max(1, sorted.length)).toFixed(0)})`,
-          `12. tokens in / out:        ${inTok} / ${outTok}`,
-          `13. total cost USD:         $${modelCostUsd.toFixed(4)}`,
-          `14. cost per accepted item: $${(totalAccepted > 0 ? modelCostUsd / totalAccepted : 0).toFixed(5)}  (${totalAccepted > 0 ? Math.round((modelCostUsd / totalAccepted) * 26000) : 0} VND)`,
-          failedItems.length > 0 ? `\n  FAILED ITEMS (${failedItems.length}):` : '\n  (no failed items)',
-          ...failedItems.map((f) => `    - ${f}`),
+          `requested items: ${requested}   model calls: ${modelCalls}`,
+          ``,
+          `schema pass (calls):        ${pct(schemaOkCalls, modelCalls)}  (${schemaOkCalls}/${modelCalls})`,
+          `skill alignment:            ${pct(requested - (gateFails.SKILL_ALIGNED ?? 0), requested)}`,
+          `curriculum / prereq safety: ${pct(requested - (gateFails.CURRICULUM_SAFE ?? 0), requested)} / ${pct(requested - (gateFails.PREREQUISITE_SAFE ?? 0), requested)}`,
+          `K / T conformity:           ${pct(requested - (gateFails.K_LEVEL_OK ?? 0), requested)} / ${pct(requested - (gateFails.T_LEVEL_OK ?? 0), requested)}`,
+          `leakage pass:               ${pct(requested - (gateFails.SIMILARITY_OK ?? 0), requested)}`,
+          `uniqueness pass:            ${pct(requested - (gateFails.UNIQUENESS_OK ?? 0), requested)}`,
+          ``,
+          `deterministic-verifier coverage: ${pct(verifierRuled, nonReasoningContentAccepted)}  (${verifierRuled}/${nonReasoningContentAccepted} non-reasoning content-accepted)`,
+          `deterministic-correct (of ruled): ${pct(verifierCorrect, verifierRuled)}`,
+          `deterministic-wrong (of all attempts): ${pct(provenWrongAllAttempts, modelCalls)}  (${provenWrongAllAttempts})`,
+          `crosscheck-required (of content-accepted): ${pct(crosscheckRequired, contentTotal)}  (${crosscheckRequired}/${contentTotal})`,
+          ``,
+          `CONTENT first-pass acceptance:     ${pct(contentFirstPass, requested)}  (${contentFirstPass}/${requested})`,
+          `CONTENT after-1-retry acceptance:  ${pct(contentTotal, requested)}  (+${contentAfterRetry} → ${contentTotal}/${requested})`,
+          `PRODUCTION-ready first-pass:       ${pct(prodFirstPass, requested)}  (${prodFirstPass}/${requested})`,
+          `PRODUCTION-ready after-1-retry:    ${pct(prodTotal, requested)}  (${prodTotal}/${requested})  [rest = PENDING_CROSSCHECK]`,
+          ``,
+          `retries total/avg:  ${retrySum} / ${(retrySum / Math.max(1, requested)).toFixed(2)}`,
+          `latency p50/p95 ms: ${p(0.5)} / ${p(0.95)}   avg ${(sorted.reduce((s, x) => s + x, 0) / Math.max(1, sorted.length)).toFixed(0)}`,
+          `tokens in/out:      ${inTok} / ${outTok}`,
+          `total cost USD:     $${modelCostUsd.toFixed(4)}`,
+          `cost / CONTENT accepted item:    $${(contentTotal > 0 ? modelCostUsd / contentTotal : 0).toFixed(5)}  (${contentTotal > 0 ? Math.round((modelCostUsd / contentTotal) * 26000) : 0} VND)`,
+          `cost / PRODUCTION-ready item:     $${(prodTotal > 0 ? modelCostUsd / prodTotal : 0).toFixed(5)}  (${prodTotal > 0 ? Math.round((modelCostUsd / prodTotal) * 26000) : 0} VND)`,
+          ``,
+          `failed items by category: ${JSON.stringify(failCats)}`,
+          failedItems.length > 0 ? `FAILED ITEMS (${failedItems.length}):` : '(no CONTENT failures)',
+          ...failedItems.map((f) => `  - ${f}`),
         );
       }
 
       const header = [
-        `DẠYZI — ROUND 1 (doc 56 §2)  ${new Date().toISOString()}`,
+        `DẠYZI — ROUND 1 RE-RUN (doc 56 §2)  ${new Date().toISOString()}`,
         `specs: ${ROUND1_SPEC_IDS.join(', ')}`,
-        `models: ${MODELS.join(', ')}   MODE A (1 item/call)   maxRetriesPerItem: 1   no fallback   no gpt-4o`,
+        `models: ${MODELS.join(', ')}   MODE A   1 retry   no fallback   no gpt-4o`,
+        `TWO-TIER: CONTENT acceptance vs PRODUCTION-ready (deterministic-verified answer); rest = PENDING_CROSSCHECK`,
         `TOTAL SPEND: $${spentUsd.toFixed(4)}   (run budget $${RUN_BUDGET_USD}, hard cap $${HARD_CAP_USD})`,
       ];
       writeFileSync('D:/Lap trinh/Claude/Dayhoc/ROUND1.txt', [...header, ...report].join('\n'));

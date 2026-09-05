@@ -5,6 +5,7 @@ import type {
   GeneratedExerciseBatch,
   GeneratedItemContent,
   ItemAcceptanceGate,
+  ItemAnswerStatus,
   ItemGenerationSpec,
   ProblemDNA,
 } from '@copilot/domain';
@@ -66,13 +67,15 @@ export interface ItemRunRecord {
   readonly knowledgeLevel: string;
   readonly thinkingLevel: string;
   readonly answerKind: string;
+  /** CONTENT acceptance — every gate passed. */
   readonly accepted: boolean;
+  /** PRODUCTION-READY — content-accepted AND answer independently verified correct. */
+  readonly productionReady: boolean;
+  readonly answerStatus: ItemAnswerStatus | null;
   readonly attempts: number;
   readonly failedGates: readonly ItemAcceptanceGate[];
   readonly composeFailure: string | null;
   readonly answerVerificationLevel: AnswerVerificationLevel | null;
-  /** The deterministic math verifier proved the answer WRONG on the last attempt. */
-  readonly answerProvenWrong: boolean;
   readonly finalPrompt: string | null;
 }
 
@@ -162,7 +165,8 @@ export async function orchestrateItemGeneration(
   const lastFailedGates = new Map<string, readonly ItemAcceptanceGate[]>();
   const composeFailure = new Map<string, string | null>();
   const answerLevel = new Map<string, AnswerVerificationLevel | null>();
-  const answerProvenWrong = new Map<string, boolean>();
+  const answerStatusById = new Map<string, ItemAnswerStatus>();
+  const productionReadyById = new Map<string, boolean>();
   const operations: GenerationOperation[] = [];
 
   let unaccepted = [...itemSpecs];
@@ -269,10 +273,8 @@ export async function orchestrateItemGeneration(
         forbiddenNumberTuples: dna.forbiddenSimilarities.numberTuples,
       });
       answerLevel.set(is.itemId, result.answerVerificationLevel);
-      answerProvenWrong.set(
-        is.itemId,
-        result.gates.some((g) => g.gate === 'ANSWER_VERIFIED' && !g.pass && g.detail.startsWith('deterministic check:')),
-      );
+      answerStatusById.set(is.itemId, result.answerStatus);
+      productionReadyById.set(is.itemId, result.productionReady);
       if (result.accepted) {
         accepted.set(is.itemId, composed.exercise);
         lastFailedGates.set(is.itemId, []);
@@ -305,11 +307,12 @@ export async function orchestrateItemGeneration(
     thinkingLevel: is.thinkingLevel,
     answerKind: is.answerKind,
     accepted: accepted.has(is.itemId),
+    productionReady: productionReadyById.get(is.itemId) ?? false,
+    answerStatus: answerStatusById.get(is.itemId) ?? null,
     attempts: attempts.get(is.itemId) ?? 0,
     failedGates: lastFailedGates.get(is.itemId) ?? [],
     composeFailure: composeFailure.get(is.itemId) ?? null,
     answerVerificationLevel: answerLevel.get(is.itemId) ?? null,
-    answerProvenWrong: answerProvenWrong.get(is.itemId) ?? false,
     finalPrompt: accepted.get(is.itemId)?.prompt ?? null,
   }));
 

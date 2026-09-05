@@ -46,15 +46,18 @@ describe('doc 56 §9 — benchmark run (offline, mock generators)', () => {
     expect(report.byModelMode.length).toBe(2 * ITEM_BENCHMARK_MODES.length);
     for (const m of report.byModelMode) {
       // after the doc 56 §0 validator calibration the deterministic mock clears
-      // every gate on the representative slice
-      expect(m.finalAcceptanceRate).toBe(1);
+      // every CONTENT gate on the representative slice
+      expect(m.contentAcceptanceRate).toBe(1);
       expect(m.costPerAcceptedItemVnd).toBe(0); // mock is free
       expect(m.schemaPassRate).toBe(1);
       expect(m.referenceLeakagePassRate).toBe(1);
       expect(m.prerequisiteSafePassRate).toBe(1);
+      // the mock emits real closed computations for direct_computation slots →
+      // some items are deterministically verified; the rest are PENDING_CROSSCHECK
+      expect(m.productionAcceptanceRate).toBeGreaterThan(0);
+      expect(m.productionAcceptanceRate).toBeLessThanOrEqual(m.contentAcceptanceRate);
     }
-    // mock is free → cost gate trivially fine; text report renders
-    expect(formatItemBenchmarkReport(report)).toContain('COST PER ACCEPTED ITEM');
+    expect(formatItemBenchmarkReport(report)).toContain('cost / PRODUCTION item');
   });
 
   it('honours the spend guardrail (stops before the call ceiling)', async () => {
