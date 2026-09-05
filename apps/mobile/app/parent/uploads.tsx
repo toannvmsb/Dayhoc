@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useChild } from '@/child';
 import { ParentNav } from '@/nav';
 import { theme } from '@/theme';
-import { Body, Button, Card, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/ui';
+import { Body, Button, Card, Chip, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/ui';
 import { errText, useClient, useQuery } from '@/useApi';
 import type { UploadAnalysis, UploadListItem } from '@/types';
 
@@ -114,34 +114,62 @@ export default function UploadsScreen() {
         {review.teacherNote && <Card><Overline>Ghi chú</Overline><Body>{review.teacherNote}</Body></Card>}
         {review.items.map((it) => {
           const t = ticked[it.index] ?? { confirm: false };
+          const top = it.skillCandidates[0];
           return (
             <Card key={it.index}>
               <Pressable
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
                 onPress={() => setTicked((s) => ({ ...s, [it.index]: { ...t, confirm: !t.confirm } }))}
               >
-                <Body>
-                  {t.confirm ? '☑' : '☐'} Câu {it.index + 1}
-                </Body>
+                <View
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 6,
+                    borderWidth: 2,
+                    borderColor: t.confirm ? theme.color.primary : theme.color.border,
+                    backgroundColor: t.confirm ? theme.color.primary : 'transparent',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {t.confirm && <Text style={{ color: theme.color.onDark, fontSize: 13, fontWeight: '800' }}>✓</Text>}
+                </View>
+                <Text style={{ flex: 1, fontSize: 14.5, fontWeight: '700', color: theme.color.textHeading }}>
+                  Câu {it.index + 1}
+                </Text>
+                {top && (
+                  <Chip
+                    label={`Tin cậy ${top.confidence >= 0.7 ? 'cao' : top.confidence >= 0.45 ? 'vừa' : 'thấp'}`}
+                    tone={top.confidence >= 0.7 ? 'positive' : 'neutral'}
+                  />
+                )}
               </Pressable>
               <Muted>{it.prompt}</Muted>
               {it.childAnswer ? <Muted>Con trả lời: {it.childAnswer}</Muted> : null}
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
                 {it.skillCandidates.map((c) => (
                   <Pressable
                     key={c.skillId}
                     onPress={() => setTicked((s) => ({ ...s, [it.index]: { ...t, skillId: c.skillId } }))}
                     style={{
-                      paddingHorizontal: 8,
-                      paddingVertical: 4,
-                      borderRadius: 999,
+                      paddingHorizontal: 10,
+                      paddingVertical: 7,
+                      borderRadius: 10,
                       borderWidth: 1,
                       borderColor: t.skillId === c.skillId ? theme.color.primary : theme.color.border,
                       backgroundColor: t.skillId === c.skillId ? theme.color.primaryTint : theme.color.surface,
                     }}
                   >
-                    <Muted>
+                    <Text
+                      style={{
+                        fontSize: 12.5,
+                        fontWeight: '600',
+                        color: t.skillId === c.skillId ? theme.color.primaryStrong : theme.color.textBody,
+                      }}
+                    >
                       {c.skillName} ({Math.round(c.confidence * 100)}%)
-                    </Muted>
+                    </Text>
                   </Pressable>
                 ))}
               </View>
@@ -149,8 +177,14 @@ export default function UploadsScreen() {
           );
         })}
         {err && <ErrorNote message={err} />}
-        <Button label="Xác nhận" onPress={confirm} loading={busy} />
-        <Button label="Để sau" tone="ghost" onPress={() => setReview(null)} />
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+          <View style={{ width: 96 }}>
+            <Button label="Để sau" tone="ghost" onPress={() => setReview(null)} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Button label="Xác nhận & lưu" onPress={confirm} loading={busy} />
+          </View>
+        </View>
       </Screen>
     );
   }
@@ -190,11 +224,11 @@ export default function UploadsScreen() {
       {list.loading && <Loading />}
       {(list.data ?? []).map((u) => (
         <Card key={u.id}>
-          <Body>{KINDS.find((k) => k.value === u.kind)?.label ?? u.kind}</Body>
-          <Muted>
-            {STATE[u.state] ?? u.state}
-            {u.itemCount > 0 ? ` · ${u.itemCount} câu` : ''}
-          </Muted>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Body>{KINDS.find((k) => k.value === u.kind)?.label ?? u.kind}</Body>
+            <Chip label={STATE[u.state] ?? u.state} tone={u.state === 'CONFIRMED' ? 'positive' : u.state === 'NEEDS_CONFIRMATION' ? 'primary' : 'neutral'} />
+          </View>
+          {u.itemCount > 0 && <Muted>{u.itemCount} câu</Muted>}
         </Card>
       ))}
     </Screen>
