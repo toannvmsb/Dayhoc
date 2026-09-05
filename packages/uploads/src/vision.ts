@@ -136,6 +136,34 @@ export interface OpenAiVisionConfig {
 }
 
 /**
+ * The exact JSON contract, spelled out field-by-field — an earlier one-line
+ * version ("Return JSON matching DocumentExtraction") let the model invent
+ * its own reasonable-looking-but-wrong shape (`questions`/`question`/`answer`/
+ * `marks` instead of `items`/`prompt`/`childAnswer`/`markedCorrect`/
+ * `skillCandidates`), confirmed against a real photo before this fix. Same
+ * lesson as `EXERCISE_GENERATOR_SYSTEM_PROMPT` in `@copilot/exercise-gen`:
+ * an AI JSON contract must be given explicitly, never implied by a type name.
+ */
+const VISION_SYSTEM_PROMPT = `Read this photo of a Vietnamese primary/lower-secondary math homework or test page. Respond with a single JSON object matching this exact shape:
+{
+  "documentType": "WORKSHEET" | "GRADED_TEST" | "HOMEWORK" | "TEACHER_NOTE" | "UNKNOWN",
+  "observedOn": "<ISO date YYYY-MM-DD if a date is legible on the page, else null>",
+  "items": [
+    {
+      "index": <0-based integer, top-to-bottom reading order>,
+      "prompt": "<the question text, transcribed as written, Vietnamese>",
+      "childAnswer": "<the child's handwritten answer, or null if none/illegible>",
+      "markedCorrect": <true if a teacher mark shows it correct, false if marked wrong, null if not graded/no mark visible>,
+      "skillCandidates": [{"skillId": "<must be one of the allowed skillIds given by the caller>", "confidence": <0..1>}],
+      "problemTypeId": null
+    }
+  ],
+  "teacherNote": "<any separate teacher note/message on the page, or null>",
+  "overallConfidence": <0..1 — your own confidence in this whole extraction>
+}
+Only include an exercise/question as an "item" — never the page header, "kiến thức cần nhớ" reference boxes, or decorative text. Only propose "skillId" values from the allowed list given by the caller; if none fit confidently, return an empty skillCandidates array rather than guessing. No prose outside the JSON object.`;
+
+/**
  * Live OpenAI vision adapter. Present for completeness; it is only ever
  * constructed when a key exists AND `DZ_LIVE_VISION=1`. It is never the default,
  * so no upload triggers a paid call unless an operator opts in.
@@ -178,11 +206,7 @@ export class OpenAiVisionAdapter implements DocumentVisionAdapter {
         model: this.model,
         response_format: { type: 'json_object' },
         messages: [
-          {
-            role: 'system',
-            content:
-              'Extract questions, the child answers, any teacher marks, and a teacher note from this school page. Return JSON matching DocumentExtraction. Only propose skillIds from the provided list.',
-          },
+          { role: 'system', content: VISION_SYSTEM_PROMPT },
           {
             role: 'user',
             content: [
