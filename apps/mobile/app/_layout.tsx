@@ -116,6 +116,7 @@ export default function RootLayout() {
             <Stack.Screen name="student/progress" options={{ title: 'Tiến bộ' }} />
             <Stack.Screen name="teacher/students" options={{ title: 'Học sinh' }} />
             <Stack.Screen name="teacher/[childId]" options={{ title: 'Chi tiết học sinh' }} />
+            <Stack.Screen name="teacher/update" options={{ title: 'Cập nhật bài đã dạy' }} />
           </Stack>
         </ChildProvider>
       </AuthProvider>

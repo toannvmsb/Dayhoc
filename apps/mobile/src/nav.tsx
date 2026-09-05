@@ -66,7 +66,10 @@ export function StudentNav() {
 export function TeacherNav() {
   return (
     <Bar
-      items={[{ label: 'Học sinh', glyph: '◍', href: '/teacher/students' }]}
+      items={[
+        { label: 'Học sinh', glyph: '◍', href: '/teacher/students' },
+        { label: 'Cập nhật', glyph: '⌗', href: '/teacher/update', raised: true },
+      ]}
     />
   );
 }

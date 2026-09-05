@@ -255,3 +255,4 @@ export type Entitlements = {
 };
 
 export type TeacherChildRow = { childId: string; displayName: string; subjectId: string | null };
+export type Subject = { id: string; code: string; name: string; status: string };

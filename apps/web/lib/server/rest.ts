@@ -291,6 +291,26 @@ const ROUTES: Record<string, Handler> = {
     getApi().teacherGetGaps(auth(c, 'TEACHER'), c.params[0]!, c.query.get('subjectId') ?? undefined),
   'POST /teacher/redeem-code': async (c) =>
     getApi().redeemInviteCode(auth(c, 'TEACHER'), String(c.body.code ?? '')),
+  'POST /teacher/children/:id/contributions': async (c) => {
+    const contributionType = String(c.body.contributionType ?? 'CURRENT_LESSON') as
+      | 'CURRENT_LESSON'
+      | 'CURRICULUM_PROGRESS'
+      | 'HOMEWORK'
+      | 'EXAM_NOTICE';
+    const note = String(c.body.note ?? '').trim();
+    const examDate = String(c.body.examDate ?? '').trim();
+    return getApi().teacherSubmitContribution(auth(c, 'TEACHER'), c.params[0]!, {
+      subjectId: String(c.body.subjectId ?? ''),
+      contributionType,
+      observedAt: new Date().toISOString(),
+      ...(contributionType === 'HOMEWORK' && note
+        ? { homeworkRefs: note.split(',').map((s) => s.trim()).filter(Boolean) }
+        : {}),
+      ...(contributionType === 'EXAM_NOTICE' && examDate
+        ? { examRef: { date: examDate, ...(note ? { scopeNote: note } : {}) } }
+        : {}),
+    });
+  },
   'GET /subjects': async (c) => getApi().listSubjects(auth(c)),
 };
 
