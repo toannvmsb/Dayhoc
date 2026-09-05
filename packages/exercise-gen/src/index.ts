@@ -26,3 +26,16 @@ export * from './math-verifier.js';
 export * from './verifier.js';
 export * from './shadow.js';
 export * from './shadow-metrics.js';
+
+// --- reliability redesign (doc 56) — item-level generation ---
+export * from './item-spec.js';
+export * from './problem-dna.js';
+export * from './similarity-gate.js';
+export * from './compose.js';
+export * from './item-generator.js';
+export * from './mock-item-generator.js';
+export * from './luna-item-generator.js';
+export * from './item-validator.js';
+export * from './item-routing.js';
+export * from './item-orchestrator.js';
+export * from './item-metrics.js';

@@ -449,3 +449,185 @@ export type AnswerVerificationLevel = (typeof ANSWER_VERIFICATION_LEVELS)[number
 
 /** Levels that may back a TRUE correctness-ground-truth metric (C5.2 §E). AI cross-check is NOT one. */
 export const CORRECTNESS_GROUND_TRUTH_LEVELS = ['DETERMINISTIC_CORRECTNESS_VERIFIED', 'HUMAN_GOLDEN_VERIFIED'] as const;
+
+// ======================================================================
+// RELIABILITY REDESIGN (doc 56) — item-level generation
+// ----------------------------------------------------------------------
+// The C5 batch pipeline above asked one model call to emit a whole
+// worksheet AND echo every deterministic field (skillId, requiredSkillIds,
+// bucket, K, T, origin, …). That produced two failure classes — semantic
+// (reference copying) and contract (missing `origin` / empty
+// `requiredSkillIds` on large batches). The redesign removes ALL
+// educational authority from the model: deterministic code owns every
+// structural field, the model returns only CONTENT, and generation runs
+// 1–2 items per call so one bad item never discards good ones.
+// ======================================================================
+
+/** The answer family an item uses. Pinned deterministically → the model's output schema has no union. */
+export const ANSWER_KINDS = ['numeric', 'fraction', 'choice', 'exact', 'reasoning'] as const;
+export type AnswerKind = (typeof ANSWER_KINDS)[number];
+
+/** Controlled vocabulary for how a problem is shaped (doc 56 §5 — ProblemDNA). */
+export const PROBLEM_STRUCTURES = [
+  'direct_computation',
+  'single_step_word_problem',
+  'multi_step_word_problem',
+  'compare_and_decide',
+  'work_backwards',
+  'explain_or_justify',
+  'find_the_error',
+  'construct_an_example',
+] as const;
+export type ProblemStructure = (typeof PROBLEM_STRUCTURES)[number];
+
+/**
+ * How the item's answer is expected to be checkable — set by deterministic
+ * policy from the answer kind + problem structure, never by the model.
+ *   DETERMINISTIC_EXPECTED — a closed numeric/fraction/exact answer the math
+ *                            verifier should be able to re-derive; a failure to
+ *                            verify is a real finding.
+ *   AI_OR_HUMAN_CROSSCHECK — reasoning / multi-step word problems where no
+ *                            deterministic path exists; the item is accepted at
+ *                            an honest lower verification level, never claimed
+ *                            deterministically correct.
+ */
+export const ANSWER_VERIFICATION_POLICIES = ['DETERMINISTIC_EXPECTED', 'AI_OR_HUMAN_CROSSCHECK'] as const;
+export type AnswerVerificationPolicy = (typeof ANSWER_VERIFICATION_POLICIES)[number];
+
+/**
+ * ItemGenerationSpec (doc 56 §1/§4) — the deterministic PER-ITEM contract. Every
+ * educational-authority field is populated by application code from the
+ * `ExerciseGenerationSpec` + KB BEFORE any AI call. `composeExercise` reattaches
+ * these verbatim to the model's content. The model never owns any field here.
+ */
+export interface ItemGenerationSpec {
+  readonly itemId: string; // deterministic, assigned by buildItemGenerationSpecs
+  readonly generationSpecId: string;
+  readonly index: number; // 0-based worksheet position
+  readonly skillId: SkillId;
+  readonly targetRole: TargetRole;
+  readonly bucket: keyof ExerciseDistribution;
+  readonly domain: string;
+  readonly curriculumNodeId: string;
+  readonly curriculumOrigin: number;
+  readonly schoolGrade: GradeContext;
+  /** Exact levels — deterministically chosen inside the spec's K/T range (§1). */
+  readonly knowledgeLevel: KnowledgeLevel;
+  readonly thinkingLevel: ThinkingLevel;
+  readonly problemStructure: ProblemStructure;
+  /** The answer family the item MUST use — pins the strict output schema (§3). */
+  readonly answerKind: AnswerKind;
+  readonly problemTypeId: ProblemTypeId | null;
+  /** Skills actually required to solve — deterministic, from the prereq DAG (§1). */
+  readonly requiredSkillIds: readonly SkillId[];
+  readonly supportingSkillIds: readonly SkillId[];
+  /** Curriculum-safety facts pre-computed so compose / validation need no re-derivation. */
+  readonly curriculumSafety: {
+    readonly noUnlearnedRequiredKnowledge: boolean;
+    readonly allowAboveGradeKnowledge: boolean;
+    readonly blockingPrerequisiteSkillIds: readonly SkillId[];
+  };
+  readonly constraints: {
+    readonly language: 'vi';
+    readonly notation: 'SGK';
+    readonly hintRungs: 6;
+    readonly ageAppropriate: boolean;
+    readonly maxSolutionComplexity: 'low' | 'standard' | 'high';
+  };
+  readonly answerVerificationPolicy: AnswerVerificationPolicy;
+}
+
+/**
+ * GeneratedItemContent (doc 56 §2) — the ONLY thing the model returns. No
+ * skillId, no K/T, no bucket, no ids beyond the echoed `itemId`. `answer` is a
+ * plain string that deterministic `composeExercise` coerces to the pinned
+ * `AnswerKind`; `distractors` only for a `choice` item.
+ */
+export interface GeneratedItemContent {
+  readonly itemId: string;
+  readonly prompt: string;
+  readonly answer: string; // "" for a reasoning item
+  readonly distractors?: readonly string[];
+  readonly hints: readonly string[]; // 6 rungs
+  readonly workedSolution: string;
+  readonly rubric?: string; // reasoning items
+}
+
+/**
+ * ProblemDNA (doc 56 §5) — the de-anchored generation grounding for ONE item.
+ * STRUCTURE, not reference wording: the generator normally never sees a raw
+ * reference prompt. A pure function of (ItemGenerationSpec, KB, references).
+ */
+export interface ProblemDNA {
+  readonly itemId: string;
+  readonly generationSpecId: string;
+  readonly language: 'vi';
+  readonly skill: {
+    readonly id: SkillId;
+    readonly name: string;
+    readonly domain: string;
+    readonly description: string;
+  };
+  readonly problemStructure: ProblemStructure;
+  readonly operationStructure: readonly string[];
+  readonly difficulty: {
+    readonly knowledgeLevel: KnowledgeLevel;
+    readonly knowledgeMeaning: string;
+    readonly thinkingLevel: ThinkingLevel;
+    readonly thinkingMeaning: string;
+  };
+  readonly thinkingRequirement: string;
+  readonly answerKind: AnswerKind;
+  readonly constraints: ItemGenerationSpec['constraints'] & {
+    readonly numberRange?: { readonly min: number; readonly max: number };
+  };
+  readonly allowedVariationAxes: readonly string[];
+  readonly forbiddenSimilarities: {
+    /** Scenario nouns / contexts seen in references — do not reuse. */
+    readonly scenarios: readonly string[];
+    /** Number multisets from references — do not reproduce exactly. */
+    readonly numberTuples: readonly (readonly number[])[];
+    /** Structural skeletons (numbers + nouns blanked) from references — do not match. */
+    readonly templateSkeletons: readonly string[];
+  };
+  /** Abstract style guidance — NEVER raw prompt text. */
+  readonly styleHints: readonly string[];
+  /**
+   * A raw reference prompt is attached ONLY here, ONLY with an explicit
+   * justification + elevated leakage-risk acknowledgement (doc 56 §5). Default null.
+   */
+  readonly rawReference:
+    | { readonly prompt: string; readonly justification: string; readonly leakageRisk: 'ELEVATED' }
+    | null;
+  readonly dnaHash: string;
+}
+
+/** The hard quality gates every generated item must pass (doc 56 §10). No partial bypass. */
+export const ITEM_ACCEPTANCE_GATES = [
+  'SCHEMA_VALID',
+  'SKILL_ALIGNED',
+  'CURRICULUM_SAFE',
+  'PREREQUISITE_SAFE',
+  'ANSWER_VERIFIED', // where deterministically supported
+  'SIMILARITY_OK',
+  'UNIQUENESS_OK',
+  'K_LEVEL_OK',
+  'T_LEVEL_OK',
+] as const;
+export type ItemAcceptanceGate = (typeof ITEM_ACCEPTANCE_GATES)[number];
+
+export interface ItemGateResult {
+  readonly gate: ItemAcceptanceGate;
+  readonly pass: boolean;
+  readonly detail: string;
+  /** A deterministic, generator-facing instruction for a retry (never validator free-text). */
+  readonly regenerationInstruction?: string;
+}
+
+export interface ItemAcceptanceResult {
+  readonly itemId: string;
+  readonly accepted: boolean;
+  readonly gates: readonly ItemGateResult[];
+  readonly failedGates: readonly ItemAcceptanceGate[];
+  readonly answerVerificationLevel: AnswerVerificationLevel;
+}
