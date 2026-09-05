@@ -1,5 +1,4 @@
-import { Pool } from 'pg';
-import { getApi, pool } from './api';
+import { getApi } from './api';
 
 /**
  * The mobile HTTP surface (M9). Thin JSON dispatch over the same
@@ -34,28 +33,11 @@ function auth(c: Ctx, ws?: Workspace) {
   return { bearer: c.bearer, workspace: ws ?? c.workspace };
 }
 
-function db(): Pool {
-  // `pool()` lazily creates the shared pool — don't assume another code path
-  // (e.g. the /ready probe) initialised it first. A cold server whose very
-  // first request is /auth/login must still work.
-  return pool();
-}
-
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** Guard path params that hit uuid columns — a bad id is a 404, not a 500 with a raw PG error. */
 function uuid(v: string | undefined, what = 'mục này'): string {
   if (!v || !UUID_RE.test(v)) throw new RestError(404, `Không tìm thấy ${what}.`);
   return v;
-}
-
-async function bearerForUser(userId: string): Promise<string> {
-  const r = await db().query<{ auth_user_id: string | null }>(
-    'SELECT auth_user_id FROM users WHERE id = $1',
-    [userId],
-  );
-  const b = r.rows[0]?.auth_user_id;
-  if (!b) throw new RestError(500, 'no auth token for this user (real IdP required)');
-  return b;
 }
 
 type Handler = (c: Ctx) => Promise<RestJson>;
@@ -74,8 +56,8 @@ const ROUTES: Record<string, Handler> = {
     if (!email || !email.includes('@')) throw new RestError(400, 'Nhập email hợp lệ.');
     if (password.length < 8) throw new RestError(400, 'Mật khẩu cần tối thiểu 8 ký tự.');
     try {
-      const me = await getApi().register({ email, password, intendedRole, displayName });
-      const bearer = await bearerForUser(me.userId);
+      await getApi().register({ email, password, intendedRole, displayName });
+      const { bearer } = await getApi().signIn({ email, password });
       return { bearer, viewer: await getApi().whoami(bearer) };
     } catch (e) {
       const m = e instanceof Error ? e.message : String(e);
@@ -83,18 +65,18 @@ const ROUTES: Record<string, Handler> = {
       throw e;
     }
   },
+  // `password` is optional here — required for real Supabase Auth (kind
+  // 'supabase'; `signIn` throws its own 4xx if missing), still not required
+  // for dev/in-memory (unchanged, matches the pilot-testing shortcut those
+  // adapters have always used — see `signIn`'s own doc comment).
   'POST /auth/login': async (c) => {
     const email = String(c.body.email ?? '').trim().toLowerCase();
+    const password = c.body.password !== undefined ? String(c.body.password) : undefined;
     if (!email || !email.includes('@')) throw new RestError(400, 'Nhập email đã đăng ký.');
     if (process.env.NODE_ENV === 'production' && !process.env.SUPABASE_URL) {
       throw new RestError(400, 'Đăng nhập cần cấu hình Supabase (ENV_REQUIRED).');
     }
-    const r = await db().query<{ id: string }>(
-      'SELECT id FROM users WHERE lower(primary_email) = $1',
-      [email],
-    );
-    if (!r.rows[0]) throw new RestError(404, 'Không tìm thấy tài khoản với email này.');
-    const bearer = await bearerForUser(r.rows[0].id);
+    const { bearer } = await getApi().signIn({ email, ...(password !== undefined ? { password } : {}) });
     return { bearer, viewer: await getApi().whoami(bearer) };
   },
   'GET /me': async (c) => getApi().whoami(auth(c).bearer),

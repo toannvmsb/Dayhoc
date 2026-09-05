@@ -51,7 +51,7 @@ export function getApi(): ReturnType<typeof createProductionApi> {
     if (process.env.NODE_ENV === 'production' && kind !== 'supabase') {
       throw new Error(`production requires the Supabase auth adapter, resolved "${kind}"`);
     }
-    globalThis.__dzApi = createProductionApi({ pool: pool(), authAdapter: adapter });
+    globalThis.__dzApi = createProductionApi({ pool: pool(), authAdapter: adapter, authKind: kind });
   }
   return globalThis.__dzApi;
 }

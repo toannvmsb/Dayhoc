@@ -9,6 +9,7 @@ import {
   RelationshipService,
   TeacherContributionService,
   educationClassContextReader,
+  SupabaseAuthAdapter,
   type AuthAdapter,
   type Resource,
   type TeacherContributionSink,
@@ -107,6 +108,10 @@ export interface ProductionApiOptions {
   readonly documentVision?: DocumentVisionAdapter;
   /** M8 (pilot analytics) — Default: resolved from env (Noop unless DZ_ANALYTICS=console). */
   readonly analytics?: AnalyticsAdapter;
+  /** Which kind `authAdapter` resolved to — `resolveAuthAdapter`'s own `kind`.
+   * Only the 'supabase' branch needs a real password sign-in (see `signIn`
+   * below); dev/in-memory keep their existing DB-lookup shortcut. */
+  readonly authKind?: 'supabase' | 'dev' | 'in-memory';
 }
 
 type Queryable = Pool | PoolClient;
@@ -731,6 +736,54 @@ export function createProductionApi(opts: ProductionApiOptions) {
         await pool.query(`UPDATE users SET notification_email = $1 WHERE id = $2`, [input.email, r.user.id]);
       }
       return meDto(r);
+    },
+
+    /**
+     * POST /auth/login — mint a real, USABLE bearer for an existing account.
+     * Replaces the old `bearerForUser` shortcut (apps/web/lib/server/rest.ts)
+     * that read `users.auth_user_id` and handed it back AS the bearer — which
+     * only ever worked because Dev/InMemoryAuthAdapter's `verifyToken` treats
+     * "the token IS the id" as valid. Confirmed live (2026-09-05) that this
+     * breaks silently under real Supabase Auth: `createUser` (an ADMIN
+     * operation) returns the Supabase user's raw id, not a signed session —
+     * handing that back as "bearer" produced a 200 response that then failed
+     * every subsequent authenticated call with no error, just `null`.
+     *
+     * `authKind !== 'supabase'` keeps the EXACT old DB-lookup behavior
+     * (zero behavior change for dev/in-memory pilot testing, which never
+     * required a real password). `authKind === 'supabase'` calls GoTrue's
+     * real password grant — `password` is required in that branch.
+     */
+    async signIn(input: { email?: string; phone?: string; password?: string }) {
+      const email = input.email?.trim().toLowerCase();
+      if (!email && !input.phone) throw new ForbiddenError('email hoặc số điện thoại là bắt buộc');
+      const row = (
+        await pool.query(
+          email
+            ? `SELECT id, auth_user_id FROM users WHERE lower(primary_email) = $1`
+            : `SELECT id, auth_user_id FROM users WHERE primary_phone = $1`,
+          [email ?? input.phone],
+        )
+      ).rows[0] as { id: string; auth_user_id: string | null } | undefined;
+      if (!row) throw new NotFoundError('tài khoản với thông tin này');
+
+      if (opts.authKind === 'supabase') {
+        if (!input.password) throw new ForbiddenError('cần mật khẩu để đăng nhập');
+        if (!(opts.authAdapter instanceof SupabaseAuthAdapter)) {
+          throw new Error('authKind is supabase but authAdapter is not a SupabaseAuthAdapter');
+        }
+        const bearer = await opts.authAdapter.signInWithPassword({
+          ...(email ? { email } : {}),
+          ...(input.phone ? { phone: input.phone } : {}),
+          password: input.password,
+        });
+        return { bearer };
+      }
+
+      // dev / in-memory — unchanged shortcut: the stored auth_user_id IS a
+      // valid bearer for those adapters (verifyToken treats token === id).
+      if (!row.auth_user_id) throw new Error('no auth token for this user (real IdP required)');
+      return { bearer: row.auth_user_id };
     },
 
     /**
