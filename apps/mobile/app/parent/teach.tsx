@@ -6,6 +6,19 @@ import { Body, Card, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/u
 import { useClient, useQuery } from '@/useApi';
 import type { TeachingPlan } from '@/types';
 
+function Bullets({ items, dotColor }: { items: string[]; dotColor: string }) {
+  return (
+    <View style={{ gap: 8 }}>
+      {items.map((b, i) => (
+        <View key={i} style={{ flexDirection: 'row', gap: 9 }}>
+          <Text style={{ color: dotColor, fontSize: 13 }}>•</Text>
+          <Body>{b}</Body>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export default function TeachScreen() {
   const { gapId } = useLocalSearchParams<{ gapId?: string }>();
   const { childId } = useChild();
@@ -23,68 +36,86 @@ export default function TeachScreen() {
         <>
           <Overline>DạyZi hướng dẫn bạn dạy con · ~{q.data.minutes} phút</Overline>
           <H1>{q.data.skillName}</H1>
-          <Body>{q.data.focusLine}</Body>
 
           <Card tone="primary">
-            <Text style={{ color: theme.color.onDark, fontWeight: '700' }}>Hiểu đúng vấn đề</Text>
-            <Text style={{ color: theme.color.onDark, fontSize: 14, lineHeight: 20 }}>{q.data.gapMeaning}</Text>
+            <Text style={{ fontSize: 11, fontWeight: '800', letterSpacing: 1, color: '#A7E3DA' }}>
+              MỤC TIÊU BUỔI NÀY
+            </Text>
+            <Text style={{ color: theme.color.onDark, fontSize: 17, fontWeight: '700', lineHeight: 23 }}>
+              {q.data.focusLine}
+            </Text>
+          </Card>
+
+          <Card>
+            <Overline>Bản chất</Overline>
+            <Body>{q.data.gapMeaning}</Body>
           </Card>
 
           <Card>
             <Overline>Trước khi bắt đầu</Overline>
-            {q.data.beforeYouStart.map((b, i) => (
-              <Muted key={i}>• {b}</Muted>
-            ))}
+            <Bullets items={q.data.beforeYouStart} dotColor={theme.color.primary} />
           </Card>
 
           {q.data.steps.map((s, i) => (
             <Card key={i}>
-              <Text style={{ fontWeight: '800', color: theme.color.textHeading }}>{s.title}</Text>
-              <View
-                style={{ backgroundColor: theme.color.primaryTint, borderRadius: theme.radius.sm, padding: 10 }}
-              >
-                <Body>{s.say}</Body>
-              </View>
-              <Muted>Vì sao: {s.why}</Muted>
+              <Overline>{s.title}</Overline>
+              <Text style={{ fontSize: 14.5, fontWeight: '700', lineHeight: 21, color: theme.color.textHeading }}>
+                “{s.say}”
+              </Text>
+              <Muted>{s.why}</Muted>
             </Card>
           ))}
 
           {q.data.workedExample && (
             <Card>
               <Overline>Ví dụ để bạn làm mẫu cho con</Overline>
-              <Body>{q.data.workedExample.prompt}</Body>
-              {q.data.workedExample.walkthrough.map((w, i) => (
-                <Muted key={i}>
-                  {i + 1}. {w}
-                </Muted>
-              ))}
-              {q.data.workedExample.answer ? <Muted>Đáp số: {q.data.workedExample.answer}</Muted> : null}
+              <Text style={{ fontSize: 14.5, fontWeight: '700', color: theme.color.textHeading }}>
+                {q.data.workedExample.prompt}
+              </Text>
+              <View style={{ gap: 4, marginTop: 2 }}>
+                {q.data.workedExample.walkthrough.map((w, i) => (
+                  <Muted key={i}>
+                    {i + 1}. {w}
+                  </Muted>
+                ))}
+              </View>
+              {q.data.workedExample.answer ? (
+                <Text style={{ fontSize: 13.5, fontWeight: '700', color: theme.color.primaryStrong, marginTop: 4 }}>
+                  Đáp số: {q.data.workedExample.answer}
+                </Text>
+              ) : null}
             </Card>
           )}
 
           <Card>
             <Overline>Kiểm tra con đã hiểu chưa</Overline>
-            {q.data.checkUnderstanding.map((c, i) => (
-              <Muted key={i}>• {c}</Muted>
-            ))}
+            <Bullets items={q.data.checkUnderstanding} dotColor={theme.color.primary} />
           </Card>
 
-          <Card>
-            <Overline>Lỗi thường gặp</Overline>
-            {q.data.commonMistakes.map((c, i) => (
-              <Muted key={i}>• {c}</Muted>
-            ))}
+          <Card tone="attention">
+            <Text style={{ fontSize: 11, fontWeight: '800', letterSpacing: 1, color: theme.color.attentionHeading }}>
+              LỖI THƯỜNG GẶP
+            </Text>
+            <View style={{ gap: 8, marginTop: 2 }}>
+              {q.data.commonMistakes.map((c, i) => (
+                <View key={i} style={{ flexDirection: 'row', gap: 9 }}>
+                  <Text style={{ color: '#D97706', fontSize: 13 }}>•</Text>
+                  <Text style={{ flex: 1, fontSize: 13.5, lineHeight: 19.5, color: theme.color.attentionHeading }}>
+                    {c}
+                  </Text>
+                </View>
+              ))}
+            </View>
           </Card>
 
           <Card>
             <Overline>Khích lệ con</Overline>
-            {q.data.praise.map((c, i) => (
-              <Muted key={i}>• {c}</Muted>
-            ))}
+            <Bullets items={q.data.praise} dotColor={theme.color.primary} />
           </Card>
 
           <Card>
-            <Body>Nếu con vẫn chưa hiểu: {q.data.ifStuck}</Body>
+            <Overline>Nếu con vẫn chưa hiểu</Overline>
+            <Body>{q.data.ifStuck}</Body>
           </Card>
         </>
       )}
