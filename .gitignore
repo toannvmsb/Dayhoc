@@ -52,3 +52,8 @@ Tai lieu/
 
 # Expo export output
 apps/mobile/dist/
+
+# Document-vision benchmark (P4) — real homework/test photos of real
+# children. Never enters git history. expected/ + manifest.json (no image
+# bytes) ARE committed — see packages/testing/vision-benchmark-data/README.md.
+packages/testing/vision-benchmark-data/images/
