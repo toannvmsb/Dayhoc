@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { theme } from '@/theme';
 import { Body, Button, Card, ErrorNote, H1, Loading, Muted, Overline, Screen } from '@/ui';
@@ -33,6 +33,7 @@ export default function Runner() {
     const graded = res.filter((r) => r.correct !== null);
     const correctCount = graded.filter((r) => r.correct === true).length;
     const needReview = res.filter((r) => r.verificationLevel === 'AI_CROSSCHECK_REQUIRED').length;
+    const allCorrect = graded.length > 0 && correctCount === graded.length;
     const numberOf = (id: string) => {
       const idx = items.findIndex((it) => it.id === id);
       return idx >= 0 ? idx + 1 : '?';
@@ -43,13 +44,30 @@ export default function Runner() {
     };
     return (
       <Screen>
-        <View style={{ alignItems: 'center', gap: 6, marginTop: 12 }}>
-          <H1>Xong rồi!</H1>
-          {graded.length > 0 && (
-            <Body>
-              Con làm đúng {correctCount}/{graded.length} câu.
-            </Body>
-          )}
+        <View
+          style={{
+            alignItems: 'center',
+            gap: 10,
+            padding: 26,
+            backgroundColor: theme.color.primaryTint,
+            borderRadius: theme.radius.lg,
+          }}
+        >
+          <View
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: 32,
+              backgroundColor: theme.color.primary,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ fontSize: 28, color: theme.color.onDark, fontWeight: '800' }}>
+              {allCorrect ? '✓' : graded.length > 0 ? `${correctCount}/${graded.length}` : '✓'}
+            </Text>
+          </View>
+          <H1>{graded.length > 0 ? `Con làm đúng ${correctCount}/${graded.length} câu` : 'Xong rồi!'}</H1>
         </View>
 
         {res.map((r) => {
@@ -59,15 +77,22 @@ export default function Runner() {
             <Card key={r.assignmentItemId}>
               <Overline>Câu {numberOf(r.assignmentItemId)}</Overline>
               {textOf(r.assignmentItemId) ? <Muted>{textOf(r.assignmentItemId)}</Muted> : null}
-              <Body>
-                {r.correct === true
-                  ? '✓ Đúng'
-                  : r.correct === false
-                    ? '✗ Chưa đúng'
-                    : 'Cần xem lại lời giải cùng con'}
-              </Body>
+              <Text
+                style={{
+                  fontSize: 15,
+                  fontWeight: '700',
+                  color:
+                    r.correct === true
+                      ? theme.color.primaryStrong
+                      : r.correct === false
+                        ? theme.color.warn
+                        : theme.color.textHeading,
+                }}
+              >
+                {r.correct === true ? '✓ Đúng' : r.correct === false ? '✗ Chưa đúng' : 'Cần xem lại lời giải cùng con'}
+              </Text>
               {showCompare && (
-                <View style={{ marginTop: 4 }}>
+                <View style={{ marginTop: 4, gap: 2 }}>
                   <Muted>Con trả lời: {childAnswer || '(bỏ trống)'}</Muted>
                   {r.correct === false && r.expectedAnswer ? (
                     <Muted>Đáp án đúng: {r.expectedAnswer}</Muted>
@@ -89,6 +114,7 @@ export default function Runner() {
 
   const cur = answers[item.id] ?? '';
   const isLast = i === items.length - 1;
+  const pct = items.length > 0 ? ((i + 1) / items.length) * 100 : 0;
 
   const submit = async () => {
     setBusy(true);
@@ -109,59 +135,105 @@ export default function Runner() {
 
   return (
     <Screen scroll={false}>
-      <Overline>
-        Câu {i + 1} / {items.length}
-      </Overline>
-      <Body>{promptText}</Body>
-
-      {item.answerKind === 'choice' && item.options ? (
-        <View style={{ gap: 8, marginTop: 8 }}>
-          {item.options.map((opt) => (
-            <Pressable
-              key={opt}
-              onPress={() => setAnswers((a) => ({ ...a, [item.id]: opt }))}
-              style={{
-                padding: 14,
-                borderRadius: theme.radius.md,
-                borderWidth: 1,
-                borderColor: cur === opt ? theme.color.primary : theme.color.border,
-                backgroundColor: cur === opt ? theme.color.primaryTint : theme.color.surface,
-              }}
-            >
-              <Body>{opt}</Body>
-            </Pressable>
-          ))}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={{ flex: 1, height: 8, borderRadius: 4, backgroundColor: theme.color.surfaceRaised, overflow: 'hidden' }}>
+          <View style={{ width: `${pct}%`, height: '100%', backgroundColor: theme.color.primary }} />
         </View>
-      ) : (
-        <TextInput
-          value={cur}
-          onChangeText={(t) => setAnswers((a) => ({ ...a, [item.id]: t }))}
-          placeholder="Câu trả lời của con…"
-          placeholderTextColor={theme.color.textFaint}
-          keyboardType={item.answerKind === 'numeric' ? 'numeric' : 'default'}
-          style={{
-            height: 56,
-            borderRadius: theme.radius.md,
-            borderWidth: 1,
-            borderColor: theme.color.border,
-            paddingHorizontal: 16,
-            fontSize: 18,
-            marginTop: 8,
-            color: theme.color.textHeading,
-          }}
-        />
-      )}
+        <Text style={{ fontSize: 13.5, fontWeight: '800', color: theme.color.textHeading }}>
+          {i + 1}/{items.length}
+        </Text>
+      </View>
 
-      {item.answerKind !== 'choice' && (
-        <Muted>
-          {item.answerKind === 'numeric'
-            ? 'Chỉ nhập số, ví dụ: 9'
-            : item.answerKind === 'fraction'
-              ? 'Nhập dạng phân số, ví dụ: 3/4'
-              : 'Nhập đáp án ngắn gọn, đúng như cách viết trong bài.'}
-        </Muted>
+      <Card>
+        <Overline>Câu {i + 1}</Overline>
+        <Text style={{ fontSize: 21, fontWeight: '700', lineHeight: 30, color: theme.color.textHeading }}>
+          {promptText}
+        </Text>
+      </Card>
+
+      <View style={{ gap: 10 }}>
+        <Text style={{ fontSize: 13.5, fontWeight: '700', color: theme.color.textBody }}>Câu trả lời của con</Text>
+
+        {item.answerKind === 'choice' && item.options ? (
+          <View style={{ gap: 8 }}>
+            {item.options.map((opt) => (
+              <Pressable
+                key={opt}
+                onPress={() => setAnswers((a) => ({ ...a, [item.id]: opt }))}
+                style={{
+                  padding: 16,
+                  borderRadius: theme.radius.md,
+                  borderWidth: cur === opt ? 2 : 1,
+                  borderColor: cur === opt ? theme.color.primary : theme.color.border,
+                  backgroundColor: cur === opt ? theme.color.primaryTint : theme.color.surface,
+                }}
+              >
+                <Body>{opt}</Body>
+              </Pressable>
+            ))}
+          </View>
+        ) : (
+          <TextInput
+            value={cur}
+            onChangeText={(t) => setAnswers((a) => ({ ...a, [item.id]: t }))}
+            placeholder="Nhập câu trả lời…"
+            placeholderTextColor={theme.color.textFaint}
+            keyboardType={item.answerKind === 'numeric' ? 'numeric' : 'default'}
+            style={{
+              height: 58,
+              borderRadius: theme.radius.md,
+              borderWidth: 2,
+              borderColor: cur ? theme.color.primary : theme.color.border,
+              paddingHorizontal: 18,
+              fontSize: 19,
+              fontWeight: '700',
+              color: theme.color.textHeading,
+              backgroundColor: theme.color.surface,
+            }}
+          />
+        )}
+
+        {item.answerKind !== 'choice' && (
+          <Muted>
+            {item.answerKind === 'numeric'
+              ? 'Chỉ nhập số, ví dụ: 9'
+              : item.answerKind === 'fraction'
+                ? 'Nhập dạng phân số, ví dụ: 3/4'
+                : 'Nhập đáp án ngắn gọn, đúng như cách viết trong bài.'}
+          </Muted>
+        )}
+      </View>
+
+      {item.hintCount > 0 && (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            padding: 16,
+            backgroundColor: theme.color.attentionBg,
+            borderWidth: 1,
+            borderColor: theme.color.attentionBorder,
+            borderRadius: theme.radius.lg,
+          }}
+        >
+          <View
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 12,
+              backgroundColor: theme.color.surface,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ fontSize: 17, color: theme.color.attentionHeading }}>?</Text>
+          </View>
+          <Text style={{ flex: 1, fontSize: 13.5, fontWeight: '600', color: theme.color.attentionHeading }}>
+            Cần gợi ý? Hỏi con nghĩ theo hướng đơn giản hơn một chút.
+          </Text>
+        </View>
       )}
-      {item.hintCount > 0 && <Muted>Cần gợi ý? Hỏi con nghĩ theo hướng đơn giản hơn một chút.</Muted>}
       {err && <ErrorNote message={err} />}
 
       <View style={{ flex: 1 }} />
