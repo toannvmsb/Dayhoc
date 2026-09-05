@@ -176,6 +176,48 @@ export function Field({
   );
 }
 
+/** Rounded-square initials badge — the "child avatar" chip in the Hướng 1A mockups. */
+export function Avatar({ label, size = 42 }: { label: string; size?: number }) {
+  const initials = label
+    .trim()
+    .split(/\s+/)
+    .slice(-2)
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('');
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size * 0.33,
+        backgroundColor: theme.color.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Text style={{ color: theme.color.onDark, fontSize: size * 0.38, fontFamily: theme.font.bold }}>
+        {initials}
+      </Text>
+    </View>
+  );
+}
+
+/** Small rounded pill tag — status/context labels ("Ảnh vở 15/8", lifecycle steps…). */
+export function Chip({ label, tone = 'neutral' }: { label: string; tone?: 'neutral' | 'primary' | 'positive' }) {
+  const bg = tone === 'primary' ? theme.color.primaryTint : tone === 'positive' ? theme.color.mintBg : theme.color.surfaceRaised;
+  const fg = tone === 'primary' ? theme.color.primaryStrong : tone === 'positive' ? theme.color.mintText : theme.color.textBody;
+  return (
+    <View style={{ backgroundColor: bg, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8 }}>
+      <Text style={{ fontSize: 11.5, fontWeight: '600', color: fg }}>{label}</Text>
+    </View>
+  );
+}
+
+/** Small colored status dot — e.g. the "CẦN CHÚ Ý" eyebrow marker. */
+export function Dot({ color = theme.color.attentionHeading, size = 8 }: { color?: string; size?: number }) {
+  return <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: color }} />;
+}
+
 export function Loading() {
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 }}>
