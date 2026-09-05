@@ -257,17 +257,71 @@ export default function Runner() {
         </Text>
       </View>
 
-      <Card>
-        <Overline>Câu {i + 1}</Overline>
-        <Text style={{ fontSize: 21, fontWeight: '700', lineHeight: 30, color: theme.color.textHeading }}>
-          {promptText}
-        </Text>
-      </Card>
+      {item.answerKind === 'reasoning' ? (
+        // A reasoning item is graded on the explanation, not a single check-
+        // able value (packages/domain/src/planning.ts) — there's no separate
+        // "challenge" assignment flow to route these into (thinking
+        // challenges run through this same runner), so the distinct, more
+        // serious mood the design calls for lives here, scoped to the
+        // question + answer area, rather than a parallel unreachable screen.
+        <View style={{ padding: 22, backgroundColor: theme.color.night, borderRadius: theme.radius.lg, gap: 14 }}>
+          <Text
+            style={{
+              alignSelf: 'flex-start',
+              fontSize: 11.5,
+              fontWeight: '800',
+              letterSpacing: 1,
+              color: '#7FD1C4',
+              backgroundColor: 'rgba(127,209,196,.16)',
+              paddingHorizontal: 11,
+              paddingVertical: 5,
+              borderRadius: 9,
+            }}
+          >
+            SUY LUẬN
+          </Text>
+          <Text style={{ fontSize: 20, fontWeight: '700', lineHeight: 29, color: theme.color.onDark }}>
+            {promptText}
+          </Text>
+          <Text style={{ fontSize: 13.5, lineHeight: 20, color: 'rgba(255,255,255,.55)' }}>
+            Không cần ra đáp số ngay. Viết cách con nghĩ trước.
+          </Text>
+        </View>
+      ) : (
+        <Card>
+          <Overline>Câu {i + 1}</Overline>
+          <Text style={{ fontSize: 21, fontWeight: '700', lineHeight: 30, color: theme.color.textHeading }}>
+            {promptText}
+          </Text>
+        </Card>
+      )}
 
       <View style={{ gap: 10 }}>
-        <Text style={{ fontSize: 13.5, fontWeight: '700', color: theme.color.textBody }}>Câu trả lời của con</Text>
+        <Text style={{ fontSize: 13.5, fontWeight: '700', color: theme.color.textBody }}>
+          {item.answerKind === 'reasoning' ? 'Con nghĩ thế nào?' : 'Câu trả lời của con'}
+        </Text>
 
-        {item.answerKind === 'choice' && item.options ? (
+        {item.answerKind === 'reasoning' ? (
+          <TextInput
+            value={cur}
+            onChangeText={(t) => setAnswers((a) => ({ ...a, [item.id]: t }))}
+            placeholder="Vì …"
+            placeholderTextColor="rgba(20,33,30,.35)"
+            multiline
+            textAlignVertical="top"
+            style={{
+              minHeight: 120,
+              borderRadius: theme.radius.lg,
+              borderWidth: 1,
+              borderColor: theme.color.border,
+              padding: 16,
+              fontSize: 14.5,
+              lineHeight: 21,
+              color: theme.color.textHeading,
+              backgroundColor: theme.color.surfaceRaised,
+            }}
+          />
+        ) : item.answerKind === 'choice' && item.options ? (
           <View style={{ gap: 8 }}>
             {item.options.map((opt) => (
               <Pressable
@@ -306,7 +360,7 @@ export default function Runner() {
           />
         )}
 
-        {item.answerKind !== 'choice' && (
+        {item.answerKind !== 'choice' && item.answerKind !== 'reasoning' && (
           <Muted>
             {item.answerKind === 'numeric'
               ? 'Chỉ nhập số, ví dụ: 9'
