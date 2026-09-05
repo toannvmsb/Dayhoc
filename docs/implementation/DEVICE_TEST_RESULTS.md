@@ -81,10 +81,28 @@ Legend: ⏳ not started · 🔄 in progress · ✅ pass · ❌ fail
 
 ---
 
+## Post-device-test design pass (2026-09-05)
+
+After both platforms passed, the tester asked for the actual designed
+interface (`docs/design/handoff/mobile-390.dc.html`, 20 screens, Hướng
+1A) instead of the plain color-only pass done first. Rebuilt screen by
+screen against the real mockup, keeping the DạyZi brand (font, app
+icon/splash) as agreed. Then the tester asked for all 5 items that had
+been deliberately deferred as "needs real backend work, not just a
+mobile restyle" — done as D-38 through D-42 below. Commits `0453d7f` →
+`7659cf9`.
+
+---
+
 ## Defect log
 
 | ID | Sev | Test | Description | Status |
 |---|---|---|---|---|
+| D-42 | — | design pass | (P05) Uploads' "Chụp ảnh" handed off entirely to the OS's own camera app (`expo-image-picker`'s `launchCameraAsync`) — zero in-app styling control, so the mockup's dark full-screen viewfinder was never reachable | **fixed** — added `expo-camera` (new native dep), a real in-app dark camera view with a dashed viewfinder frame + doc-kind chips, matching P05. Needs the native rebuild (prebuild + Gradle) this commit shipped with; Expo Go on iOS should pick it up with no rebuild (expo-camera ships in Expo Go's standard module set) |
+| D-41 | — | design pass | (C06) A `reasoning`-kind item (graded on the explanation, not a single value) rendered through the generic single-line input branch, with "Nhập đáp án ngắn gọn…" as guidance — backwards for a question meant to be explained, not answered tersely | **fixed** — real multi-line textarea + fitting copy; the question card gets C06's dark "SUY LUẬN" mood, scoped to the question/answer area (no separate "challenge" assignment mode/flow exists to route into, confirmed by search — thinking challenges run through this same runner) |
+| D-40 | — | design pass | (P14) `buildWeeklyReport` has existed, fully tested, since Phase 9 but was never wired to any app, web or mobile — blocked on `twinBefore` (Twin as of a week ago), and no code anywhere computed a historical Twin | **fixed** — `buildLearningTwin` is pure over an explicit evidence array + `asOf`; "before" is that same tested function run over evidence filtered to ≤7 days ago, not an approximation. New `getWeeklyReport` + `GET /children/:id/weekly-report`; new `apps/mobile/app/parent/weekly-report.tsx`, linked from Progress |
+| D-39 | — | design pass | (T03) Teachers had no way to submit "what I taught today" from mobile — `teacherSubmitContribution` existed and web already used it, but no REST route existed for the `/api/v1` surface mobile calls | **fixed** — `POST /teacher/children/:id/contributions` (mirrors web's action exactly); new `apps/mobile/app/teacher/update.tsx` (student/subject/type pickers, conditional exam-date/note); `TeacherNav` gains a raised "Cập nhật" tab. Uses its own local student-selection state, NOT the shared `useChild()` parent-workspace pref |
+| D-38 | — | design pass | (C04) The hint ladder's real content never reached the client — `getAssignmentDetail` discarded each item's `hints` down to a bare `hintCount`, despite the code's own comment already saying "progressive client-side" | **fixed** — the 5 progressive hints now ship in the response; the 6th (full worked solution) is deliberately withheld from that payload (an existing regression test asserts no worked solution ever appears there) and gated behind a new, narrowly-scoped `GET /assignments/:id/items/:itemId/solution`, called only once the child's local ladder state actually reaches it. Real bottom-sheet hint UI in the runner; `hintsUsed` sent on submit is now the real count (was hardcoded 0) |
 | D-01 | P2 | 1 | `/api/v1/auth/*` returned English technical errors ("email + 8-char password required", "no account with this email") to end users | **fixed** — Vietnamese messages in `rest.ts`; verified via LAN |
 | D-02 | P3 | 1 | No custom blue splash screen on native (SDK 54 moved `splash` config to the `expo-splash-screen` plugin; top-level `splash` key ignored) | open — polish batch |
 | D-04 | P1 | 2 | Parent home showed "not a guardian of this child" on first login: the persisted `dz.child.v1` selection from a previously-registered throwaway account was reused without checking it belongs to the signed-in parent | **fixed** — `child.tsx` gains `reconcile(availableIds)`; `parent/home.tsx` calls it against `/children` and never uses an unknown id as `activeId`; `auth.tsx` clears `dz.child.v1` on sign-out. Mobile typecheck + 636 tests green |
