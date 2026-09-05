@@ -54,6 +54,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   // SDK 57 removed the top-level `splash` key — splash config now lives in the
   // `expo-splash-screen` plugin (see plugins below).
   assetBundlePatterns: ['**/*'],
+  // The DạyZi brand mark (cobalt→violet gradient + white speech bubble) — same
+  // asset as `apps/web/app/icon.png`. Product decision (2026-09-05): mobile
+  // screens follow Hướng 1A (cream/teal, see src/theme.ts) but the app
+  // icon/splash keep the DạyZi brand identity.
+  icon: './assets/icon.png',
   ios: {
     supportsTablet: true,
     bundleIdentifier: CHANNEL === 'production' ? 'vn.dayzi.app' : `vn.dayzi.app.${CHANNEL}`,
@@ -68,13 +73,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   android: {
     package: CHANNEL === 'production' ? 'vn.dayzi.app' : `vn.dayzi.app.${CHANNEL}`,
     permissions: ['CAMERA', 'READ_EXTERNAL_STORAGE'],
-    adaptiveIcon: { backgroundColor: '#3B5BFF' },
+    adaptiveIcon: { backgroundColor: '#3B5BFF', foregroundImage: './assets/icon.png' },
   },
   web: { bundler: 'metro' },
   plugins: [
     'expo-router',
     'expo-secure-store',
-    ['expo-splash-screen', { backgroundColor: '#3B5BFF', image: './assets/splash.png', imageWidth: 160 }],
+    ['expo-splash-screen', { backgroundColor: '#3B5BFF', image: './assets/icon.png', imageWidth: 160 }],
     [
       'expo-image-picker',
       {

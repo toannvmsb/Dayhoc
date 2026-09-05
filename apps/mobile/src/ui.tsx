@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   cardPrimary: { backgroundColor: theme.color.primary, borderColor: theme.color.primary },
-  cardAttention: { backgroundColor: theme.color.attentionBg, borderColor: '#FBD8D1' },
+  cardAttention: { backgroundColor: theme.color.attentionBg, borderColor: theme.color.attentionBorder },
   btn: {
     backgroundColor: theme.color.primary,
     borderRadius: theme.radius.md,
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   btnGhost: { backgroundColor: 'transparent', borderWidth: 1, borderColor: theme.color.border },
-  btnDanger: { backgroundColor: theme.color.attentionText },
+  btnDanger: { backgroundColor: theme.color.danger },
   btnLabel: { color: theme.color.onDark, fontFamily: theme.font.bold, fontSize: 15 },
   fieldLabel: { fontSize: 12.5, fontFamily: theme.font.medium, color: theme.color.textMuted },
   input: {
