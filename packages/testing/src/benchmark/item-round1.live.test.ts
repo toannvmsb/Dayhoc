@@ -36,9 +36,15 @@ const ROUND1_SPEC_IDS = [
   'HC10', // G7 advanced / HSG — legitimate K5 frontier
 ] as const;
 
-const MODELS = ['gpt-4o-mini', 'gpt-4.1-mini', 'gpt-5-mini'] as const;
+const MODELS = (process.env.ROUND1_MODELS?.split(',').filter(Boolean) ?? [
+  'gpt-4o-mini',
+  'gpt-4.1-mini',
+  'gpt-5-mini',
+]) as readonly string[];
 const HARD_CAP_USD = 0.5;
 const RUN_BUDGET_USD = 0.45;
+const WALL_CLOCK_MS = 40 * 60 * 1000; // flush + stop cleanly before the vitest timeout
+const OUT_PATH = 'D:/Lap trinh/Claude/Dayhoc/ROUND1.txt';
 
 const COMPLIANCE: Omit<ProviderCompliance, 'provider'> = {
   processingRegion: 'benchmark',
@@ -75,8 +81,9 @@ function classify(gates: readonly string[], reason: string, simAgainst: string |
 describe('doc 56 §2 — ROUND 1 RE-RUN (paid smoke)', () => {
   it.skipIf(!LIVE)(
     'runs 6 specs × MODE A × 3 mini models under a $0.50 hard cap',
-    { timeout: 1_200_000 },
+    { timeout: 45 * 60 * 1000 },
     async () => {
+      const runStart = Date.now();
       const kb = loadKnowledgeBase();
       const lib = loadReferenceLibrary();
       const pricing = new PricingRegistry();
@@ -89,8 +96,29 @@ describe('doc 56 §2 — ROUND 1 RE-RUN (paid smoke)', () => {
 
       let spentUsd = 0;
       const report: string[] = [];
+      let stopReason: string | null = null;
+
+      const flush = () => {
+        const header = [
+          `DẠYZI — ROUND 1 RE-RUN (doc 56 §2)  ${new Date().toISOString()}`,
+          `specs: ${ROUND1_SPEC_IDS.join(', ')}`,
+          `models: ${MODELS.join(', ')}   MODE A   1 retry   no fallback   no gpt-4o`,
+          `TWO-TIER: CONTENT acceptance vs PRODUCTION-ready (deterministic-verified answer); rest = PENDING_CROSSCHECK`,
+          `TOTAL SPEND: $${spentUsd.toFixed(4)}   (run budget $${RUN_BUDGET_USD}, hard cap $${HARD_CAP_USD})`,
+          stopReason ? `INCOMPLETE: ${stopReason}` : `complete`,
+        ];
+        writeFileSync(OUT_PATH, [...header, ...report].join('\n'));
+      };
 
       for (const model of MODELS) {
+        if (Date.now() - runStart > WALL_CLOCK_MS) {
+          stopReason = `wall-clock ${(WALL_CLOCK_MS / 60000).toFixed(0)}min reached before ${model}`;
+          break;
+        }
+        if (spentUsd >= RUN_BUDGET_USD) {
+          stopReason = `run budget $${RUN_BUDGET_USD} reached before ${model}`;
+          break;
+        }
         const adapter = createOpenAiProviderAdapter({
           apiKey: process.env.OPENAI_API_KEY!,
           model,
@@ -122,10 +150,13 @@ describe('doc 56 §2 — ROUND 1 RE-RUN (paid smoke)', () => {
         const failCats: Record<FailCategory, number> = { MODEL: 0, VALIDATOR: 0, VERIFIER_LIMITATION: 0, INFRA: 0, LEAKAGE: 0, OTHER: 0 };
         const failedItems: string[] = [];
         let structuredModeUsed: string | null = null;
+        let specsRun = 0;
+        const progressLine = () => `  [in progress: ${model} — ${specsRun}/${specs.length} specs, ${requested} items, $${spentUsd.toFixed(4)}]`;
 
         for (const bs of specs) {
-          if (spentUsd >= RUN_BUDGET_USD) {
-            report.push(`  [BUDGET STOP] before ${model}/${bs.id} — spent $${spentUsd.toFixed(4)}`);
+          if (spentUsd >= RUN_BUDGET_USD || Date.now() - runStart > WALL_CLOCK_MS) {
+            stopReason = spentUsd >= RUN_BUDGET_USD ? 'run budget reached' : 'wall-clock reached';
+            report.push(`  [STOP ${model}/${bs.id}: ${stopReason} — $${spentUsd.toFixed(4)}]`);
             break;
           }
           const spec = bs.spec;
@@ -240,7 +271,14 @@ describe('doc 56 §2 — ROUND 1 RE-RUN (paid smoke)', () => {
                 `${bs.id} :: ${is.itemId}  [${cat}]  gates:[${lastGates.join(',')}]  attempts:${attempt}\n        ${lastReason}`,
               );
             }
+            if (Date.now() - runStart > WALL_CLOCK_MS) break;
           }
+          specsRun += 1;
+          // incremental progress flush so a kill mid-model still leaves data
+          report.push(progressLine(), `    failCats: ${JSON.stringify(failCats)}`);
+          flush();
+          report.pop();
+          report.pop();
         }
 
         const pct = (n: number, d: number) => (d > 0 ? ((n / d) * 100).toFixed(1) + '%' : 'n/a');
@@ -279,17 +317,10 @@ describe('doc 56 §2 — ROUND 1 RE-RUN (paid smoke)', () => {
           failedItems.length > 0 ? `FAILED ITEMS (${failedItems.length}):` : '(no CONTENT failures)',
           ...failedItems.map((f) => `  - ${f}`),
         );
+        flush(); // incremental — a later timeout still leaves this model's data
       }
 
-      const header = [
-        `DẠYZI — ROUND 1 RE-RUN (doc 56 §2)  ${new Date().toISOString()}`,
-        `specs: ${ROUND1_SPEC_IDS.join(', ')}`,
-        `models: ${MODELS.join(', ')}   MODE A   1 retry   no fallback   no gpt-4o`,
-        `TWO-TIER: CONTENT acceptance vs PRODUCTION-ready (deterministic-verified answer); rest = PENDING_CROSSCHECK`,
-        `TOTAL SPEND: $${spentUsd.toFixed(4)}   (run budget $${RUN_BUDGET_USD}, hard cap $${HARD_CAP_USD})`,
-      ];
-      writeFileSync('D:/Lap trinh/Claude/Dayhoc/ROUND1.txt', [...header, ...report].join('\n'));
-
+      flush();
       expect(spentUsd).toBeLessThan(HARD_CAP_USD);
     },
   );

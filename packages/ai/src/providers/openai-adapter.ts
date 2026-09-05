@@ -75,7 +75,14 @@ export function createOpenAiProviderAdapter(cfg: OpenAiAdapterConfig): AIProvide
         response_format: responseFormat,
         [tokenParam]: input.maxTokens ?? 4000,
       };
-      if (!isReasoningStyle) body.temperature = input.temperature ?? 0.4;
+      if (isReasoningStyle) {
+        // structured content-fill from an already-deterministic spec needs no
+        // deep chain-of-thought — 'low' effort keeps latency + reasoning-token
+        // cost sane. (Only the reasoning models accept this param.)
+        body.reasoning_effort = 'low';
+      } else {
+        body.temperature = input.temperature ?? 0.4;
+      }
 
       const res = await doFetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
