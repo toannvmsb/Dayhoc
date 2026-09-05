@@ -1,7 +1,7 @@
 'use client';
 
 import { useFormState, useFormStatus } from 'react-dom';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { FormState } from '@/lib/server/actions';
 
 export function SubmitButton({ children, onTeal }: { children: ReactNode; onTeal?: boolean }) {
@@ -51,27 +51,68 @@ export function Field({
   defaultValue?: string;
   required?: boolean;
 }) {
+  const [reveal, setReveal] = useState(false);
+  const isPassword = type === 'password';
+  const inputType = isPassword && reveal ? 'text' : type;
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--c-text-label)' }}>{label}</span>
-      <input
-        name={name}
-        type={type}
-        placeholder={placeholder}
-        defaultValue={defaultValue}
-        required={required}
-        style={{
-          height: 48,
-          borderRadius: 'var(--r-input)',
-          border: '1px solid var(--c-border)',
-          padding: '0 14px',
-          fontSize: 15,
-          fontFamily: 'inherit',
-          background: 'var(--c-surface)',
-          color: 'var(--c-text-heading)',
-        }}
-      />
+      <span style={{ position: 'relative', display: 'flex' }}>
+        <input
+          name={name}
+          type={inputType}
+          placeholder={placeholder}
+          defaultValue={defaultValue}
+          required={required}
+          style={{
+            flex: 1,
+            height: 48,
+            borderRadius: 'var(--r-input)',
+            border: '1px solid var(--c-border)',
+            padding: isPassword ? '0 46px 0 14px' : '0 14px',
+            fontSize: 15,
+            fontFamily: 'inherit',
+            background: 'var(--c-surface)',
+            color: 'var(--c-text-heading)',
+          }}
+        />
+        {isPassword && (
+          <button
+            type="button"
+            onClick={() => setReveal((v) => !v)}
+            aria-label={reveal ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+            style={{
+              position: 'absolute',
+              right: 4,
+              top: 0,
+              height: 48,
+              width: 40,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              color: 'var(--c-text-muted)',
+              padding: 0,
+            }}
+          >
+            <EyeIcon off={!reveal} />
+          </button>
+        )}
+      </span>
     </label>
+  );
+}
+
+/** Inline eye / eye-off glyph — no icon dependency in the web shell. */
+function EyeIcon({ off }: { off: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+      {off && <line x1="4" y1="20" x2="20" y2="4" />}
+    </svg>
   );
 }
 

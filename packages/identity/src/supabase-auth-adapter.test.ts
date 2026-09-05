@@ -179,6 +179,23 @@ describe('P1-P2 — SupabaseAuthAdapter', () => {
       await expect(adapter.signInWithPassword({ email: 'a@b.com', password: 'wrong' })).rejects.toThrow('400');
     });
 
+    it('leaks the GoTrue error body into the message so a caller can classify it', async () => {
+      // production-api's signIn() regexes this message for
+      // `invalid_credentials` / `Invalid login credentials` to show a clean
+      // Vietnamese "sai email hoặc mật khẩu" instead of the raw HTTP text —
+      // if Supabase changes this shape, that mapping breaks silently, so pin it.
+      const fetchImpl = fakeFetch(400, { code: 400, error_code: 'invalid_credentials', msg: 'Invalid login credentials' });
+      const adapter = new SupabaseAuthAdapter({
+        supabaseUrl: 'https://x.supabase.co',
+        jwtSecret: SECRET,
+        serviceRoleKey: 'srk',
+        fetchImpl,
+      });
+      await expect(adapter.signInWithPassword({ email: 'a@b.com', password: 'wrong' })).rejects.toThrow(
+        /invalid_credentials|Invalid login credentials/,
+      );
+    });
+
     it('throws without a serviceRoleKey (used as the apikey header)', async () => {
       const adapter = new SupabaseAuthAdapter({ supabaseUrl: 'https://x.supabase.co', jwtSecret: SECRET });
       await expect(adapter.signInWithPassword({ email: 'a@b.com', password: 'password123' })).rejects.toThrow(

@@ -765,18 +765,34 @@ export function createProductionApi(opts: ProductionApiOptions) {
           [email ?? input.phone],
         )
       ).rows[0] as { id: string; auth_user_id: string | null } | undefined;
-      if (!row) throw new NotFoundError('tài khoản với thông tin này');
+      if (!row) throw new NotFoundError('Không tìm thấy tài khoản với thông tin này.');
 
       if (opts.authKind === 'supabase') {
-        if (!input.password) throw new ForbiddenError('cần mật khẩu để đăng nhập');
+        if (!input.password) throw new ForbiddenError('Vui lòng nhập mật khẩu để đăng nhập.');
         if (!(opts.authAdapter instanceof SupabaseAuthAdapter)) {
           throw new Error('authKind is supabase but authAdapter is not a SupabaseAuthAdapter');
         }
-        const bearer = await opts.authAdapter.signInWithPassword({
-          ...(email ? { email } : {}),
-          ...(input.phone ? { phone: input.phone } : {}),
-          password: input.password,
-        });
+        let bearer: string;
+        try {
+          bearer = await opts.authAdapter.signInWithPassword({
+            ...(email ? { email } : {}),
+            ...(input.phone ? { phone: input.phone } : {}),
+            password: input.password,
+          });
+        } catch (e) {
+          // Never let GoTrue's raw HTTP error text reach the client (confirmed
+          // live 2026-09-05: it read "Supabase sign-in failed: 400
+          // {...invalid_credentials...}" — technically accurate, meaningless
+          // to a parent typing their password on a phone). Map the one case
+          // that matters (wrong email/password) to a clear Vietnamese message;
+          // anything else (network blip, Supabase outage) to a generic retry
+          // line, still without leaking provider internals.
+          const msg = e instanceof Error ? e.message : String(e);
+          if (/invalid_credentials|invalid login credentials/i.test(msg)) {
+            throw new ForbiddenError('Sai email hoặc mật khẩu. Vui lòng kiểm tra lại.');
+          }
+          throw new ForbiddenError('Không thể đăng nhập lúc này. Vui lòng thử lại sau.');
+        }
         return { bearer };
       }
 

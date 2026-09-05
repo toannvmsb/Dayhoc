@@ -3,23 +3,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { Pool } from 'pg';
 import { getApi, parentAuth, preferredAuth, studentAuth, teacherAuth, SESSION_COOKIE } from './api';
-
-function db(): Pool {
-  return (globalThis as unknown as { __dzPool: Pool }).__dzPool;
-}
-
-async function bearerFor(userId: string): Promise<string> {
-  // dev + in-memory adapters use the users.auth_user_id as the bearer directly
-  const r = await db().query<{ auth_user_id: string | null }>(
-    'SELECT auth_user_id FROM users WHERE id = $1',
-    [userId],
-  );
-  const b = r.rows[0]?.auth_user_id;
-  if (!b) throw new Error('no auth token for this user (real IdP required — set SUPABASE_*)');
-  return b;
-}
 
 function setSession(bearer: string): void {
   cookies().set(SESSION_COOKIE, bearer, {
@@ -44,8 +28,9 @@ export async function registerAction(_prev: FormState, form: FormData): Promise<
     return { error: 'Email hợp lệ và mật khẩu tối thiểu 8 ký tự.' };
   }
   try {
-    const me = await getApi().register({ email, password, intendedRole, displayName });
-    setSession(await bearerFor(me.userId));
+    await getApi().register({ email, password, intendedRole, displayName });
+    const { bearer } = await getApi().signIn({ email, password });
+    setSession(bearer);
   } catch (e) {
     return { error: friendly(e) };
   }
@@ -53,19 +38,17 @@ export async function registerAction(_prev: FormState, form: FormData): Promise<
 }
 
 export async function loginAction(_prev: FormState, form: FormData): Promise<FormState> {
-  // Dev/local: resolve an existing account by email (no password store yet — real
-  // auth is Supabase, ENV_REQUIRED). Production requires SUPABASE_* + a real login.
   const email = String(form.get('email') ?? '').trim().toLowerCase();
+  // `password` is optional on the wire (dev/in-memory backends still log in by
+  // email alone); a real Supabase backend needs it and `signIn` says so.
+  const password = form.get('password') !== null ? String(form.get('password')) : undefined;
+  if (!email || !email.includes('@')) return { error: 'Nhập email đã đăng ký.' };
   if (process.env.NODE_ENV === 'production' && !process.env.SUPABASE_URL) {
     return { error: 'Đăng nhập cần cấu hình Supabase (ENV_REQUIRED).' };
   }
-  const r = await db().query<{ id: string }>(
-    'SELECT id FROM users WHERE lower(primary_email) = $1',
-    [email],
-  );
-  if (!r.rows[0]) return { error: 'Không tìm thấy tài khoản với email này.' };
   try {
-    setSession(await bearerFor(r.rows[0].id));
+    const { bearer } = await getApi().signIn({ email, ...(password !== undefined ? { password } : {}) });
+    setSession(bearer);
   } catch (e) {
     return { error: friendly(e) };
   }
@@ -487,5 +470,9 @@ function friendly(e: unknown): string {
   if (/already exists|duplicate/i.test(msg)) return 'Email này đã được đăng ký.';
   if (/NO_SESSION/.test(msg)) return 'Phiên đăng nhập đã hết hạn.';
   if (/password too short/i.test(msg)) return 'Mật khẩu tối thiểu 8 ký tự.';
+  // `signIn` already returns user-safe Vietnamese for the credential cases
+  // (wrong password, cần mật khẩu, tài khoản không tồn tại) — pass those
+  // through instead of flattening them to the generic line below.
+  if (/mật khẩu|tài khoản|đăng nhập/i.test(msg)) return msg;
   return 'Có lỗi xảy ra, thử lại sau.';
 }

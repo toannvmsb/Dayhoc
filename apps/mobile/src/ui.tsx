@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -150,6 +150,43 @@ export function Button({
   );
 }
 
+/**
+ * A small eye glyph drawn from plain Views — the app has no icon font, and
+ * adding one just for this isn't worth the on-device risk (blank-box if the
+ * font fails to load). `off` draws the eye-with-a-slash "hidden" state.
+ */
+function EyeGlyph({ off }: { off: boolean }) {
+  const c = theme.color.textMuted;
+  return (
+    <View style={{ width: 22, height: 16, alignItems: 'center', justifyContent: 'center' }}>
+      <View
+        style={{
+          width: 20,
+          height: 12,
+          borderWidth: 1.6,
+          borderColor: c,
+          borderRadius: 7,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <View style={{ width: 5.5, height: 5.5, borderRadius: 3, backgroundColor: c }} />
+      </View>
+      {off && (
+        <View
+          style={{
+            position: 'absolute',
+            width: 24,
+            height: 1.6,
+            backgroundColor: c,
+            transform: [{ rotate: '-25deg' }],
+          }}
+        />
+      )}
+    </View>
+  );
+}
+
 export function Field({
   label,
   value,
@@ -165,19 +202,42 @@ export function Field({
   keyboardType?: 'default' | 'email-address' | 'numeric';
   placeholder?: string;
 }) {
+  const [reveal, setReveal] = useState(false);
+  const hasToggle = !!secureTextEntry;
   return (
     <View style={{ gap: 6 }}>
       <Text style={styles.fieldLabel}>{label}</Text>
-      <TextInput
-        style={styles.input}
-        value={value}
-        onChangeText={onChangeText}
-        secureTextEntry={secureTextEntry}
-        keyboardType={keyboardType}
-        autoCapitalize="none"
-        placeholder={placeholder}
-        placeholderTextColor={theme.color.textFaint}
-      />
+      <View style={{ position: 'relative', justifyContent: 'center' }}>
+        <TextInput
+          style={[styles.input, hasToggle ? { paddingRight: 48 } : null]}
+          value={value}
+          onChangeText={onChangeText}
+          secureTextEntry={hasToggle ? !reveal : false}
+          keyboardType={keyboardType}
+          autoCapitalize="none"
+          autoCorrect={false}
+          placeholder={placeholder}
+          placeholderTextColor={theme.color.textFaint}
+        />
+        {hasToggle && (
+          <Pressable
+            onPress={() => setReveal((v) => !v)}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={reveal ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+            style={{
+              position: 'absolute',
+              right: 6,
+              height: 40,
+              width: 40,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <EyeGlyph off={!reveal} />
+          </Pressable>
+        )}
+      </View>
     </View>
   );
 }
