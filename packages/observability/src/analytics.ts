@@ -149,3 +149,25 @@ export function safeAnalytics(inner: AnalyticsAdapter): AnalyticsAdapter {
     },
   };
 }
+
+export interface AnalyticsEnv {
+  readonly DZ_ANALYTICS?: string | undefined;
+  readonly NODE_ENV?: string | undefined;
+}
+
+/**
+ * Pick the analytics adapter from the environment. `DZ_ANALYTICS=console`
+ * logs sanitized events (dev debugging); anything else — including
+ * production today — is `Noop` until a real backend (PostHog/Amplitude/…)
+ * adapter is written and wired here. Always wrapped in `safeAnalytics` so a
+ * bad event never fails the request it's attached to.
+ */
+export function resolveAnalyticsAdapter(env: AnalyticsEnv): {
+  adapter: AnalyticsAdapter;
+  kind: 'console' | 'noop';
+} {
+  if (env.DZ_ANALYTICS === 'console') {
+    return { adapter: safeAnalytics(new ConsoleAnalyticsAdapter()), kind: 'console' };
+  }
+  return { adapter: safeAnalytics(new NoopAnalyticsAdapter()), kind: 'noop' };
+}

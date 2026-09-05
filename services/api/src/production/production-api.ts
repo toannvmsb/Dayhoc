@@ -48,7 +48,13 @@ import {
 import { buildRevisionPlan, buildWeeklyReport, diagnoseAssessment, inferExamScope } from '@copilot/revision';
 import { buildLearningTwin } from '@copilot/learning-twin';
 import type { AssessmentQuestionOutcome, Exam } from '@copilot/domain';
-import { createLogger, type Logger } from '@copilot/observability';
+import { createHash } from 'node:crypto';
+import {
+  createLogger,
+  resolveAnalyticsAdapter,
+  type AnalyticsAdapter,
+  type Logger,
+} from '@copilot/observability';
 import { asChildId, entitlementsFor, PLANS, type AnswerSpec, type Plan } from '@copilot/domain';
 import { createApi, AuthzError, NotFoundError, type RequestContext } from '../api.js';
 import { createContextResolver, ForbiddenError, type CallerAuth } from './context.js';
@@ -69,6 +75,8 @@ export interface ProductionApiOptions {
   readonly uploadStorage?: UploadStorageAdapter;
   /** M4 — document-vision adapter. Default: deterministic mock (no paid call). */
   readonly documentVision?: DocumentVisionAdapter;
+  /** M8 (pilot analytics) — Default: resolved from env (Noop unless DZ_ANALYTICS=console). */
+  readonly analytics?: AnalyticsAdapter;
 }
 
 type Queryable = Pool | PoolClient;
@@ -176,6 +184,12 @@ export function createProductionApi(opts: ProductionApiOptions) {
     }),
     allowTrustedContext: opts.allowTrustedContext ?? false,
   });
+
+  // ---- M8: pilot analytics (privacy-safe — @copilot/observability) -----
+  const analytics = opts.analytics ?? resolveAnalyticsAdapter(process.env).adapter;
+  /** A real userId/childId → an opaque, non-reversible actorRef (sanitizeEvent
+   * requires this shape; never log the raw id anywhere analytics can see it). */
+  const actorRef = (id: string): string => createHash('sha256').update(id).digest('hex').slice(0, 16);
 
   // ---- M4: upload / document-vision ingestion ----------------------
   const uploadStorage =
@@ -292,6 +306,15 @@ export function createProductionApi(opts: ProductionApiOptions) {
       twinSnap?.stateVersion === TWIN_STATE_VERSION && twinSnap.evidenceCount === evidenceCount;
 
     if (!fresh) {
+      // For gap_detected/gap_improved analytics — the GAPS snapshot BEFORE this
+      // recompute overwrites it, so a real state transition can be told apart
+      // from "still the same gap, just recomputed".
+      const prevGapsSnap = await base.learningState.getSnapshot(childId, 'GAPS');
+      const prevGapsById = new Map(
+        ((prevGapsSnap?.state as { id: string; lifecycleState: string }[] | undefined) ?? []).map(
+          (g) => [g.id, g.lifecycleState],
+        ),
+      );
       // The persisted snapshots/skill-states/gaps/plan are a CACHE. The scene
       // `s` above is always freshly computed and correct. Several child screens
       // (today / progress / review) fire near-simultaneously and each calls
@@ -328,6 +351,22 @@ export function createProductionApi(opts: ProductionApiOptions) {
         provenance: { computedBy: 'refreshLearningState' },
         computedAt: at,
       });
+      {
+        const IMPROVED_STATES = new Set(['IMPROVING', 'CLOSED', 'MONITORING']);
+        let newlyDetected = 0;
+        let newlyImproved = 0;
+        for (const g of s.gaps.gaps) {
+          const prevState = prevGapsById.get(g.id);
+          if (prevState === undefined) newlyDetected += 1;
+          else if (!IMPROVED_STATES.has(prevState) && IMPROVED_STATES.has(g.lifecycleState)) newlyImproved += 1;
+        }
+        if (newlyDetected > 0) {
+          analytics.track({ category: 'child', action: 'gap_detected', actorRef: actorRef(childId), metadata: { count: newlyDetected } });
+        }
+        if (newlyImproved > 0) {
+          analytics.track({ category: 'child', action: 'gap_improved', actorRef: actorRef(childId), metadata: { count: newlyImproved } });
+        }
+      }
       const ctxBlob = {
         resolvedLessonId: s.context.resolved.lessonId,
         source: s.context.resolved.source,
@@ -380,6 +419,12 @@ export function createProductionApi(opts: ProductionApiOptions) {
         })),
       );
       if (s.plan.kind === 'plan') {
+        analytics.track({
+          category: 'plan',
+          action: 'plan_created',
+          actorRef: actorRef(childId),
+          metadata: { availableMinutes: s.plan.availableMinutes },
+        });
         await base.learningState
           .savePlan({
             id: cryptoRandom(),
@@ -566,6 +611,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
       displayName?: string;
     }) {
       const r = await registrar.register(input);
+      analytics.track({ category: 'auth', action: 'signup', actorRef: actorRef(r.user.id), metadata: { role: input.intendedRole } });
       return meDto(r);
     },
 
@@ -669,6 +715,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
         });
         const row = (await client.query(`SELECT * FROM child_profiles WHERE id = $1`, [childId]))
           .rows[0];
+        analytics.track({ category: 'child', action: 'child_created', actorRef: actorRef(ctx.userId), metadata: { grade: input.schoolGrade } });
         return childDto(row);
       });
     },
@@ -860,6 +907,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
       if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
       await authorizeChild(ctx, childId, 'view_child');
       const s = await refreshLearningState(childId);
+      analytics.track({ category: 'navigation', action: 'parent_home_viewed', actorRef: actorRef(ctx.userId) });
       return buildParentHome(projInput(s));
     },
 
@@ -937,6 +985,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const s = await refreshLearningState(childId);
       const view = buildParentTeachingPlan(projInput(s), gapId);
       if (!view) throw new NotFoundError('teaching plan');
+      analytics.track({ category: 'teaching_copilot', action: 'teaching_copilot_opened', actorRef: actorRef(ctx.userId) });
       return view;
     },
 
@@ -1275,6 +1324,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
       return withTransaction(pool, async (client) => {
         const svc = buildServices(client, now, logger);
         const res = await svc.relationships.acceptRequest(requestId, ctx.userId, approvedPermissions);
+        analytics.track({ category: 'relationship', action: 'teacher_connected', actorRef: actorRef(ctx.userId) });
         return { request: requestDto(res.request), link: linkDto(res.link) };
       });
     },
@@ -1969,6 +2019,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
         mimeType: input.mimeType,
         bytes,
       });
+      analytics.track({ category: 'upload', action: 'evidence_uploaded', actorRef: actorRef(ctx.userId), metadata: { kind: input.kind } });
       return { uploadId: upload.id, state: analysis.state };
     },
 
@@ -2050,6 +2101,12 @@ export function createProductionApi(opts: ProductionApiOptions) {
       }
       await uploadIngestion.recordResultingEvidence(analysis.id, evidenceIds);
       if (evidenceIds.length > 0) await base.learningState.invalidateDerived(childId);
+      analytics.track({
+        category: 'upload',
+        action: 'evidence_confirmed',
+        actorRef: actorRef(ctx.userId),
+        metadata: { itemCount: evidenceIds.length },
+      });
 
       return {
         state: analysis.state,
@@ -2216,6 +2273,14 @@ export function createProductionApi(opts: ProductionApiOptions) {
           created.push(row.id);
         }
       });
+      if (created.length > 0) {
+        analytics.track({
+          category: 'practice',
+          action: 'practice_started',
+          actorRef: actorRef(ctx.userId),
+          metadata: { assignmentCount: created.length },
+        });
+      }
       return { planKind: plan.kind, assignmentIds: created };
     },
 
@@ -2416,6 +2481,12 @@ export function createProductionApi(opts: ProductionApiOptions) {
 
       // derived state is now stale — next Twin/gap/plan read recomputes from evidence
       await base.learningState.invalidateDerived(childId);
+      analytics.track({
+        category: 'practice',
+        action: 'practice_completed',
+        actorRef: actorRef(ctx.userId),
+        metadata: { itemCount: result.results.length },
+      });
       return result;
     },
 

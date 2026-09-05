@@ -3,6 +3,7 @@ import {
   AnalyticsPrivacyError,
   ConsoleAnalyticsAdapter,
   NoopAnalyticsAdapter,
+  resolveAnalyticsAdapter,
   safeAnalytics,
   sanitizeEvent,
 } from './analytics.js';
@@ -67,5 +68,24 @@ describe('M49 — privacy-safe analytics', () => {
     const a = safeAnalytics(new ConsoleAnalyticsAdapter());
     expect(() => a.track({ category: 'auth', action: 'x', actorRef: 'raw-id', metadata: { email: 'a@b' } as never })).not.toThrow();
     expect(() => new NoopAnalyticsAdapter().track({ category: 'auth', action: 'x', actorRef: HASH })).not.toThrow();
+  });
+
+  describe('resolveAnalyticsAdapter (M8 — pilot analytics wiring)', () => {
+    it('defaults to noop — including when NODE_ENV=production and DZ_ANALYTICS is unset', () => {
+      expect(resolveAnalyticsAdapter({}).kind).toBe('noop');
+      expect(resolveAnalyticsAdapter({ NODE_ENV: 'production' }).kind).toBe('noop');
+    });
+
+    it('opts into console only via DZ_ANALYTICS=console', () => {
+      expect(resolveAnalyticsAdapter({ DZ_ANALYTICS: 'console' }).kind).toBe('console');
+      expect(resolveAnalyticsAdapter({ DZ_ANALYTICS: 'anything-else' }).kind).toBe('noop');
+    });
+
+    it('the resolved adapter is already wrapped safe — a bad event never throws', () => {
+      const { adapter } = resolveAnalyticsAdapter({ DZ_ANALYTICS: 'console' });
+      expect(() =>
+        adapter.track({ category: 'auth', action: 'x', actorRef: 'raw-id', metadata: { email: 'a@b' } as never }),
+      ).not.toThrow();
+    });
   });
 });
