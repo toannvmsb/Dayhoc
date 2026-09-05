@@ -1,0 +1,175 @@
+DẠYZI — ROUND 2 (doc 58 §6)  2026-09-05T23:16:44.119Z
+6 specs · MODE A · ≤1 retry · no fallback · no gpt-4o
+models: gpt-5-mini, gpt-4.1-mini, gpt-4o-mini
+TOTAL SPEND: $0.2473  (budget $0.3, hard cap $0.35)
+complete
+
+================ gpt-5-mini  (6/6 specs) ================
+structured output: STRICT_JSON_SCHEMA   model calls: 80   requested items: 68
+
+schema pass (calls):        98.8%
+skill alignment:            100.0%
+curriculum / prereq safety: 100.0% / 100.0%
+K / T conformity:           100.0% / 100.0%
+leakage pass:               95.6%
+uniqueness pass:            98.5%
+
+MathKernel coverage:        92.6%  (63/68)
+kernel consistency pass (of kernel content-accepted): 100.0%
+kernel drift (rejected):    2   codes: {"KERNEL_NUMBER_DROPPED":1,"SEMANTIC_STRUCTURE_MISMATCH":1}
+
+CONTENT first-pass:         82.4%  (56/68)
+CONTENT after 1 retry:      89.7%  (61/68)
+deterministic PRODUCTION-ready first-pass:    76.5%
+deterministic PRODUCTION-ready after 1 retry: 82.4%  (56/68)
+kernel-supported production after ≤1 retry:   88.9%  (56/63)
+AI-crosscheck-required:     8.2% of content-accepted
+rejected:                   10.3%  (7/68)
+
+FULL WORKSHEET SUCCESS (every kernel item production-ready):
+  first-pass:  33.3%  (2/6)
+  after retry: 50.0%  (3/6)
+
+avg retries: 0.18   latency p50/p95 ms: 6221 / 12297
+tokens in/out: 106805 / 50708   total cost USD: $0.1281
+cost / CONTENT item:    55 VND
+cost / PRODUCTION item: 59 VND
+
+FAILURE TAXONOMY: {"MODEL_CONTENT":3,"MODEL_KERNEL_DRIFT":2,"MODEL_SCHEMA":2,"LEAKAGE":0,"DUPLICATE":0,"KERNEL":0,"VALIDATOR":0,"VERIFIER":0,"INFRA":0,"OTHER":0}
+FAILED ITEMS (7):
+  - BENCH-LT-G4-02::egs_LT-G4-02_0::item-08 [MODEL_CONTENT] k=UNIT_RATE gates=[SIMILARITY_OK]
+      SIMILARITY_OK: trigram_dice (0.78) vs worksheet_sibling
+  - BENCH-LT-G4-07::egs_LT-G4-07_0::item-11 [MODEL_SCHEMA] k=DISTRIBUTIVE gates=[SCHEMA_VALID]
+      numeric item — answer "B" is not a number
+  - BENCH-LT-G7-04::egs_LT-G7-04_0::item-11 [MODEL_CONTENT] k=LINEAR_EQ gates=[SIMILARITY_OK]
+      SIMILARITY_OK: token_jaccard (0.50) vs worksheet_sibling
+  - BENCH-LT-G7-04::egs_LT-G7-04_0::item-12 [MODEL_CONTENT] k=LINEAR_EQ gates=[SIMILARITY_OK,UNIQUENESS_OK]
+      SIMILARITY_OK: near_copy (1.00) vs worksheet_sibling | UNIQUENESS_OK: identical (normalized) to egs_LT-G7-04_0::item-08
+  - BENCH-LT-G7-04::egs_LT-G7-04_0::item-13 [MODEL_KERNEL_DRIFT] k=LINEAR_EQ gates=[ANSWER_VERIFIED]
+      ANSWER_VERIFIED: kernel contradiction [KERNEL_NUMBER_DROPPED,PROMPT_NOT_SOLVABLE]: prompt is missing given number(s): 2
+  - BENCH-LT-G7-04::egs_LT-G7-04_0::item-14 [MODEL_SCHEMA] k=LINEAR_EQ gates=[SCHEMA_VALID]
+      numeric item — answer "A" is not a number
+  - BENCH-LT-G7-04::egs_LT-G7-04_0::item-16 [MODEL_KERNEL_DRIFT] k=LINEAR_EQ gates=[ANSWER_VERIFIED]
+      ANSWER_VERIFIED: kernel contradiction [SEMANTIC_STRUCTURE_MISMATCH]: kernel operation is SOLVE_EQUATION but the prompt shows no equation to solve
+
+================ gpt-4.1-mini  (6/6 specs) ================
+structured output: STRICT_JSON_SCHEMA   model calls: 84   requested items: 68
+
+schema pass (calls):        100.0%
+skill alignment:            100.0%
+curriculum / prereq safety: 100.0% / 100.0%
+K / T conformity:           100.0% / 100.0%
+leakage pass:               92.6%
+uniqueness pass:            100.0%
+
+MathKernel coverage:        92.6%  (63/68)
+kernel consistency pass (of kernel content-accepted): 100.0%
+kernel drift (rejected):    6   codes: {"OPERAND_MUTATION":1,"SEMANTIC_STRUCTURE_MISMATCH":5,"KERNEL_NUMBER_DROPPED":1}
+
+CONTENT first-pass:         76.5%  (52/68)
+CONTENT after 1 retry:      85.3%  (58/68)
+deterministic PRODUCTION-ready first-pass:    70.6%
+deterministic PRODUCTION-ready after 1 retry: 77.9%  (53/68)
+kernel-supported production after ≤1 retry:   84.1%  (53/63)
+AI-crosscheck-required:     8.6% of content-accepted
+rejected:                   14.7%  (10/68)
+
+FULL WORKSHEET SUCCESS (every kernel item production-ready):
+  first-pass:  16.7%  (1/6)
+  after retry: 33.3%  (2/6)
+
+avg retries: 0.24   latency p50/p95 ms: 2718 / 4039
+tokens in/out: 112934 / 26370   total cost USD: $0.0874
+cost / CONTENT item:    39 VND
+cost / PRODUCTION item: 43 VND
+
+FAILURE TAXONOMY: {"MODEL_CONTENT":4,"MODEL_KERNEL_DRIFT":6,"MODEL_SCHEMA":0,"LEAKAGE":0,"DUPLICATE":0,"KERNEL":0,"VALIDATOR":0,"VERIFIER":0,"INFRA":0,"OTHER":0}
+FAILED ITEMS (10):
+  - BENCH-LT-G4-02::egs_LT-G4-02_0::item-04 [MODEL_CONTENT] k=UNIT_RATE gates=[SIMILARITY_OK]
+      SIMILARITY_OK: template_match (1.00) vs worksheet_sibling
+  - BENCH-LT-G4-07::egs_LT-G4-07_0::item-11 [MODEL_CONTENT] k=DISTRIBUTIVE gates=[SIMILARITY_OK]
+      SIMILARITY_OK: trigram_dice (0.63) vs worksheet_sibling
+  - BENCH-LT-G7-03::egs_LT-G7-03_0::item-07 [MODEL_KERNEL_DRIFT] k=RATIO_SHARE gates=[ANSWER_VERIFIED]
+      ANSWER_VERIFIED: kernel contradiction [OPERAND_MUTATION]: the answer 3 appears in the prompt as if it were given data
+  - BENCH-LT-G7-03::egs_LT-G7-03_0::item-08 [MODEL_CONTENT] k=RATIO_SHARE gates=[SIMILARITY_OK]
+      SIMILARITY_OK: trigram_dice (0.69) vs worksheet_sibling
+  - BENCH-LT-G7-04::egs_LT-G7-04_0::item-02 [MODEL_CONTENT] k=ANGLE_SUM gates=[SIMILARITY_OK]
+      SIMILARITY_OK: trigram_dice (0.70) vs worksheet_sibling
+  - BENCH-LT-G7-04::egs_LT-G7-04_0::item-09 [MODEL_KERNEL_DRIFT] k=LINEAR_EQ gates=[ANSWER_VERIFIED]
+      ANSWER_VERIFIED: kernel contradiction [SEMANTIC_STRUCTURE_MISMATCH]: kernel operation is SOLVE_EQUATION but the prompt shows no equation to solve
+  - BENCH-LT-G7-04::egs_LT-G7-04_0::item-11 [MODEL_KERNEL_DRIFT] k=LINEAR_EQ gates=[ANSWER_VERIFIED]
+      ANSWER_VERIFIED: kernel contradiction [SEMANTIC_STRUCTURE_MISMATCH]: kernel operation is SOLVE_EQUATION but the prompt shows no equation to solve
+  - BENCH-LT-G7-04::egs_LT-G7-04_0::item-12 [MODEL_KERNEL_DRIFT] k=LINEAR_EQ gates=[ANSWER_VERIFIED,SIMILARITY_OK]
+      ANSWER_VERIFIED: kernel contradiction [SEMANTIC_STRUCTURE_MISMATCH]: kernel operation is SOLVE_EQUATION but the prompt shows no equation to solve | SIMILARITY_OK: trigram_dice (0.66) vs worksheet_sibl
+  - BENCH-LT-G7-04::egs_LT-G7-04_0::item-14 [MODEL_KERNEL_DRIFT] k=LINEAR_EQ gates=[ANSWER_VERIFIED]
+      ANSWER_VERIFIED: kernel contradiction [KERNEL_NUMBER_DROPPED,SEMANTIC_STRUCTURE_MISMATCH,PROMPT_NOT_SOLVABLE]: prompt is missing given number(s): 2 | kernel operation is SOLVE_EQUATION but the prompt 
+  - BENCH-LT-G7-04::egs_LT-G7-04_0::item-16 [MODEL_KERNEL_DRIFT] k=LINEAR_EQ gates=[ANSWER_VERIFIED]
+      ANSWER_VERIFIED: kernel contradiction [SEMANTIC_STRUCTURE_MISMATCH]: kernel operation is SOLVE_EQUATION but the prompt shows no equation to solve
+
+================ gpt-4o-mini  (6/6 specs) ================
+structured output: STRICT_JSON_SCHEMA   model calls: 95   requested items: 68
+
+schema pass (calls):        100.0%
+skill alignment:            100.0%
+curriculum / prereq safety: 100.0% / 100.0%
+K / T conformity:           100.0% / 100.0%
+leakage pass:               85.3%
+uniqueness pass:            98.5%
+
+MathKernel coverage:        92.6%  (63/68)
+kernel consistency pass (of kernel content-accepted): 100.0%
+kernel drift (rejected):    10   codes: {"SOLUTION_CONTRADICTS_KERNEL":7,"SEMANTIC_STRUCTURE_MISMATCH":6,"ANSWER_MISMATCH":5,"KERNEL_NUMBER_DROPPED":3}
+
+CONTENT first-pass:         60.3%  (41/68)
+CONTENT after 1 retry:      75.0%  (51/68)
+deterministic PRODUCTION-ready first-pass:    54.4%
+deterministic PRODUCTION-ready after 1 retry: 67.6%  (46/68)
+kernel-supported production after ≤1 retry:   73.0%  (46/63)
+AI-crosscheck-required:     9.8% of content-accepted
+rejected:                   25.0%  (17/68)
+
+FULL WORKSHEET SUCCESS (every kernel item production-ready):
+  first-pass:  0.0%  (0/6)
+  after retry: 16.7%  (1/6)
+
+avg retries: 0.40   latency p50/p95 ms: 2064 / 2601
+tokens in/out: 128233 / 21004   total cost USD: $0.0318
+cost / CONTENT item:    16 VND
+cost / PRODUCTION item: 18 VND
+
+FAILURE TAXONOMY: {"MODEL_CONTENT":6,"MODEL_KERNEL_DRIFT":10,"MODEL_SCHEMA":0,"LEAKAGE":1,"DUPLICATE":0,"KERNEL":0,"VALIDATOR":0,"VERIFIER":0,"INFRA":0,"OTHER":0}
+FAILED ITEMS (17):
+  - HC03::egs_hc03_0::item-01 [MODEL_KERNEL_DRIFT] k=RATIO_SHARE gates=[ANSWER_VERIFIED]
+      ANSWER_VERIFIED: kernel contradiction [SOLUTION_CONTRADICTS_KERNEL,SEMANTIC_STRUCTURE_MISMATCH]: worked solution never states the correct result 75 | kernel operation is PROPORTION but the prose reads
+  - HC03::egs_hc03_0::item-04 [MODEL_CONTENT] k=RATIO_SHARE gates=[SIMILARITY_OK]
+      SIMILARITY_OK: trigram_dice (0.60) vs worksheet_sibling
+  - BENCH-LT-G4-02::egs_LT-G4-02_0::item-04 [MODEL_CONTENT] k=UNIT_RATE gates=[SIMILARITY_OK]
+      SIMILARITY_OK: trigram_dice (0.68) vs worksheet_sibling
+  - BENCH-LT-G4-02::egs_LT-G4-02_0::item-05 [MODEL_KERNEL_DRIFT] k=UNIT_RATE gates=[ANSWER_VERIFIED]
+      ANSWER_VERIFIED: kernel contradiction [ANSWER_MISMATCH]: answer {"kind":"numeric","value":4,"tolerance":0} ≠ kernel {"kind":"numeric","value":28,"tolerance":0}
+  - BENCH-LT-G4-02::egs_LT-G4-02_0::item-06 [MODEL_CONTENT] k=UNIT_RATE gates=[SIMILARITY_OK]
+      SIMILARITY_OK: token_jaccard (0.73) vs worksheet_sibling
+  - BENCH-LT-G4-02::egs_LT-G4-02_0::item-08 [MODEL_CONTENT] k=UNIT_RATE gates=[SIMILARITY_OK]
+      SIMILARITY_OK: trigram_dice (0.72) vs worksheet_sibling
+  - BENCH-LT-G4-07::egs_LT-G4-07_0::item-04 [MODEL_KERNEL_DRIFT] k=DISTRIBUTIVE gates=[ANSWER_VERIFIED,SIMILARITY_OK]
+      ANSWER_VERIFIED: kernel contradiction [SOLUTION_CONTRADICTS_KERNEL]: worked solution never states the correct result 768 | SIMILARITY_OK: trigram_dice (0.91) vs worksheet_sibling
+  - BENCH-LT-G4-07::egs_LT-G4-07_0::item-07 [MODEL_KERNEL_DRIFT] k=DISTRIBUTIVE gates=[ANSWER_VERIFIED,SIMILARITY_OK]
+      ANSWER_VERIFIED: kernel contradiction [SOLUTION_CONTRADICTS_KERNEL]: worked solution never states the correct result 1008 | SIMILARITY_OK: trigram_dice (0.77) vs worksheet_sibling
+  - BENCH-LT-G4-07::egs_LT-G4-07_0::item-11 [MODEL_KERNEL_DRIFT] k=DISTRIBUTIVE gates=[ANSWER_VERIFIED,SIMILARITY_OK]
+      ANSWER_VERIFIED: kernel contradiction [ANSWER_MISMATCH]: answer {"kind":"numeric","value":675000,"tolerance":0} ≠ kernel {"kind":"numeric","value":675,"tolerance":0} | SIMILARITY_OK: trigram_dice (0.8
+  - BENCH-LT-G7-03::egs_LT-G7-03_0::item-05 [MODEL_CONTENT] k=INT_ARITH gates=[SIMILARITY_OK]
+      SIMILARITY_OK: token_jaccard (1.00) vs worksheet_sibling
+  - BENCH-LT-G7-04::egs_LT-G7-04_0::item-02 [LEAKAGE] k=ANGLE_SUM gates=[SIMILARITY_OK]
+      SIMILARITY_OK: trigram_dice (0.84) vs reference
+  - BENCH-LT-G7-04::egs_LT-G7-04_0::item-09 [MODEL_KERNEL_DRIFT] k=LINEAR_EQ gates=[ANSWER_VERIFIED]
+      ANSWER_VERIFIED: kernel contradiction [ANSWER_MISMATCH,KERNEL_NUMBER_DROPPED,SOLUTION_CONTRADICTS_KERNEL,SEMANTIC_STRUCTURE_MISMATCH,PROMPT_NOT_SOLVABLE]: answer {"kind":"numeric","value":2,"tolerance
+  - BENCH-LT-G7-04::egs_LT-G7-04_0::item-11 [MODEL_KERNEL_DRIFT] k=LINEAR_EQ gates=[ANSWER_VERIFIED]
+      ANSWER_VERIFIED: kernel contradiction [ANSWER_MISMATCH,KERNEL_NUMBER_DROPPED,SOLUTION_CONTRADICTS_KERNEL,SEMANTIC_STRUCTURE_MISMATCH,PROMPT_NOT_SOLVABLE]: answer {"kind":"numeric","value":23,"toleranc
+  - BENCH-LT-G7-04::egs_LT-G7-04_0::item-12 [MODEL_CONTENT] k=LINEAR_EQ gates=[SIMILARITY_OK,UNIQUENESS_OK]
+      SIMILARITY_OK: near_copy (1.00) vs worksheet_sibling | UNIQUENESS_OK: identical (normalized) to egs_LT-G7-04_0::item-08
+  - BENCH-LT-G7-04::egs_LT-G7-04_0::item-13 [MODEL_KERNEL_DRIFT] k=LINEAR_EQ gates=[ANSWER_VERIFIED]
+      ANSWER_VERIFIED: kernel contradiction [ANSWER_MISMATCH,KERNEL_NUMBER_DROPPED,SOLUTION_CONTRADICTS_KERNEL,SEMANTIC_STRUCTURE_MISMATCH,PROMPT_NOT_SOLVABLE]: answer {"kind":"numeric","value":24,"toleranc
+  - BENCH-LT-G7-04::egs_LT-G7-04_0::item-14 [MODEL_KERNEL_DRIFT] k=LINEAR_EQ gates=[ANSWER_VERIFIED]
+      ANSWER_VERIFIED: kernel contradiction [SEMANTIC_STRUCTURE_MISMATCH]: kernel operation is SOLVE_EQUATION but the prompt shows no equation to solve
+  - BENCH-LT-G7-04::egs_LT-G7-04_0::item-16 [MODEL_KERNEL_DRIFT] k=LINEAR_EQ gates=[ANSWER_VERIFIED]
+      ANSWER_VERIFIED: kernel contradiction [SOLUTION_CONTRADICTS_KERNEL,SEMANTIC_STRUCTURE_MISMATCH]: worked solution never states the correct result 38 | kernel operation is SOLVE_EQUATION but the prompt 

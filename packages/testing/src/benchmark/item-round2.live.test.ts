@@ -28,11 +28,12 @@ const MODELS = (process.env.ROUND2_MODELS?.split(',').filter(Boolean) ?? [
   'gpt-4.1-mini',
   'gpt-5-mini',
 ]) as readonly string[];
-const HARD_CAP_USD = 1.0;
+const HARD_CAP_USD = Number(process.env.ROUND2_HARD_CAP_USD ?? '1.0');
 const RUN_BUDGET_USD = Number(process.env.ROUND2_BUDGET_USD ?? '0.9');
 const WALL_CLOCK_MS = 55 * 60 * 1000;
-const OUT_PATH = 'D:/Lap trinh/Claude/Dayhoc/ROUND2.txt';
-const RAW_PATH = 'D:/Lap trinh/Claude/Dayhoc/ROUND2_raw.jsonl';
+const OUT_TAG = process.env.ROUND2_OUT_TAG ?? '';
+const OUT_PATH = `D:/Lap trinh/Claude/Dayhoc/ROUND2${OUT_TAG}.txt`;
+const RAW_PATH = `D:/Lap trinh/Claude/Dayhoc/ROUND2${OUT_TAG}_raw.jsonl`;
 
 const COMPLIANCE: Omit<ProviderCompliance, 'provider'> = {
   processingRegion: 'benchmark',
@@ -157,11 +158,19 @@ describe('doc 58 §6 — ROUND 2 (paid)', () => {
       let structuredMode: string | null = null;
       let specsRun = 0;
 
+      // worst observed single-spec cost so far (for this model) — used to refuse
+      // starting a spec that could breach the HARD cap.
+      let worstSpecUsd = 0.03;
       for (const bs of specs) {
         if (spentUsd >= RUN_BUDGET_USD || Date.now() - runStart > WALL_CLOCK_MS) {
           stopReason = spentUsd >= RUN_BUDGET_USD ? 'budget reached' : 'wall clock reached';
           break;
         }
+        if (spentUsd + worstSpecUsd * 1.5 >= HARD_CAP_USD) {
+          stopReason = `hard-cap guard before ${bs.id} (spent $${spentUsd.toFixed(4)})`;
+          break;
+        }
+        const specStartUsd = spentUsd;
         const result = await orchestrateItemGeneration({
           spec: bs.spec,
           generator,
@@ -244,6 +253,7 @@ describe('doc 58 §6 — ROUND 2 (paid)', () => {
             if (failed.length < 60) failed.push(`${bs.id}::${rec.itemId} [${cat}] k=${rec.kernelFamily ?? '-'} gates=[${rec.failedGates.join(',')}]\n      ${(rec.failureDetail ?? '').slice(0, 200)}`);
           }
         }
+        worstSpecUsd = Math.max(worstSpecUsd, spentUsd - specStartUsd);
         flush(); // incremental
       }
 
