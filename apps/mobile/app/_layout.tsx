@@ -102,6 +102,7 @@ export default function RootLayout() {
             <Stack.Screen name="welcome" options={{ headerShown: false }} />
             <Stack.Screen name="parent/home" options={{ title: 'DạyZi' }} />
             <Stack.Screen name="parent/progress" options={{ title: 'Tiến độ' }} />
+            <Stack.Screen name="parent/weekly-report" options={{ title: 'Báo cáo tuần' }} />
             <Stack.Screen name="parent/practice" options={{ title: 'Bài tập' }} />
             <Stack.Screen name="parent/uploads" options={{ title: 'Tải bài của con' }} />
             <Stack.Screen name="parent/exams" options={{ title: 'Kiểm tra & ôn thi' }} />

@@ -111,6 +111,7 @@ const ROUTES: Record<string, Handler> = {
   'GET /children/:id': async (c) => getApi().getChild(auth(c), c.params[0]!),
   'GET /children/:id/home': async (c) => getApi().getParentHome(auth(c, 'PARENT'), c.params[0]!),
   'GET /children/:id/progress': async (c) => getApi().getParentProgress(auth(c, 'PARENT'), c.params[0]!),
+  'GET /children/:id/weekly-report': async (c) => getApi().getWeeklyReport(auth(c, 'PARENT'), c.params[0]!),
   'GET /children/:id/gaps/:gapId': async (c) =>
     getApi().getParentGapDetail(auth(c, 'PARENT'), c.params[0]!, c.params[1]!),
   'GET /children/:id/teaching-plan': async (c) =>

@@ -90,6 +90,15 @@ export type ParentProgress = {
 };
 export type SkillRow = { skillId: string; name: string; currentPercent: number; targetPercent: number; status: string };
 
+export type WeeklyReport = {
+  weekLabel: string;
+  stats: { value: string; label: string; highlight?: boolean }[];
+  progress: string[];
+  needsFollowUp: string[];
+  nextWeekMix: { school: number; gapRepair: number; advanced: number; thinking: number };
+  nextWeekNote: string;
+};
+
 export type GapDetail = {
   gapId: string;
   title: string;

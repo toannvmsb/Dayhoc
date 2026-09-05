@@ -43,8 +43,10 @@ import {
   buildParentHome,
   buildParentProgress,
   buildParentTeachingPlan,
+  buildWeeklyReportView,
 } from '@copilot/projections';
-import { buildRevisionPlan, diagnoseAssessment, inferExamScope } from '@copilot/revision';
+import { buildRevisionPlan, buildWeeklyReport, diagnoseAssessment, inferExamScope } from '@copilot/revision';
+import { buildLearningTwin } from '@copilot/learning-twin';
 import type { AssessmentQuestionOutcome, Exam } from '@copilot/domain';
 import { createLogger, type Logger } from '@copilot/observability';
 import { asChildId, entitlementsFor, PLANS, type AnswerSpec, type Plan } from '@copilot/domain';
@@ -259,6 +261,15 @@ export function createProductionApi(opts: ProductionApiOptions) {
   const TWIN_STATE_VERSION = 'twin.v2';
   const GAPS_STATE_VERSION = 'gaps.v2';
   const CONTEXT_STATE_VERSION = 'context.v2';
+
+  /** The most recent Monday on/before `d`, as YYYY-MM-DD (UTC) — the weekly
+   * report's `weekOf` boundary. */
+  function mostRecentMonday(d: Date): string {
+    const dayOfWeek = d.getUTCDay(); // 0=Sun..6=Sat
+    const daysSinceMonday = (dayOfWeek + 6) % 7;
+    const monday = new Date(d.getTime() - daysSinceMonday * 86_400_000);
+    return monday.toISOString().slice(0, 10);
+  }
 
   function twinBlob(twin: import('@copilot/domain').ChildLearningTwin) {
     return {
@@ -861,6 +872,50 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const all = await base.ledger.listEvidence(asChildId(childId));
       const recentEvidence = all.slice(-40); // listEvidence is occurredAt/recordedAt ASC
       return buildParentProgress({ ...projInput(s), recentEvidence });
+    },
+
+    /**
+     * GET /children/:childId/weekly-report (Blueprint §10, P14) — buildWeeklyReport
+     * has existed, fully tested, since Phase 9 but was never wired to any app.
+     * The blocker was `twinBefore`: the Twin as it stood a week ago. That's a
+     * real point-in-time reconstruction, not an approximation — buildLearningTwin
+     * is pure over an explicit evidence array + `asOf`
+     * (packages/learning-twin/src/twin.ts), so "before" is the same tested
+     * function run over evidence recorded at/before the cutoff, exactly like
+     * "after" runs it (via refreshLearningState) over the full stream. Never
+     * persisted — this is a read-only report, not a new cache entry.
+     */
+    async getWeeklyReport(auth: CallerAuth, childId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'view_child');
+
+      const s = await refreshLearningState(childId);
+      const allEvidence = await base.ledger.listEvidence(asChildId(childId)); // ASC by occurredAt
+
+      const cutoff = new Date(now().getTime() - 7 * 86_400_000);
+      const cutoffIso = cutoff.toISOString();
+      const beforeEvidence = allEvidence.filter((e) => e.occurredAt <= cutoffIso);
+      const weekEvidence = allEvidence.filter((e) => e.occurredAt > cutoffIso);
+
+      const twinBefore = buildLearningTwin({
+        childId: asChildId(childId),
+        gradeContext: s.gradeContext,
+        evidence: beforeEvidence,
+        knowledgeBase: kb,
+        asOf: cutoff,
+      });
+
+      const report = buildWeeklyReport({
+        childId: asChildId(childId),
+        weekOf: mostRecentMonday(cutoff),
+        weekEvidence,
+        twinBefore,
+        twinAfter: s.twin,
+        gapsAfter: s.gaps,
+        knowledgeBase: kb,
+      });
+      return buildWeeklyReportView(report);
     },
 
     /** GET /children/:childId/gaps/:gapId */

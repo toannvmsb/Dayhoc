@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { router } from 'expo-router';
 import { useChild } from '@/child';
 import { ParentNav } from '@/nav';
 import { theme } from '@/theme';
@@ -98,7 +99,12 @@ export default function ParentProgressScreen() {
 
   return (
     <Screen nav={<ParentNav />} edges={['bottom']} refreshing={q.loading} onRefresh={q.reload}>
-      <H1>{q.data ? `Tiến bộ · ${q.data.child.displayName}` : 'Tiến bộ'}</H1>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <H1>{q.data ? `Tiến bộ · ${q.data.child.displayName}` : 'Tiến bộ'}</H1>
+        <Pressable onPress={() => router.push('/parent/weekly-report')}>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: theme.color.primary }}>Báo cáo tuần ›</Text>
+        </Pressable>
+      </View>
       {q.loading && <Loading />}
       {q.error && <ErrorNote message={q.error} />}
       {q.data && (
