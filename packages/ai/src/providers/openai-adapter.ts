@@ -63,19 +63,27 @@ export function createOpenAiProviderAdapter(cfg: OpenAiAdapterConfig): AIProvide
         ? { type: 'json_schema', json_schema: { name: input.schemaName.replace(/\W+/g, '_'), strict: true, schema: input.jsonSchema } }
         : { type: 'json_object' };
 
+      // The GPT-5 family + the o-series reasoning models use
+      // `max_completion_tokens` (not `max_tokens`) and only accept the default
+      // temperature. Older chat models (4o / 4.1 / 4o-mini) use `max_tokens`
+      // and a configurable temperature.
+      const isReasoningStyle = /^(gpt-5|o[1345])/i.test(cfg.model);
+      const tokenParam = isReasoningStyle ? 'max_completion_tokens' : 'max_tokens';
+      const body: Record<string, unknown> = {
+        model: cfg.model,
+        messages,
+        response_format: responseFormat,
+        [tokenParam]: input.maxTokens ?? 4000,
+      };
+      if (!isReasoningStyle) body.temperature = input.temperature ?? 0.4;
+
       const res = await doFetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
           authorization: `Bearer ${cfg.apiKey}`,
         },
-        body: JSON.stringify({
-          model: cfg.model,
-          messages,
-          response_format: responseFormat,
-          temperature: input.temperature ?? 0.4,
-          max_tokens: input.maxTokens ?? 4000,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) {

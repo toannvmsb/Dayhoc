@@ -57,8 +57,13 @@ const T_JACCARD_NEAR = 0.5;
 const T_TRIGRAM_COPY = 0.75;
 const T_TRIGRAM_NEAR = 0.6;
 const T_PROPER_NOUN_NEAR = 0.6;
-/** number tuple identical AND this much lexical overlap → COPY (not coincidence). */
-const T_JACCARD_WITH_SAME_NUMBERS = 0.45;
+/**
+ * number tuple identical AND this much lexical overlap → COPY (clear template
+ * reuse with the same data). Below it, identical numbers alone are NEAR —
+ * numbers genuinely coincide, especially on a small worksheet with a narrow
+ * number range. A DNA-forbidden tuple is always COPY regardless (reference leak).
+ */
+const T_JACCARD_WITH_SAME_NUMBERS = 0.62;
 
 /**
  * Vietnamese instructional / answer-format boilerplate. Shared across many

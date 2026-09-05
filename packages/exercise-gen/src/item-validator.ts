@@ -160,7 +160,13 @@ export function acceptItem(
   }
   gate('PREREQUISITE_SAFE', prereqSafe, prereqDetail, 'Chỉ dùng kiến thức tiên quyết học sinh đã nắm.');
 
-  // 7. ANSWER_VERIFIED
+  // 7. ANSWER_VERIFIED (doc 56 §7). A malformed key fails. A PROVEN-WRONG answer
+  //    (`INCORRECT`) fails regardless of policy. When the deterministic verifier
+  //    CANNOT parse the item (`UNSUPPORTED`), the item is accepted at its honest
+  //    lower level — a narrow verifier must not punish a valid word problem or a
+  //    division-notation expression it simply doesn't handle. Correctness of
+  //    those still needs a downstream AI/human cross-check (recorded on the
+  //    level), never claimed as deterministically verified.
   const av = verifyItemAnswer(exercise);
   const answerVerificationLevel: AnswerVerificationLevel = av.level;
   let answerPass = true;
@@ -171,19 +177,8 @@ export function acceptItem(
   } else if (av.math.verdict === 'INCORRECT') {
     answerPass = false;
     answerDetail = `deterministic check: ${av.math.detail}`;
-  } else if (itemSpec.answerVerificationPolicy === 'DETERMINISTIC_EXPECTED' && exercise.answerSpec.kind !== 'reasoning') {
-    // this item was pinned to a closed computation — the verifier MUST be able to confirm it
-    answerPass = av.math.verdict === 'CORRECT';
-    if (!answerPass) answerDetail = `deterministic verification expected but got ${av.math.verdict}`;
   }
-  gate(
-    'ANSWER_VERIFIED',
-    answerPass,
-    answerDetail,
-    itemSpec.answerVerificationPolicy === 'DETERMINISTIC_EXPECTED'
-      ? 'Đề phải là một biểu thức tính khép kín, đáp số kiểm tra lại được bằng số học.'
-      : 'Đảm bảo đáp số/lời giải nhất quán với đề.',
-  );
+  gate('ANSWER_VERIFIED', answerPass, answerDetail, 'Đảm bảo đáp số và lời giải nhất quán với đề.');
 
   // safety / language (fold into SCHEMA_VALID-adjacent basic checks; report under CURRICULUM_SAFE bucket only if unsafe)
   const text = `${exercise.prompt}\n${exercise.workedSolution}`;

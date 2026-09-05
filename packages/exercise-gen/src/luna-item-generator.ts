@@ -56,7 +56,9 @@ export interface LunaItemGeneratorConfig {
 export function createLunaItemContentGenerator(cfg: LunaItemGeneratorConfig): ItemContentGenerator {
   const now = cfg.now ?? (() => new Date());
   const requestedMode: StructuredOutputMode = cfg.structuredOutputMode ?? 'STRICT_JSON_SCHEMA';
-  const maxTokens = cfg.maxTokens ?? 3500;
+  // headroom for 2 reasoning items (6 Vietnamese hint rungs + worked solution +
+  // rubric each) — Round 1 saw gpt-4.1-mini truncate JSON at 3500.
+  const maxTokens = cfg.maxTokens ?? 5000;
   let seq = 0;
   const newRequestId = cfg.newRequestId ?? (() => `luna_item_${(seq += 1)}`);
 

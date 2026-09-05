@@ -62,7 +62,8 @@ export function verifyMathAnswer(item: { prompt: string; workedSolution: string;
 // --- expression extraction (DELIBERATELY conservative — doc 14 C5.1 §5) --------
 
 const MATH_CHARS = /[0-9+\-*/×·().\s]/; // note: `:` and `,` handled explicitly below
-const HAS_OP = /[+\-*/×·]/;
+// `:` is SGK division notation — a valid operator here (safeEvaluate maps it to `/`).
+const HAS_OP = /[+\-*/×·:]/;
 const HAS_DIGIT = /[0-9]/;
 /** Anything estimation-flavoured is NOT an exact computation — never touch it. */
 const ESTIMATION_RE = /ước\s*lượng|làm\s*tròn|gần|khoảng|xấp\s*xỉ|chừng|độ\s+lớn|approx/i;
@@ -88,8 +89,12 @@ function extractExpression(prompt: string): string | null {
   // strip a single trailing "= ?" / "=" and a trailing period
   const body = normalized.replace(/\s*=\s*\??\s*\.?\s*$/, '').trim();
 
-  // "Tính[:] <expr>" / "Tính giá trị của <expr>" — the lead phrase then ONLY the expression
-  const lead = /^(?:tính(?:\s+giá\s+trị(?:\s+của)?)?|kết\s+quả\s+của)\s*:?\s*(.+)$/i.exec(body);
+  // "Tính[:] <expr>" / "Tính giá trị (của) [biểu thức] <expr>" / "Tính nhanh …" /
+  // "Thực hiện phép tính …" / "Kết quả của (phép tính) …" — lead phrase, then ONLY the expression.
+  const lead =
+    /^(?:tính(?:\s+nhanh|\s+nhẩm)?(?:\s+giá\s+trị)?(?:\s+của)?(?:\s+biểu\s+thức)?|thực\s+hiện(?:\s+phép\s+tính)?|kết\s+quả\s+của(?:\s+phép\s+tính)?)\s*:?\s*(.+)$/i.exec(
+      body,
+    );
   const candidate = (lead ? lead[1]! : body).trim();
 
   if (BLANK_RE.test(candidate)) return null;

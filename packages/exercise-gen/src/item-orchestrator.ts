@@ -71,6 +71,8 @@ export interface ItemRunRecord {
   readonly failedGates: readonly ItemAcceptanceGate[];
   readonly composeFailure: string | null;
   readonly answerVerificationLevel: AnswerVerificationLevel | null;
+  /** The deterministic math verifier proved the answer WRONG on the last attempt. */
+  readonly answerProvenWrong: boolean;
   readonly finalPrompt: string | null;
 }
 
@@ -160,6 +162,7 @@ export async function orchestrateItemGeneration(
   const lastFailedGates = new Map<string, readonly ItemAcceptanceGate[]>();
   const composeFailure = new Map<string, string | null>();
   const answerLevel = new Map<string, AnswerVerificationLevel | null>();
+  const answerProvenWrong = new Map<string, boolean>();
   const operations: GenerationOperation[] = [];
 
   let unaccepted = [...itemSpecs];
@@ -266,6 +269,10 @@ export async function orchestrateItemGeneration(
         forbiddenNumberTuples: dna.forbiddenSimilarities.numberTuples,
       });
       answerLevel.set(is.itemId, result.answerVerificationLevel);
+      answerProvenWrong.set(
+        is.itemId,
+        result.gates.some((g) => g.gate === 'ANSWER_VERIFIED' && !g.pass && g.detail.startsWith('deterministic check:')),
+      );
       if (result.accepted) {
         accepted.set(is.itemId, composed.exercise);
         lastFailedGates.set(is.itemId, []);
@@ -302,6 +309,7 @@ export async function orchestrateItemGeneration(
     failedGates: lastFailedGates.get(is.itemId) ?? [],
     composeFailure: composeFailure.get(is.itemId) ?? null,
     answerVerificationLevel: answerLevel.get(is.itemId) ?? null,
+    answerProvenWrong: answerProvenWrong.get(is.itemId) ?? false,
     finalPrompt: accepted.get(is.itemId)?.prompt ?? null,
   }));
 

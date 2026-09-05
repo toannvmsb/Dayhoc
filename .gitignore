@@ -62,3 +62,6 @@ packages/testing/vision-benchmark-data/images/
 # reason, never enters git history.
 File du an/BaiTap4/
 CALIB*.txt
+ROUND*.txt
+INSP.txt
+PICK.txt

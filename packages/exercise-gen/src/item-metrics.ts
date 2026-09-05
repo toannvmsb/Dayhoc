@@ -25,7 +25,10 @@ export interface ItemQualityMetrics {
 
   readonly schemaPassRate: number;
   readonly skillAlignmentPassRate: number;
+  /** Of items the deterministic verifier ruled on, fraction it confirmed CORRECT (doc 56 §7). */
   readonly answerCorrectnessPassRate: number;
+  /** Fraction of accepted items whose answer a deterministic checker actually re-derived. */
+  readonly deterministicallyCheckedRate: number;
   readonly referenceLeakagePassRate: number;
   readonly withinWorksheetUniquenessPassRate: number;
   readonly kLevelPassRate: number;
@@ -78,9 +81,12 @@ export function aggregateItemQuality(runs: readonly ItemBenchmarkRun[]): ItemQua
   let costVnd = 0;
   let acceptedAttemptSum = 0;
 
-  // answer-correctness only counts deterministically-eligible items
-  let detEligible = 0;
-  let detVerified = 0;
+  // answer-correctness: of items the deterministic verifier RULED on
+  // (CORRECT or proven-wrong), how many were correct
+  let detRuled = 0;
+  let detCorrect = 0;
+  let acceptedNonReasoning = 0;
+  let acceptedDetVerified = 0;
 
   for (const r of runs) {
     requested += r.result.requestedCount;
@@ -97,16 +103,15 @@ export function aggregateItemQuality(runs: readonly ItemBenchmarkRun[]): ItemQua
     }
     for (const it of r.result.perItem) {
       if (it.accepted) acceptedAttemptSum += it.attempts;
-      if (it.answerVerificationLevel !== null) {
-        // an item whose policy produced a deterministic level is "eligible"
-        if (
-          it.answerVerificationLevel === 'DETERMINISTIC_CORRECTNESS_VERIFIED' ||
-          (it.accepted && it.answerKind !== 'reasoning')
-        ) {
-          detEligible += 1;
-          if (it.answerVerificationLevel === 'DETERMINISTIC_CORRECTNESS_VERIFIED') detVerified += 1;
-          else if (it.accepted) detVerified += 1; // accepted at an honest lower level counts as "not proven wrong"
-        }
+      if (it.answerProvenWrong) {
+        detRuled += 1; // ruled: WRONG
+      } else if (it.answerVerificationLevel === 'DETERMINISTIC_CORRECTNESS_VERIFIED') {
+        detRuled += 1;
+        detCorrect += 1;
+      }
+      if (it.accepted && it.answerKind !== 'reasoning') {
+        acceptedNonReasoning += 1;
+        if (it.answerVerificationLevel === 'DETERMINISTIC_CORRECTNESS_VERIFIED') acceptedDetVerified += 1;
       }
     }
   }
@@ -120,7 +125,8 @@ export function aggregateItemQuality(runs: readonly ItemBenchmarkRun[]): ItemQua
     rawGenerations,
     schemaPassRate: totalOps > 0 ? schemaValidOps / totalOps : 0,
     skillAlignmentPassRate: gatePassRate(runs, 'SKILL_ALIGNED'),
-    answerCorrectnessPassRate: detEligible > 0 ? detVerified / detEligible : 1,
+    answerCorrectnessPassRate: detRuled > 0 ? detCorrect / detRuled : 1,
+    deterministicallyCheckedRate: acceptedNonReasoning > 0 ? acceptedDetVerified / acceptedNonReasoning : 0,
     referenceLeakagePassRate: gatePassRate(runs, 'SIMILARITY_OK'),
     withinWorksheetUniquenessPassRate: gatePassRate(runs, 'UNIQUENESS_OK'),
     kLevelPassRate: gatePassRate(runs, 'K_LEVEL_OK'),

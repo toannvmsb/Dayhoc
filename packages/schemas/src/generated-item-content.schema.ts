@@ -39,15 +39,19 @@ export type ParsedGeneratedItemContent = z.infer<typeof generatedItemContentSche
 export type ParsedGeneratedItemContentBatch = z.infer<typeof generatedItemContentBatchSchema>;
 
 /**
- * Hand-authored strict JSON Schema mirroring the Zod schema above. Because the
- * answer is a plain string (no union), this is fully strict-mode compatible on
- * providers that reject `oneOf`/`anyOf` unions in strict structured output.
+ * Hand-authored JSON Schema for provider-native STRICT structured output.
+ * Because the answer is a plain string (no union), this is compatible with
+ * providers that reject `oneOf`/`anyOf` unions in strict mode.
  *
- * `strict: true` on the provider requires EVERY property to be listed in
- * `required` and `additionalProperties: false`. Optional fields (`distractors`,
- * `rubric`) are therefore expressed as nullable-and-required: the model must
- * emit the key, using `null` when not applicable, and the Zod coercion below
- * treats `null`/`""` as absent.
+ * Strict-mode constraints observed here (OpenAI structured outputs):
+ *  - EVERY property listed in `required`; `additionalProperties: false`.
+ *  - optional fields expressed as nullable-and-required (`type: [T, "null"]`);
+ *    the Zod coercion (`normalizeGeneratedItemContentPayload`) maps `null`/`""`
+ *    → absent.
+ *  - NO `minLength` / `minItems` / `maxItems` / `minimum` — strict mode does
+ *    not support them. Those bounds (6 non-empty hint rungs, 1-2 items, …) are
+ *    enforced by the Zod parse + `composeExercise` + `acceptItem`, and stated
+ *    in the system prompt.
  */
 export const GENERATED_ITEM_CONTENT_JSON_SCHEMA = {
   type: 'object',
@@ -56,19 +60,17 @@ export const GENERATED_ITEM_CONTENT_JSON_SCHEMA = {
   properties: {
     items: {
       type: 'array',
-      minItems: 1,
-      maxItems: 2,
       items: {
         type: 'object',
         additionalProperties: false,
         required: ['itemId', 'prompt', 'answer', 'distractors', 'hints', 'workedSolution', 'rubric'],
         properties: {
-          itemId: { type: 'string', minLength: 1 },
-          prompt: { type: 'string', minLength: 1 },
+          itemId: { type: 'string' },
+          prompt: { type: 'string' },
           answer: { type: 'string' },
-          distractors: { type: ['array', 'null'], items: { type: 'string', minLength: 1 } },
-          hints: { type: 'array', minItems: 6, maxItems: 6, items: { type: 'string', minLength: 1 } },
-          workedSolution: { type: 'string', minLength: 1 },
+          distractors: { type: ['array', 'null'], items: { type: 'string' } },
+          hints: { type: 'array', items: { type: 'string' } },
+          workedSolution: { type: 'string' },
           rubric: { type: ['string', 'null'] },
         },
       },
