@@ -23,6 +23,7 @@
     { "path": "packages/api-contract" },
     { "path": "packages/projections" },
     { "path": "packages/revision" },
+    { "path": "packages/billing" },
     { "path": "packages/ai" },
     { "path": "packages/audit" },
     { "path": "services/api" },

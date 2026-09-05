@@ -55,7 +55,29 @@ import {
   type AnalyticsAdapter,
   type Logger,
 } from '@copilot/observability';
-import { asChildId, entitlementsFor, PLANS, type AnswerSpec, type Plan } from '@copilot/domain';
+import {
+  applyBillingEvent,
+  asChildId,
+  entitlementsFor,
+  freeSubscription,
+  isEntitled,
+  PLANS,
+  type AnswerSpec,
+  type BillingSource,
+  type Plan,
+  type SubscriptionRecord,
+} from '@copilot/domain';
+import { resolveReceiptValidationAdapter } from '@copilot/billing';
+// Note: @copilot/billing also exports `shouldProcessWebhookEvent` /
+// `webhookDedupeKey` (webhook idempotency against `billing_webhook_events`)
+// and the raw `AppleReceiptValidationAdapter` / `GooglePlayReceiptValidationAdapter`.
+// Not wired here yet: a real store webhook is an UNAUTHENTICATED endpoint
+// verified by the store's own signature (Apple JWS / Google Pub/Sub token),
+// not a `CallerAuth`-bearer route like everything else in this file — that
+// route + signature verification is a real integration task for when a
+// store is actually chosen, not scaffolding. `restorePurchase` below (the
+// user-initiated, bearer-authenticated "Restore Purchases" flow both stores
+// require) is fully wired end-to-end today.
 import { createApi, AuthzError, NotFoundError, type RequestContext } from '../api.js';
 import { createContextResolver, ForbiddenError, type CallerAuth } from './context.js';
 import { resolveChildLearningInputs, syncSchoolGradeCache } from './learning-scene.js';
@@ -191,6 +213,13 @@ export function createProductionApi(opts: ProductionApiOptions) {
    * requires this shape; never log the raw id anywhere analytics can see it). */
   const actorRef = (id: string): string => createHash('sha256').update(id).digest('hex').slice(0, 16);
 
+  // ---- P9: billing readiness (@copilot/billing) ----------------------
+  // `resolveReceiptValidationAdapter` is Noop unless DZ_BILLING=mock|live is
+  // set — see that module's doc comment. Nothing here can charge anything:
+  // `restorePurchase` only reads back a purchase the user already made in
+  // the store's own UI, it never creates one.
+  const receiptValidation = resolveReceiptValidationAdapter(process.env);
+
   // ---- M4: upload / document-vision ingestion ----------------------
   const uploadStorage =
     opts.uploadStorage ?? resolveUploadStorageAdapter(process.env).adapter;
@@ -249,18 +278,63 @@ export function createProductionApi(opts: ProductionApiOptions) {
     role: 'admin', // authorization already enforced above; 'admin' bypasses the legacy family check
   });
 
-  /** The plan for the family this user owns or belongs to (default 'free'). */
-  async function familyPlan(userId: string): Promise<Plan> {
+  /** The owning family id for a user (OWNER membership preferred), or undefined. */
+  async function familyIdFor(userId: string): Promise<string | undefined> {
     const r = (
       await pool.query(
-        `SELECT s.plan FROM family_subscriptions s
-           JOIN family_memberships m ON m.family_id = s.family_id
-          WHERE m.user_id = $1 AND s.status = 'active'
-          ORDER BY (m.member_role = 'OWNER') DESC LIMIT 1`,
+        `SELECT f.id FROM families f JOIN family_memberships m ON m.family_id = f.id
+          WHERE m.user_id = $1 ORDER BY (m.member_role = 'OWNER') DESC LIMIT 1`,
         [userId],
       )
-    ).rows[0] as { plan: Plan } | undefined;
-    return r?.plan ?? 'free';
+    ).rows[0] as { id: string } | undefined;
+    return r?.id;
+  }
+
+  /** The full subscription record for a user's family (default free/none). Not
+   * gated by `status` here — `isEntitled` decides what "active" means,
+   * including 'grace_period' staying entitled (see @copilot/domain). */
+  async function familySubscription(userId: string): Promise<SubscriptionRecord> {
+    const familyId = await familyIdFor(userId);
+    if (!familyId) return freeSubscription(new Date().toISOString());
+    const r = (
+      await pool.query(
+        `SELECT plan, status, source, store_transaction_id, current_period_end,
+                grace_period_end, auto_renew, updated_at
+           FROM family_subscriptions WHERE family_id = $1`,
+        [familyId],
+      )
+    ).rows[0] as
+      | {
+          plan: Plan;
+          status: SubscriptionRecord['status'];
+          source: BillingSource;
+          store_transaction_id: string | null;
+          current_period_end: Date | null;
+          grace_period_end: Date | null;
+          auto_renew: boolean;
+          updated_at: Date;
+        }
+      | undefined;
+    if (!r) return freeSubscription(new Date().toISOString());
+    return {
+      plan: r.plan,
+      status: r.status,
+      source: r.source,
+      storeTransactionId: r.store_transaction_id,
+      currentPeriodEnd: r.current_period_end?.toISOString() ?? null,
+      gracePeriodEnd: r.grace_period_end?.toISOString() ?? null,
+      autoRenew: r.auto_renew,
+      updatedAt: r.updated_at.toISOString(),
+    };
+  }
+
+  /** The EFFECTIVE plan for the family this user owns or belongs to — 'free'
+   * whenever the subscription isn't currently entitled (expired/past_due/no
+   * subscription), even if a stale non-free `plan` value is still on the row. */
+  async function familyPlan(userId: string): Promise<Plan> {
+    const sub = await familySubscription(userId);
+    const now = new Date().toISOString();
+    return isEntitled(sub, now) ? sub.plan : 'free';
   }
 
   // ---- IX: recompute-if-stale persisted learning state --------------
@@ -1744,6 +1818,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
     /** GET /me/entitlements — the caller's family plan + what it unlocks. */
     async getEntitlements(auth: CallerAuth) {
       const ctx = await deriveContext(auth);
+      const sub = await familySubscription(ctx.userId);
       const plan = await familyPlan(ctx.userId);
       const ent = entitlementsFor(plan);
       const childCount = (
@@ -1763,6 +1838,16 @@ export function createProductionApi(opts: ProductionApiOptions) {
           recommended: entitlementsFor(p).recommended,
         })),
         usage: { children: childCount.n, maxChildren: ent.maxChildren },
+        // P9 — billing readiness: subscription provenance/lifecycle detail for
+        // a "Manage subscription" screen. `source: 'none'|'manual'` means
+        // there is still no real store subscription — billing is MOCK.
+        subscription: {
+          status: sub.status,
+          source: sub.source,
+          currentPeriodEnd: sub.currentPeriodEnd,
+          gracePeriodEnd: sub.gracePeriodEnd,
+          autoRenew: sub.autoRenew,
+        },
       };
     },
 
@@ -1784,13 +1869,83 @@ export function createProductionApi(opts: ProductionApiOptions) {
       ).rows[0] as { id: string } | undefined;
       if (!fam) throw new ForbiddenError('only the family owner may change the plan');
       await pool.query(
-        `INSERT INTO family_subscriptions (family_id, plan, status, current_period_end, updated_at)
-         VALUES ($1, $2, 'active', now() + interval '30 days', now())
+        `INSERT INTO family_subscriptions
+           (family_id, plan, status, current_period_end, updated_at, source, store_transaction_id, grace_period_end, auto_renew)
+         VALUES ($1, $2, 'active', now() + interval '30 days', now(), 'manual', NULL, NULL, false)
          ON CONFLICT (family_id) DO UPDATE SET plan = EXCLUDED.plan, status = 'active',
-           current_period_end = EXCLUDED.current_period_end, updated_at = now()`,
+           current_period_end = EXCLUDED.current_period_end, updated_at = now(),
+           source = 'manual', store_transaction_id = NULL, grace_period_end = NULL, auto_renew = false`,
         [fam.id, plan],
       );
       return { plan: plan as import('@copilot/domain').Plan, billing: 'MOCK_NO_CHARGE' as const };
+    },
+
+    /**
+     * POST /me/billing/restore-purchase — P9 billing readiness. Validates a
+     * store receipt/purchase token via `@copilot/billing`'s
+     * `ReceiptValidationAdapter` and, if valid, applies the resulting
+     * `applyBillingEvent({kind:'purchased', ...})` to the family's
+     * subscription. This NEVER creates a charge — it only reads back a
+     * purchase the user already completed in the App Store / Play Store's
+     * own UI (the standard "Restore Purchases" flow both stores require).
+     *
+     * With no `DZ_BILLING` env set (today, everywhere), the resolved adapter
+     * is `Noop` and this always returns `{restored:false}` — billing stays
+     * MOCK exactly as before. `DZ_BILLING=mock` exercises the full
+     * port→domain→persistence path in dev/tests with a fake receipt.
+     * `DZ_BILLING=live` requires real Apple/Google credentials the app does
+     * not have configured; until that integration is actually built the
+     * adapter throws rather than silently doing nothing.
+     */
+    async restorePurchase(auth: CallerAuth, input: { store: 'apple' | 'google'; receipt: string }) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      const fam = (
+        await pool.query(
+          `SELECT f.id FROM families f JOIN family_memberships m ON m.family_id = f.id
+            WHERE m.user_id = $1 AND m.member_role = 'OWNER' LIMIT 1`,
+          [ctx.userId],
+        )
+      ).rows[0] as { id: string } | undefined;
+      if (!fam) throw new ForbiddenError('only the family owner may restore a purchase');
+
+      const adapter = input.store === 'apple' ? receiptValidation.apple : receiptValidation.google;
+      const result = await adapter.validate({ store: input.store, receipt: input.receipt });
+      if (!result.valid || !result.plan || !result.periodEnd) {
+        return { restored: false as const, reason: result.reason ?? 'receipt not valid' };
+      }
+
+      const now = new Date().toISOString();
+      const current = await familySubscription(ctx.userId);
+      const next = applyBillingEvent(current, {
+        kind: 'purchased',
+        plan: result.plan,
+        source: input.store,
+        storeTransactionId: result.storeTransactionId,
+        periodEnd: result.periodEnd,
+        now,
+      });
+      await pool.query(
+        `INSERT INTO family_subscriptions
+           (family_id, plan, status, current_period_end, updated_at, source, store_transaction_id, grace_period_end, auto_renew)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         ON CONFLICT (family_id) DO UPDATE SET plan = EXCLUDED.plan, status = EXCLUDED.status,
+           current_period_end = EXCLUDED.current_period_end, updated_at = EXCLUDED.updated_at,
+           source = EXCLUDED.source, store_transaction_id = EXCLUDED.store_transaction_id,
+           grace_period_end = EXCLUDED.grace_period_end, auto_renew = EXCLUDED.auto_renew`,
+        [
+          fam.id,
+          next.plan,
+          next.status,
+          next.currentPeriodEnd,
+          next.updatedAt,
+          next.source,
+          next.storeTransactionId,
+          next.gracePeriodEnd,
+          next.autoRenew,
+        ],
+      );
+      return { restored: true as const, plan: next.plan, currentPeriodEnd: next.currentPeriodEnd };
     },
 
     // ---- M7: REAL CHILD-PROFILE DELETION ---------------------------
