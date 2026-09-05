@@ -86,7 +86,8 @@ describe('doc 58 §6 — ROUND 2 (paid)', () => {
     const kb = loadKnowledgeBase();
     const lib = loadReferenceLibrary();
     const pricing = new PricingRegistry();
-    const specs = buildItemBenchmarkSpecs(kb);
+    const specIdFilter = process.env.ROUND2_SPEC_IDS?.split(',').map((s) => s.trim()).filter(Boolean);
+    const specs = buildItemBenchmarkSpecs(kb).filter((s) => !specIdFilter || specIdFilter.includes(s.id));
 
     let spentUsd = 0;
     let stopReason: string | null = null;

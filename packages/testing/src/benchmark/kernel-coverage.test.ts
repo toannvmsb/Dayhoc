@@ -76,6 +76,7 @@ describe('doc 58 §11 — local mock benchmark: kernel-supported items reach pro
       }
     }
     const m = aggregateItemQuality(runs);
+    if (process.env.DUMP_MOCK_METRICS) console.log(JSON.stringify(m, null, 2));
 
     expect(m.kernelCoverageRate).toBeGreaterThanOrEqual(0.7);
     // the deterministic mock uses the kernel's exact numbers + answer, so a

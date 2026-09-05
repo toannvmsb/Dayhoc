@@ -19,7 +19,8 @@ const OP_KEYWORDS: Record<KernelOperation, RegExp> = {
   MULTIPLICATION: /mỗi \S+ (có |chứa |đóng |gồm )?\d+|gấp (đôi|ba|\d+)|\d+ (nhóm|hộp|thùng|hàng|túi|tá|chục|lần) (như|,? mỗi)|đóng \d+ (thùng|hộp|gói|túi|két)/i,
   DIVISION: /chia đều|chia cho|chia thành|chia lại|phân phối|mỗi (nhóm|tổ|phần|người|hàng|hộp|xe) (nhận|có|được|cần)|xếp (đều )?thành|cắt thành|đóng đều (vào|thành)/i,
   PROPORTION: /tỉ lệ|tỉ số|theo tỉ|phần với|thành phần thứ|dãy tỉ/i,
-  SOLVE_EQUATION: /tìm x|phương trình|biết .*\bx\b/i,
+  SOLVE_EQUATION:
+    /tìm\s+[a-zà-ỹ]|tìm\s+số|số\s+(cần|phải|chưa)\s+(tìm|biết)|số\s+nào|phương\s*trình|chuyển\s*vế|ẩn\s+số|giá\s+trị\s+của\s+[a-z]\b|biết\s*(rằng)?\s*[:,]?\s*[a-z]\b|[a-zA-Z]\s*[-+×·*/:]\s*\d[\d\s.,]*=|=\s*[-+]?\d[\d\s.,]*$/im,
   CONVERT: /đổi .*(ra|sang|thành)|bằng bao nhiêu (cm|mm|dm|m|g|kg|phút|giây|giờ)/i,
   CLASSIFY: /loại (góc|tam giác|nào)|thuộc loại|là góc (gì|nào)/i,
   MIXED: /.^/, // never matches — MIXED is not keyword-checked
@@ -103,12 +104,18 @@ export function validateAgainstKernel(
     );
   }
 
-  // 2. every GIVEN number must appear in the prompt. A negative operand rendered
-  //    as a subtraction ("x − 14" for the required token -14) is NOT a drop.
+  // 2. every GIVEN number must appear in the prompt — by MATHEMATICAL ROLE, not
+  //    raw signed-token match (doc 58 §3 / doc 59 P1):
+  //    - a 0 operand is implicit (never written);
+  //    - for LINEAR_EQ the constant b is carried by the ± sign of the equation,
+  //      so "x - 14 = 21" preserves the role of b = -14.
   const promptNums = numbersIn(exercise.prompt);
-  const dropped = kernel.requiredNumbersInPrompt.filter(
-    (n) => !promptNums.has(n) && !(n < 0 && promptNums.has(Math.abs(n))),
-  );
+  const dropped = kernel.requiredNumbersInPrompt.filter((n) => {
+    if (n === 0) return false;
+    if (promptNums.has(n)) return false;
+    if (kernel.family === 'LINEAR_EQ' && n < 0 && promptNums.has(-n)) return false;
+    return true;
+  });
   if (dropped.length > 0) {
     codes.push('KERNEL_NUMBER_DROPPED');
     details.push(`prompt is missing given number(s): ${dropped.join(', ')}`);
@@ -168,12 +175,24 @@ export function validateAgainstKernel(
   // 5. SEMANTIC_STRUCTURE_MISMATCH (doc 58 §3) — for a single-operation family,
   //    the prose must imply the kernel's operation, not a different one.
   const op = kernel.semantics.operation;
-  if (STRICT_OPS.has(op)) {
-    const p = exercise.prompt;
+  const p = exercise.prompt;
+  if (op === 'SOLVE_EQUATION') {
+    // An equation prompt legitimately reads with +/- language ("x - 14 = 21").
+    // It is satisfied by equation SHAPE, not by the absence of arithmetic words —
+    // the a·x ± b = c operands do NOT combine to the answer (doc 59 P1).
+    const hasEquationShape =
+      /[a-zA-Z]\s*[-+×·*/:]?\s*\d[\d\s.,]*=\s*[-+]?\d/.test(p) ||
+      /=\s*[-+]?\d[\d\s.,]*[.);]?\s*$/im.test(p) ||
+      OP_KEYWORDS.SOLVE_EQUATION.test(p);
+    if (!hasEquationShape) {
+      codes.push('SEMANTIC_STRUCTURE_MISMATCH');
+      details.push('kernel operation is SOLVE_EQUATION but the prompt shows no equation to solve');
+    }
+  } else if (STRICT_OPS.has(op)) {
     const impliesExpected = OP_KEYWORDS[op].test(p);
     const conflicting: KernelOperation[] = [];
     for (const other of STRICT_OPS) {
-      if (other === op) continue;
+      if (other === op || other === 'SOLVE_EQUATION') continue; // equation-shape, not a competing arithmetic reading
       if (!OP_KEYWORDS[other].test(p)) continue;
       // only a CONFLICT if applying `other` to the two operands would give a
       // different answer than the kernel's

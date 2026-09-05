@@ -200,21 +200,6 @@ describe('doc 58 §3 — semantic preservation (the "36 / 9" → "36 plus 9" cas
     expect(v.codes).not.toContain('SOLUTION_CONTRADICTS_KERNEL');
   });
 
-  it('a LINEAR_EQ negative constant rendered as subtraction ("x - 14") is NOT a KERNEL_NUMBER_DROPPED (Round 2 regression)', () => {
-    let k: MathKernel | null = null;
-    for (let i = 0; i < 200 && !k; i += 1) {
-      const r = buildKernelOfFamily('LINEAR_EQ', probeSpec('LINEAR_EQ', i));
-      if (r.ok && r.kernel.requiredNumbersInPrompt.some((n) => n < 0)) k = r.kernel;
-    }
-    if (!k) return; // no negative-constant instance in the sample — nothing to assert
-    const neg = k.requiredNumbersInPrompt.find((n) => n < 0)!;
-    const pos = k.requiredNumbersInPrompt.find((n) => n > 0) ?? 21;
-    const ans = k.expectedAnswer.kind === 'numeric' ? k.expectedAnswer.value : 0;
-    const ex = exFrom(k, `Tìm x, biết: x ${Math.abs(neg)} = ${pos}`.replace(`x ${Math.abs(neg)}`, `x - ${Math.abs(neg)}`), ans);
-    const v = validateAgainstKernel({ ...ex, workedSolution: `Giải: x = ${pos} + ${Math.abs(neg)}. Đáp số: ${ans}.` }, k);
-    expect(v.codes).not.toContain('KERNEL_NUMBER_DROPPED');
-  });
-
   it('a worked solution that concludes the WRONG number is a SOLUTION_CONTRADICTS_KERNEL', () => {
     const r = buildKernelOfFamily('INT_ARITH', probeSpec('INT_ARITH', 7));
     expect(r.ok).toBe(true);
@@ -226,5 +211,68 @@ describe('doc 58 §3 — semantic preservation (the "36 / 9" → "36 plus 9" cas
     const v = validateAgainstKernel(bad, k);
     expect(v.consistent).toBe(false);
     expect(v.codes).toContain('SOLUTION_CONTRADICTS_KERNEL');
+  });
+});
+
+describe('doc 59 P1 — LINEAR_EQ semantic handling by mathematical role', () => {
+  function linEx(k: MathKernel, prompt: string, ans: number): GeneratedExercise {
+    return {
+      id: 'x', generationSpecId: 'g', skillId: asSkillId('M7.QNUM.LINEAR_EQ'),
+      requiredSkillIds: [asSkillId('M7.QNUM.LINEAR_EQ')], bucket: 'currentSkill',
+      knowledgeLevel: 'K2', thinkingLevel: 'T2', prompt,
+      answerSpec: { kind: 'numeric', value: ans, tolerance: 0 },
+      hints: ['a', 'b', 'c', 'd', 'e', 'f'],
+      workedSolution: `Chuyển vế rồi chia hai vế. Đáp số: x = ${ans}.`,
+      origin: 'ai_generated',
+    };
+  }
+  const findLinear = (pred: (k: MathKernel) => boolean): MathKernel | null => {
+    for (let i = 0; i < 400; i += 1) {
+      const r = buildKernelOfFamily('LINEAR_EQ', probeSpec('LINEAR_EQ', i));
+      if (r.ok && r.kernel.expectedAnswer.kind === 'numeric' && pred(r.kernel)) return r.kernel;
+    }
+    return null;
+  };
+
+  it('b < 0 rendered as subtraction ("ax - |b| = c") — no KERNEL_NUMBER_DROPPED, no SEMANTIC_STRUCTURE_MISMATCH', () => {
+    const k = findLinear((kk) => kk.requiredNumbersInPrompt.some((n) => n < 0));
+    expect(k).not.toBeNull();
+    if (!k) return;
+    const [a, b, c] = k.requiredNumbersInPrompt as [number, number, number];
+    const ans = k.expectedAnswer.kind === 'numeric' ? k.expectedAnswer.value : 0;
+    const v = validateAgainstKernel(linEx(k, `Tìm x, biết: ${a}x - ${Math.abs(b)} = ${c}`, ans), k);
+    expect(v.codes).not.toContain('KERNEL_NUMBER_DROPPED');
+    expect(v.codes).not.toContain('SEMANTIC_STRUCTURE_MISMATCH');
+  });
+
+  it('b === 0 ("ax = c") — the implicit 0 constant is not a dropped number', () => {
+    const k = findLinear((kk) => kk.requiredNumbersInPrompt.includes(0));
+    if (!k) return; // 0 constant is rare in the sample
+    const [a, , c] = k.requiredNumbersInPrompt as [number, number, number];
+    const ans = k.expectedAnswer.kind === 'numeric' ? k.expectedAnswer.value : 0;
+    const v = validateAgainstKernel(linEx(k, `Tìm x: ${a}x = ${c}`, ans), k);
+    expect(v.codes).not.toContain('KERNEL_NUMBER_DROPPED');
+  });
+
+  it('word-form equation ("số cần tìm … nhân … rồi trừ …") satisfies SOLVE_EQUATION', () => {
+    const k = findLinear((kk) => kk.requiredNumbersInPrompt.every((n) => n > 0));
+    expect(k).not.toBeNull();
+    if (!k) return;
+    const [a, b, c] = k.requiredNumbersInPrompt as [number, number, number];
+    const ans = k.expectedAnswer.kind === 'numeric' ? k.expectedAnswer.value : 0;
+    const v = validateAgainstKernel(
+      linEx(k, `Tìm số cần tìm, biết rằng số đó nhân với ${a} rồi cộng ${b} thì được ${c}.`, ans),
+      k,
+    );
+    expect(v.codes).not.toContain('SEMANTIC_STRUCTURE_MISMATCH');
+  });
+
+  it('a SOLVE_EQUATION prompt with no equation and no "tìm" language still flags', () => {
+    const k = findLinear(() => true);
+    expect(k).not.toBeNull();
+    if (!k) return;
+    const ans = k.expectedAnswer.kind === 'numeric' ? k.expectedAnswer.value : 0;
+    const v = validateAgainstKernel(linEx(k, `Một cửa hàng bán được một số hàng trong ngày.`, ans), k);
+    expect(v.codes).toContain('SEMANTIC_STRUCTURE_MISMATCH');
   });
 });
