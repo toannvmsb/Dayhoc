@@ -78,6 +78,8 @@ export interface ItemRunRecord {
   readonly kernelFamily: string | null;
   readonly attempts: number;
   readonly failedGates: readonly ItemAcceptanceGate[];
+  /** Concatenated `detail` of the failed gates on the last attempt (for the failure taxonomy). */
+  readonly failureDetail: string | null;
   readonly composeFailure: string | null;
   readonly answerVerificationLevel: AnswerVerificationLevel | null;
   readonly finalPrompt: string | null;
@@ -182,6 +184,7 @@ export async function orchestrateItemGeneration(
   const attempts = new Map<string, number>();
   const lastInstructions = new Map<string, string[]>();
   const lastFailedGates = new Map<string, readonly ItemAcceptanceGate[]>();
+  const lastFailureDetail = new Map<string, string>();
   const composeFailure = new Map<string, string | null>();
   const answerLevel = new Map<string, AnswerVerificationLevel | null>();
   const answerStatusById = new Map<string, ItemAnswerStatus>();
@@ -302,6 +305,10 @@ export async function orchestrateItemGeneration(
         lastInstructions.set(is.itemId, []);
       } else {
         lastFailedGates.set(is.itemId, result.failedGates);
+        lastFailureDetail.set(
+          is.itemId,
+          result.gates.filter((g) => !g.pass).map((g) => `${g.gate}: ${g.detail}`).join(' | '),
+        );
         lastInstructions.set(
           is.itemId,
           result.gates.filter((g) => !g.pass && g.regenerationInstruction).map((g) => g.regenerationInstruction!),
@@ -333,6 +340,7 @@ export async function orchestrateItemGeneration(
     kernelFamily: kernelFor.get(is.itemId)?.family ?? null,
     attempts: attempts.get(is.itemId) ?? 0,
     failedGates: lastFailedGates.get(is.itemId) ?? [],
+    failureDetail: composeFailure.get(is.itemId) ?? lastFailureDetail.get(is.itemId) ?? null,
     composeFailure: composeFailure.get(is.itemId) ?? null,
     answerVerificationLevel: answerLevel.get(is.itemId) ?? null,
     finalPrompt: accepted.get(is.itemId)?.prompt ?? null,

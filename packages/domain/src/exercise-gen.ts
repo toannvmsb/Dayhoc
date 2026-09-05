@@ -716,6 +716,48 @@ export interface KernelOperand {
 }
 
 /**
+ * The bounded, deterministic operation semantics a kernel-covered item MUST
+ * realize (doc 58 §3). Prevents "all the numbers are present but the prose
+ * means a different operation" (`36 / 9` → "36 items plus another 9"). NOT NLP:
+ * a small keyword contract per operation.
+ */
+export const KERNEL_OPERATIONS = [
+  'ADDITION',
+  'SUBTRACTION',
+  'MULTIPLICATION',
+  'DIVISION',
+  'MIXED', // a closed multi-operation expression
+  'CLASSIFY',
+  'PROPORTION',
+  'SOLVE_EQUATION',
+  'CONVERT',
+] as const;
+export type KernelOperation = (typeof KERNEL_OPERATIONS)[number];
+
+export const KERNEL_SCENARIO_TYPES = [
+  'CLOSED_EXPRESSION',
+  'COMBINE',
+  'REMOVE',
+  'EQUAL_SHARING',
+  'SCALING',
+  'RATE',
+  'FIND_UNKNOWN',
+  'CLASSIFY',
+  'CONVERT',
+  'GEOMETRY',
+] as const;
+export type KernelScenarioType = (typeof KERNEL_SCENARIO_TYPES)[number];
+
+export interface KernelSemantics {
+  readonly operation: KernelOperation;
+  readonly scenarioType: KernelScenarioType;
+  /** role name → operand value, e.g. { total: 36, groupCount: 9 }. */
+  readonly operandRoles: Readonly<Record<string, number>>;
+  /** which quantity the item asks for, e.g. 'quantityPerGroup'. */
+  readonly askedQuantityRole: string;
+}
+
+/**
  * MathKernel (doc 58 §2) — the deterministic ProblemInstance. Pure output of
  * (ItemGenerationSpec, deterministic RNG, uniqueness/forbidden constraints).
  * Generated BEFORE any AI call. Everything here is authoritative.
@@ -734,6 +776,8 @@ export interface MathKernel {
   readonly units: string | null;
   /** Numbers the AI MUST include verbatim in the prompt (the given data). */
   readonly requiredNumbersInPrompt: readonly number[];
+  /** The bounded operation-semantics contract (doc 58 §3). */
+  readonly semantics: KernelSemantics;
   readonly constraints: {
     readonly integerResult: boolean;
     readonly fractionSimplified: boolean;
@@ -752,7 +796,9 @@ export type MathKernelResult =
 export const KERNEL_CONSISTENCY_CODES = [
   'ANSWER_MISMATCH', // returned answer ≠ kernel.expectedAnswer
   'KERNEL_NUMBER_DROPPED', // a required given number is missing from the prompt
+  'OPERAND_MUTATION', // a given number appears CHANGED (arithmetic altered)
   'UNIT_INCONSISTENT',
+  'SEMANTIC_STRUCTURE_MISMATCH', // the prose implies a different operation (doc 58 §3)
   'SOLUTION_CONTRADICTS_KERNEL',
   'DISTRACTOR_INCLUDES_ANSWER',
   'PROMPT_NOT_SOLVABLE',

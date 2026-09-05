@@ -42,6 +42,7 @@ export * from './item-metrics.js';
 
 // --- answer verification architecture (doc 58) — deterministic MathKernel ---
 export * from './math-kernel.js';
+export * from './kernel-oracle.js';
 export * from './kernel-validator.js';
 export * from './answer-crosscheck.js';
 export * from './problem-type-matrix.js';

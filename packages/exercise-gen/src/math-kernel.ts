@@ -5,6 +5,7 @@ import {
   type AnswerKind,
   type ItemGenerationSpec,
   type KernelAnswer,
+  type KernelSemantics,
   type MathKernel,
   type MathKernelFamily,
   type MathKernelResult,
@@ -137,6 +138,154 @@ interface Built {
 }
 
 type FamilyGen = (spec: ItemGenerationSpec, rng: Rng) => Built | { unsupported: string };
+
+// --- operation semantics (doc 58 §3) — derived centrally per family ------
+
+const OP_KEYWORD = {
+  ADDITION: /\+/,
+  SUBTRACTION: /(?<![(])\s-\s|−/,
+  MULTIPLICATION: /×|\*/,
+  DIVISION: /:|÷|\//,
+} as const;
+
+/** operation of a single closed expression (INT_ARITH / WORD_1STEP). */
+function operationOfExpr(expr: string): KernelSemantics['operation'] {
+  const hasParen = /[()]/.test(expr);
+  const ops = [
+    OP_KEYWORD.ADDITION.test(expr),
+    /\s-\s/.test(expr),
+    OP_KEYWORD.MULTIPLICATION.test(expr),
+    OP_KEYWORD.DIVISION.test(expr),
+  ];
+  const count = ops.filter(Boolean).length;
+  if (hasParen || count > 1) return 'MIXED';
+  if (ops[3]) return 'DIVISION';
+  if (ops[2]) return 'MULTIPLICATION';
+  if (ops[1]) return 'SUBTRACTION';
+  return 'ADDITION';
+}
+
+function deriveSemantics(family: MathKernelFamily, b: Built): KernelSemantics {
+  const roleFrom = (names: readonly string[]): Record<string, number> =>
+    Object.fromEntries(
+      b.operands.filter((o) => (names as readonly string[]).includes(o.name)).map((o) => [o.name, o.value]),
+    );
+  const roles = (m: Record<string, number>): Record<string, number> => m;
+
+  switch (family) {
+    case 'INT_ARITH':
+    case 'WORD_1STEP': {
+      const op = operationOfExpr(b.canonicalVerificationExpression ?? '+');
+      const [a, bb] = b.requiredNumbersInPrompt;
+      return {
+        operation: op,
+        scenarioType:
+          family === 'INT_ARITH'
+            ? 'CLOSED_EXPRESSION'
+            : op === 'ADDITION'
+              ? 'COMBINE'
+              : op === 'SUBTRACTION'
+                ? 'REMOVE'
+                : 'SCALING',
+        operandRoles: roles({ first: a ?? 0, second: bb ?? 0 }),
+        askedQuantityRole: 'result',
+      };
+    }
+    case 'DISTRIBUTIVE':
+      return {
+        operation: 'MIXED',
+        scenarioType: 'CLOSED_EXPRESSION',
+        operandRoles: roleFrom(['a', 'b', 'c']),
+        askedQuantityRole: 'result',
+      };
+    case 'SUM_DIFF':
+      return {
+        operation: 'MIXED',
+        scenarioType: 'FIND_UNKNOWN',
+        operandRoles: roleFrom(['S', 'D']),
+        askedQuantityRole: 'largerNumber',
+      };
+    case 'UNIT_RATE':
+      return {
+        operation: 'MIXED',
+        scenarioType: 'RATE',
+        operandRoles: roleFrom(['n1', 'total1', 'n2']),
+        askedQuantityRole: 'totalForSecondCount',
+      };
+    case 'FRACTION_ARITH': {
+      const op = operationOfExpr(b.canonicalVerificationExpression ?? '+');
+      return {
+        operation: op === 'MIXED' ? 'ADDITION' : op,
+        scenarioType: 'CLOSED_EXPRESSION',
+        operandRoles: roleFrom(['a', 'b', 'c', 'd']),
+        askedQuantityRole: 'resultFraction',
+      };
+    }
+    case 'RATIO_SHARE':
+      return {
+        operation: 'PROPORTION',
+        scenarioType: 'EQUAL_SHARING',
+        operandRoles: roleFrom(['total', 'p1', 'p2', 'p3']),
+        askedQuantityRole: 'firstPart',
+      };
+    case 'LINEAR_EQ':
+      return {
+        operation: 'SOLVE_EQUATION',
+        scenarioType: 'FIND_UNKNOWN',
+        operandRoles: roleFrom(['a', 'b', 'c']),
+        askedQuantityRole: 'unknownX',
+      };
+    case 'ANGLE_SUM':
+      return {
+        operation: 'SUBTRACTION',
+        scenarioType: 'GEOMETRY',
+        operandRoles: roleFrom(['A', 'B']),
+        askedQuantityRole: 'thirdAngle',
+      };
+    case 'ANGLE_TYPE':
+      return {
+        operation: 'CLASSIFY',
+        scenarioType: 'CLASSIFY',
+        operandRoles: roleFrom(['deg']),
+        askedQuantityRole: 'angleCategory',
+      };
+    case 'PERCENT':
+      return {
+        operation: 'MIXED',
+        scenarioType: 'SCALING',
+        operandRoles: roleFrom(['p', 'base']),
+        askedQuantityRole: 'percentOfBase',
+      };
+    case 'UNIT_CONVERSION':
+      return {
+        operation: 'CONVERT',
+        scenarioType: 'CONVERT',
+        operandRoles: roleFrom(['x']),
+        askedQuantityRole: 'convertedValue',
+      };
+    case 'RECT_GEOMETRY':
+      return {
+        operation: 'MIXED',
+        scenarioType: 'GEOMETRY',
+        operandRoles: roleFrom(['length', 'width']),
+        askedQuantityRole: b.units === 'cm²' ? 'area' : 'perimeter',
+      };
+    case 'WORD_2STEP':
+      return {
+        operation: 'MIXED',
+        scenarioType: 'FIND_UNKNOWN',
+        operandRoles: roleFrom(['a', 'b', 'c']),
+        askedQuantityRole: 'result',
+      };
+    default:
+      return {
+        operation: 'MIXED',
+        scenarioType: 'CLOSED_EXPRESSION',
+        operandRoles: {},
+        askedQuantityRole: 'result',
+      };
+  }
+}
 
 // range by K level (bigger numbers at higher K)
 function rangeFor(spec: ItemGenerationSpec): { lo: number; hi: number } {
@@ -566,7 +715,18 @@ export function generateMathKernel(
 ): MathKernelResult {
   const family = resolveMathFamily(itemSpec, kb);
   if (!family) return { ok: false, reason: `no MathKernel family for ${itemSpec.problemStructure}/${itemSpec.domain}` };
+  return buildKernelOfFamily(family, itemSpec, ctx);
+}
 
+/**
+ * Build a kernel of a SPECIFIC family (bypassing `resolveMathFamily`) — used by
+ * the integrity gate to exercise every family directly (doc 58 §1).
+ */
+export function buildKernelOfFamily(
+  family: MathKernelFamily,
+  itemSpec: ItemGenerationSpec,
+  ctx: KernelGenContext = {},
+): MathKernelResult {
   const forbidden = new Set((ctx.forbiddenNumberTuples ?? []).map(tupleKey));
   const recent = new Set((ctx.recentNumberTuples ?? []).map(tupleKey));
   const gen = GENERATORS[family];
@@ -590,6 +750,7 @@ export function generateMathKernel(
       canonicalVerificationExpression: built.canonicalVerificationExpression,
       units: built.units,
       requiredNumbersInPrompt: built.requiredNumbersInPrompt,
+      semantics: deriveSemantics(family, built),
       constraints: {
         integerResult: built.integerResult,
         fractionSimplified: built.fractionSimplified,
