@@ -124,7 +124,14 @@ export function createLunaExerciseGenerator(cfg: LunaGeneratorConfig): ExerciseG
           system: EXERCISE_GENERATOR_SYSTEM_PROMPT,
           payload,
           temperature: 0.4,
-          maxTokens: 4000,
+          // 4000 was too tight for an 8-item batch (6-rung hints + worked
+          // solution + prompt per item, in Vietnamese) — confirmed live: two
+          // gpt-4o smoke cases (8 items each) came back with truncated JSON
+          // ("Unterminated string" / "Unexpected end of JSON input") at the
+          // old cap. Raising the CAP costs nothing for a call that already
+          // fit in 4000 — billing is by tokens actually generated, not the
+          // cap — it only lets larger batches finish instead of truncating.
+          maxTokens: 12000,
           structuredOutputMode: requestedMode,
           ...(requestedMode === 'STRICT_JSON_SCHEMA' ? { jsonSchema: GENERATED_BATCH_JSON_SCHEMA } : {}),
         });
