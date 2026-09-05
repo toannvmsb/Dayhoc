@@ -98,7 +98,14 @@ export type GapDetail = {
   whyAppThinks: string[];
   affects: string[];
   lifecycleStep: { label: string; state: 'done' | 'current' | 'todo' }[];
-  prescription: { summary: string; perSession: { label: string; count: string }[]; rationale: string } | null;
+  prescription:
+    | {
+        summary: string;
+        perSession: { label: string; count: string }[];
+        rationale: string;
+        options: { key: 'follow' | 'lighter' | 'intensify' | 'later'; label: string; detail: string }[];
+      }
+    | null;
 };
 
 export type TeachingPlan = {

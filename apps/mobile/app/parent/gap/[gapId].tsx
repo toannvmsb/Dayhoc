@@ -124,14 +124,92 @@ export default function GapDetailScreen() {
           </Card>
 
           {q.data.prescription && (
+            <Card tone="primary">
+              <Text style={{ fontSize: 11, fontWeight: '800', letterSpacing: 1, color: '#A7E3DA' }}>
+                AI ĐỀ XUẤT — BỐ MẸ CHỌN
+              </Text>
+              <Text style={{ fontSize: 19, fontWeight: '800', lineHeight: 25, color: theme.color.onDark }}>
+                {q.data.prescription.summary}
+              </Text>
+              <Text style={{ fontSize: 13, lineHeight: 19.5, color: '#CDEAE6' }}>{q.data.prescription.rationale}</Text>
+            </Card>
+          )}
+
+          {q.data.prescription && (
             <Card>
-              <Overline>Kế hoạch luyện tập gợi ý</Overline>
-              <Body>{q.data.prescription.summary}</Body>
-              {q.data.prescription.perSession.map((p, i) => (
-                <Muted key={i}>
-                  {p.label}: {p.count}
-                </Muted>
-              ))}
+              <Overline>Nội dung mỗi phiên</Overline>
+              <View style={{ gap: 0 }}>
+                {q.data.prescription.perSession.map((p, i) => (
+                  <View key={i}>
+                    {i > 0 && <View style={{ height: 1, backgroundColor: theme.color.surfaceRaised }} />}
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        paddingVertical: 9,
+                      }}
+                    >
+                      <Text style={{ fontSize: 13.5, color: theme.color.textBody }}>{p.label}</Text>
+                      <Text style={{ fontSize: 13.5, fontWeight: '800', color: theme.color.textHeading }}>
+                        {p.count}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </Card>
+          )}
+
+          {q.data.prescription && q.data.prescription.options.length > 0 && (
+            <Card>
+              <Text style={{ fontSize: 12.5, fontWeight: '700', color: theme.color.textBody }}>
+                Bố mẹ muốn theo cách nào?
+              </Text>
+              <View style={{ gap: 6, marginTop: 2 }}>
+                {q.data.prescription.options.map((o) => {
+                  const isFollow = o.key === 'follow';
+                  return (
+                    <View
+                      key={o.key}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 12,
+                        padding: 11,
+                        borderRadius: 14,
+                        backgroundColor: isFollow ? theme.color.primaryTint : theme.color.surface,
+                        borderWidth: isFollow ? 2 : 1,
+                        borderColor: isFollow ? theme.color.primary : theme.color.border,
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: 10,
+                          backgroundColor: isFollow ? theme.color.primary : 'transparent',
+                          borderWidth: isFollow ? 0 : 2,
+                          borderColor: theme.color.border,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        {isFollow && <Text style={{ color: theme.color.onDark, fontSize: 11, fontWeight: '800' }}>✓</Text>}
+                      </View>
+                      <View style={{ flex: 1, gap: 1 }}>
+                        <Text style={{ fontSize: 14.5, fontWeight: '700', color: theme.color.textHeading }}>
+                          {o.label}
+                        </Text>
+                        <Text style={{ fontSize: 12, color: isFollow ? theme.color.primaryStrong : theme.color.textMuted }}>
+                          {o.detail}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+              <Muted>DạyZi đang áp dụng "Theo đề xuất" — các lựa chọn khác để bố mẹ tham khảo.</Muted>
             </Card>
           )}
 
