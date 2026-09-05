@@ -215,6 +215,7 @@ export type RevisionMap = {
   dayCountdown: number;
   dailyMinutes: number;
   needsScopeConfirm: boolean;
+  scopeConfirmed: boolean;
   items: { skillId: string; name: string; band: string; reason: string }[];
 };
 
