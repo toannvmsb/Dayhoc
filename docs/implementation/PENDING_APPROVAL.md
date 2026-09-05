@@ -4,9 +4,20 @@
 > trong quá trình em làm autonomous các phase. **Không có mục nào trong đây chặn
 > phase kế tiếp** — em đã đi vòng hoặc để lại `todo` có đánh dấu.
 >
-> Cập nhật lần cuối: 2026-09-02 (C5 Luna smoke pre-flight + Identity/Relationship architecture audit).
+> Cập nhật lần cuối: 2026-09-05 (Productionization phase P4/P7/P8/P9 — xem
+> `55_PRODUCTIONIZATION_PHASE_REPORT.md` cho báo cáo đầy đủ 15 mục + 10 cờ).
 >
-> **Tình trạng:** Vertical slice P0–P10 xong, web PWA test được trên iPhone.
+> **Tình trạng:** Vertical slice P0–P10 xong, web PWA + native Android/iOS
+> test được trên máy thật (D-01..D-43). Productionization phase (2026-09-04/05):
+> pilot analytics nối dây đầy đủ (P8), notification delivery adapter port (P7),
+> billing readiness — entitlement state machine + receipt validation adapter
+> (P9), document-vision benchmark harness không có kết quả vì chưa có dataset
+> ảnh thật (P4). P1/P2/P3/P5/P6 đã code-complete từ trước, chưa deploy/chạy
+> với credential thật. **8/10 cờ pilot-release vẫn `false`** — chặn chủ yếu bởi
+> hành động thủ công của anh (Supabase project, host deploy, OPENAI_API_KEY,
+> ảnh bài tập thật, đăng ký Apple/Google dev program), không phải thiếu code.
+>
+> **Tình trạng trước đó:** Vertical slice P0–P10 xong, web PWA test được trên iPhone.
 > Migration v1.1: **A ✅ · B1+B2+B3 ✅ · pace ✅ · C1+C2+C3 ✅ · C3.1 ✅ · C4 ✅ · C4.1 ✅ · C4.2 ✅ · C5 (SHADOW MODE) ✅ · C5.1 (benchmark hardening) ✅ · C5.2 (benchmark COVERAGE hardening + patch) ✅ (490 test / 5 skip, `benchmarkReady: true` — 16 base + 10 hard, không blocking gap, KHÔNG chạy live AI, LIVE mode CHƯA bật)**.
 > **C5 Luna SMOKE: `SMOKE_EXECUTION_STATUS = BLOCKED_MISSING_API_KEY`** — không có `OPENAI_API_KEY` trong env, KHÔNG gọi paid, KHÔNG bịa kết quả. `selectSmokeCases()` chọn đúng 5 case đại diện, sẵn sàng chạy khi có key.
 > **Identity/Family/School/Relationship Architecture: docs 19–27 DUYỆT nguyên tắc; ID-Q1..Q10 CHỐT (anh 2026-09-02, doc 19 §6); Amendment 1–3 áp vào docs. I0 + I1 ĐANG IMPLEMENT (chỉ I0+I1, KHÔNG I2+).**
