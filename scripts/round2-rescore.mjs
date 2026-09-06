@@ -34,7 +34,7 @@ function parse(path) {
     }
     const rq = line.match(/^\s*requested items:\s*(\d+)/) || line.match(/requested items:\s*(\d+)/);
     if (rq && model) perModel[model].requested = Number(rq[1]);
-    const fi = line.match(/^  - (\S+) \[([A-Z_]+)\] k=(\S+) gates=\[([^\]]*)\]$/);
+    const fi = line.match(/^ {2}- (\S+) \[([A-Z_]+)\] k=(\S+) gates=\[([^\]]*)\]$/);
     if (fi && model) {
       const detail = (raw[i + 1] || '').trim();
       perModel[model].failed.push({

@@ -146,7 +146,7 @@ export function statedUnknown(solution: string): number | null {
   const t = solution.replace(/−/g, '-');
   const all = [...t.matchAll(/x\s*=\s*(-?\d+(?:[.,]\d+)?)/g)];
   const last = all.at(-1)?.[1];
-  if (last == null) return null;
+  if (last === undefined) return null;
   const v = Number(last.replace(',', '.'));
   return Number.isFinite(v) ? v : null;
 }
@@ -165,7 +165,7 @@ export function reconcileEquationForm(solution: string, kernel: MathKernel): Sem
   const c = kernel.semantics.operandRoles.c;
 
   const eqs = equationsIn(solution);
-  if (eqs.length > 0 && a != null && b != null && c != null) {
+  if (eqs.length > 0 && a !== undefined && b !== undefined && c !== undefined) {
     for (const e of eqs) {
       // same equation (allow the constant to be written on either side / sign)
       const sameCoeff = e.a === a;
@@ -182,8 +182,8 @@ export function reconcileEquationForm(solution: string, kernel: MathKernel): Sem
 
   // no parseable equation — did the solution at least reach the kernel's x?
   const got = statedUnknown(solution);
-  if (got != null && Math.abs(got - wantX) < 1e-9) return 'PASS';
-  if (got != null && Math.abs(got - wantX) > 1e-9) return 'FAIL';
+  if (got !== null && Math.abs(got - wantX) < 1e-9) return 'PASS';
+  if (got !== null && Math.abs(got - wantX) > 1e-9) return 'FAIL';
   return 'UNKNOWN';
 }
 

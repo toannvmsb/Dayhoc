@@ -49,9 +49,12 @@ export default [
     // Node scripts (seed/build tooling) — CLI, run under Node.
     files: ['scripts/**/*.mjs', 'scripts/**/*.js'],
     languageOptions: {
-      globals: { process: 'readonly', console: 'readonly', Buffer: 'readonly', __dirname: 'readonly' },
+      globals: {
+        process: 'readonly', console: 'readonly', Buffer: 'readonly', __dirname: 'readonly',
+        URL: 'readonly', fetch: 'readonly', Math: 'readonly', JSON: 'readonly', Set: 'readonly', Map: 'readonly',
+      },
     },
-    rules: { 'no-console': 'off' },
+    rules: { 'no-console': 'off', 'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }] },
   },
   prettier,
 ];
