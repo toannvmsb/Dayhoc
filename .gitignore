@@ -64,5 +64,7 @@ File du an/BaiTap4/
 CALIB*.txt
 ROUND*.txt
 ROUND*.jsonl
+WS_E2E*.txt
+WS_E2E*.jsonl
 INSP.txt
 PICK.txt

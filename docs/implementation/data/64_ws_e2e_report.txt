@@ -1,0 +1,31 @@
+DẠYZI — WORKSHEET E2E (doc 63 §K)  2026-09-06T04:51:13.907Z
+specs: BENCH-LT-G4-01, BENCH-LT-G4-06, HC04, BENCH-LT-G7-03, BENCH-LT-G7-06, HC06
+TOTAL SPEND: $0.0719  (run cap $0.5, per-worksheet ceiling $0.09)
+complete
+
+1.  full worksheet completion:        100.0%  (6/6)
+2.  valid-item completion:            100.0%  (52/52)
+3.  kernel deterministic correctness: 100.0%  (46/46 of kernel READY)   kernel wrong: 0
+4.  production-ready deterministic:   88.5%  (46/52)
+5.  PENDING_CROSSCHECK:               11.5%  (6/52)
+6.  gpt-4.1-mini call share:          72.4%  (42)
+7.  gpt-5-mini call share:            27.6%  (16)
+8.  retry rate:                       0.10 / item  (5)
+9.  last-resort usage:                0  (0.0% of items)
+10. unresolved / FAILED slots:        0  (0.0%)
+11. cost / item:                      $0.00138  (~36 VND)
+12. cost / completed worksheet:       $0.0120  (~312 VND)
+13. slot latency p50/p95:             3212 / 11125 ms
+14. worksheet latency p50/p95:        17865 / 38832 ms
+15. validator false positives:        (manual review of WS_E2E_raw.jsonl — see analysis)
+16. silent semantic contradiction:    NONE
+17. cost-ceiling events:              0
+
+avg attempts max/slot: 3
+
+  - HC04: state=READY_WITH_PENDING_CROSSCHECK ready=7 pending=3 failed=0 cost=$0.0151 calls=10 retries=0 fallback=0 lastResort=0 ceilingHit=false lat=27689ms
+  - HC06: state=READY_WITH_PENDING_CROSSCHECK ready=7 pending=3 failed=0 cost=$0.0193 calls=11 retries=1 fallback=0 lastResort=0 ceilingHit=false lat=38832ms
+  - BENCH-LT-G4-01: state=READY ready=4 pending=0 failed=0 cost=$0.0068 calls=6 retries=1 fallback=1 lastResort=0 ceilingHit=false lat=13795ms
+  - BENCH-LT-G4-06: state=READY ready=8 pending=0 failed=0 cost=$0.0106 calls=10 retries=2 fallback=0 lastResort=0 ceilingHit=false lat=11893ms
+  - BENCH-LT-G7-03: state=READY ready=12 pending=0 failed=0 cost=$0.0128 calls=13 retries=1 fallback=0 lastResort=0 ceilingHit=false lat=17865ms
+  - BENCH-LT-G7-06: state=READY ready=8 pending=0 failed=0 cost=$0.0075 calls=8 retries=0 fallback=0 lastResort=0 ceilingHit=false lat=12356ms

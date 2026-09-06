@@ -54,6 +54,8 @@ export interface WorksheetOrchestratorConfig {
   /** deterministic last-resort for the final unresolved Group A slot (doc 63 §4). */
   readonly enableLastResort: boolean;
   readonly highComplexityStructures?: ReadonlySet<ProblemStructure>;
+  /** capture each slot's last-attempt raw text into `result.rawSlots` (audit). */
+  readonly captureRaw?: boolean;
 }
 
 export const DEFAULT_WORKSHEET_ORCHESTRATOR_CONFIG: WorksheetOrchestratorConfig = {
@@ -149,6 +151,16 @@ export interface WorksheetTrace {
   readonly createdAt: string;
 }
 
+/** raw last-attempt content per slot — populated only when `config.captureRaw`
+ *  is set (audit / offline re-score). Kept OUT of `trace` (doc 63 §9). */
+export interface RawSlotContent {
+  readonly itemId: string;
+  readonly finalState: SlotState;
+  readonly prompt: string | null;
+  readonly workedSolution: string | null;
+  readonly answer: string | null;
+}
+
 export interface WorksheetResult {
   readonly worksheetState: WorksheetState;
   /** accepted exercises in worksheet order (production-ready + pending-crosscheck). */
@@ -157,6 +169,8 @@ export interface WorksheetResult {
   readonly pendingCrosscheckSlots: number;
   readonly failedSlots: number;
   readonly trace: WorksheetTrace;
+  /** only when `config.captureRaw` — never logged as telemetry. */
+  readonly rawSlots?: readonly RawSlotContent[];
 }
 
 // ---------------------------------------------------------------------------
@@ -181,6 +195,7 @@ interface SlotWork {
   crosscheckRequired: boolean;
   lastResortUsed: boolean;
   slotLatencyMs: number;
+  lastContent: GeneratedItemContent | null;
 }
 
 async function pool<T, R>(items: readonly T[], concurrency: number, fn: (t: T) => Promise<R>): Promise<R[]> {
@@ -261,6 +276,7 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
       crosscheckRequired: false,
       lastResortUsed: false,
       slotLatencyMs: 0,
+      lastContent: null,
     };
   });
 
@@ -366,6 +382,8 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
 
       const latencyMs = s.state === 'LAST_RESORT' ? 0 : contentBySlot.get(s.itemId)?.latencyMs ?? 0;
       s.slotLatencyMs += latencyMs;
+
+      if (content) s.lastContent = content;
 
       // compose + accept
       let failureCategory: SlotFailureCategory | null = null;
@@ -496,7 +514,20 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
     createdAt: now().toISOString(),
   };
 
-  return { worksheetState, items, readySlots, pendingCrosscheckSlots, failedSlots, trace };
+  const rawSlots: RawSlotContent[] | undefined = cfg.captureRaw
+    ? slots
+        .slice()
+        .sort((a, b) => a.index - b.index)
+        .map((s) => ({
+          itemId: s.itemId,
+          finalState: s.state,
+          prompt: s.accepted?.prompt ?? s.lastContent?.prompt ?? null,
+          workedSolution: s.accepted?.workedSolution ?? s.lastContent?.workedSolution ?? null,
+          answer: s.accepted ? JSON.stringify(s.accepted.answerSpec) : s.lastContent?.answer ?? null,
+        }))
+    : undefined;
+
+  return { worksheetState, items, readySlots, pendingCrosscheckSlots, failedSlots, trace, ...(rawSlots ? { rawSlots } : {}) };
 
   function stepOf(s: SlotWork): SlotAttemptTrace['step'] {
     if (s.state === 'PENDING') return 'default';
