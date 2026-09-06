@@ -96,7 +96,7 @@ for (const [model, m] of Object.entries(byModel)) {
 
   // worksheet metrics
   const specs = Object.entries(m.bySpec);
-  let wsFirst = 0, wsRetry = 0;
+  let _wsFirst = 0, wsRetry = 0;
   let missSum = 0;
   console.log(`worksheets:`);
   for (const [sid, sp] of specs) {

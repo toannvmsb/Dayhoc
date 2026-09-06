@@ -5,10 +5,16 @@ import { loadReferenceLibrary } from '@copilot/reference-library';
 import {
   createMockExerciseGenerator,
   createLunaExerciseGenerator,
+  createMockItemContentGenerator,
+  createMockAnswerCrosscheck,
+  createInMemoryReviewQueue,
   InMemoryShadowGenerationQueue,
+  InMemoryWorksheetShadowQueue,
+  InMemoryWorksheetGenerationStore,
   InMemoryGenerationStore,
   type ExerciseGenerator,
 } from '@copilot/exercise-gen';
+import type { AiUsageEvent } from '@copilot/ai';
 import { assertChildSafe } from '@copilot/projections';
 import { AuthzError, createApi, type ApiDeps } from './api.js';
 
@@ -305,6 +311,77 @@ describe('C5 §23 — AI generation SHADOW mode (child never sees AI content)', 
     expect(gen.calls).toBe(0); // not on the synchronous request path
     await queue.drain();
     expect(gen.calls).toBeGreaterThan(0); // but it did run
+  });
+});
+
+describe('doc 65 — production worksheet orchestrator: API → planner → orchestrator (SHADOW)', () => {
+  const refLib = loadReferenceLibrary();
+  const worksheetDeps = (mode: 'OFF' | 'SHADOW' | 'LIVE') => {
+    const outcomes: { runId: string; ran: boolean }[] = [];
+    const queue = new InMemoryWorksheetShadowQueue({
+      onOutcome: (_j, o) => outcomes.push({ runId: o.ran ? o.runId : '', ran: o.ran }),
+    });
+    const store = new InMemoryWorksheetGenerationStore();
+    const reviewQueue = createInMemoryReviewQueue();
+    const events: AiUsageEvent[] = [];
+    const gen = createMockItemContentGenerator();
+    return {
+      queue, store, reviewQueue, events, outcomes,
+      deps: {
+        ...deps,
+        worksheetGeneration: {
+          mode,
+          queue,
+          generators: { default: gen, highComplexity: gen },
+          referenceLibrary: refLib,
+          crosscheckAdapter: createMockAnswerCrosscheck(() => 'PASS'),
+          reviewQueue,
+          store,
+          usageSink: (e: AiUsageEvent) => events.push(e),
+          resolveUsageContext: () => ({ userRef: 'u_pseudo', childRef: 'c_pseudo', plan: 'plus' as const }),
+          resolveChildRef: () => 'c_pseudo',
+        },
+      } satisfies ApiDeps,
+    };
+  };
+
+  it('OFF → the orchestrator never runs', async () => {
+    const { queue, outcomes, deps: d } = worksheetDeps('OFF');
+    await createApi(d).childToday(childCtx, childId);
+    await queue.drain();
+    expect(outcomes).toHaveLength(0);
+  });
+
+  it('LIVE → reserved, behaves like OFF (never serves, never persists)', async () => {
+    const { queue, outcomes, deps: d } = worksheetDeps('LIVE');
+    await createApi(d).childToday(childCtx, childId);
+    await queue.drain();
+    expect(outcomes).toHaveLength(0);
+  });
+
+  it('SHADOW → runs off the request path, child view unchanged, persists + telemetry', async () => {
+    const off = await createApi(worksheetDeps('OFF').deps).childToday(childCtx, childId);
+    const { queue, store, events, outcomes, deps: d } = worksheetDeps('SHADOW');
+    const view = await createApi(d).childToday(childCtx, childId);
+    assertChildSafe(view);
+    expect(view).toEqual(off); // SHADOW never serves — child-visible worksheet identical
+    await queue.drain();
+
+    expect(outcomes).toHaveLength(1);
+    expect(outcomes[0]!.ran).toBe(true);
+    const run = await store.getRun(outcomes[0]!.runId);
+    expect(run).not.toBeNull();
+    expect(run!.mode).toBe('SHADOW');
+    expect((await store.listSlots(run!.id)).length).toBeGreaterThan(0);
+    expect((await store.listAttempts(run!.id)).length).toBeGreaterThan(0);
+
+    expect(events.length).toBeGreaterThan(0);
+    expect(events.every((e) => e.operationType === 'worksheet_batch_generation')).toBe(true);
+
+    // no PII in telemetry OR persistence
+    const scan = JSON.stringify({ events, run, slots: await store.listSlots(run!.id), attempts: await store.listAttempts(run!.id) });
+    expect(scan).not.toMatch(/Minh Anh|Kết nối tri thức/);
+    expect(scan).not.toMatch(/Tính:|Đáp số|workedSolution|prompt"/);
   });
 });
 

@@ -152,7 +152,7 @@ for (const [name, chainFor] of Object.entries(POLICIES)) {
 
   const totalCalls = calls;
   const usd = Object.entries(share).reduce((a, [m, c]) => a + c * COST[m], 0);
-  const completed = prod + groupC + contentOnly; // groupC counts as "completed pending crosscheck"
+  const _completed = prod + groupC + contentOnly; // groupC counts as "completed pending crosscheck"
   const wsCount = Object.keys(wsMiss).length;
   const wsFull = Object.values(wsMiss).filter((n) => n === 0).length;
   const pc = (n) => ((n / items) * 100).toFixed(1);

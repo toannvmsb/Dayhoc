@@ -7,7 +7,18 @@ import { buildLearningContext, evaluatePace } from '@copilot/learning-context';
 import { CurriculumClockService, toExpectedLearningContext } from '@copilot/curriculum-clock';
 import { buildDailyPlan, buildExerciseGenerationSpec } from '@copilot/planning';
 import { buildAssignmentsForPlan } from '@copilot/practice';
-import type { ExerciseGenerator, GenerationStore, ShadowGenerationQueue, UsageContext } from '@copilot/exercise-gen';
+import type {
+  AnswerCrosscheckAdapter,
+  ExerciseGenerator,
+  GenerationStore,
+  ItemContentGenerator,
+  ReviewQueueStore,
+  ShadowGenerationQueue,
+  UsageContext,
+  WorksheetGenerationStore,
+  WorksheetShadowQueue,
+  WorksheetUsageContext,
+} from '@copilot/exercise-gen';
 import type { ReferenceExample } from '@copilot/reference-library';
 import {
   assertChildSafe,
@@ -104,6 +115,24 @@ export interface ApiDeps {
     readonly resolveUsageContext?: (childId: string, ctx: RequestContext) => UsageContext;
   };
   /**
+   * Production worksheet recovery orchestrator (doc 65). `mode` gates it:
+   * OFF = no model calls; SHADOW = full run + persist + telemetry, NEVER served
+   * to a child; LIVE = reserved, behaves like OFF here. Independent of the C5
+   * `shadowGeneration` hook above.
+   */
+  readonly worksheetGeneration?: {
+    readonly mode: AiGenerationMode;
+    readonly queue: WorksheetShadowQueue;
+    readonly generators: { readonly default: ItemContentGenerator; readonly highComplexity: ItemContentGenerator };
+    readonly referenceLibrary: readonly ReferenceExample[];
+    readonly crosscheckAdapter?: AnswerCrosscheckAdapter;
+    readonly reviewQueue?: ReviewQueueStore;
+    readonly store?: WorksheetGenerationStore;
+    readonly usageSink?: (event: import('@copilot/ai').AiUsageEvent) => void;
+    readonly resolveUsageContext?: (childId: string, ctx: RequestContext) => WorksheetUsageContext;
+    readonly resolveChildRef?: (childId: string) => string;
+  };
+  /**
    * The legacy `createApi` surface (in-memory `childProfiles`, trusted
    * `RequestContext`) is for unit tests / local fixtures ONLY, and is
    * fail-closed in production: constructing it with `NODE_ENV === 'production'`
@@ -184,6 +213,46 @@ export function createApi(deps: ApiDeps) {
       });
     } catch (err) {
       logger.warn('shadow generation enqueue failed', { childId, error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+
+  /**
+   * Build an `ExerciseGenerationSpec` from the REAL planner and enqueue a
+   * SHADOW worksheet-orchestrator run (doc 65). NEVER throws; NEVER awaited;
+   * result NEVER enters the child-visible worksheet. OFF/LIVE → nothing runs.
+   */
+  function maybeRunWorksheetGeneration(
+    ctx: RequestContext,
+    childId: string,
+    s: Awaited<ReturnType<typeof scene>>,
+  ): void {
+    const wg = deps.worksheetGeneration;
+    if (!wg || wg.mode === 'OFF' || wg.mode === 'LIVE' || s.plan.kind !== 'plan') return;
+    try {
+      const spec = buildExerciseGenerationSpec({
+        childId: asChildId(childId),
+        gradeContext: s.rec.gradeContext,
+        twin: s.twin,
+        gaps: s.gaps,
+        context: s.context,
+        knowledgeBase: kb,
+        availableMinutes: 25,
+        asOf: s.asOf,
+      });
+      wg.queue.enqueue(wg.mode, {
+        spec,
+        generators: wg.generators,
+        referenceLibrary: wg.referenceLibrary,
+        knowledgeBase: kb,
+        ...(wg.crosscheckAdapter ? { crosscheckAdapter: wg.crosscheckAdapter } : {}),
+        ...(wg.reviewQueue ? { reviewQueue: wg.reviewQueue } : {}),
+        ...(wg.store ? { store: wg.store } : {}),
+        ...(wg.usageSink ? { usageSink: wg.usageSink } : {}),
+        ...(wg.resolveUsageContext ? { usageContext: wg.resolveUsageContext(childId, ctx) } : {}),
+        ...(wg.resolveChildRef ? { childRef: wg.resolveChildRef(childId) } : {}),
+      });
+    } catch (err) {
+      logger.warn('worksheet generation enqueue failed', { childId, error: err instanceof Error ? err.message : String(err) });
     }
   }
 
@@ -370,6 +439,9 @@ export function createApi(deps: ApiDeps) {
       // the child NEVER sees. Everything here is best-effort and cannot touch
       // `view` — a spec-build error or a full queue is swallowed, not surfaced.
       maybeRunShadowGeneration(ctx, childId, s);
+      // doc 65 SHADOW: the production recovery orchestrator runs in parallel too —
+      // separate flag, separate persistence, still NEVER child-visible.
+      maybeRunWorksheetGeneration(ctx, childId, s);
 
       return view;
     },

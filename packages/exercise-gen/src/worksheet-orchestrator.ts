@@ -21,6 +21,10 @@ import { HIGH_COMPLEXITY_STRUCTURES, MODEL_ROUTER_VERSION, routeItemModel, type 
 import { buildRetryContext, RETRY_CONTEXT_VERSION, type RetryReason } from './retry-context.js';
 import { deterministicLastResort, LAST_RESORT_VERSION } from './last-resort.js';
 import { computeActualCost } from './cost.js';
+import { checkContentQuality, CONTENT_QUALITY_VERSION, type ContentQualityFinding } from './content-quality.js';
+import { runGroupCCrosscheck, type AnswerCrosscheckAdapter } from './answer-crosscheck.js';
+import type { CrosscheckVerdict } from '@copilot/domain';
+import type { ReviewQueueStore } from './review-queue.js';
 
 // ---------------------------------------------------------------------------
 // state machine (doc 63 §6)
@@ -56,6 +60,8 @@ export interface WorksheetOrchestratorConfig {
   readonly highComplexityStructures?: ReadonlySet<ProblemStructure>;
   /** capture each slot's last-attempt raw text into `result.rawSlots` (audit). */
   readonly captureRaw?: boolean;
+  /** deterministic content-quality gate (doc 65 §9). Default ON. */
+  readonly contentQuality?: boolean;
 }
 
 export const DEFAULT_WORKSHEET_ORCHESTRATOR_CONFIG: WorksheetOrchestratorConfig = {
@@ -79,6 +85,13 @@ export interface WorksheetOrchestratorInput {
   readonly newRequestId?: () => string;
   readonly pricingRegistry?: PricingRegistry;
   readonly fxVndPerUsd?: number;
+  /** Group C answer crosscheck (doc 65 §6). When absent, Group C slots stay
+   *  PENDING_CROSSCHECK unverified (never marked production-ready). */
+  readonly crosscheckAdapter?: AnswerCrosscheckAdapter;
+  /** human-review queue for crosscheck-UNCERTAIN + non-recoverable failures (doc 65 §8). */
+  readonly reviewQueue?: ReviewQueueStore;
+  /** pseudonymous child ref for review-queue rows — never a name/school. */
+  readonly childRef?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -91,6 +104,8 @@ export type SlotFailureCategory =
   | 'SIMILARITY_OR_DUPLICATE'
   | 'LEAKAGE'
   | 'SCHEMA'
+  | 'CONTENT_QUALITY'
+  | 'CROSSCHECK_FAIL'
   | 'CURRICULUM_OR_LEVEL'
   | 'COMPOSE'
   | 'NO_CONTENT'
@@ -117,9 +132,30 @@ export interface SlotTrace {
   readonly attempts: readonly SlotAttemptTrace[];
   readonly lastResortUsed: boolean;
   readonly crosscheckRequired: boolean;
+  /** result of the Group C answer crosscheck, if it ran (doc 65 §6). */
+  readonly crosscheckVerdict: CrosscheckVerdict | null;
+  /** content-quality findings (WARN kept; BLOCK caused a regenerate) (doc 65 §9). */
+  readonly contentQualityFindings: readonly ContentQualityFinding[];
+  /** id of the review-queue row this slot raised, if any (doc 65 §8). */
+  readonly reviewQueueId: string | null;
   readonly answerStatus: ItemAnswerStatus | null;
   readonly productionReady: boolean;
   readonly slotLatencyMs: number;
+}
+
+export interface WorksheetModelUsage {
+  readonly model: string;
+  readonly provider: string;
+  readonly modelVersion: string | null;
+  readonly calls: number;
+  readonly retries: number;
+  readonly fallbackCalls: number;
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  readonly actualCostUsd: number;
+  readonly priceConfigEffectiveDate: string | null;
+  readonly latencyMs: number;
+  readonly schemaValidCalls: number;
 }
 
 export interface WorksheetTotals {
@@ -132,6 +168,8 @@ export interface WorksheetTotals {
   readonly estimatedCostUsd: number;
   readonly actualCostUsd: number;
   readonly costCeilingHit: boolean;
+  /** per-model breakdown for accurate cost telemetry (doc 65 §4). */
+  readonly byModel: readonly WorksheetModelUsage[];
 }
 
 export interface WorksheetTrace {
@@ -140,6 +178,8 @@ export interface WorksheetTrace {
   readonly routerVersion: string;
   readonly retryContextVersion: string;
   readonly lastResortVersion: string;
+  readonly contentQualityVersion: string;
+  readonly crosscheckAdapterName: string | null;
   readonly itemValidatorVersion: string;
   readonly itemSpecBuilderVersion: string;
   readonly problemDnaBuilderVersion: string;
@@ -196,6 +236,9 @@ interface SlotWork {
   lastResortUsed: boolean;
   slotLatencyMs: number;
   lastContent: GeneratedItemContent | null;
+  crosscheckVerdict: CrosscheckVerdict | null;
+  contentQualityFindings: ContentQualityFinding[];
+  reviewQueueId: string | null;
 }
 
 async function pool<T, R>(items: readonly T[], concurrency: number, fn: (t: T) => Promise<R>): Promise<R[]> {
@@ -277,6 +320,9 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
       lastResortUsed: false,
       slotLatencyMs: 0,
       lastContent: null,
+      crosscheckVerdict: null,
+      contentQualityFindings: [],
+      reviewQueueId: null,
     };
   });
 
@@ -286,6 +332,19 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
   } = {
     modelCalls: 0, retries: 0, fallbackCalls: 0, lastResortCalls: 0,
     inputTokens: 0, outputTokens: 0, estimatedCostUsd: 0, actualCostUsd: 0, costCeilingHit: false,
+  };
+  const byModel = new Map<string, {
+    model: string; provider: string; modelVersion: string | null; calls: number; retries: number;
+    fallbackCalls: number; inputTokens: number; outputTokens: number; actualCostUsd: number;
+    priceConfigEffectiveDate: string | null; latencyMs: number; schemaValidCalls: number;
+  }>();
+  const bump = (gen: ItemContentGenerator) => {
+    let m = byModel.get(gen.model);
+    if (!m) {
+      m = { model: gen.model, provider: gen.provider, modelVersion: gen.modelVersion, calls: 0, retries: 0, fallbackCalls: 0, inputTokens: 0, outputTokens: 0, actualCostUsd: 0, priceConfigEffectiveDate: null, latencyMs: 0, schemaValidCalls: 0 };
+      byModel.set(gen.model, m);
+    }
+    return m;
   };
 
   const genFor = (role: ModelRole): ItemContentGenerator =>
@@ -337,15 +396,25 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
         const stp = stepOf(s);
         if (stp === 'retry_same') totals.retries += 1;
         if (stp === 'escalate') totals.fallbackCalls += 1;
+        const mu = bump(gen);
+        mu.calls += 1;
+        mu.latencyMs += latencyMs;
+        if (stp === 'retry_same') mu.retries += 1;
+        if (stp === 'escalate') mu.fallbackCalls += 1;
         if (outcome.ok) {
+          mu.schemaValidCalls += 1;
           const at = now();
           const cost =
             gen.provider === 'mock'
-              ? { actualCostUsd: 0 }
+              ? { actualCostUsd: 0, priceConfigVersion: null }
               : computeActualCost(outcome.usage, gen.model, at, pricing, input.fxVndPerUsd);
           totals.actualCostUsd += cost.actualCostUsd ?? 0;
           totals.inputTokens += outcome.usage?.inputTokens ?? 0;
           totals.outputTokens += outcome.usage?.outputTokens ?? 0;
+          mu.actualCostUsd += cost.actualCostUsd ?? 0;
+          mu.inputTokens += outcome.usage?.inputTokens ?? 0;
+          mu.outputTokens += outcome.usage?.outputTokens ?? 0;
+          if ('priceConfigVersion' in cost && cost.priceConfigVersion) mu.priceConfigEffectiveDate = cost.priceConfigVersion;
           content = outcome.contents.find((c) => c.itemId === s.itemId) ?? outcome.contents[0] ?? null;
         }
         contentBySlot.set(s.itemId, { content, latencyMs, step: stp });
@@ -411,8 +480,33 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
           s.productionReady = res.productionReady;
           s.crosscheckRequired = res.answerStatus === 'CROSSCHECK_REQUIRED';
           if (res.accepted) {
-            accepted = true;
-            s.accepted = composed.exercise;
+            // deterministic content-quality gate (doc 65 §9)
+            const cq = cfg.contentQuality === false
+              ? { ok: true, findings: [] as ContentQualityFinding[] }
+              : checkContentQuality(composed.exercise, s.kernel);
+            s.contentQualityFindings = [...cq.findings];
+            if (cq.ok) {
+              accepted = true;
+              s.accepted = composed.exercise;
+              // Group C answer crosscheck (doc 65 §6) — generator ⊥ verifier.
+              if (s.crosscheckRequired && input.crosscheckAdapter) {
+                const cc = await runGroupCCrosscheck(composed.exercise, input.spec.schoolGrade, input.crosscheckAdapter);
+                s.crosscheckVerdict = cc.verdict;
+                if (cc.state === 'REGENERATE') {
+                  accepted = false;
+                  s.accepted = null;
+                  failureCategory = 'CROSSCHECK_FAIL';
+                  retryReason = 'OTHER';
+                  s.retryInstruction = 'Lời giải/đáp án bị đánh giá là SAI khi kiểm chéo. Viết lại bài với lập luận và kết quả đúng.';
+                }
+              }
+            } else {
+              failureCategory = 'CONTENT_QUALITY';
+              s.retryInstruction = cq.findings.find((f) => f.severity === 'BLOCK')?.code === 'RAW_LATEX'
+                ? 'KHÔNG dùng ký hiệu LaTeX (\\frac, \\times, $...$). Viết phân số dạng a/b, phép nhân ×, phép chia ÷, đơn vị cm² … theo SGK.'
+                : 'Sửa lỗi định dạng: câu hỏi tiếng Việt rõ ràng, đủ 6 bậc gợi ý, rubric đầy đủ cho bài suy luận, đơn vị nhất quán.';
+              retryReason = 'SCHEMA';
+            }
           } else {
             const detail = res.gates.filter((g) => !g.pass).map((g) => g.detail).join(' ');
             failureCategory = failureCategoryOf(res.failedGates, res.answerStatus, detail);
@@ -437,7 +531,30 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
 
       // ---- transition ----
       if (accepted) {
-        s.state = s.crosscheckRequired ? 'PENDING_CROSSCHECK' : 'READY';
+        if (!s.crosscheckRequired) {
+          s.state = 'READY';
+          continue;
+        }
+        // Group C — crosscheck ran in the acceptance phase; PASS keeps `accepted`.
+        // AI-crosschecked ≠ deterministically verified: productionReady stays false.
+        if (s.crosscheckVerdict === 'PASS') {
+          s.state = 'READY';
+          continue;
+        }
+        // UNCERTAIN (or no adapter) → PENDING_CROSSCHECK, never silently verified.
+        s.state = 'PENDING_CROSSCHECK';
+        if (s.crosscheckVerdict === 'UNCERTAIN' && input.reviewQueue && s.accepted) {
+          const rq = await input.reviewQueue.create({
+            generationSpecId: input.spec.generationSpecId,
+            itemId: s.itemId,
+            childRef: input.childRef ?? null,
+            reason: 'CROSSCHECK_UNCERTAIN',
+            promptSnapshot: s.accepted.prompt,
+            workedSolutionSnapshot: s.accepted.workedSolution,
+            detail: 'answer crosscheck UNCERTAIN',
+          });
+          s.reviewQueueId = rq.id;
+        }
         continue;
       }
       if (usedLastResort) {
@@ -468,6 +585,24 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
     if (!['READY', 'PENDING_CROSSCHECK', 'FAILED'].includes(s.state)) s.state = 'FAILED';
   }
 
+  // review queue for every genuinely FAILED slot (doc 65 §8)
+  if (input.reviewQueue) {
+    for (const s of slots) {
+      if (s.state !== 'FAILED' || s.reviewQueueId) continue;
+      const reason = s.kernel === null ? 'NO_KERNEL_GENERATION_FAILED' : 'BOTH_MODELS_FAILED';
+      const rq = await input.reviewQueue.create({
+        generationSpecId: input.spec.generationSpecId,
+        itemId: s.itemId,
+        childRef: input.childRef ?? null,
+        reason,
+        promptSnapshot: s.lastContent?.prompt ?? null,
+        workedSolutionSnapshot: s.lastContent?.workedSolution ?? null,
+        detail: `final state FAILED after ${s.totalAttempts} attempts; last category ${s.attemptsTrace.at(-1)?.failureCategory ?? 'OTHER'}`,
+      });
+      s.reviewQueueId = rq.id;
+    }
+  }
+
   const readySlots = slots.filter((s) => s.state === 'READY').length;
   const pendingCrosscheckSlots = slots.filter((s) => s.state === 'PENDING_CROSSCHECK').length;
   const failedSlots = slots.filter((s) => s.state === 'FAILED').length;
@@ -487,6 +622,8 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
     routerVersion: MODEL_ROUTER_VERSION,
     retryContextVersion: RETRY_CONTEXT_VERSION,
     lastResortVersion: LAST_RESORT_VERSION,
+    contentQualityVersion: CONTENT_QUALITY_VERSION,
+    crosscheckAdapterName: input.crosscheckAdapter?.name ?? null,
     itemValidatorVersion: ITEM_VALIDATOR_VERSION,
     itemSpecBuilderVersion: ITEM_SPEC_BUILDER_VERSION,
     problemDnaBuilderVersion: PROBLEM_DNA_BUILDER_VERSION,
@@ -505,11 +642,14 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
         attempts: s.attemptsTrace,
         lastResortUsed: s.lastResortUsed,
         crosscheckRequired: s.crosscheckRequired,
+        crosscheckVerdict: s.crosscheckVerdict,
+        contentQualityFindings: s.contentQualityFindings,
+        reviewQueueId: s.reviewQueueId,
         answerStatus: s.answerStatus,
         productionReady: s.productionReady,
         slotLatencyMs: s.slotLatencyMs,
       })),
-    totals: { ...totals },
+    totals: { ...totals, byModel: [...byModel.values()] },
     worksheetLatencyMs: now().getTime() - runStart,
     createdAt: now().toISOString(),
   };

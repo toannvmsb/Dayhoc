@@ -53,3 +53,8 @@ export * from './kernel-templater.js';
 export * from './last-resort.js';
 export * from './worksheet-orchestrator.js';
 export * from './fault-injecting-generator.js';
+export * from './content-quality.js';
+export * from './review-queue.js';
+export * from './worksheet-persistence.js';
+export * from './worksheet-telemetry.js';
+export * from './worksheet-shadow.js';

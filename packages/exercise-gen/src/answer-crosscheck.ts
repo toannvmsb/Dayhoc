@@ -69,3 +69,67 @@ export function createStubAnswerCrosscheck(): AnswerCrosscheckAdapter {
     },
   };
 }
+
+/**
+ * Mock scripted cross-checker for tests (doc 65 §7). `verdictFor(itemId)` returns
+ * the verdict; unknown ids → UNCERTAIN. NO network.
+ */
+export function createMockAnswerCrosscheck(
+  verdictFor: (prompt: string) => CrosscheckVerdict,
+): AnswerCrosscheckAdapter {
+  return {
+    name: 'mock-answer-crosscheck',
+    crosscheck(request: AnswerCrosscheckRequest): Promise<AnswerCrosscheckOutcome> {
+      const verdict = verdictFor(request.prompt);
+      return Promise.resolve({
+        verdict,
+        confidence: verdict === 'UNCERTAIN' ? 0.3 : 0.9,
+        detail: `mock crosscheck → ${verdict}`,
+      });
+    },
+  };
+}
+
+/** State a Group C slot ends in after the crosscheck flow (doc 65 §6). */
+export const GROUP_C_STATES = ['READY', 'REGENERATE', 'REVIEW_QUEUE'] as const;
+export type GroupCState = (typeof GROUP_C_STATES)[number];
+
+export interface GroupCCrosscheckResult {
+  readonly state: GroupCState;
+  readonly verdict: CrosscheckVerdict;
+  readonly detail: string;
+}
+
+/**
+ * Group C flow: generated content → (already content-validated) → crosscheck.
+ *   PASS      → READY
+ *   FAIL      → REGENERATE (feed back into the normal retry chain)
+ *   UNCERTAIN → REVIEW_QUEUE (never silently marked verified)
+ */
+export async function runGroupCCrosscheck(
+  exercise: GeneratedExercise,
+  schoolGrade: number,
+  adapter: AnswerCrosscheckAdapter,
+): Promise<GroupCCrosscheckResult> {
+  const outcome = await adapter.crosscheck(toCrosscheckRequest(exercise, schoolGrade));
+  const state: GroupCState =
+    outcome.verdict === 'PASS' ? 'READY' : outcome.verdict === 'FAIL' ? 'REGENERATE' : 'REVIEW_QUEUE';
+  return { state, verdict: outcome.verdict, detail: outcome.detail };
+}
+
+/**
+ * Config gate for a PAID crosscheck adapter (doc 65 §7). A paid adapter is used
+ * ONLY when `AI_CROSSCHECK_MODE === 'LIVE'` AND a key is present. Anything else
+ * (unset / 'OFF' / 'SHADOW') → the stub. Paid crosscheck stays disabled until
+ * explicitly approved.
+ */
+export function resolveCrosscheckAdapter(
+  env: Record<string, string | undefined>,
+  buildPaid?: () => AnswerCrosscheckAdapter,
+): { adapter: AnswerCrosscheckAdapter; paidEnabled: boolean } {
+  const mode = env.AI_CROSSCHECK_MODE ?? 'OFF';
+  if (mode === 'LIVE' && buildPaid && env.OPENAI_API_KEY) {
+    return { adapter: buildPaid(), paidEnabled: true };
+  }
+  return { adapter: createStubAnswerCrosscheck(), paidEnabled: false };
+}

@@ -20,9 +20,9 @@ const FILES = [
 /** parse "================ <model>  (n/m specs) ================" section headers + failed-item blocks */
 function parse(path) {
   const raw = readFileSync(path, 'utf8').split('\n');
-  const out = [];
+  const _out = [];
   let model = null;
-  let requested = null;
+  let _requested = null;
   const perModel = {};
   for (let i = 0; i < raw.length; i += 1) {
     const line = raw[i];
@@ -62,7 +62,7 @@ const CATS = [
   'OTHER',
 ];
 
-function numsIn(s) {
+function _numsIn(s) {
   return [...s.matchAll(/-?\d+(?:\.\d+)?/g)].map((m) => Number(m[0]));
 }
 

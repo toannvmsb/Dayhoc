@@ -104,11 +104,18 @@ export function createFaultInjectingGenerator(opts: FaultInjectorOptions): ItemC
           ? buildContentFromKernel(dna, 0)
           : {
               itemId: dna.itemId,
-              prompt: `Giải thích: vì sao kết quả của ${dna.itemId} là hợp lí?`,
+              prompt: 'Hãy giải thích vì sao tính chất phân phối của phép nhân với một tổng luôn đúng, cho một ví dụ minh hoạ.',
               answer: '',
-              hints: ['a', 'b', 'c', 'd', 'e', 'f'],
-              workedSolution: 'Trình bày lập luận từng bước.',
-              rubric: 'Nêu đủ 2 lí do, mỗi lí do có dẫn chứng số.',
+              hints: [
+                'Đọc kỹ yêu cầu: cần giải thích chứ không chỉ nêu kết quả.',
+                'Nhắc lại tính chất: a × (b + c) = a × b + a × c.',
+                'Chọn ba số cụ thể để minh hoạ.',
+                'Tính hai vế và so sánh.',
+                'Giải thích ý nghĩa: nhân với tổng bằng cộng các tích thành phần.',
+                'Viết lại lập luận đầy đủ theo từng bước.',
+              ],
+              workedSolution: 'Xét a × (b + c). Ta cộng b + c trước rồi nhân với a; kết quả bằng a × b + a × c. Ví dụ 3 × (4 + 5) = 3 × 9 = 27 và 3 × 4 + 3 × 5 = 12 + 15 = 27.',
+              rubric: 'Nêu đúng tính chất 0,5đ; có ví dụ số cụ thể tính đủ hai vế 0,5đ.',
             };
         // a FIXED-template realization used to force a within-worksheet collision
         const collide = dna.mathKernel
