@@ -23,6 +23,13 @@ export interface AnswerCrosscheckOutcome {
   readonly verdict: CrosscheckVerdict;
   readonly confidence: number; // 0..1
   readonly detail: string;
+  /** present when a PAID verifier ran — for cost telemetry (doc 66 §5). */
+  readonly usage?: {
+    readonly model: string;
+    readonly provider: string;
+    readonly inputTokens: number;
+    readonly outputTokens: number;
+  };
 }
 
 export interface AnswerCrosscheckAdapter {
@@ -98,23 +105,36 @@ export interface GroupCCrosscheckResult {
   readonly state: GroupCState;
   readonly verdict: CrosscheckVerdict;
   readonly detail: string;
+  /** every verifier call's usage (for cost telemetry) — 1 or 2 entries. */
+  readonly usages: readonly NonNullable<AnswerCrosscheckOutcome['usage']>[];
 }
 
 /**
  * Group C flow: generated content → (already content-validated) → crosscheck.
  *   PASS      → READY
  *   FAIL      → REGENERATE (feed back into the normal retry chain)
- *   UNCERTAIN → REVIEW_QUEUE (never silently marked verified)
+ *   UNCERTAIN → retry the verifier once; still UNCERTAIN → REVIEW_QUEUE
+ *              (never silently marked verified).
  */
 export async function runGroupCCrosscheck(
   exercise: GeneratedExercise,
   schoolGrade: number,
   adapter: AnswerCrosscheckAdapter,
+  opts: { retryOnUncertain?: boolean } = {},
 ): Promise<GroupCCrosscheckResult> {
-  const outcome = await adapter.crosscheck(toCrosscheckRequest(exercise, schoolGrade));
+  const req = toCrosscheckRequest(exercise, schoolGrade);
+  const usages: NonNullable<AnswerCrosscheckOutcome['usage']>[] = [];
+
+  let outcome = await adapter.crosscheck(req);
+  if (outcome.usage) usages.push(outcome.usage);
+  if (outcome.verdict === 'UNCERTAIN' && opts.retryOnUncertain !== false) {
+    outcome = await adapter.crosscheck(req);
+    if (outcome.usage) usages.push(outcome.usage);
+  }
+
   const state: GroupCState =
     outcome.verdict === 'PASS' ? 'READY' : outcome.verdict === 'FAIL' ? 'REGENERATE' : 'REVIEW_QUEUE';
-  return { state, verdict: outcome.verdict, detail: outcome.detail };
+  return { state, verdict: outcome.verdict, detail: outcome.detail, usages };
 }
 
 /**
@@ -126,10 +146,10 @@ export async function runGroupCCrosscheck(
 export function resolveCrosscheckAdapter(
   env: Record<string, string | undefined>,
   buildPaid?: () => AnswerCrosscheckAdapter,
-): { adapter: AnswerCrosscheckAdapter; paidEnabled: boolean } {
+): { adapter: AnswerCrosscheckAdapter; paidEnabled: boolean; mode: string } {
   const mode = env.AI_CROSSCHECK_MODE ?? 'OFF';
   if (mode === 'LIVE' && buildPaid && env.OPENAI_API_KEY) {
-    return { adapter: buildPaid(), paidEnabled: true };
+    return { adapter: buildPaid(), paidEnabled: true, mode };
   }
-  return { adapter: createStubAnswerCrosscheck(), paidEnabled: false };
+  return { adapter: createStubAnswerCrosscheck(), paidEnabled: false, mode };
 }

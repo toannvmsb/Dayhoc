@@ -38,7 +38,7 @@ export function worksheetTraceToUsageEvents(
         userRef: ctx.userRef,
         childRef: ctx.childRef ?? null,
         plan: ctx.plan,
-        operationType: 'worksheet_batch_generation',
+        operationType: m.operationType ?? 'worksheet_batch_generation',
         provider: m.provider as never,
         model: m.model,
         modelVersion: m.modelVersion,

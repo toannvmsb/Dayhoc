@@ -147,6 +147,8 @@ export interface WorksheetModelUsage {
   readonly model: string;
   readonly provider: string;
   readonly modelVersion: string | null;
+  /** 'worksheet_batch_generation' (default) or 'advanced_verification' (crosscheck). */
+  readonly operationType?: 'worksheet_batch_generation' | 'advanced_verification';
   readonly calls: number;
   readonly retries: number;
   readonly fallbackCalls: number;
@@ -337,6 +339,7 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
     model: string; provider: string; modelVersion: string | null; calls: number; retries: number;
     fallbackCalls: number; inputTokens: number; outputTokens: number; actualCostUsd: number;
     priceConfigEffectiveDate: string | null; latencyMs: number; schemaValidCalls: number;
+    operationType?: 'worksheet_batch_generation' | 'advanced_verification';
   }>();
   const bump = (gen: ItemContentGenerator) => {
     let m = byModel.get(gen.model);
@@ -492,6 +495,21 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
               if (s.crosscheckRequired && input.crosscheckAdapter) {
                 const cc = await runGroupCCrosscheck(composed.exercise, input.spec.schoolGrade, input.crosscheckAdapter);
                 s.crosscheckVerdict = cc.verdict;
+                for (const u of cc.usages) {
+                  const mu = byModel.get(u.model) ?? {
+                    model: u.model, provider: u.provider, modelVersion: null, calls: 0, retries: 0, fallbackCalls: 0,
+                    inputTokens: 0, outputTokens: 0, actualCostUsd: 0, priceConfigEffectiveDate: null, latencyMs: 0, schemaValidCalls: 0,
+                    operationType: 'advanced_verification' as const,
+                  };
+                  mu.calls += 1;
+                  mu.inputTokens += u.inputTokens;
+                  mu.outputTokens += u.outputTokens;
+                  const c = computeActualCost({ inputTokens: u.inputTokens, outputTokens: u.outputTokens }, u.model, now(), pricing, input.fxVndPerUsd);
+                  mu.actualCostUsd += c.actualCostUsd ?? 0;
+                  totals.actualCostUsd += c.actualCostUsd ?? 0;
+                  if ('priceConfigVersion' in c && c.priceConfigVersion) mu.priceConfigEffectiveDate = c.priceConfigVersion;
+                  byModel.set(u.model, mu);
+                }
                 if (cc.state === 'REGENERATE') {
                   accepted = false;
                   s.accepted = null;

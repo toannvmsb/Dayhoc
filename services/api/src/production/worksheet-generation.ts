@@ -10,6 +10,7 @@ import {
 } from '@copilot/ai';
 import {
   createLunaItemContentGenerator,
+  createOpenAiAnswerCrosscheck,
   DailyCostGuard,
   InMemoryWorksheetShadowQueue,
   PgReviewQueueStore,
@@ -122,11 +123,19 @@ export function resolveWorksheetGeneration(
     highComplexity: mkGen(env.WORKSHEET_HIGH_COMPLEXITY_MODEL ?? 'gpt-5-mini'),
   };
 
-  // Paid crosscheck stays disabled until AI_CROSSCHECK_MODE=LIVE + key + factory.
-  // When it is NOT enabled we pass NO adapter, so Group C items sit
-  // PENDING_CROSSCHECK (honest) rather than flooding the review queue with the
-  // stub's always-UNCERTAIN verdict.
-  const { adapter: paidAdapter, paidEnabled } = resolveCrosscheckAdapter(env);
+  // Paid crosscheck runs ONLY when AI_CROSSCHECK_MODE=LIVE (+ key). Otherwise we
+  // pass NO adapter, so Group C items sit PENDING_CROSSCHECK (honest) rather than
+  // flooding the review queue with the stub's always-UNCERTAIN verdict.
+  const { adapter: paidAdapter, paidEnabled } = resolveCrosscheckAdapter(env, () =>
+    createOpenAiAnswerCrosscheck(
+      createOpenAiProviderAdapter({
+        apiKey: env.OPENAI_API_KEY!,
+        model: env.CROSSCHECK_MODEL ?? 'gpt-4.1-mini',
+        capability: 'advanced_verification' as AiCapability,
+        compliance: COMPLIANCE,
+      }),
+    ),
+  );
   const crosscheckAdapter = paidEnabled ? paidAdapter : undefined;
 
   const store = new PgWorksheetGenerationStore(opts.pool);
