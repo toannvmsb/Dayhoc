@@ -28,7 +28,10 @@ const appendOnly = (pgm, table) => {
 exports.up = (pgm) => {
   pgm.createTable('worksheet_generation_runs', {
     id: { type: 'text', primaryKey: true },
-    generation_spec_id: { type: 'text', notNull: true, references: 'generation_specs', onDelete: 'CASCADE' },
+    // plain text (NOT a generation_specs FK) — the worksheet orchestrator owns
+    // its own lifecycle; the daily-plan spec is persisted by the C5 path. The
+    // child-deletion workflow purges by `generation_spec_id IN (child's specs)`.
+    generation_spec_id: { type: 'text', notNull: true },
     child_ref: { type: 'text' }, // pseudonymous — NOT a child_profiles FK
     mode: { type: 'text', notNull: true, check: "mode IN ('SHADOW','LIVE')" },
     worksheet_state: { type: 'text', notNull: true, check: "worksheet_state IN ('READY','READY_WITH_PENDING_CROSSCHECK','FAILED')" },

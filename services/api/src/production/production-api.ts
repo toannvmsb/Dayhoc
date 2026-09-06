@@ -58,6 +58,9 @@ import {
 import { buildLearningTwin } from '@copilot/learning-twin';
 import type { AssessmentQuestionOutcome, Exam } from '@copilot/domain';
 import { createHash } from 'node:crypto';
+import { resolveWorksheetGeneration } from './worksheet-generation.js';
+import { insertAiUsageEvent } from './pg-ai-usage.js';
+import { purgeReviewSnapshots, shadowRollup, failureBreakdown, reviewQueueRollup } from '@copilot/exercise-gen';
 import {
   createLogger,
   resolveAnalyticsAdapter,
@@ -112,6 +115,9 @@ export interface ProductionApiOptions {
    * Only the 'supabase' branch needs a real password sign-in (see `signIn`
    * below); dev/in-memory keep their existing DB-lookup shortcut. */
   readonly authKind?: 'supabase' | 'dev' | 'in-memory';
+  /** doc 66 — inject the worksheet SHADOW generation config (tests / custom
+   * deployments). Default: resolved from env (`AI_GENERATION_MODE`), null = OFF. */
+  readonly worksheetGeneration?: import('./worksheet-generation.js').ProductionWorksheetGeneration | null;
 }
 
 type Queryable = Pool | PoolClient;
@@ -312,6 +318,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
           ...(inputs.enrollment ? { enrollment: inputs.enrollment } : {}),
         },
       },
+      ...(worksheetGen ? { worksheetGeneration: worksheetGen } : {}),
     });
     return { scoped, inputs };
   }
@@ -320,6 +327,23 @@ export function createProductionApi(opts: ProductionApiOptions) {
     userId,
     role: 'admin', // authorization already enforced above; 'admin' bypasses the legacy family check
   });
+
+  // ---- doc 66: production worksheet recovery orchestrator (SHADOW) ----------
+  // OFF (default) → null, nothing runs. SHADOW → full run + persist + telemetry,
+  // NEVER served to a child. LIVE → still SHADOW-only here (gated).
+  const worksheetGen =
+    opts.worksheetGeneration !== undefined
+      ? opts.worksheetGeneration
+      : resolveWorksheetGeneration({
+          pool,
+          logger,
+          planFor: () => 'free', // TODO staging: familySubscription(userId).plan — budget rollup only, never gates routing
+          usageSink: (event) => {
+            insertAiUsageEvent(pool, event).catch((e) =>
+              logger.warn('ai_usage_events insert failed (worksheet)', { error: e instanceof Error ? e.message : String(e) }),
+            );
+          },
+        });
 
   /** The owning family id for a user (OWNER membership preferred), or undefined. */
   async function familyIdFor(userId: string): Promise<string | undefined> {
@@ -2285,6 +2309,22 @@ export function createProductionApi(opts: ProductionApiOptions) {
         await del('learning_state_snapshots', `DELETE FROM learning_state_snapshots WHERE child_id = $1`, [childId]);
         await del('learning_context_snapshots', `DELETE FROM learning_context_snapshots WHERE child_id = $1`, [childId]);
         await del('lesson_confirmations', `DELETE FROM lesson_confirmations WHERE child_id = $1`, [childId]);
+        // doc 66: the worksheet-orchestrator tables key on generation_spec_id
+        // (plain text, no FK). Purge them + review_queue by the child's spec ids
+        // BEFORE deleting generation_specs. Slots/attempts FK-cascade off the run.
+        const wsSpecScope = `generation_spec_id IN (SELECT id FROM generation_specs WHERE child_id = $1)`;
+        await del('review_queue', `DELETE FROM review_queue WHERE ${wsSpecScope}`, [childId]);
+        await del(
+          'worksheet_slot_attempts',
+          `DELETE FROM worksheet_slot_attempts WHERE run_id IN (SELECT id FROM worksheet_generation_runs WHERE ${wsSpecScope})`,
+          [childId],
+        );
+        await del(
+          'worksheet_slots',
+          `DELETE FROM worksheet_slots WHERE run_id IN (SELECT id FROM worksheet_generation_runs WHERE ${wsSpecScope})`,
+          [childId],
+        );
+        await del('worksheet_generation_runs', `DELETE FROM worksheet_generation_runs WHERE ${wsSpecScope}`, [childId]);
         await del('generation_specs', `DELETE FROM generation_specs WHERE child_id = $1`, [childId]);
         await del('exam_results', `DELETE FROM exam_results WHERE child_id = $1`, [childId]);
         await del('exams', `DELETE FROM exams WHERE child_id = $1`, [childId]);
@@ -2902,9 +2942,29 @@ export function createProductionApi(opts: ProductionApiOptions) {
       return result;
     },
 
+    /**
+     * ADMIN — privacy-safe SHADOW observability (doc 66 §1). No content, no PII.
+     */
+    async worksheetShadowObservability(ctx: WorkspaceRequestContext, opts?: { sinceIso?: string }) {
+      if (ctx.workspace !== 'ADMIN') throw new AuthzError('admin only');
+      const [rollup, failures, review] = await Promise.all([
+        shadowRollup(pool, opts?.sinceIso),
+        failureBreakdown(pool, opts?.sinceIso),
+        reviewQueueRollup(pool),
+      ]);
+      return { rollup, failures, review, mode: worksheetGen?.mode ?? 'OFF' };
+    },
+
+    /** ADMIN / scheduled job — null the short-retention review-queue snapshots. */
+    async purgeReviewQueueSnapshots(ctx: WorkspaceRequestContext, retentionDays = 30) {
+      if (ctx.workspace !== 'ADMIN') throw new AuthzError('admin only');
+      return { purged: await purgeReviewSnapshots(pool, retentionDays) };
+    },
+
     // exposed for tests / transports
     _deriveContext: deriveContext,
     _services: base,
+    _worksheetGeneration: worksheetGen,
   };
 
   function auditRow(

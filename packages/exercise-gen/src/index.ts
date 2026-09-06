@@ -58,3 +58,6 @@ export * from './review-queue.js';
 export * from './worksheet-persistence.js';
 export * from './worksheet-telemetry.js';
 export * from './worksheet-shadow.js';
+export * from './pg-worksheet-persistence.js';
+export * from './pg-review-queue.js';
+export * from './worksheet-read-model.js';
