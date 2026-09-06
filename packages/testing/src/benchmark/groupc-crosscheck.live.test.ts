@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { writeFileSync, appendFileSync, rmSync } from 'node:fs';
-import { createOpenAiProviderAdapter, PricingRegistry, type AiCapability, type ProviderCompliance } from '@copilot/ai';
+import { createOpenAiProviderAdapter, PricingRegistry, tokenCostUsd, type AiCapability, type ProviderCompliance } from '@copilot/ai';
 import { createOpenAiAnswerCrosscheck, runGroupCCrosscheck } from '@copilot/exercise-gen';
 import { GROUPC_GOLDEN } from './groupc-crosscheck-golden.js';
 
@@ -52,10 +52,9 @@ describe('doc 66 §6 — paid Group-C crosscheck verification', () => {
       appendFileSync(RAW, JSON.stringify({ id: g.id, golden: g.golden, verifier: r.verdict, state: r.state, detail: r.detail, verifierCalls: r.usages.length, note: g.note }) + '\n');
       for (const u of r.usages) {
         const c = pricing.has(u.model)
-          ? (u.inputTokens / 1e6) * pricing.priceAt(u.model, new Date()).inputPerMillion +
-            (u.outputTokens / 1e6) * pricing.priceAt(u.model, new Date()).outputPerMillion
+          ? tokenCostUsd(pricing.priceAt(u.model, new Date()), { inputTokens: u.inputTokens ?? 0, outputTokens: u.outputTokens ?? 0 })
           : 0;
-        spentUsd += c;
+        if (Number.isFinite(c)) spentUsd += c;
       }
       const verifier = r.verdict;
       (confusion[g.golden] ??= {})[verifier] = ((confusion[g.golden] ??= {})[verifier] ?? 0) + 1;

@@ -270,21 +270,75 @@ provider-throw → UNCERTAIN, verifier isolation). No paid call.
 
 ---
 
-## PHASE 6 — SMALL PAID GROUP-C VERIFICATION  ⏳  (harness ready)
+## PHASE 6 — SMALL PAID GROUP-C VERIFICATION  ⛔  STOPPED — 3 false PASSes → FREE v2 fix → awaiting a re-run decision
 
-`groupc-crosscheck-golden.ts` — **16 synthetic reasoning / find-the-error /
-construct-an-example items**, each with a Claude-drafted GOLDEN verdict (6 PASS,
-8 FAIL, 2 UNCERTAIN). `groupc-crosscheck.live.test.ts` (`RUN_GROUPC_XCHECK=1`,
-cap $0.50) runs the real `createOpenAiAnswerCrosscheck` (gpt-4.1-mini) against
-it. **HARD requirement: false PASS = 0.**
+`groupc-crosscheck-golden.ts` — **20 items** (8 PASS, 9 FAIL, 3 UNCERTAIN), each
+with a Claude-drafted GOLDEN verdict incl. 2 G7 parallel-lines cases.
+`groupc-crosscheck.live.test.ts` ran the real `createOpenAiAnswerCrosscheck`
+(gpt-4.1-mini) — **22 verifier calls, ~$0.01 spend** (harness NaN'd the spend
+line; token counts small — fixed for the re-run). Reports:
+`docs/implementation/data/66_groupc_xcheck_v1_{report.txt,raw.jsonl}`.
 
-_(pending Phase 4)_
+| | v1 result |
+|---|---|
+| PASS agreement | 8/8 |
+| FAIL agreement | 6/9 |
+| UNCERTAIN | 2/3 (gc12 → FAIL, safe) |
+| **FALSE PASS** | **3 — HARD FAIL** |
+
+**The 3 false PASSes:**
+- `gc04` (find-the-error, fix `846 + 108 = 944` is wrong) — the verifier
+  self-solved to 954, **wrote the correct value in its own reason**, then output
+  `verdict: PASS`. Verdict/reason inconsistency.
+- `gc07` (ratio 60 @ 2:3, answer states parts 20 & 30) — the verifier's reason
+  literally says *"đáp án … là sai"*, verdict `PASS`. Verdict/reason
+  inconsistency.
+- `gc19` (G7: equal **co-interior** angles wrongly used to conclude parallel) —
+  the verifier restated the flawed rule and accepted it. A genuine reasoning
+  miss by gpt-4.1-mini on a T3 geometry criterion.
+
+### FREE fix — `openai-answer-crosscheck.v2` (`main` Phase-6 commit)
+
+- The verifier prompt now forces a **structured, ordered** output:
+  `ket_qua_ban_tu_giai` (its own independent result) → `ket_qua_trong_dap_an`
+  (the result the answer claims) → `loi_sai_phat_hien` (any error found) →
+  `verdict`. `PASS` is defined as *only* when it self-solved, the two results
+  match exactly, and no error was flagged.
+- **Deterministic guards in `parseVerdict`**: a `PASS` is overridden to `FAIL`
+  when the verifier's own output contradicts it — `loi_sai_phat_hien` is
+  non-empty, or `ket_qua_ban_tu_giai` and `ket_qua_trong_dap_an` are both
+  numeric and unequal. This catches the `gc04` / `gc07` classes structurally.
+- `maxTokens` 700 → 900 for the extra fields. 3 new guard regression tests.
+- Harness: real spend via `tokenCostUsd`; per-item raw sidecar.
+
+`gc19` (geometry-criterion reasoning) is **not** covered by the numeric guards —
+the v2 "check every reasoning step, flag any error" instruction *may* catch it,
+but confirming that needs a re-run. If it persists, the options are a
+**product/architecture decision, not autonomous**: route `M7.GEO.*` / proof
+crosscheck to `gpt-5-mini`, or always send geometry-criterion reasoning to human
+review.
+
+### STOP
+
+Per the mandatory boundary ("if any false PASS: STOP"), I did not wire crosscheck
+into staging shadow and did not proceed to Phase 7. A **re-run of the paid
+Phase 6 with v2** (est. ~$0.02, well inside the remaining ~$0.49 crosscheck
+budget) is the next step — it needs a go-ahead since the first run failed the
+hard gate.
 
 ---
 
-## PHASES 7–8
+## PHASE 7 — STAGING FULL PATH  ⏳
 
-_(pending)_
+_(blocked on a clean Phase 6)_
+
+---
+
+## PHASE 8 — CONTENT QUALITY HARDENING  ⏳
+
+_(pending; P2 candidates already logged: FRACTION_ARITH reasoning-structure
+generation, `choice`-kind drift on geometry skills — the compose-retry fix in
+Phase 4b is the first of these)_
 
 ---
 

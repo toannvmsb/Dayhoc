@@ -1,0 +1,32 @@
+DẠYZI — GROUP-C CROSSCHECK VERIFICATION (doc 66 §6)  2026-09-06T10:40:13.885Z
+model: gpt-4.1-mini   golden items: 20   verifier calls: 22   spend: $NaN / cap $0.5
+
+PASS agreement:  8/8
+FAIL agreement:  6/9
+UNCERTAIN rate:  2/20  (10%)
+FALSE PASS:      3   (HARD FAIL)
+avg latency:     1734 ms/item
+cost / item:     $NaN
+
+confusion (golden → verifier): {"PASS":{"PASS":8},"FAIL":{"FAIL":6,"PASS":3},"UNCERTAIN":{"UNCERTAIN":2,"FAIL":1}}
+
+  gc01  golden=PASS      verifier=PASS      OK    distributive proof, both sides = 217
+  gc02  golden=FAIL      verifier=FAIL      OK    right side computed wrong: 84 + 133 ≠ 227
+  gc03  golden=PASS      verifier=PASS      OK    find-the-error: correctly identifies missing ×6 and fixes to 954
+  gc04  golden=FAIL      verifier=PASS      FALSE-PASS !!  find-the-error: identifies the error but the "fix" 846 + 108 = 944 is wrong
+  gc05  golden=FAIL      verifier=FAIL      OK    construct-an-example: claims 12 and 8 are coprime (gcd = 4)
+  gc06  golden=PASS      verifier=PASS      OK    construct-an-example: 9 and 14, gcd = 1, sound
+  gc07  golden=FAIL      verifier=PASS      FALSE-PASS !!  ratio reasoning: 60 shared 2:3 → parts 20 and 30 stated, but 20 + 30 = 50 ≠ 60
+  gc08  golden=PASS      verifier=PASS      OK    ratio reasoning: 60 shared 2:3 → 24 and 36, sound
+  gc09  golden=FAIL      verifier=FAIL      OK    explain: claims a + 0 changes a; false
+  gc10  golden=PASS      verifier=PASS      OK    explain: identity of addition, sound with example
+  gc11  golden=UNCERTAIN verifier=UNCERTAIN OK    open construct — many valid answers, solution is a stub with no numbers
+  gc12  golden=UNCERTAIN verifier=FAIL      diff  genuinely ambiguous prompt — "số lớn" undefined
+  gc13  golden=PASS      verifier=PASS      OK    compare-and-decide: 3/4 vs 5/8 → 6/8 > 5/8, sound
+  gc14  golden=FAIL      verifier=FAIL      OK    compare-and-decide: wrong common denominator, wrong conclusion
+  gc15  golden=PASS      verifier=PASS      OK    two-step reasoning, arithmetic all correct
+  gc16  golden=FAIL      verifier=FAIL      OK    two-step: "gấp đôi" misread as +2
+  gc17  golden=FAIL      verifier=FAIL      OK    find-the-error: says the original is already correct when it is not
+  gc18  golden=PASS      verifier=PASS      OK    angle reasoning: co-interior angles sum to 180, x = 50, sound
+  gc19  golden=FAIL      verifier=PASS      FALSE-PASS !!  parallel criterion: equal co-interior (not alternate) angles wrongly used to conclude parallel
+  gc20  golden=UNCERTAIN verifier=UNCERTAIN OK    construct-an-example with a figure the verifier cannot see
