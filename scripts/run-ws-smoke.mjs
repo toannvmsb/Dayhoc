@@ -9,7 +9,13 @@ for (const line of readFileSync('.env', 'utf8').split('\n')) {
   if (m && !line.trim().startsWith('#')) env[m[1]] = m[2].replace(/^["']|["']$/g, '');
 }
 if (!env.OPENAI_API_KEY) throw new Error('no OPENAI_API_KEY in .env');
-Object.assign(env, { RUN_WS_SMOKE: '1', WS_SMOKE_DAILY_USD: '2.00', WS_SMOKE_PER_WS_USD: '0.05' });
+Object.assign(env, {
+  RUN_WS_SMOKE: '1',
+  WS_SMOKE_DAILY_USD: process.env.WS_SMOKE_DAILY_USD ?? '2.00',
+  WS_SMOKE_PER_WS_USD: process.env.WS_SMOKE_PER_WS_USD ?? '0.05',
+  WS_SMOKE_PASSES: process.env.WS_SMOKE_PASSES ?? '1',
+  WS_SMOKE_TAG: process.env.WS_SMOKE_TAG ?? '',
+});
 
 const r = spawnSync('npx', ['vitest', 'run', 'packages/testing/src/benchmark/worksheet-shadow-smoke.live.test.ts', '--test-timeout=3600000'], { env, stdio: 'inherit', shell: true });
 process.exit(r.status ?? 1);
