@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, appendFileSync, rmSync } from 'node:fs';
 import { createOpenAiProviderAdapter, PricingRegistry, type AiCapability, type ProviderCompliance } from '@copilot/ai';
 import { createOpenAiAnswerCrosscheck, runGroupCCrosscheck } from '@copilot/exercise-gen';
 import { GROUPC_GOLDEN } from './groupc-crosscheck-golden.js';
 
 /**
  * doc 66 §6 — SMALL PAID Group-C crosscheck verification. Runs the real
- * `createOpenAiAnswerCrosscheck` (gpt-4.1-mini) against the ~16-item golden
+ * `createOpenAiAnswerCrosscheck` (gpt-4.1-mini) against the ~20-item golden
  * benchmark. Every item has a Claude-drafted GOLDEN verdict.
  *
  * HARD REQUIREMENT: false PASS = 0 (verifier says PASS on a golden-FAIL item).
@@ -18,6 +18,7 @@ const LIVE = process.env.RUN_GROUPC_XCHECK === '1' && !!process.env.OPENAI_API_K
 const CAP_USD = Number(process.env.GROUPC_XCHECK_CAP_USD ?? '0.50');
 const MODEL = process.env.CROSSCHECK_MODEL ?? 'gpt-4.1-mini';
 const OUT = 'D:/Lap trinh/Claude/Dayhoc/GROUPC_XCHECK.txt';
+const RAW = 'D:/Lap trinh/Claude/Dayhoc/GROUPC_XCHECK_raw.jsonl';
 
 const COMPLIANCE: Omit<ProviderCompliance, 'provider'> = {
   processingRegion: 'groupc-verify', crossBorder: true, dataCategoriesAllowed: [],
@@ -25,7 +26,7 @@ const COMPLIANCE: Omit<ProviderCompliance, 'provider'> = {
 };
 
 describe('doc 66 §6 — paid Group-C crosscheck verification', () => {
-  it.skipIf(!LIVE)('16 golden items, false PASS must be 0', { timeout: 30 * 60 * 1000 }, async () => {
+  it.skipIf(!LIVE)('20 golden items, false PASS must be 0', { timeout: 30 * 60 * 1000 }, async () => {
     const pricing = new PricingRegistry();
     const adapter = createOpenAiProviderAdapter({
       apiKey: process.env.OPENAI_API_KEY!, model: MODEL,
@@ -40,13 +41,15 @@ describe('doc 66 §6 — paid Group-C crosscheck verification', () => {
     let falsePass = 0;
     let uncertain = 0;
     let latSum = 0;
+    try { rmSync(RAW); } catch { /* first run */ }
 
     for (const g of GROUPC_GOLDEN) {
       if (spentUsd > CAP_USD) { rows.push(`STOP: cap $${CAP_USD} reached`); break; }
       const t0 = Date.now();
-      const r = await runGroupCCrosscheck(g.exercise, 4, cc);
+      const r = await runGroupCCrosscheck(g.exercise, g.grade ?? 4, cc);
       latSum += Date.now() - t0;
       calls += r.usages.length;
+      appendFileSync(RAW, JSON.stringify({ id: g.id, golden: g.golden, verifier: r.verdict, state: r.state, detail: r.detail, verifierCalls: r.usages.length, note: g.note }) + '\n');
       for (const u of r.usages) {
         const c = pricing.has(u.model)
           ? (u.inputTokens / 1e6) * pricing.priceAt(u.model, new Date()).inputPerMillion +

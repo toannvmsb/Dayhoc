@@ -2,7 +2,7 @@ import type { GeneratedExercise } from '@copilot/domain';
 import { asSkillId } from '@copilot/domain';
 
 /**
- * doc 66 §6 — Group-C answer-crosscheck golden benchmark. ~16 synthetic
+ * doc 66 §6 — Group-C answer-crosscheck golden benchmark. ~20 synthetic
  * reasoning / find-the-error / construct-an-example items, each with a
  * Claude-drafted GOLDEN verdict:
  *   PASS      — the worked solution's maths is sound and reaches a correct result
@@ -19,6 +19,8 @@ export interface GroupCGoldenCase {
   readonly id: string;
   readonly golden: GoldenVerdict;
   readonly note: string;
+  /** school grade the verifier should assume (default 4). */
+  readonly grade?: 4 | 7;
   readonly exercise: GeneratedExercise;
 }
 
@@ -105,5 +107,21 @@ export const GROUPC_GOLDEN: readonly GroupCGoldenCase[] = [
   {
     id: 'gc16', golden: 'FAIL', note: 'two-step: "gấp đôi" misread as +2',
     exercise: ex({ id: 'gc16', prompt: 'Một cửa hàng buổi sáng bán 45 kg gạo, buổi chiều bán gấp đôi buổi sáng. Giải thích và tính tổng số gạo bán trong ngày.', workedSolution: 'Gấp đôi nghĩa là thêm 2, nên buổi chiều bán 45 + 2 = 47 kg. Cả ngày: 45 + 47 = 92 kg.' }),
+  },
+  {
+    id: 'gc17', golden: 'FAIL', note: 'find-the-error: says the original is already correct when it is not',
+    exercise: ex({ id: 'gc17', prompt: 'Bạn Lan viết: 25 × (8 + 4) = 25 × 8 + 4 = 200 + 4 = 204. Hãy tìm chỗ sai và sửa lại.', workedSolution: 'Bạn Lan làm đúng rồi. 25 × (8 + 4) = 25 × 12 = 204. Không có chỗ nào sai.' }),
+  },
+  {
+    id: 'gc18', golden: 'PASS', grade: 7, note: 'angle reasoning: co-interior angles sum to 180, x = 50, sound',
+    exercise: ex({ id: 'gc18', skillId: asSkillId('M7.GEO.PARALLEL_CRITERIA'), requiredSkillIds: [asSkillId('M7.GEO.PARALLEL_CRITERIA')], knowledgeLevel: 'K2', thinkingLevel: 'T3', prompt: 'Hai đường thẳng a // b bị cắt bởi c, tạo hai góc trong cùng phía 110° và (2x − 30)°. Tìm x và giải thích.', workedSolution: 'Hai góc trong cùng phía bù nhau nên 110 + (2x − 30) = 180. Suy ra 2x + 80 = 180, 2x = 100, x = 50.' }),
+  },
+  {
+    id: 'gc19', golden: 'FAIL', grade: 7, note: 'parallel criterion: equal co-interior (not alternate) angles wrongly used to conclude parallel',
+    exercise: ex({ id: 'gc19', skillId: asSkillId('M7.GEO.PARALLEL_CRITERIA'), requiredSkillIds: [asSkillId('M7.GEO.PARALLEL_CRITERIA')], knowledgeLevel: 'K2', thinkingLevel: 'T3', prompt: 'Đường thẳng c cắt a và b tạo hai góc trong cùng phía đều bằng 70°. Hỏi a có song song với b không? Giải thích.', workedSolution: 'Hai góc trong cùng phía bằng nhau (70° = 70°) nên a // b.' }),
+  },
+  {
+    id: 'gc20', golden: 'UNCERTAIN', grade: 7, note: 'construct-an-example with a figure the verifier cannot see',
+    exercise: ex({ id: 'gc20', prompt: 'Dựa vào hình vẽ đã cho, hãy nêu một cặp góc đối đỉnh và giải thích.', workedSolution: 'Theo hình, góc AOB và góc COD là hai góc đối đỉnh nên chúng bằng nhau.' }),
   },
 ];
