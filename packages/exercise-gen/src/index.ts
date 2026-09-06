@@ -61,3 +61,4 @@ export * from './worksheet-shadow.js';
 export * from './pg-worksheet-persistence.js';
 export * from './pg-review-queue.js';
 export * from './worksheet-read-model.js';
+export * from './worksheet-guardrails.js';

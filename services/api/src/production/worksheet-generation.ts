@@ -10,6 +10,7 @@ import {
 } from '@copilot/ai';
 import {
   createLunaItemContentGenerator,
+  DailyCostGuard,
   InMemoryWorksheetShadowQueue,
   PgReviewQueueStore,
   PgWorksheetGenerationStore,
@@ -17,12 +18,14 @@ import {
   type AnswerCrosscheckAdapter,
   type ItemContentGenerator,
   type ReviewQueueStore,
+  type WorksheetCostCaps,
   type WorksheetGenerationStore,
   type WorksheetShadowJob,
   type WorksheetShadowOutcome,
   type WorksheetShadowQueue,
   type WorksheetUsageContext,
 } from '@copilot/exercise-gen';
+import { validateWorksheetStagingConfig } from './worksheet-staging-config.js';
 import { loadReferenceLibrary, type ReferenceExample } from '@copilot/reference-library';
 import { createLogger, type Logger } from '@copilot/observability';
 
@@ -60,6 +63,8 @@ export interface ProductionWorksheetGeneration {
   readonly usageSink?: (event: AiUsageEvent) => void;
   readonly resolveUsageContext?: (childId: string, ctx: { userId: string }) => WorksheetUsageContext;
   readonly resolveChildRef?: (childId: string) => string;
+  readonly costGuard?: DailyCostGuard;
+  readonly perWorksheetCostCeilingUsd?: number;
 }
 
 export interface ResolveWorksheetGenerationOpts {
@@ -74,6 +79,8 @@ export interface ResolveWorksheetGenerationOpts {
   readonly queue?: WorksheetShadowQueue;
   /** observe every completed SHADOW run (dashboards / alerts). */
   readonly onOutcome?: (job: WorksheetShadowJob, outcome: WorksheetShadowOutcome) => void;
+  /** cumulative daily spend cap — one guard shared across all runs (doc 66 §2). */
+  readonly costGuard?: DailyCostGuard;
 }
 
 /** sha256(id) → 16-hex — the same opaque, non-reversible ref shape the analytics
@@ -87,7 +94,13 @@ export function resolveWorksheetGeneration(
   const logger = opts.logger ?? createLogger({ level: 'warn' });
   const cfg = loadAiGenerationConfig(env);
 
+  const validation = validateWorksheetStagingConfig(env);
+  for (const w of validation.warnings) logger.warn(`worksheet generation config: ${w}`);
   if (cfg.mode === 'OFF') return null;
+  if (validation.blocking.length > 0) {
+    for (const b of validation.blocking) logger.warn(`worksheet generation config BLOCKING: ${b}`);
+    return null;
+  }
   if (!env.OPENAI_API_KEY) {
     logger.warn('worksheet generation: AI_GENERATION_MODE set but OPENAI_API_KEY missing — staying OFF');
     return null;
@@ -120,6 +133,8 @@ export function resolveWorksheetGeneration(
   const reviewQueue: ReviewQueueStore = new PgReviewQueueStore(opts.pool);
   const queue = opts.queue ?? new InMemoryWorksheetShadowQueue(opts.onOutcome ? { onOutcome: opts.onOutcome } : undefined);
   const planFor = opts.planFor ?? (() => 'free' as Plan);
+  const caps: WorksheetCostCaps = validation.costCaps;
+  const costGuard = opts.costGuard ?? new DailyCostGuard(caps);
 
   return {
     mode: cfg.mode,
@@ -129,6 +144,8 @@ export function resolveWorksheetGeneration(
     ...(crosscheckAdapter ? { crosscheckAdapter } : {}),
     reviewQueue,
     store,
+    costGuard,
+    perWorksheetCostCeilingUsd: caps.perWorksheetUsd,
     ...(opts.usageSink ? { usageSink: opts.usageSink } : {}),
     resolveUsageContext: (childId, ctx) => ({
       userRef: pseudonymize(ctx.userId),

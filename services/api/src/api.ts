@@ -9,6 +9,7 @@ import { buildDailyPlan, buildExerciseGenerationSpec } from '@copilot/planning';
 import { buildAssignmentsForPlan } from '@copilot/practice';
 import type {
   AnswerCrosscheckAdapter,
+  DailyCostGuard,
   ExerciseGenerator,
   GenerationStore,
   ItemContentGenerator,
@@ -131,6 +132,10 @@ export interface ApiDeps {
     readonly usageSink?: (event: import('@copilot/ai').AiUsageEvent) => void;
     readonly resolveUsageContext?: (childId: string, ctx: RequestContext) => WorksheetUsageContext;
     readonly resolveChildRef?: (childId: string) => string;
+    /** cumulative daily spend cap (doc 66 §2). */
+    readonly costGuard?: DailyCostGuard;
+    /** hard USD ceiling for ONE worksheet run (doc 66 §2). */
+    readonly perWorksheetCostCeilingUsd?: number;
   };
   /**
    * The legacy `createApi` surface (in-memory `childProfiles`, trusted
@@ -248,6 +253,8 @@ export function createApi(deps: ApiDeps) {
         ...(wg.reviewQueue ? { reviewQueue: wg.reviewQueue } : {}),
         ...(wg.store ? { store: wg.store } : {}),
         ...(wg.usageSink ? { usageSink: wg.usageSink } : {}),
+        ...(wg.costGuard ? { costGuard: wg.costGuard } : {}),
+        ...(wg.perWorksheetCostCeilingUsd ? { config: { costCeilingUsd: wg.perWorksheetCostCeilingUsd } } : {}),
         ...(wg.resolveUsageContext ? { usageContext: wg.resolveUsageContext(childId, ctx) } : {}),
         ...(wg.resolveChildRef ? { childRef: wg.resolveChildRef(childId) } : {}),
       });

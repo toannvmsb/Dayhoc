@@ -18,6 +18,7 @@ import {
   worksheetTraceToUsageEvents,
   type WorksheetUsageContext,
 } from './worksheet-telemetry.js';
+import type { DailyCostGuard } from './worksheet-guardrails.js';
 
 /**
  * SHADOW-mode wrapper for the production worksheet orchestrator (doc 65 §1/§11).
@@ -50,6 +51,9 @@ export interface WorksheetShadowJob {
   /** privacy-safe metrics of the LEGACY path, to compare against (doc 65 §11). */
   readonly legacyMetrics?: WorksheetComparisonMetrics | null;
   readonly onComparison?: (c: WorksheetComparison) => void;
+  /** cumulative daily spend cap (doc 66 §2). A run is skipped when the cap is
+   *  reached; the run's actual cost is recorded after. */
+  readonly costGuard?: DailyCostGuard;
 }
 
 export interface WorksheetComparisonMetrics {
@@ -111,6 +115,11 @@ export async function runWorksheetShadow(
   const now = job.now ?? (() => new Date());
   const newRunId = job.newRunId ?? (() => `wsrun_${Math.random().toString(36).slice(2, 12)}`);
 
+  if (job.costGuard) {
+    const gate = job.costGuard.canRun();
+    if (!gate.ok) return { ran: false, reason: `daily cost guard: ${gate.reason}` };
+  }
+
   let result: WorksheetResult;
   try {
     result = await orchestrateWorksheet({
@@ -127,6 +136,8 @@ export async function runWorksheetShadow(
   } catch (e) {
     return { ran: false, reason: `orchestrator threw: ${(e as Error).message}` };
   }
+
+  job.costGuard?.record(result.trace.totals.actualCostUsd);
 
   const runId = newRunId();
   const usageEvents = job.usageContext
