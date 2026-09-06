@@ -1,0 +1,16 @@
+DẠYZI — PHASE 4 OFFLINE RESCORE (corrected kernel semantics + validator)  2026-09-06T07:14:49.693Z
+raw rows: 780   kernel-backed rows rescored: 687
+
+still DETERMINISTIC_WRONG after fix: 0
+previously-FAILED rows now kernel-consistent: 7
+
+--- still wrong ---
+
+--- recovered ---
+  BENCH-LT-G4-04::egs_LT-G4-04_0::item-15 p1 (was FAILED) → now consistent
+  BENCH-LT-G4-08::egs_LT-G4-08_0::item-03 p1 (was FAILED) → now consistent
+  HC04::egs_hc04_0::item-04 p2 (was FAILED) → now consistent
+  BENCH-LT-G4-04::egs_LT-G4-04_0::item-07 p2 (was FAILED) → now consistent
+  BENCH-LT-G4-08::egs_LT-G4-08_0::item-03 p2 (was FAILED) → now consistent
+  BENCH-LT-G4-08::egs_LT-G4-08_0::item-09 p3 (was FAILED) → now consistent
+  BENCH-LT-G4-08::egs_LT-G4-08_0::item-15 p3 (was FAILED) → now consistent

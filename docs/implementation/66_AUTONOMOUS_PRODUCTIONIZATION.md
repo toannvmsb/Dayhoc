@@ -151,14 +151,84 @@ the failures are on the deliberately-hard `HC*` / small `G7` specs.
 
 ---
 
-## PHASE 4 — EXTENDED SHADOW  ⏳  (running)
+## PHASE 4 — EXTENDED SHADOW  ⛔  STOPPED ON A P0 FLAG → root-caused → FREE fix → offline-revalidated
 
-Same harness, `WS_SMOKE_PASSES=3` `WS_SMOKE_TAG=_EXT` `WS_SMOKE_DAILY_USD=1.50`
-(the remaining generation budget) — ~78 runs, the `DailyCostGuard` stops it at
-$1.50. Tests **consistency across repeated generation** of the same 26 specs and
-whether the Phase 3 P2 failures repeat.
+Same harness, `WS_SMOKE_PASSES=3` `WS_SMOKE_TAG=_EXT` `WS_SMOKE_DAILY_USD=1.50`.
+**78 worksheets / 780 items, $1.4300** (report
+`docs/implementation/data/66_shadow_smoke_report.txt` was Phase 3;
+`WS_SMOKE_EXT.txt` + `WS_SMOKE_EXT_raw.jsonl` for Phase 4). The run's own
+hard-gate assertion **FAILED**:
 
-_(results pending)_
+```
+P0: kernel item accepted with a wrong answer —
+BENCH-LT-G4-08::egs_LT-G4-08_0::item-15 kernel DETERMINISTIC_WRONG
+```
+
+Per the mandatory STOP boundary, I stopped and root-caused before doing anything
+else.
+
+### Root cause — a KERNEL DEFECT, not a model error, not a "wrong answer accepted"
+
+- The flagged slot's final state was **`FAILED`**, not `READY` — the orchestrator
+  never *accepted* a wrong answer. `kernelProdReady === kernelReady` (680/680):
+  every kernel slot that reached READY was deterministically correct. The
+  harness's P0 counter was over-broad (it counted a `DETERMINISTIC_WRONG` status
+  on a *failed* slot).
+- **Why the slot failed**: kernel `item-15` is `3/9 - 4/5 = -7/15`
+  (`canonicalVerificationExpression: "3/9 - 4/5"`, `expectedAnswer -7/15`) — a
+  **subtraction**. But `deriveSemantics` set `semantics.operation: 'ADDITION'`.
+  `operationOfExpr` counted the `/` inside the `a/b` fraction literals as a
+  DIVISION operator, so *every* fraction expression looked `MIXED`, and the
+  `FRACTION_ARITH` branch coerces `MIXED → 'ADDITION'`. A correct subtraction
+  word problem ("Tùng lấy của An 4/5…") then tripped
+  `SEMANTIC_STRUCTURE_MISMATCH` ("prose reads as SUBTRACTION but kernel is
+  ADDITION") → `DETERMINISTIC_WRONG` → retries exhausted → `FAILED`.
+- The model's math was right the whole time; the kernel's own operation label
+  was wrong.
+
+### FREE fix (`main` Phase-4 commit)
+
+- **`math-kernel.ts` `deriveSemantics` / `FRACTION_ARITH`** — strip `\d+/\d+`
+  fraction literals before reading the connecting operator. `3/9 - 4/5` →
+  `# - #` → `SUBTRACTION`; `2/3 : 4/5` → `DIVISION`; `7/9 + 2/3` → `ADDITION`.
+- **`kernel-validator.ts` `answersEqual`** — a defensive companion fix: an
+  `exact`-kind answer string (`"-7/15"`) that equals a `fraction` / `numeric`
+  kernel answer is now parsed and compared as an exact rational instead of
+  falling through to `false` (`ANSWER_MISMATCH`). Tightens correctness, does not
+  loosen any gate.
+- 2 new `kernel-integrity` regression tests (fraction-operator derivation over
+  400 probes; exact-string-vs-fraction-kernel equality).
+
+### Offline re-validation — NO paid calls (`phase4-offline-rescore.test.ts`,
+report `docs/implementation/data/66_phase4_offline_rescore.txt`)
+
+Re-derived every kernel and re-ran `composeExercise` + `validateAgainstKernel`
+over all **780 captured last-attempt realizations** from the Phase 4 raw sidecar:
+
+| after the fix | result |
+|---|---|
+| still `DETERMINISTIC_WRONG` | **0** |
+| previously-`FAILED` slots now kernel-consistent | **7 of 9** |
+
+The 7 recovered slots were all the same defect (FRACTION_ARITH subtraction /
+division word problems mislabelled ADDITION). The **2 residual failures** are
+`BENCH-LT-G7-05::item-03` — the parallel-lines `compare_and_decide` Group-C
+reasoning item already seen in Phase 3. So the corrected pipeline would have run
+Phase 4 at **~96–97% full-worksheet completion** with the only residue a single
+hard reasoning structure (P2, Phase 8).
+
+### STOP — awaiting a decision
+
+A P0-labelled flag fired in a paid run. It is now understood (kernel defect, not
+a served-wrong-answer), fixed FREE, and offline-revalidated against the real
+model outputs. **I am not auto-continuing to Phase 6.** Options for the operator:
+
+1. **Accept the offline rescore** as sufficient evidence and let me continue to
+   Phase 5→6 (Group-C paid verification, pre-approved ≤ $0.50).
+2. **Authorise a fresh paid Phase 4 re-run** (~$1.4, still inside the $2.00
+   cumulative generation budget: $0.4787 + $1.43 spent so far = $1.91 — a re-run
+   would exceed it, so this needs a new cap) to confirm completion ≥ 99% live.
+3. Fold the residual G7 reasoning-structure failure into Phase 8 first.
 
 ---
 

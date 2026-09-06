@@ -64,6 +64,22 @@ function numbersIn(text: string): Set<number> {
   return out;
 }
 
+/**
+ * Parse an `exact`-kind answer string to a numeric value: `a/b` (sign anywhere),
+ * decimal (`.` or `,`), or plain integer. Returns null for anything else (a word,
+ * an interval, an expression) — never a guess.
+ */
+function exactStringToValue(raw: string): number | null {
+  const t = raw.trim().replace(/\s+/g, '');
+  const frac = /^(-?\d+)\/(-?\d+)$/.exec(t);
+  if (frac) {
+    const d = Number(frac[2]);
+    return d === 0 ? null : Number(frac[1]) / d;
+  }
+  if (/^-?\d+(?:[.,]\d+)?$/.test(t)) return Number(t.replace(',', '.'));
+  return null;
+}
+
 function answersEqual(a: MathKernel['expectedAnswer'], ex: GeneratedExercise): boolean {
   const got = ex.answerSpec;
   switch (a.kind) {
@@ -71,14 +87,18 @@ function answersEqual(a: MathKernel['expectedAnswer'], ex: GeneratedExercise): b
       if (got.kind === 'numeric') return Math.abs(got.value - a.value) <= Math.max(a.tolerance, 1e-9);
       if (got.kind === 'fraction' && got.denominator !== 0) return Math.abs(got.numerator / got.denominator - a.value) <= 1e-9;
       if (got.kind === 'exact') {
-        const n = Number(got.value.replace(',', '.').replace(/[^\d.-]/g, ''));
-        return Number.isFinite(n) && Math.abs(n - a.value) <= Math.max(a.tolerance, 1e-9);
+        const n = exactStringToValue(got.value);
+        return n !== null && Math.abs(n - a.value) <= Math.max(a.tolerance, 1e-9);
       }
       return false;
     case 'fraction': {
       const target = a.numerator / a.denominator;
       if (got.kind === 'fraction' && got.denominator !== 0) return Math.abs(got.numerator / got.denominator - target) <= 1e-9;
       if (got.kind === 'numeric') return Math.abs(got.value - target) <= 1e-9;
+      if (got.kind === 'exact') {
+        const n = exactStringToValue(got.value);
+        return n !== null && Math.abs(n - target) <= 1e-9;
+      }
       return false;
     }
     case 'exact':

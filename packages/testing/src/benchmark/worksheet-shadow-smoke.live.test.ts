@@ -70,7 +70,7 @@ describe('doc 66 §3 — internal shadow smoke', () => {
     const guard = new DailyCostGuard({ perWorksheetUsd: PER_WS_CAP, perDayUsd: DAILY_CAP });
 
     let worksheets = 0, fullWorksheets = 0, items = 0, ready = 0, pending = 0, failed = 0;
-    let kernelItems = 0, kernelReady = 0, kernelProdReady = 0, kernelWrong = 0, semUnknownAccepted = 0;
+    let kernelItems = 0, kernelReady = 0, kernelProdReady = 0, kernelWrong = 0, kernelWrongRejected = 0, semUnknownAccepted = 0;
     let defaultCalls = 0, highCalls = 0, retries = 0, fallbackCalls = 0, lastResortCalls = 0, ceilingEvents = 0;
     let maxAttempts = 0;
     const slotLat: number[] = []; const wsLat: number[] = [];
@@ -113,7 +113,14 @@ describe('doc 66 §3 — internal shadow smoke', () => {
         if (s.kernelFamily) {
           kernelItems += 1;
           if (s.finalState === 'READY') { kernelReady += 1; if (s.productionReady) kernelProdReady += 1; }
-          if (s.answerStatus === 'DETERMINISTIC_WRONG') { kernelWrong += 1; p0.push(`${bs.id}::${s.itemId} kernel DETERMINISTIC_WRONG`); }
+          // P0 is a kernel item ACCEPTED (served-eligible) with a wrong answer.
+          // A DETERMINISTIC_WRONG on a FAILED slot means the orchestrator
+          // correctly refused it — count it as a diagnostic, not a P0.
+          const accepted = s.finalState === 'READY' || s.finalState === 'PENDING_CROSSCHECK';
+          if (s.answerStatus === 'DETERMINISTIC_WRONG') {
+            if (accepted) { kernelWrong += 1; p0.push(`${bs.id}::${s.itemId} kernel DETERMINISTIC_WRONG (finalState=${s.finalState})`); }
+            else kernelWrongRejected += 1;
+          }
         }
         if ((s.finalState === 'READY' || s.finalState === 'PENDING_CROSSCHECK') && s.answerStatus === 'SEMANTIC_UNKNOWN') {
           semUnknownAccepted += 1; p0.push(`${bs.id}::${s.itemId} silent SEMANTIC_UNKNOWN`);
@@ -137,7 +144,8 @@ describe('doc 66 §3 — internal shadow smoke', () => {
         `worksheets run:                 ${worksheets}`,
         `full worksheet completion:      ${pct(fullWorksheets, worksheets)}  (${fullWorksheets}/${worksheets})`,
         `valid-item completion:          ${pct(ready + pending, items)}  (${ready + pending}/${items})`,
-        `kernel deterministic correctness: ${pct(kernelProdReady, kernelReady)}  (${kernelProdReady}/${kernelReady})   kernel wrong: ${kernelWrong}`,
+        `kernel-backed items:            ${kernelItems}`,
+        `kernel deterministic correctness: ${pct(kernelProdReady, kernelReady)}  (${kernelProdReady}/${kernelReady})   kernel wrong (accepted): ${kernelWrong}   wrong-but-rejected: ${kernelWrongRejected}`,
         `production-ready deterministic:  ${pct(kernelProdReady, items)}`,
         `PENDING_CROSSCHECK:              ${pct(pending, items)}  (${pending}/${items})`,
         `FAILED slots:                   ${failed}  (${pct(failed, items)})`,

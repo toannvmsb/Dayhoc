@@ -213,7 +213,10 @@ function deriveSemantics(family: MathKernelFamily, b: Built): KernelSemantics {
         askedQuantityRole: 'totalForSecondCount',
       };
     case 'FRACTION_ARITH': {
-      const op = operationOfExpr(b.canonicalVerificationExpression ?? '+');
+      // strip `a/b` fraction literals first — their `/` is NOT a division
+      // operator, and leaving them in makes every fraction expression look MIXED.
+      const bare = (b.canonicalVerificationExpression ?? '+').replace(/\d+\s*\/\s*\d+/g, '#');
+      const op = operationOfExpr(bare);
       return {
         operation: op === 'MIXED' ? 'ADDITION' : op,
         scenarioType: 'CLOSED_EXPRESSION',

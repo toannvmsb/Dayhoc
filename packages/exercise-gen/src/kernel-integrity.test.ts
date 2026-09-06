@@ -199,6 +199,53 @@ describe('doc 58 §3 — semantic preservation (the "36 / 9" → "36 plus 9" cas
     expect(v.codes).not.toContain('SOLUTION_CONTRADICTS_KERNEL');
   });
 
+  it('a FRACTION_ARITH subtraction kernel carries operation SUBTRACTION, not ADDITION (Phase 4 regression)', () => {
+    // the `/` in `a/b` fraction literals used to be counted as a division
+    // operator → every fraction expression looked MIXED → coerced to ADDITION.
+    // A subtraction/division fraction word problem then falsely tripped
+    // SEMANTIC_STRUCTURE_MISMATCH ("prose reads as SUBTRACTION, kernel is ADDITION").
+    const seen = new Set<string>();
+    for (let i = 0; i < 400; i += 1) {
+      const r = buildKernelOfFamily('FRACTION_ARITH', probeSpec('FRACTION_ARITH', i));
+      if (!r.ok) continue;
+      const expr = r.kernel.canonicalVerificationExpression ?? '';
+      const bare = expr.replace(/\d+\s*\/\s*\d+/g, '#');
+      const op = r.kernel.semantics.operation;
+      if (/#\s*-\s*#/.test(bare)) { seen.add('SUB'); expect(op).toBe('SUBTRACTION'); }
+      else if (/#\s*[:÷]\s*#/.test(bare) || /#\s*\/\s*#/.test(bare)) { seen.add('DIV'); expect(op).toBe('DIVISION'); }
+      else if (/#\s*[×*]\s*#/.test(bare)) { seen.add('MUL'); expect(op).toBe('MULTIPLICATION'); }
+      else if (/#\s*\+\s*#/.test(bare)) { seen.add('ADD'); expect(op).toBe('ADDITION'); }
+      // operation must never be MIXED for a single-operator fraction expression
+      expect(op).not.toBe('MIXED');
+    }
+    expect(seen.has('SUB')).toBe(true); // the class that regressed
+  });
+
+  it('an exact-string answer equal to a fraction kernel answer is NOT an ANSWER_MISMATCH (Phase 4 regression)', () => {
+    let k: MathKernel | null = null;
+    for (let i = 0; i < 200 && !k; i += 1) {
+      const r = buildKernelOfFamily('FRACTION_ARITH', probeSpec('FRACTION_ARITH', i));
+      if (r.ok && r.kernel.expectedAnswer.kind === 'fraction') k = r.kernel;
+    }
+    expect(k).not.toBeNull();
+    if (!k || k.expectedAnswer.kind !== 'fraction') return;
+    const { numerator, denominator } = k.expectedAnswer;
+    const [a, b, c, d] = k.requiredNumbersInPrompt;
+    const ex: GeneratedExercise = {
+      id: 'x', generationSpecId: 'g', skillId: asSkillId('M4.FRAC.COMMON_DENOM'),
+      requiredSkillIds: [asSkillId('M4.FRAC.COMMON_DENOM')], bucket: 'currentSkill',
+      knowledgeLevel: 'K2', thinkingLevel: 'T2',
+      prompt: `Thực hiện phép tính: ${a}/${b} ${k.semantics.operation === 'SUBTRACTION' ? '-' : k.semantics.operation === 'MULTIPLICATION' ? '×' : k.semantics.operation === 'DIVISION' ? ':' : '+'} ${c}/${d}.`,
+      // answer given as a bare string, not a structured fraction spec
+      answerSpec: { kind: 'exact', value: `${numerator}/${denominator}` },
+      hints: ['a', 'b', 'c', 'd', 'e', 'f'],
+      workedSolution: `${k.operationGraph.join(' ')} Đáp số: ${numerator}/${denominator}.`,
+      origin: 'ai_generated',
+    };
+    const v = validateAgainstKernel(ex, k);
+    expect(v.codes).not.toContain('ANSWER_MISMATCH');
+  });
+
   it('a worked solution that concludes the WRONG number is a SOLUTION_CONTRADICTS_KERNEL', () => {
     const r = buildKernelOfFamily('INT_ARITH', probeSpec('INT_ARITH', 7));
     expect(r.ok).toBe(true);
