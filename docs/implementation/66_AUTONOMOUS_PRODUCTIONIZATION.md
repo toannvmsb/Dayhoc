@@ -106,27 +106,97 @@ traffic) — flagged in the final report.
 
 ---
 
-## PHASE 3 — INTERNAL SHADOW SMOKE  ⏳  (running)
+## PHASE 3 — INTERNAL SHADOW SMOKE  ✅  (`main` Phase-3 commit; report `docs/implementation/data/66_shadow_smoke_report.txt`)
 
 `packages/testing/src/benchmark/worksheet-shadow-smoke.live.test.ts`
-(`RUN_WS_SMOKE=1`): ~26 synthetic worksheets · real `orchestrateWorksheet` ·
-gpt-4.1-mini + gpt-5-mini · last-resort ON · crosscheck OFF · per-worksheet cap
-$0.05 · cumulative daily cap $2.00 · raw sidecar `WS_SMOKE_raw.jsonl` (no PII).
+(`RUN_WS_SMOKE=1`) — **26 synthetic worksheets / 260 items** · real
+`orchestrateWorksheet` · gpt-4.1-mini + gpt-5-mini · last-resort ON · crosscheck
+OFF · per-worksheet cap $0.05 · cumulative daily cap $2.00 · raw sidecar
+`WS_SMOKE_raw.jsonl` (260 rows, PII-scanned clean). **Test PASSED.**
 
-**STOP condition**: any kernel item accepted with a wrong answer, or any silent
-`SEMANTIC_UNKNOWN` acceptance → test fails, P0/P1.
+| metric | result | gate |
+|---|---|---|
+| **TOTAL SPEND** | **$0.4787** / $2.00 | ✓ |
+| **kernel deterministic correctness** | **100.0% (229/229)**, kernel wrong = 0 | **P0 ✓** |
+| **silent semantic contradiction** | **NONE** (0 SEMANTIC_UNKNOWN accepted) | **P1 ✓** |
+| full worksheet completion | 92.3% (24/26) | — |
+| valid-item completion | 99.2% (258/260) | — |
+| production-ready deterministic | 88.1% | — |
+| PENDING_CROSSCHECK | 11.2% (29/260) | — |
+| FAILED slots | 2 (0.8%) | — |
+| gpt-4.1-mini / gpt-5-mini call share | 67.3% / 32.7% | — |
+| retry rate / max attempts / last-resort / cost-ceiling events | 0.34/item / **5** / 7 / **0** | bounded ✓ |
+| cost / item / cost / completed worksheet | ~48 VND / ~$0.02 | ✓ |
+| slot p50/p95 · worksheet p50/p95 | 4.2/20.3 s · 44/55 s | — |
+
+**No P0/P1.** Two `FAILED` worksheets, both a single **reasoning / Group-C slot**
+the generator couldn't produce acceptably after retries → in production these
+raise a `NO_KERNEL_GENERATION_FAILED` review-queue row:
+
+- `HC06::item-05` — a HSG-level polynomial-factorisation `construct_an_example`
+  (the model's own reasoning was actually correct; a curriculum/level gate
+  rejected the above-grade content on a non-frontier reasoning slot).
+- `BENCH-LT-G7-05::item-04` — a parallel-lines `compare_and_decide` on a tiny
+  4-item worksheet (2 ready + 1 pending + 1 failed).
+
+**P2 (FREE, Phase 8 candidate)**: `construct_an_example` / `compare_and_decide`
+reasoning slots fail ~2 / ~30 (~7%). Candidates: relax the curriculum/level gate
+for exploratory reasoning structures; a "reasoning last-resort" (a templated
+prompt); and — a **product decision, NOT autonomous** — whether one failed
+Group-C slot should mark the whole worksheet `FAILED` vs ship it
+`READY_WITH_PENDING_CROSSCHECK` minus that slot.
+
+Realistic-mix note: the `BENCH-LT-G4` basic/application specs completed at ~100%;
+the failures are on the deliberately-hard `HC*` / small `G7` specs.
+
+---
+
+## PHASE 4 — EXTENDED SHADOW  ⏳  (running)
+
+Same harness, `WS_SMOKE_PASSES=3` `WS_SMOKE_TAG=_EXT` `WS_SMOKE_DAILY_USD=1.50`
+(the remaining generation budget) — ~78 runs, the `DailyCostGuard` stops it at
+$1.50. Tests **consistency across repeated generation** of the same 26 specs and
+whether the Phase 3 P2 failures repeat.
 
 _(results pending)_
 
 ---
 
-## PHASE 4 — EXTENDED SHADOW  ⏳
+## PHASE 5 — GROUP C CROSSCHECK IMPLEMENTATION  ✅  (`main` Phase-5 commit)
 
-_(pending Phase 3)_
+`openai-answer-crosscheck.ts` — `createOpenAiAnswerCrosscheck(AIProviderAdapter)`:
+the VERIFIER, logically independent of the generator (sees only prompt + answer
++ short solution summary + grade — never hints / rubric / chain-of-thought).
+Strict JSON `{verdict, confidence, reason}`; an unparseable or errored response
+is `UNCERTAIN`, **never PASS**. Returns usage for cost telemetry.
+
+- `runGroupCCrosscheck` retries the verifier **once** on `UNCERTAIN` before the
+  review queue; returns every call's usage.
+- `orchestrateWorksheet` folds crosscheck usage into `WorksheetTotals.byModel`
+  with `operationType: 'advanced_verification'`; `worksheetTraceToUsageEvents`
+  emits the right operation per model.
+- `resolveWorksheetGeneration`'s `buildPaid` factory = `createOpenAiAnswerCrosscheck`
+  over a `gpt-4.1-mini` adapter (`CROSSCHECK_MODEL` overridable) — used **only**
+  when `AI_CROSSCHECK_MODE=LIVE` (+ key).
+
+7 new tests (mock `AIProviderAdapter`: PASS/FAIL/UNCERTAIN parse, retry-once,
+provider-throw → UNCERTAIN, verifier isolation). No paid call.
 
 ---
 
-## PHASES 5–8
+## PHASE 6 — SMALL PAID GROUP-C VERIFICATION  ⏳  (harness ready)
+
+`groupc-crosscheck-golden.ts` — **16 synthetic reasoning / find-the-error /
+construct-an-example items**, each with a Claude-drafted GOLDEN verdict (6 PASS,
+8 FAIL, 2 UNCERTAIN). `groupc-crosscheck.live.test.ts` (`RUN_GROUPC_XCHECK=1`,
+cap $0.50) runs the real `createOpenAiAnswerCrosscheck` (gpt-4.1-mini) against
+it. **HARD requirement: false PASS = 0.**
+
+_(pending Phase 4)_
+
+---
+
+## PHASES 7–8
 
 _(pending)_
 

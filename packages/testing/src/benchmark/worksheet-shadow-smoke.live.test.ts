@@ -32,9 +32,11 @@ import { buildItemBenchmarkSpecs } from './item-generation-benchmark.js';
 const LIVE = process.env.RUN_WS_SMOKE === '1' && !!process.env.OPENAI_API_KEY;
 const PER_WS_CAP = Number(process.env.WS_SMOKE_PER_WS_USD ?? '0.05');
 const DAILY_CAP = Number(process.env.WS_SMOKE_DAILY_USD ?? '2.00');
-const WALL_CLOCK_MS = 50 * 60 * 1000;
-const OUT = 'D:/Lap trinh/Claude/Dayhoc/WS_SMOKE.txt';
-const RAW = 'D:/Lap trinh/Claude/Dayhoc/WS_SMOKE_raw.jsonl';
+const PASSES = Math.max(1, Number(process.env.WS_SMOKE_PASSES ?? '1'));
+const TAG = process.env.WS_SMOKE_TAG ?? '';
+const WALL_CLOCK_MS = 90 * 60 * 1000;
+const OUT = `D:/Lap trinh/Claude/Dayhoc/WS_SMOKE${TAG}.txt`;
+const RAW = `D:/Lap trinh/Claude/Dayhoc/WS_SMOKE${TAG}_raw.jsonl`;
 
 const COMPLIANCE: Omit<ProviderCompliance, 'provider'> = {
   processingRegion: 'internal-smoke', crossBorder: true, dataCategoriesAllowed: [],
@@ -76,8 +78,12 @@ describe('doc 66 §3 — internal shadow smoke', () => {
     let stopReason: string | null = null;
     const p0: string[] = [];
 
-    for (const bs of specs) {
-      if (!guard.canRun().ok) { stopReason = `daily cap reached ($${guard.spentTodayUsd.toFixed(4)})`; break; }
+    const queue: typeof specs = [];
+    for (let p = 0; p < PASSES; p += 1) queue.push(...specs);
+    let passIx = 0;
+    for (const bs of queue) {
+      passIx += 1;
+      if (!guard.canRun().ok) { stopReason = `daily cap reached ($${guard.spentTodayUsd.toFixed(4)}) after ${worksheets} runs`; break; }
       if (Date.now() - runStart > WALL_CLOCK_MS) { stopReason = 'wall clock'; break; }
 
       let r: WorksheetResult;
@@ -113,8 +119,9 @@ describe('doc 66 §3 — internal shadow smoke', () => {
           semUnknownAccepted += 1; p0.push(`${bs.id}::${s.itemId} silent SEMANTIC_UNKNOWN`);
         }
       }
-      for (const rs of r.rawSlots ?? []) appendFileSync(RAW, JSON.stringify({ specId: bs.id, ...rs }) + '\n');
-      perWs.push(`${bs.id}: ${r.worksheetState} ready=${r.readySlots} pend=${r.pendingCrosscheckSlots} fail=${r.failedSlots} cost=$${r.trace.totals.actualCostUsd.toFixed(4)} calls=${r.trace.totals.modelCalls} retries=${r.trace.totals.retries} fb=${r.trace.totals.fallbackCalls} lr=${r.trace.totals.lastResortCalls} ceil=${r.trace.totals.costCeilingHit} lat=${r.trace.worksheetLatencyMs}ms`);
+      const pass = Math.ceil(passIx / specs.length);
+      for (const rs of r.rawSlots ?? []) appendFileSync(RAW, JSON.stringify({ pass, specId: bs.id, ...rs }) + '\n');
+      perWs.push(`p${pass} ${bs.id}: ${r.worksheetState} ready=${r.readySlots} pend=${r.pendingCrosscheckSlots} fail=${r.failedSlots} cost=$${r.trace.totals.actualCostUsd.toFixed(4)} calls=${r.trace.totals.modelCalls} retries=${r.trace.totals.retries} fb=${r.trace.totals.fallbackCalls} lr=${r.trace.totals.lastResortCalls} ceil=${r.trace.totals.costCeilingHit} lat=${r.trace.worksheetLatencyMs}ms`);
       flush();
     }
 

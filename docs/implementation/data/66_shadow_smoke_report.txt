@@ -1,0 +1,48 @@
+DẠYZI — WORKSHEET SHADOW SMOKE (doc 66 §3)  2026-09-06T06:10:00.399Z
+caps: per-worksheet $0.05  daily $2
+TOTAL SPEND: $0.4787
+complete
+
+worksheets run:                 26
+full worksheet completion:      92.3%  (24/26)
+valid-item completion:          99.2%  (258/260)
+kernel deterministic correctness: 100.0%  (229/229)   kernel wrong: 0
+production-ready deterministic:  88.1%
+PENDING_CROSSCHECK:              11.2%  (29/260)
+FAILED slots:                   2  (0.8%)
+gpt-4.1-mini / gpt-5-mini share: 67.3% / 32.7%
+retry rate:                     0.34/item   fallback 37   last-resort 7
+cost-ceiling events:            0
+max attempts/slot:              5
+silent semantic contradiction:  NONE
+cost / item:                    $0.00184 (~48 VND)
+cost / completed worksheet:     $0.0199
+slot latency p50/p95:           4242 / 20348 ms
+worksheet latency p50/p95:      44119 / 54721 ms
+
+  - HC01: READY_WITH_PENDING_CROSSCHECK ready=7 pend=3 fail=0 cost=$0.0181 calls=12 retries=1 fb=1 lr=0 ceil=false lat=54131ms
+  - HC02: READY_WITH_PENDING_CROSSCHECK ready=7 pend=3 fail=0 cost=$0.0193 calls=12 retries=2 fb=0 lr=0 ceil=false lat=44380ms
+  - HC03: READY_WITH_PENDING_CROSSCHECK ready=8 pend=2 fail=0 cost=$0.0164 calls=10 retries=0 fb=0 lr=0 ceil=false lat=33889ms
+  - HC04: READY_WITH_PENDING_CROSSCHECK ready=7 pend=3 fail=0 cost=$0.0193 calls=13 retries=2 fb=1 lr=0 ceil=false lat=46796ms
+  - HC05: READY_WITH_PENDING_CROSSCHECK ready=7 pend=3 fail=0 cost=$0.0241 calls=18 retries=5 fb=3 lr=0 ceil=false lat=50577ms
+  - HC06: FAILED ready=7 pend=2 fail=1 cost=$0.0196 calls=12 retries=2 fb=0 lr=0 ceil=false lat=51590ms
+  - HC07: READY_WITH_PENDING_CROSSCHECK ready=8 pend=2 fail=0 cost=$0.0221 calls=14 retries=3 fb=1 lr=0 ceil=false lat=54721ms
+  - HC08: READY_WITH_PENDING_CROSSCHECK ready=8 pend=2 fail=0 cost=$0.0155 calls=10 retries=0 fb=0 lr=0 ceil=false lat=33145ms
+  - HC09: READY ready=10 pend=0 fail=0 cost=$0.0150 calls=14 retries=2 fb=2 lr=0 ceil=false lat=24439ms
+  - HC10: READY_WITH_PENDING_CROSSCHECK ready=7 pend=3 fail=0 cost=$0.0235 calls=14 retries=4 fb=0 lr=0 ceil=false lat=49499ms
+  - BENCH-LT-G4-01: READY ready=4 pend=0 fail=0 cost=$0.0079 calls=7 retries=2 fb=1 lr=0 ceil=false lat=16135ms
+  - BENCH-LT-G4-02: READY ready=8 pend=0 fail=0 cost=$0.0076 calls=8 retries=0 fb=0 lr=0 ceil=false lat=9481ms
+  - BENCH-LT-G4-03: READY_WITH_PENDING_CROSSCHECK ready=11 pend=1 fail=0 cost=$0.0264 calls=25 retries=9 fb=4 lr=2 ceil=false lat=45775ms
+  - BENCH-LT-G4-04: READY_WITH_PENDING_CROSSCHECK ready=15 pend=1 fail=0 cost=$0.0256 calls=26 retries=7 fb=3 lr=1 ceil=false lat=44119ms
+  - BENCH-LT-G4-05: READY ready=4 pend=0 fail=0 cost=$0.0037 calls=4 retries=0 fb=0 lr=0 ceil=false lat=4379ms
+  - BENCH-LT-G4-06: READY ready=8 pend=0 fail=0 cost=$0.0176 calls=16 retries=5 fb=3 lr=0 ceil=false lat=30679ms
+  - BENCH-LT-G4-07: READY ready=12 pend=0 fail=0 cost=$0.0268 calls=21 retries=6 fb=3 lr=1 ceil=false lat=50466ms
+  - BENCH-LT-G4-08: READY ready=16 pend=0 fail=0 cost=$0.0394 calls=30 retries=10 fb=4 lr=1 ceil=false lat=75039ms
+  - BENCH-LT-G7-01: READY ready=4 pend=0 fail=0 cost=$0.0043 calls=5 retries=1 fb=0 lr=0 ceil=false lat=6257ms
+  - BENCH-LT-G7-02: READY_WITH_PENDING_CROSSCHECK ready=6 pend=2 fail=0 cost=$0.0208 calls=15 retries=5 fb=2 lr=0 ceil=false lat=45783ms
+  - BENCH-LT-G7-03: READY ready=12 pend=0 fail=0 cost=$0.0124 calls=13 retries=1 fb=0 lr=0 ceil=false lat=17224ms
+  - BENCH-LT-G7-04: READY ready=16 pend=0 fail=0 cost=$0.0322 calls=28 retries=8 fb=4 lr=2 ceil=false lat=51498ms
+  - BENCH-LT-G7-05: FAILED ready=2 pend=1 fail=1 cost=$0.0083 calls=7 retries=2 fb=1 lr=0 ceil=false lat=25392ms
+  - BENCH-LT-G7-06: READY ready=8 pend=0 fail=0 cost=$0.0113 calls=11 retries=3 fb=0 lr=0 ceil=false lat=21051ms
+  - BENCH-LT-G7-07: READY ready=12 pend=0 fail=0 cost=$0.0160 calls=15 retries=2 fb=1 lr=0 ceil=false lat=26666ms
+  - BENCH-LT-G7-08: READY_WITH_PENDING_CROSSCHECK ready=15 pend=1 fail=0 cost=$0.0255 calls=25 retries=6 fb=3 lr=0 ceil=false lat=41758ms
