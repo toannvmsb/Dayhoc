@@ -68,3 +68,6 @@ WS_E2E*.txt
 WS_E2E*.jsonl
 INSP.txt
 PICK.txt
+
+WS_SMOKE*.txt
+WS_SMOKE*.jsonl
