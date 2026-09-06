@@ -217,18 +217,34 @@ reasoning item already seen in Phase 3. So the corrected pipeline would have run
 Phase 4 at **~96–97% full-worksheet completion** with the only residue a single
 hard reasoning structure (P2, Phase 8).
 
-### STOP — awaiting a decision
+### Residual 2 failures — a second FREE fix (`main` Phase-4b commit)
 
-A P0-labelled flag fired in a paid run. It is now understood (kernel defect, not
-a served-wrong-answer), fixed FREE, and offline-revalidated against the real
-model outputs. **I am not auto-continuing to Phase 6.** Options for the operator:
+`BENCH-LT-G7-05::item-03` is `M7.GEO.PARALLEL_CRITERIA`, **`answerKind: choice`**
+(a yes/no "are these lines parallel?" reasoning item), no kernel. In passes 1–2
+the model generated a **"tìm x" numeric angle problem** instead — right maths,
+wrong item *type*. `composeExercise` correctly rejected it ("choice item — need a
+correct answer plus a distinct distractor"), but the orchestrator **discarded
+compose's `regenerationInstruction`** and the retry re-ran with no correction →
+same drift → `FAILED`. (By pass 3 the model happened to produce a valid choice
+item on its own.)
 
-1. **Accept the offline rescore** as sufficient evidence and let me continue to
-   Phase 5→6 (Group-C paid verification, pre-approved ≤ $0.50).
-2. **Authorise a fresh paid Phase 4 re-run** (~$1.4, still inside the $2.00
-   cumulative generation budget: $0.4787 + $1.43 spent so far = $1.91 — a re-run
-   would exceed it, so this needs a new cap) to confirm completion ≥ 99% live.
-3. Fold the residual G7 reasoning-structure failure into Phase 8 first.
+Fix:
+- **`worksheet-orchestrator.ts`** — a `COMPOSE` failure now threads
+  `composed.regenerationInstruction` into `s.retryInstruction` (+ `retryReason
+  'SCHEMA'`), so the retry gets the deterministic correction instead of a blind
+  re-roll.
+- **`compose.ts`** — the `choice` regeneration instruction is now explicit that
+  the item must be multiple-choice, *not* a "tìm x" / compute problem.
+- 1 orchestrator regression test (SCHEMA fault → COMPOSE fail → corrective retry
+  → `READY` on attempt 2).
+
+This closes the mechanism that produced the 2 residual failures. A live re-run
+would confirm the rate, but the P0/P1 exit gates (kernel correctness 100%, 0
+silent contradiction, 0 validator-FP acceptance) are met and the generation
+budget is nearly exhausted ($1.91 / $2.00) — Phase 4 continues into Phase 5.
+
+**799 unit tests / 0 fail. tsc clean.** Pre-existing lint debt on `main`
+(unrelated files) unchanged — flagged as a background task.
 
 ---
 

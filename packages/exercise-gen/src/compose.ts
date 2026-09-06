@@ -102,7 +102,9 @@ export function composeExercise(
       if (correct.length === 0 || distractors.length < 1 || options.length < 2) {
         return fail(
           'choice item — need a correct answer plus at least one distinct distractor',
-          'Cung cấp đáp án đúng ở "answer" và ít nhất 2 phương án nhiễu khác nhau ở "distractors".',
+          'Câu này PHẢI là câu hỏi TRẮC NGHIỆM, KHÔNG phải bài "tìm x" hay bài tính số. ' +
+            'Đặt một câu hỏi có/không hoặc chọn phương án (ví dụ "Hai đường thẳng đó có song song không?"), ' +
+            'ghi phương án đúng ở "answer" và ít nhất 2 phương án nhiễu khác nhau ở "distractors".',
         );
       }
       answerSpec = { kind: 'choice', correct, options };

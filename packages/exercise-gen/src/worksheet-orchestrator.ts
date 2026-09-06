@@ -468,6 +468,13 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
         const composed = composeExercise(s.itemSpec, content, s.kernel);
         if (!composed.ok) {
           failureCategory = 'COMPOSE';
+          // a compose failure carries a deterministic corrective instruction
+          // (wrong answer kind, no distractors, missing rubric, …). Feed it to
+          // the retry — without it the retry re-runs with no correction and
+          // drifts the same way (e.g. a `choice` parallel-lines item generated
+          // as a "tìm x" numeric problem, over and over).
+          retryReason = 'SCHEMA';
+          s.retryInstruction = composed.regenerationInstruction;
         } else {
           const siblings = slots.filter((o) => o.accepted).map((o) => ({ id: o.accepted!.id, prompt: o.accepted!.prompt }));
           const res = acceptItem(composed.exercise, s.itemSpec, input.spec, input.knowledgeBase, {

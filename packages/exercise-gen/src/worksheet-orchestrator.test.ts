@@ -101,6 +101,20 @@ describe('doc 63 §2/§3 — retry then escalation', () => {
     const slot = r.trace.perSlot.find((s) => s.itemId === target)!;
     expect(slot.attempts[0]!.retryReason).toBe('KERNEL_DRIFT');
   });
+
+  it('a COMPOSE failure carries a corrective instruction into the retry (not a blind re-roll)', async () => {
+    // SCHEMA fault sets answer='B' on a numeric kernel item → composeExercise
+    // fails. Before the fix the retry re-ran with no correction; now the
+    // deterministic regeneration instruction is threaded through and the slot
+    // recovers on attempt 2.
+    const target = kernelItemIds[0]!;
+    const r = await run({ [target]: { failAttempts: 1, mode: 'SCHEMA' } });
+    const slot = r.trace.perSlot.find((s) => s.itemId === target)!;
+    expect(slot.attempts[0]!.failureCategory).toBe('COMPOSE');
+    expect(slot.attempts[0]!.retryReason).toBe('SCHEMA');
+    expect(slot.attempts.length).toBeGreaterThanOrEqual(2);
+    expect(slot.finalState).toBe('READY');
+  });
 });
 
 describe('doc 63 §4 — deterministic last resort', () => {
