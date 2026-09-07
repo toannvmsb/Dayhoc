@@ -23,6 +23,49 @@ export type ComposeResult =
 
 const NUM_RE = /-?\d+(?:[.,]\d+)?/;
 
+/**
+ * Deterministic LaTeX → SGK notation normalization (doc 68 §10). The generator
+ * is instructed to use SGK notation, but models leak `\frac`, `\times`, `$...$`
+ * on algebra. Rather than burn a retry, normalize the common forms up-front; a
+ * genuine formula the normalizer can't clean is still caught by the
+ * `RAW_LATEX` content-quality gate, so this never weakens a safety check.
+ */
+export function normalizeNotation(s: string): string {
+  return s
+    .replace(/\$\$?([^$\n]*?)\$\$?/g, '$1') // strip $...$ / $$...$$ wrappers
+    .replace(/\\left|\\right|\\!|\\,|\\;|\\quad|\\qquad/g, '')
+    .replace(/\\dfrac|\\tfrac|\\frac/g, '\\frac')
+    .replace(/\\frac\s*\{\s*([^{}]+?)\s*\}\s*\{\s*([^{}]+?)\s*\}/g, '($1)/($2)')
+    .replace(/\\frac\s*(\d+)\s*(\d+)/g, '$1/$2')
+    .replace(/\\times|\\cdot/g, '×')
+    .replace(/\\div/g, ':')
+    .replace(/\\pm/g, '±')
+    .replace(/\\leq|\\le\b/g, '≤')
+    .replace(/\\geq|\\ge\b/g, '≥')
+    .replace(/\\neq|\\ne\b/g, '≠')
+    .replace(/\\approx/g, '≈')
+    .replace(/\\cdots|\\ldots|\\dots/g, '…')
+    .replace(/\s*\^\s*\{?\s*\\?circ\s*\}?/g, '°') // ^\circ / ^{\circ} → °
+    .replace(/\\(?:mathrm|text|mbox)\s*\{\s*([^{}]*?)\s*\}/g, '$1')
+    .replace(/\\\((.*?)\\\)/gs, '$1') // \( ... \) inline math delimiters
+    .replace(/\\\[(.*?)\\\]/gs, '$1')
+    .replace(/[{}]/g, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trimEnd();
+}
+
+function normalizeContent(c: GeneratedItemContent): GeneratedItemContent {
+  return {
+    ...c,
+    prompt: normalizeNotation(c.prompt),
+    answer: normalizeNotation(c.answer),
+    workedSolution: normalizeNotation(c.workedSolution),
+    hints: c.hints.map(normalizeNotation),
+    ...(c.rubric ? { rubric: normalizeNotation(c.rubric) } : {}),
+    ...(c.distractors ? { distractors: c.distractors.map(normalizeNotation) } : {}),
+  };
+}
+
 function parseNumber(raw: string): number | null {
   const m = NUM_RE.exec(raw.replace(/\s+/g, ''));
   if (!m) return null;
@@ -44,9 +87,10 @@ function parseFraction(raw: string): { numerator: number; denominator: number } 
 
 export function composeExercise(
   itemSpec: ItemGenerationSpec,
-  content: GeneratedItemContent,
+  rawContent: GeneratedItemContent,
   kernel?: MathKernel | null,
 ): ComposeResult {
+  const content = normalizeContent(rawContent);
   const fail = (reason: string, regenerationInstruction: string): ComposeResult => ({
     ok: false,
     reason,

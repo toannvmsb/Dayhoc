@@ -42,10 +42,11 @@ import { insertAiUsageEvent } from './pg-ai-usage.js';
  * accepted · 0 silent semantic contradiction · Group-C false-PASS pathway
  * (UNCERTAIN never → PASS) · bounded retry/fallback · spend within the caps.
  */
-const GEN_CAP = Number(process.env.D7_GEN_CAP_USD ?? 'NaN');
-const XCHECK_CAP = Number(process.env.D7_XCHECK_CAP_USD ?? '0.25');
+// D7B (doc 68 §12): dedicated confirmation budget — gen $0.75, xcheck $0.15.
+const GEN_CAP = Number(process.env.D7B_GEN_CAP_USD ?? process.env.D7_GEN_CAP_USD ?? 'NaN');
+const XCHECK_CAP = Number(process.env.D7B_CROSSCHECK_CAP_USD ?? process.env.D7_XCHECK_CAP_USD ?? '0.15');
 const LIVE =
-  process.env.RUN_D7 === '1' &&
+  (process.env.RUN_D7B === '1' || process.env.RUN_D7 === '1') &&
   !!process.env.DATABASE_URL &&
   !!process.env.OPENAI_API_KEY &&
   Number.isFinite(GEN_CAP) &&
@@ -103,7 +104,10 @@ function specForAxis(axis: Axis, id: string): ExerciseGenerationSpec {
       thinkingProfile: { [domain]: envelope?.tMax === 'T5' ? 'T4' : 'T3' },
       actualLearningFrontier: { [domain]: { reachedCurriculumOrigin: grade, aboveGrade: axis === 'g7_frontier', confidence: 0.6, evidenceCount: 6, masteredSkillIds: skills.map((s) => asSkillId(s.skillId)), readyNextSkillIds: [], exposureSkillIds: [] } },
     },
-    generationPlan: { totalQuestions: 8, distribution: { prerequisiteRepair: 0, currentSkill: 4, variation: 2, application: 1, advanced: 0, thinkingChallenge: 1, ...dist } },
+    // base = 6 REQUIRED_CORE (currentSkill+variation) + 1 OPTIONAL_STRETCH
+    // (application); axes that want a reasoning / challenge slot add it explicitly
+    // AND raise tMax/kMax to match (doc 68 §9 — no self-contradicting fixture).
+    generationPlan: { totalQuestions: 8, distribution: { prerequisiteRepair: 0, currentSkill: 5, variation: 2, application: 1, advanced: 0, thinkingChallenge: 0, ...dist } },
   } as unknown as ExerciseGenerationSpec);
 
   switch (axis) {
@@ -131,6 +135,48 @@ function specForAxis(axis: Axis, id: string): ExerciseGenerationSpec {
       ], { thinkingChallenge: 1, currentSkill: 4 }, { 'M7.GEO.PARALLEL_CRITERIA': 55 }, { tMax: 'T5', parentGoal: 'phat_trien_tu_duy' });
   }
 }
+
+const ALL_AXES_REG: Axis[] = ['g4_arith', 'g4_frac', 'g4_word', 'g4_reasoning', 'g7_linear_eq', 'g7_ratio', 'g7_frontier', 'g7_geometry'];
+const KI = ['K0', 'K1', 'K2', 'K3', 'K4', 'K5'];
+const TI = ['T1', 'T2', 'T3', 'T4', 'T5'];
+
+/**
+ * doc 68 §9 — regression: a synthetic D7 spec must never contradict its own
+ * target slots. Every FRONTIER target's knowledgeCeiling must fit inside
+ * difficulty.kMax, every THINKING bucket must allow tMax ≥ T5, and every pinned
+ * item level must land inside the spec's own K/T envelope. This is exactly the
+ * class of fixture bug that made D7 run 1 fail (kMax hard-coded to K3).
+ */
+describe('doc 68 §9 — D7 synthetic specs are self-consistent (always on)', () => {
+  it.each(ALL_AXES_REG)('%s: difficulty envelope accommodates every target + bucket', async (axis) => {
+    const { loadKnowledgeBase } = await import('@copilot/math-data');
+    const { buildItemGenerationSpecs } = await import('@copilot/exercise-gen');
+    const kb = loadKnowledgeBase();
+    const spec = specForAxis(axis, `reg-${axis}`);
+    const kMax = KI.indexOf(spec.difficulty.kMax);
+    const tMax = TI.indexOf(spec.difficulty.tMax);
+    const kMin = KI.indexOf(spec.difficulty.kMin);
+    const tMin = TI.indexOf(spec.difficulty.tMin);
+
+    for (const target of spec.targets.skills) {
+      if (target.role === 'FRONTIER') {
+        expect(KI.indexOf(target.knowledgeCeiling), `${axis}: FRONTIER ceiling ${target.knowledgeCeiling} > kMax ${spec.difficulty.kMax}`).toBeLessThanOrEqual(kMax);
+      }
+    }
+    if (spec.generationPlan.distribution.thinkingChallenge > 0) {
+      expect(tMax, `${axis}: thinkingChallenge bucket needs tMax ≥ T5`).toBeGreaterThanOrEqual(TI.indexOf('T5'));
+    }
+    // every pinned item lands inside the spec's own envelope
+    for (const is of buildItemGenerationSpecs(spec, kb)) {
+      expect(KI.indexOf(is.knowledgeLevel)).toBeGreaterThanOrEqual(kMin);
+      expect(KI.indexOf(is.knowledgeLevel)).toBeLessThanOrEqual(kMax);
+      expect(TI.indexOf(is.thinkingLevel)).toBeGreaterThanOrEqual(tMin);
+      expect(TI.indexOf(is.thinkingLevel)).toBeLessThanOrEqual(tMax);
+      // criticality is populated and bucket-derived
+      expect(['REQUIRED_CORE', 'OPTIONAL_STRETCH', 'OPTIONAL_REASONING', 'CHALLENGE']).toContain(is.criticality);
+    }
+  });
+});
 
 describe.skipIf(!LIVE)('doc 67 §D7 — final confirmation cohort (staging, PAID generation)', () => {
   let pool: import('pg').Pool;
@@ -235,10 +281,11 @@ describe.skipIf(!LIVE)('doc 67 §D7 — final confirmation cohort (staging, PAID
       item_id: string; run_id: string; final_state: string; answer_status: string | null;
       production_ready: boolean; kernel_family: string | null; last_resort_used: boolean;
       crosscheck_required: boolean; crosscheck_verdict: string | null; review_queue_id: string | null;
-      slot_latency_ms: number;
+      slot_latency_ms: number; criticality: string; substituted: boolean; omitted: boolean; degrade_reason: string | null;
     }>(
       `SELECT item_id, run_id, final_state, answer_status, production_ready, kernel_family,
-              last_resort_used, crosscheck_required, crosscheck_verdict, review_queue_id, slot_latency_ms
+              last_resort_used, crosscheck_required, crosscheck_verdict, review_queue_id, slot_latency_ms,
+              criticality, substituted, omitted, degrade_reason
          FROM worksheet_slots WHERE run_id = ANY($1::text[])`,
       [runIds],
     );
@@ -246,12 +293,22 @@ describe.skipIf(!LIVE)('doc 67 §D7 — final confirmation cohort (staging, PAID
       `SELECT run_id, item_id, attempt, model, step, accepted FROM worksheet_slot_attempts WHERE run_id = ANY($1::text[]) ORDER BY attempt`,
       [runIds],
     );
+    const delivered = slots.rows.filter((s) => s.final_state === 'READY'); // only READY reaches the child
     const kernelSlots = slots.rows.filter((s) => s.kernel_family);
     const kernelReady = kernelSlots.filter((s) => s.final_state === 'READY');
     const kernelProdReady = kernelReady.filter((s) => s.production_ready);
-    const wrongAccepted = slots.rows.filter((s) => (s.final_state === 'READY' || s.final_state === 'PENDING_CROSSCHECK') && s.answer_status === 'DETERMINISTIC_WRONG');
-    const semUnknownAccepted = slots.rows.filter((s) => (s.final_state === 'READY' || s.final_state === 'PENDING_CROSSCHECK') && s.answer_status === 'SEMANTIC_UNKNOWN');
-    const fullComplete = runs.rows.filter((r) => r.worksheet_state !== 'FAILED').length;
+    const wrongAccepted = delivered.filter((s) => s.answer_status === 'DETERMINISTIC_WRONG');
+    const semUnknownAccepted = delivered.filter((s) => s.answer_status === 'SEMANTIC_UNKNOWN');
+    // a delivered item is VERIFIED iff a deterministic check or a Group-C PASS backs it
+    const verifiedDelivered = delivered.filter((s) => s.answer_status === 'DETERMINISTIC_CORRECT' || s.crosscheck_verdict === 'PASS');
+    const unsafeDelivered = delivered.filter((s) => !(s.answer_status === 'DETERMINISTIC_CORRECT' || s.crosscheck_verdict === 'PASS'));
+    const coreSlotRows = slots.rows.filter((s) => s.criticality === 'REQUIRED_CORE');
+    const optionalSlotRows = slots.rows.filter((s) => s.criticality !== 'REQUIRED_CORE');
+    const coreDelivered = runs.rows.filter((r) => r.worksheet_state !== 'FAILED').length; // 100% REQUIRED_CORE READY
+    const substitutedRows = slots.rows.filter((s) => s.substituted);
+    const omittedRows = slots.rows.filter((s) => s.omitted || s.final_state === 'OMITTED');
+    const reviewRows = slots.rows.filter((s) => s.review_queue_id);
+    const wsWithOptional = new Set(optionalSlotRows.map((s) => s.run_id)).size;
     const attempts = await pool.query<{ mx: string }>(`SELECT max(cnt) mx FROM (SELECT count(*) cnt FROM worksheet_slot_attempts WHERE run_id = ANY($1::text[]) GROUP BY run_id, item_id) x`, [runIds]);
     const jobStats = await queue.stats();
     const dupRuns = await pool.query<{ mx: string }>(
@@ -272,6 +329,14 @@ describe.skipIf(!LIVE)('doc 67 §D7 — final confirmation cohort (staging, PAID
     }>(
       `SELECT run_id, item_id, kernel_family, initial_role, route_reason, content_quality_codes, final_state
          FROM worksheet_slots WHERE run_id = ANY($1::text[]) AND final_state = 'FAILED'`, [runIds]);
+    const degradeDetail = await pool.query<{ run_id: string; item_id: string; criticality: string; substituted: boolean; omitted: boolean; degrade_reason: string | null }>(
+      `SELECT run_id, item_id, criticality, substituted, omitted, degrade_reason
+         FROM worksheet_slots WHERE run_id = ANY($1::text[]) AND (substituted OR omitted OR degrade_reason IS NOT NULL)`, [runIds]);
+    const degradeReasonLines = degradeDetail.rows.map((d) => {
+      const ax = runAxis.get(d.run_id) ?? '?';
+      const kind = d.substituted ? 'SUBSTITUTED' : d.omitted ? 'OMITTED' : 'DEGRADED';
+      return `  ${ax} ${d.item_id.slice(-7)} ${kind} [${d.criticality}] ${d.degrade_reason ?? ''}`;
+    });
     const failAttempts = await pool.query<{ run_id: string; item_id: string; failure_category: string | null; retry_reason: string | null; step: string; model: string }>(
       `SELECT run_id, item_id, failure_category, retry_reason, step, model
          FROM worksheet_slot_attempts WHERE run_id = ANY($1::text[]) AND accepted = false ORDER BY attempt`, [runIds]);
@@ -305,22 +370,24 @@ describe.skipIf(!LIVE)('doc 67 §D7 — final confirmation cohort (staging, PAID
       if (!list) { list = []; attemptsBySlot.set(k, list); }
       list.push(a);
     }
-    type Path = 'READY_FIRST_PASS' | 'READY_AFTER_RETRY' | 'READY_AFTER_FALLBACK' | 'READY_AFTER_LAST_RESORT' | 'READY_AFTER_CROSSCHECK' | 'REVIEW_REQUIRED' | 'FAILED';
+    type Path = 'READY_FIRST_PASS' | 'READY_AFTER_RETRY' | 'READY_AFTER_FALLBACK' | 'READY_AFTER_LAST_RESORT' | 'READY_AFTER_CROSSCHECK' | 'READY_AFTER_SAFE_SUBSTITUTION' | 'OPTIONAL_OMITTED' | 'REVIEW_REQUIRED' | 'FAILED';
     const pathCount: Record<Path, number> = {
       READY_FIRST_PASS: 0, READY_AFTER_RETRY: 0, READY_AFTER_FALLBACK: 0, READY_AFTER_LAST_RESORT: 0,
-      READY_AFTER_CROSSCHECK: 0, REVIEW_REQUIRED: 0, FAILED: 0,
+      READY_AFTER_CROSSCHECK: 0, READY_AFTER_SAFE_SUBSTITUTION: 0, OPTIONAL_OMITTED: 0, REVIEW_REQUIRED: 0, FAILED: 0,
     };
     for (const s of slots.rows) {
       const at = (attemptsBySlot.get(`${s.run_id}:${s.item_id}`) ?? []).slice().sort((x, y) => x.attempt - y.attempt);
       let p: Path;
       if (s.final_state === 'FAILED') p = 'FAILED';
-      else if (s.review_queue_id || s.final_state === 'PENDING_CROSSCHECK') p = 'REVIEW_REQUIRED';
+      else if (s.final_state === 'OMITTED') p = 'OPTIONAL_OMITTED';
+      else if (s.substituted) p = 'READY_AFTER_SAFE_SUBSTITUTION';
       else if (s.last_resort_used || at.some((a) => a.step === 'last_resort' && a.accepted)) p = 'READY_AFTER_LAST_RESORT';
       else if (s.crosscheck_required && s.crosscheck_verdict === 'PASS') p = 'READY_AFTER_CROSSCHECK';
       else if (at.some((a) => a.step === 'escalate' && a.accepted)) p = 'READY_AFTER_FALLBACK';
       else if (at.some((a) => a.step === 'retry_same' && a.accepted) || at.length > 1) p = 'READY_AFTER_RETRY';
       else p = 'READY_FIRST_PASS';
       pathCount[p] += 1;
+      if (s.review_queue_id) pathCount.REVIEW_REQUIRED += 1;
     }
     const totalSlots = slots.rows.length || 1;
     const pct = (n: number) => `${((n / totalSlots) * 100).toFixed(1)}%`;
@@ -340,41 +407,57 @@ describe.skipIf(!LIVE)('doc 67 §D7 — final confirmation cohort (staging, PAID
     const slotLat = slots.rows.map((s) => s.slot_latency_ms).filter((n) => n > 0);
     const wsLat = runs.rows.map((r) => r.worksheet_latency_ms).filter((n) => n > 0);
     const itemCount = slots.rows.length;
-    const doneWs = jobStats.DONE || 1;
+
+    const n = runs.rows.length || 1;
+    const dlv = delivered.length || 1;
+    const coreDeliveryRate = coreDelivered / n;
+    const verifiedDeliveryRate = verifiedDelivered.length / dlv;
+    const unsafeDeliveryRate = unsafeDelivered.length / dlv;
+    const maxAtt = Number(attempts.rows[0]?.mx ?? 0);
 
     const report = [
-      `DẠYZI — D7 CONFIRMATION COHORT (staging)  ${new Date().toISOString()}`,
-      `final commit: see git HEAD at run time`,
+      `DẠYZI — D7B SAFE DEGRADED CONFIRMATION COHORT (staging)  ${new Date().toISOString()}`,
       `caps: generation $${GEN_CAP}  crosscheck $${XCHECK_CAP}`,
       ``,
       `== COUNTS ==`,
       `worksheets enqueued/done/failed: ${enqueued} / ${jobStats.DONE} / ${jobStats.FAILED}`,
-      `persisted runs: ${runs.rows.length}   items (slots): ${itemCount}`,
-      `full worksheet completion: ${runs.rows.length ? ((fullComplete / runs.rows.length) * 100).toFixed(1) : '0'}%  (${fullComplete}/${runs.rows.length})`,
+      `persisted runs: ${runs.rows.length}   items (slots): ${itemCount}   delivered items: ${delivered.length}`,
+      `REQUIRED_CORE slots: ${coreSlotRows.length}   OPTIONAL slots: ${optionalSlotRows.length}`,
       ``,
-      `== HARD SAFETY GATES ==`,
-      `kernel deterministic correctness: ${kernelReady.length ? ((kernelProdReady.length / kernelReady.length) * 100).toFixed(1) : 'n/a'}%  (${kernelProdReady.length}/${kernelReady.length})`,
-      `kernel item accepted WRONG: ${wrongAccepted.length}   (gate: 0)`,
-      `silent SEMANTIC_UNKNOWN accepted: ${semUnknownAccepted.length}   (gate: 0)`,
-      `max attempts / slot: ${attempts.rows[0]?.mx ?? 0}   (gate: <= 6, unbounded retry = 0)`,
+      `== HARD SAFETY GATES (doc 68 §13) ==`,
+      `CORE_WORKSHEET_DELIVERY_RATE: ${(coreDeliveryRate * 100).toFixed(1)}%  (${coreDelivered}/${runs.rows.length})   gate ≥ 99%`,
+      `VERIFIED_DELIVERY_RATE:       ${(verifiedDeliveryRate * 100).toFixed(2)}%  (${verifiedDelivered.length}/${delivered.length})   gate = 100%`,
+      `UNSAFE_DELIVERY_RATE:         ${(unsafeDeliveryRate * 100).toFixed(2)}%  (${unsafeDelivered.length})   gate = 0%`,
+      `kernel deterministic correctness: ${kernelReady.length ? ((kernelProdReady.length / kernelReady.length) * 100).toFixed(1) : 'n/a'}%  (${kernelProdReady.length}/${kernelReady.length})   gate = 100%`,
+      `kernel item accepted WRONG: ${wrongAccepted.length}   gate = 0`,
+      `silent SEMANTIC_UNKNOWN accepted: ${semUnknownAccepted.length}   gate = 0`,
+      `max attempts / slot: ${maxAtt}   gate ≤ 6 (unbounded retry = 0)`,
+      `max runs per generation_spec_id: ${dupRuns.rows[0]?.mx ?? 0}   gate = 1 (no duplicate worksheet)`,
       ``,
       `== RECOVERY PATHS (per item) ==`,
-      `READY_FIRST_PASS:        ${pathCount.READY_FIRST_PASS}  (${pct(pathCount.READY_FIRST_PASS)})`,
-      `READY_AFTER_RETRY:       ${pathCount.READY_AFTER_RETRY}  (${pct(pathCount.READY_AFTER_RETRY)})`,
-      `READY_AFTER_FALLBACK:    ${pathCount.READY_AFTER_FALLBACK}  (${pct(pathCount.READY_AFTER_FALLBACK)})`,
-      `READY_AFTER_LAST_RESORT: ${pathCount.READY_AFTER_LAST_RESORT}  (${pct(pathCount.READY_AFTER_LAST_RESORT)})`,
-      `READY_AFTER_CROSSCHECK:  ${pathCount.READY_AFTER_CROSSCHECK}  (${pct(pathCount.READY_AFTER_CROSSCHECK)})`,
-      `REVIEW_REQUIRED:         ${pathCount.REVIEW_REQUIRED}  (${pct(pathCount.REVIEW_REQUIRED)})`,
-      `FAILED:                  ${pathCount.FAILED}  (${pct(pathCount.FAILED)})`,
+      `READY_FIRST_PASS:              ${pathCount.READY_FIRST_PASS}  (${pct(pathCount.READY_FIRST_PASS)})`,
+      `READY_AFTER_RETRY:            ${pathCount.READY_AFTER_RETRY}  (${pct(pathCount.READY_AFTER_RETRY)})`,
+      `READY_AFTER_FALLBACK:         ${pathCount.READY_AFTER_FALLBACK}  (${pct(pathCount.READY_AFTER_FALLBACK)})`,
+      `READY_AFTER_LAST_RESORT:      ${pathCount.READY_AFTER_LAST_RESORT}  (${pct(pathCount.READY_AFTER_LAST_RESORT)})`,
+      `READY_AFTER_CROSSCHECK:       ${pathCount.READY_AFTER_CROSSCHECK}  (${pct(pathCount.READY_AFTER_CROSSCHECK)})`,
+      `READY_AFTER_SAFE_SUBSTITUTION: ${pathCount.READY_AFTER_SAFE_SUBSTITUTION}  (${pct(pathCount.READY_AFTER_SAFE_SUBSTITUTION)})`,
+      `OPTIONAL_OMITTED:             ${pathCount.OPTIONAL_OMITTED}  (${pct(pathCount.OPTIONAL_OMITTED)})`,
+      `REVIEW_REQUIRED (rows):       ${pathCount.REVIEW_REQUIRED}  (${pct(pathCount.REVIEW_REQUIRED)})`,
+      `FAILED:                       ${pathCount.FAILED}  (${pct(pathCount.FAILED)})`,
       `average attempts / item: ${avgAttempts.toFixed(2)}`,
-      `PENDING_CROSSCHECK slots: ${slots.rows.filter((s) => s.final_state === 'PENDING_CROSSCHECK').length}`,
-      `review-queue rows: ${(await pool.query(`SELECT count(*)::int n FROM review_queue WHERE child_ref = ANY($1::text[])`, [childRefs])).rows[0].n}`,
+      ``,
+      `== OPTIONAL BEHAVIOR (doc 68 §14) ==`,
+      `OPTIONAL_CHALLENGE_AVAILABILITY: ${((wsWithOptional / n) * 100).toFixed(1)}%  (${wsWithOptional}/${runs.rows.length} worksheets carry ≥1 optional item)`,
+      `SAFE_SUBSTITUTION_RATE: ${coreSlotRows.length ? ((substitutedRows.length / coreSlotRows.length) * 100).toFixed(1) : '0'}%  (${substitutedRows.length}/${coreSlotRows.length} core slots)`,
+      `OPTIONAL_OMISSION_RATE: ${optionalSlotRows.length ? ((omittedRows.length / optionalSlotRows.length) * 100).toFixed(1) : '0'}%  (${omittedRows.length}/${optionalSlotRows.length} optional slots)`,
+      `REVIEW_QUEUE_RATE: ${((reviewRows.length / (slots.rows.length || 1)) * 100).toFixed(1)}%  (${reviewRows.length}/${slots.rows.length} slots)`,
+      `-- exact reason per omitted / substituted item --`,
+      ...(degradeReasonLines.length ? degradeReasonLines : ['  (none)']),
       ``,
       `== COST ==`,
       `generation spend: $${guard.spentTodayUsd.toFixed(4)} / $${GEN_CAP}`,
       `crosscheck spend: $${xcheckUsd.toFixed(4)} / $${XCHECK_CAP}`,
-      `cost / item: $${(guard.spentTodayUsd / itemCount).toFixed(5)}`,
-      `cost / completed worksheet: $${(guard.spentTodayUsd / doneWs).toFixed(5)}`,
+      `cost / item: $${(guard.spentTodayUsd / itemCount).toFixed(5)}   cost / delivered worksheet: $${(guard.spentTodayUsd / (coreDelivered || 1)).toFixed(5)}`,
       ``,
       `== MODEL SHARE (generation attempts) ==`,
       `gpt-4.1-mini: ${m41}  (${genAttempts.length ? ((m41 / genAttempts.length) * 100).toFixed(1) : '0'}%)`,
@@ -386,27 +469,27 @@ describe.skipIf(!LIVE)('doc 67 §D7 — final confirmation cohort (staging, PAID
       ``,
       `== QUEUE / PERSISTENCE ==`,
       `job stats: ${JSON.stringify(jobStats)}`,
-      `max runs per generation_spec_id: ${dupRuns.rows[0]?.mx ?? 0}   (gate: 1 — no duplicate worksheet)`,
-      ``,
-      `== FAILURE DIAGNOSTICS ==`,
       `worksheet_state distribution: ${JSON.stringify(wsStateDist)}`,
+      ``,
+      `== FAILED-SLOT DIAGNOSTICS (if any) ==`,
       `FAILED slots by axis: ${JSON.stringify(failByAxis)}`,
       `slots per axis (total): ${JSON.stringify(perAxisTotal)}`,
-      `FAILED slots by initial_role: ${JSON.stringify(failByRole)}`,
       `FAILED slots by kernel_family: ${JSON.stringify(failByFamily)}`,
       `failure_category on failed slots' attempts: ${JSON.stringify(failCatDist)}`,
-      `retry_reason on failed slots' attempts: ${JSON.stringify(failReasonDist)}`,
       `content_quality codes on FAILED slots: ${JSON.stringify(cqOnFailed)}`,
     ].join('\n');
     writeFileSync(OUT, report);
     console.log('\n' + report + '\n');
 
-    // hard exit gates
-    expect(wrongAccepted.length, 'kernel item accepted with a wrong answer').toBe(0);
-    expect(semUnknownAccepted.length, 'silent SEMANTIC_UNKNOWN acceptance').toBe(0);
-    if (kernelReady.length > 0) expect(kernelProdReady.length).toBe(kernelReady.length); // 100%
-    expect(Number(attempts.rows[0]?.mx ?? 0)).toBeLessThanOrEqual(6);
-    expect(Number(dupRuns.rows[0]?.mx ?? 0), 'duplicate worksheet for one spec').toBeLessThanOrEqual(1);
+    // hard exit gates (doc 68 §13)
+    expect(wrongAccepted.length, 'wrong answer accepted').toBe(0);
+    expect(semUnknownAccepted.length, 'silent semantic contradiction').toBe(0);
+    expect(unsafeDelivered.length, 'UNSAFE_DELIVERY_RATE must be 0').toBe(0);
+    expect(verifiedDeliveryRate, 'VERIFIED_DELIVERY_RATE must be 100%').toBe(1);
+    if (kernelReady.length > 0) expect(kernelProdReady.length).toBe(kernelReady.length);
+    expect(coreDeliveryRate, 'CORE_WORKSHEET_DELIVERY_RATE ≥ 99%').toBeGreaterThanOrEqual(0.99);
+    expect(maxAtt, 'bounded retry').toBeLessThanOrEqual(6);
+    expect(Number(dupRuns.rows[0]?.mx ?? 0), 'duplicate worksheet').toBeLessThanOrEqual(1);
     expect(guard.spentTodayUsd).toBeLessThanOrEqual(GEN_CAP + 0.06);
     expect(xcheckUsd).toBeLessThanOrEqual(XCHECK_CAP + 0.05);
   }, 60 * 60 * 1000);
