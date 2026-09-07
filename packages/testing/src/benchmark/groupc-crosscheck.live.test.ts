@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { writeFileSync, appendFileSync, rmSync } from 'node:fs';
 import { createOpenAiProviderAdapter, PricingRegistry, tokenCostUsd, type AiCapability, type ProviderCompliance } from '@copilot/ai';
-import { createOpenAiAnswerCrosscheck, runGroupCCrosscheck } from '@copilot/exercise-gen';
+import {
+  createOpenAiAnswerCrosscheck,
+  createRoutedAnswerCrosscheck,
+  isGeometryProofVerifierSlice,
+  runGroupCCrosscheck,
+} from '@copilot/exercise-gen';
 import { GROUPC_GOLDEN } from './groupc-crosscheck-golden.js';
 
 /**
@@ -17,8 +22,13 @@ import { GROUPC_GOLDEN } from './groupc-crosscheck-golden.js';
 const LIVE = process.env.RUN_GROUPC_XCHECK === '1' && !!process.env.OPENAI_API_KEY;
 const CAP_USD = Number(process.env.GROUPC_XCHECK_CAP_USD ?? '0.50');
 const MODEL = process.env.CROSSCHECK_MODEL ?? 'gpt-4.1-mini';
-const OUT = 'D:/Lap trinh/Claude/Dayhoc/GROUPC_XCHECK.txt';
-const RAW = 'D:/Lap trinh/Claude/Dayhoc/GROUPC_XCHECK_raw.jsonl';
+/** doc 66 §4: when set, geometry/proof items route to this stronger verifier. */
+const GEO_MODEL = process.env.GROUPC_XCHECK_GEO_MODEL; // e.g. 'gpt-5-mini'
+/** doc 66 §5: 'geo' = run only the geometry/proof golden slice. */
+const ONLY = process.env.GROUPC_XCHECK_ONLY ?? 'all';
+const TAG = process.env.GROUPC_XCHECK_TAG ?? '';
+const OUT = `D:/Lap trinh/Claude/Dayhoc/GROUPC_XCHECK${TAG}.txt`;
+const RAW = `D:/Lap trinh/Claude/Dayhoc/GROUPC_XCHECK${TAG}_raw.jsonl`;
 
 const COMPLIANCE: Omit<ProviderCompliance, 'provider'> = {
   processingRegion: 'groupc-verify', crossBorder: true, dataCategoriesAllowed: [],
@@ -28,11 +38,20 @@ const COMPLIANCE: Omit<ProviderCompliance, 'provider'> = {
 describe('doc 66 §6 — paid Group-C crosscheck verification', () => {
   it.skipIf(!LIVE)('20 golden items, false PASS must be 0', { timeout: 30 * 60 * 1000 }, async () => {
     const pricing = new PricingRegistry();
-    const adapter = createOpenAiProviderAdapter({
-      apiKey: process.env.OPENAI_API_KEY!, model: MODEL,
+    const mkAdapter = (model: string) => createOpenAiProviderAdapter({
+      apiKey: process.env.OPENAI_API_KEY!, model,
       capability: 'advanced_verification' as AiCapability, compliance: COMPLIANCE,
     });
-    const cc = createOpenAiAnswerCrosscheck(adapter);
+    const base = createOpenAiAnswerCrosscheck(mkAdapter(MODEL));
+    const cc = GEO_MODEL
+      ? createRoutedAnswerCrosscheck({ base, geometryProof: createOpenAiAnswerCrosscheck(mkAdapter(GEO_MODEL)) })
+      : base;
+
+    const cases = GROUPC_GOLDEN.filter((g) =>
+      ONLY === 'geo'
+        ? isGeometryProofVerifierSlice([g.exercise.skillId, ...(g.exercise.requiredSkillIds ?? [])])
+        : true,
+    );
 
     let spentUsd = 0;
     let calls = 0;
@@ -43,7 +62,7 @@ describe('doc 66 §6 — paid Group-C crosscheck verification', () => {
     let latSum = 0;
     try { rmSync(RAW); } catch { /* first run */ }
 
-    for (const g of GROUPC_GOLDEN) {
+    for (const g of cases) {
       if (spentUsd > CAP_USD) { rows.push(`STOP: cap $${CAP_USD} reached`); break; }
       const t0 = Date.now();
       const r = await runGroupCCrosscheck(g.exercise, g.grade ?? 4, cc);
@@ -63,12 +82,13 @@ describe('doc 66 §6 — paid Group-C crosscheck verification', () => {
       rows.push(`${g.id}  golden=${g.golden.padEnd(9)} verifier=${verifier.padEnd(9)} ${g.golden === verifier ? 'OK  ' : g.golden === 'FAIL' && verifier === 'PASS' ? 'FALSE-PASS !!' : 'diff'}  ${g.note}`);
     }
 
-    const n = GROUPC_GOLDEN.length;
+    const n = cases.length;
     const agree = (v: 'PASS' | 'FAIL') =>
-      `${confusion[v]?.[v] ?? 0}/${GROUPC_GOLDEN.filter((g) => g.golden === v).length}`;
+      `${confusion[v]?.[v] ?? 0}/${cases.filter((g) => g.golden === v).length}`;
     writeFileSync(OUT, [
       `DẠYZI — GROUP-C CROSSCHECK VERIFICATION (doc 66 §6)  ${new Date().toISOString()}`,
-      `model: ${MODEL}   golden items: ${n}   verifier calls: ${calls}   spend: $${spentUsd.toFixed(4)} / cap $${CAP_USD}`,
+      `base model: ${MODEL}${GEO_MODEL ? `   geometry/proof model: ${GEO_MODEL}` : ''}   slice: ${ONLY}`,
+      `golden items: ${n}   verifier calls: ${calls}   spend: $${spentUsd.toFixed(4)} / cap $${CAP_USD}`,
       ``,
       `PASS agreement:  ${agree('PASS')}`,
       `FAIL agreement:  ${agree('FAIL')}`,

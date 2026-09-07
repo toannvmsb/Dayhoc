@@ -122,6 +122,6 @@ export const GROUPC_GOLDEN: readonly GroupCGoldenCase[] = [
   },
   {
     id: 'gc20', golden: 'UNCERTAIN', grade: 7, note: 'construct-an-example with a figure the verifier cannot see',
-    exercise: ex({ id: 'gc20', prompt: 'Dựa vào hình vẽ đã cho, hãy nêu một cặp góc đối đỉnh và giải thích.', workedSolution: 'Theo hình, góc AOB và góc COD là hai góc đối đỉnh nên chúng bằng nhau.' }),
+    exercise: ex({ id: 'gc20', skillId: asSkillId('M7.GEO.ANGLE_PAIRS'), requiredSkillIds: [asSkillId('M7.GEO.ANGLE_PAIRS')], knowledgeLevel: 'K2', thinkingLevel: 'T3', prompt: 'Dựa vào hình vẽ đã cho, hãy nêu một cặp góc đối đỉnh và giải thích.', workedSolution: 'Theo hình, góc AOB và góc COD là hai góc đối đỉnh nên chúng bằng nhau.' }),
   },
 ];

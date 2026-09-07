@@ -17,6 +17,38 @@ export interface AnswerCrosscheckRequest {
   readonly answerKind: string;
   /** grade context only — no child data, no skill graph, no twin. */
   readonly schoolGrade: number;
+  /** skill ids only (already non-sensitive) — for verifier-model routing. */
+  readonly skillId: string;
+  readonly requiredSkillIds: readonly string[];
+}
+
+/**
+ * The geometry / theorem-criteria / proof verification slice (doc 66 §4). These
+ * items need a stronger verifier — gpt-4.1-mini has real misconceptions here
+ * (e.g. "equal co-interior angles ⇒ parallel"). Skill-id match only.
+ */
+const GEOMETRY_PROOF_SKILL_RE = /\.(GEO|PROOF|TRI)\.|\b(GEO|PROOF)\b|PARALLEL|PERPENDIC|ANGLE|THEOREM|CONGRU|SIMILAR/i;
+
+export function isGeometryProofVerifierSlice(skillIds: readonly string[]): boolean {
+  return skillIds.some((s) => GEOMETRY_PROOF_SKILL_RE.test(s));
+}
+
+/**
+ * Verifier-model router (doc 66 §4, PRE-APPROVED). Normal Group-C reasoning →
+ * `base` (gpt-4.1-mini). Geometry / theorem-criteria / proof → `geometryProof`
+ * (gpt-5-mini). Changes the VERIFIER only — never the generator routing.
+ */
+export function createRoutedAnswerCrosscheck(adapters: {
+  base: AnswerCrosscheckAdapter;
+  geometryProof: AnswerCrosscheckAdapter;
+}): AnswerCrosscheckAdapter {
+  return {
+    name: `routed(${adapters.base.name} | geo:${adapters.geometryProof.name})`,
+    crosscheck(request: AnswerCrosscheckRequest): Promise<AnswerCrosscheckOutcome> {
+      const geo = isGeometryProofVerifierSlice([request.skillId, ...request.requiredSkillIds]);
+      return (geo ? adapters.geometryProof : adapters.base).crosscheck(request);
+    },
+  };
 }
 
 export interface AnswerCrosscheckOutcome {
@@ -56,6 +88,8 @@ export function toCrosscheckRequest(exercise: GeneratedExercise, schoolGrade: nu
     workedSolutionSummary: exercise.workedSolution.slice(0, 600),
     answerKind: a.kind,
     schoolGrade,
+    skillId: exercise.skillId,
+    requiredSkillIds: exercise.requiredSkillIds ?? [],
   };
 }
 

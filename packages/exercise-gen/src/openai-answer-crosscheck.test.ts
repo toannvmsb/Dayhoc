@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 import type { AIProviderAdapter, StructuredAIInput, StructuredAIOutput } from '@copilot/ai';
 import { asSkillId, type GeneratedExercise } from '@copilot/domain';
 import { createOpenAiAnswerCrosscheck } from './openai-answer-crosscheck.js';
-import { runGroupCCrosscheck, toCrosscheckRequest } from './answer-crosscheck.js';
+import {
+  createRoutedAnswerCrosscheck,
+  isGeometryProofVerifierSlice,
+  runGroupCCrosscheck,
+  toCrosscheckRequest,
+  type AnswerCrosscheckAdapter,
+} from './answer-crosscheck.js';
 
 /** doc 66 §5 — paid answer-crosscheck adapter, offline (mock AIProviderAdapter). */
 
@@ -105,6 +111,23 @@ describe('createOpenAiAnswerCrosscheck', () => {
     const r = await runGroupCCrosscheck(reasoningItem, 4, cc);
     expect(r.state).toBe('REGENERATE');
     expect(r.usages).toHaveLength(1);
+  });
+
+  it('[routing] geometry / proof skill ids select the stronger verifier (doc 66 §4)', async () => {
+    expect(isGeometryProofVerifierSlice(['M7.GEO.PARALLEL_CRITERIA'])).toBe(true);
+    expect(isGeometryProofVerifierSlice(['M7.TRI.CONGRUENCE_2_3'])).toBe(true);
+    expect(isGeometryProofVerifierSlice(['M7.PROOF.ALGEBRA'])).toBe(true);
+    expect(isGeometryProofVerifierSlice(['M4.FRAC.COMMON_DENOM'])).toBe(false);
+    expect(isGeometryProofVerifierSlice(['M4.ALG.DIST'])).toBe(false);
+
+    const tag = (name: string): AnswerCrosscheckAdapter => ({
+      name,
+      crosscheck: () => Promise.resolve({ verdict: 'PASS' as const, confidence: 1, detail: name }),
+    });
+    const routed = createRoutedAnswerCrosscheck({ base: tag('base'), geometryProof: tag('geo') });
+    const geoItem = { ...reasoningItem, skillId: asSkillId('M7.GEO.PARALLEL_CRITERIA'), requiredSkillIds: [asSkillId('M7.GEO.PARALLEL_CRITERIA')] };
+    expect((await routed.crosscheck(toCrosscheckRequest(geoItem, 7))).detail).toBe('geo');
+    expect((await routed.crosscheck(toCrosscheckRequest(reasoningItem, 4))).detail).toBe('base');
   });
 
   it('the verifier never sees hints / rubric — only prompt + answer + short solution', async () => {
