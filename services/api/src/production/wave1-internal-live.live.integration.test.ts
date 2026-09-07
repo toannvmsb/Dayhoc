@@ -81,6 +81,7 @@ describe.skipIf(!LIVE)('doc 69 §7 — CONTROLLED INTERNAL LIVE Wave 1 (real jou
       }
       await c.query(`DELETE FROM child_profiles WHERE id = ANY($1::uuid[])`, [childIds]).catch(() => {});
       await c.query(`DELETE FROM internal_live_cohort WHERE family_ref = ANY($1::text[])`, [familyIds.map(familyRef)]).catch(() => {});
+      await c.query(`DELETE FROM family_subscriptions WHERE family_id = ANY($1::uuid[])`, [familyIds]).catch(() => {});
       await c.query(`DELETE FROM internal_live_spend WHERE spend_date = $1`, [now().toISOString().slice(0, 10)]).catch(() => {});
       await c.query(`SET session_replication_role = origin`);
     } finally {
@@ -113,7 +114,17 @@ describe.skipIf(!LIVE)('doc 69 §7 — CONTROLLED INTERNAL LIVE Wave 1 (real jou
         childIds.push(child.childId);
         kids.push({ childId: child.childId, parentIdx: f });
         const fam = await pool.query<{ family_id: string }>(`SELECT family_id FROM child_profiles WHERE id = $1`, [child.childId]);
-        if (!familyIds.includes(fam.rows[0]!.family_id)) familyIds.push(fam.rows[0]!.family_id);
+        if (!familyIds.includes(fam.rows[0]!.family_id)) {
+          familyIds.push(fam.rows[0]!.family_id);
+          // MOCK 'pro' subscription (maxChildren 6, NO CHARGE) so an internal
+          // family can hold ${CHILDREN_PER_FAMILY} test children.
+          await pool.query(
+            `INSERT INTO family_subscriptions (family_id, plan, status, current_period_end, updated_at, source, auto_renew)
+             VALUES ($1, 'pro', 'active', now() + interval '30 days', now(), 'manual', false)
+             ON CONFLICT (family_id) DO UPDATE SET plan = 'pro', status = 'active'`,
+            [fam.rows[0]!.family_id],
+          );
+        }
         // seed a little assessment evidence so the planner produces a real plan
         const g4 = ['M4.FRAC.ADD', 'M4.FRAC.SUB', 'M4.ARITH.MUL_2DIGIT', 'M4.WORD.SUM_DIFF'];
         const g7 = ['M7.QNUM.EQUAL_CHAIN', 'M7.ALG.LINEAR_EQ', 'M7.QNUM.PROPORTION', 'M7.GEO.PARALLEL_CRITERIA'];
