@@ -361,7 +361,44 @@ tracked as a Phase-8 note, not a gate failure.
 
 ---
 
-## PHASE 7 — STAGING FULL PATH  ⏳  (in progress)
+## PHASE 7 — STAGING FULL PATH  ✅  (`main` Phase-7 commit)
+
+No deployed staging host exists (memory `project_parent_copilot`), so Phase 7 is
+a **DB-backed end-to-end integration test** —
+`services/api/src/production/worksheet-staging-full-path.integration.test.ts`
+(DATABASE_URL-gated, FREE: mock generator + mock crosscheck, real Postgres,
+synthetic Parent/Student/Teacher accounts). It exercises the whole SHADOW path:
+`createProductionApi` → `getToday` → planner → `orchestrateWorksheet` →
+MathKernel/validator → routing → retry/fallback/last-resort → Group-C crosscheck
+→ review queue → `Pg{WorksheetGeneration,ReviewQueue}Store` → `ai_usage_events`
+ledger → `worksheetShadowObservability` → retention purge → deletion cascade.
+
+**Verified (48 production integration tests green, incl. 3 new):**
+- Parent (`getParentHome` / `getParentProgress` / `getToday`), Student, and
+  Teacher (`teacherListChildren`) responses are **byte-identical** SHADOW-on vs
+  OFF.
+- run + slots + attempts persisted; every slot ends READY / PENDING_CROSSCHECK /
+  FAILED; ≥ 60% complete under the mock (real generator: 92–97%, Phases 3–4).
+- `ai_usage_events` gets `worksheet_batch_generation` rows, plan-independent,
+  **zero PII** in any persisted trace/ledger row (name / prompt / worked
+  solution all absent).
+- mock crosscheck wired through: every Group-C slot → 2 verifier calls
+  (retry-once) → `PENDING_CROSSCHECK`, `productionReady` stays **false**;
+  review-queue rows carry only a pseudonymous ref + a short snapshot with a
+  valid `REVIEW_REASON`.
+- ADMIN `worksheetShadowObservability` sees the run; a non-admin caller is
+  refused. `purgeReviewQueueSnapshots(0)` nulls the snapshots (idempotent).
+- child deletion purges review_queue + cascades the worksheet tables.
+
+**Test-double finding (P2, Phase 8):** `buildContentFromKernel` (mock generator +
+deterministic last-resort) has a thin scenario library for `FRACTION_ARITH` — a
+dense single-family fraction worksheet collides on the similarity gate under the
+mock. Added 6 rotated fraction framings (helps, doesn't fully fix); the real
+generator is unaffected (Phase 3/4 fraction specs ran at 99%). This also bounds
+`deterministicLastResort` for Group-A fraction slots — logged for Phase 8.
+
+`STAGING_FULL_PATH_READY = true` (integration-test sense; a deployed staging
+host is a separate infra dependency, flagged in the Phase 9 report).
 
 ---
 

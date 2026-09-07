@@ -93,9 +93,22 @@ export function buildContentFromKernel(dna: ProblemDNA, variant = 0): GeneratedI
     case 'UNIT_RATE':
       prompt = `Ở ${noun}, ${nums[0]} ${thing} có giá ${nums[1]} nghìn đồng. Hỏi ${nums[2]} ${thing} như thế có giá bao nhiêu nghìn đồng?`;
       break;
-    case 'FRACTION_ARITH':
-      prompt = `Thực hiện phép tính: ${nums[0]}/${nums[1]} ${k.operationGraph[0]?.match(/[+\-×]/)?.[0] ?? '+'} ${nums[2]}/${nums[3]}. Viết kết quả ở dạng phân số tối giản.`;
+    case 'FRACTION_ARITH': {
+      const fop = k.operationGraph[0]?.match(/[+\-×:]/)?.[0] ?? '+';
+      const f1 = `${nums[0]}/${nums[1]}`;
+      const f2 = `${nums[2]}/${nums[3]}`;
+      // keep every framing an EXPLICIT expression — no narrative verb that could
+      // contradict the kernel operation (the validator's op-keyword contract).
+      prompt = [
+        `Thực hiện phép tính: ${f1} ${fop} ${f2}. Viết kết quả ở dạng phân số tối giản.`,
+        `Tính giá trị của biểu thức ${f1} ${fop} ${f2} rồi rút gọn.`,
+        `Kết quả của phép tính ${f1} ${fop} ${f2} (viết dưới dạng phân số tối giản) là bao nhiêu?`,
+        `Cho biểu thức A = ${f1} ${fop} ${f2}. Rút gọn A.`,
+        `Tính rồi rút gọn: ${f1} ${fop} ${f2}.`,
+        `Thực hiện: ${f1} ${fop} ${f2} = ? (phân số tối giản)`,
+      ][(n - 1) % 6]!;
       break;
+    }
     case 'LINEAR_EQ':
       prompt = `Tìm x, biết ${nums[0]}x + (${nums[1]}) = ${nums[2]}.`;
       break;
