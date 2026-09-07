@@ -383,20 +383,22 @@ export function createProductionApi(opts: ProductionApiOptions) {
   }
 
   /**
-   * If the family is LIVE-eligible and within the daily budget, enqueue ONE LIVE
-   * worksheet job for today (deterministic spec id → the durable queue dedups to
-   * one/child/day). Fire-and-forget; the completed run's verified items are held
-   * as a serving intent and picked up by `serveLiveWorksheetIfPending`.
+   * If the family is LIVE-eligible (cohort + no kill switch) and within the daily
+   * budget, enqueue ONE LIVE worksheet job for today (deterministic spec id → the
+   * durable queue dedups to one/child/day). Budget-exhausted → degrade to a
+   * SHADOW enqueue (child still gets the legacy worksheet via `childToday`).
+   * Non-cohort families are handled by the legacy SHADOW hook (`childToday`).
    */
   async function maybeEnqueueLiveWorksheet(userId: string, childId: string): Promise<void> {
     if (!worksheetGen) return;
     try {
       const eff = await effectiveModeFor(userId);
       if (eff.mode !== 'LIVE') return;
+      let mode: 'SHADOW' | 'LIVE' = 'LIVE';
       const gate = await internalLiveBudgetGate(pool, process.env, 'generation', 0.05);
       if (!gate.ok) {
         logger.warn('INTERNAL LIVE budget exhausted — degrading to SHADOW', { reason: gate.reason });
-        return;
+        mode = 'SHADOW';
       }
       const cref = childRefOf(childId);
       const day = now().toISOString().slice(0, 10);
@@ -412,9 +414,9 @@ export function createProductionApi(opts: ProductionApiOptions) {
         knowledgeBase: kb,
         availableMinutes: 25,
         asOf: s.asOf,
-        newId: () => `${cref}-${day}`, // pseudonymous + deterministic → one job/child/day
+        newId: () => `${mode === 'LIVE' ? 'live' : 'shadow'}-${cref}-${day}`, // pseudonymous + deterministic → one job/child/day/mode
       });
-      worksheetGen.queue.enqueue('LIVE', {
+      worksheetGen.queue.enqueue(mode, {
         spec,
         generators: worksheetGen.generators,
         referenceLibrary: worksheetGen.referenceLibrary,

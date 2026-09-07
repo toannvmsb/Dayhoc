@@ -33,11 +33,15 @@ export function validateWorksheetStagingConfig(
   const highModel = env.WORKSHEET_HIGH_COMPLEXITY_MODEL ?? LOCKED_HIGH;
   const crosscheckMode = env.AI_CROSSCHECK_MODE ?? 'OFF';
 
-  if (cfg.mode === 'LIVE') {
-    blocking.push('AI_GENERATION_MODE=LIVE — LIVE worksheet delivery is not approved; set SHADOW');
+  // AI_GENERATION_MODE=LIVE is allowed (doc 69 — CONTROLLED INTERNAL LIVE). It
+  // does NOT mean staging-wide LIVE: `resolveEffectiveGenerationMode` still gates
+  // every family on the `internal_live_cohort` allowlist + the runtime kill
+  // switch. LIVE without a key is a hard block.
+  if ((cfg.mode === 'SHADOW' || cfg.mode === 'LIVE') && !env.OPENAI_API_KEY) {
+    blocking.push(`AI_GENERATION_MODE=${cfg.mode} but OPENAI_API_KEY is missing — the path will stay OFF`);
   }
-  if (cfg.mode === 'SHADOW' && !env.OPENAI_API_KEY) {
-    blocking.push('AI_GENERATION_MODE=SHADOW but OPENAI_API_KEY is missing — the path will stay OFF');
+  if (cfg.mode === 'LIVE') {
+    warnings.push('AI_GENERATION_MODE=LIVE — cohort-gated (doc 69); only `internal_live_cohort` families are served');
   }
   if (FORBIDDEN.includes(defaultModel) || FORBIDDEN.includes(highModel)) {
     blocking.push(`forbidden model in routing (${defaultModel} / ${highModel}) — gpt-4o(-mini) is not in production`);
@@ -59,7 +63,7 @@ export function validateWorksheetStagingConfig(
 
   return {
     mode: cfg.mode,
-    willRun: cfg.mode === 'SHADOW' && !!env.OPENAI_API_KEY && blocking.length === 0,
+    willRun: (cfg.mode === 'SHADOW' || cfg.mode === 'LIVE') && !!env.OPENAI_API_KEY && blocking.length === 0,
     defaultModel,
     highComplexityModel: highModel,
     crosscheckMode,

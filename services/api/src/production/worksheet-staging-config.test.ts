@@ -26,10 +26,14 @@ describe('validateWorksheetStagingConfig', () => {
     expect(r.blocking).toHaveLength(0);
   });
 
-  it('LIVE is blocking', () => {
-    const r = validateWorksheetStagingConfig({ AI_GENERATION_MODE: 'LIVE', OPENAI_API_KEY: 'k' });
-    expect(r.blocking.join(' ')).toMatch(/LIVE/);
-    expect(r.willRun).toBe(false);
+  it('LIVE + key → willRun (cohort-gated, doc 69); LIVE without a key is blocking', () => {
+    const ok = validateWorksheetStagingConfig({ AI_GENERATION_MODE: 'LIVE', OPENAI_API_KEY: 'k' });
+    expect(ok.blocking).toHaveLength(0);
+    expect(ok.willRun).toBe(true);
+    expect(ok.warnings.join(' ')).toMatch(/cohort-gated/);
+    const noKey = validateWorksheetStagingConfig({ AI_GENERATION_MODE: 'LIVE' });
+    expect(noKey.blocking.join(' ')).toMatch(/OPENAI_API_KEY/);
+    expect(noKey.willRun).toBe(false);
   });
 
   it('a forbidden model is blocking', () => {
