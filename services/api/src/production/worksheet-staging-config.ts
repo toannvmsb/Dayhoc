@@ -45,6 +45,11 @@ export function validateWorksheetStagingConfig(
   if (defaultModel !== LOCKED_DEFAULT) warnings.push(`WORKSHEET_DEFAULT_MODEL overridden to ${defaultModel} (locked = ${LOCKED_DEFAULT})`);
   if (highModel !== LOCKED_HIGH) warnings.push(`WORKSHEET_HIGH_COMPLEXITY_MODEL overridden to ${highModel} (locked = ${LOCKED_HIGH})`);
   if (crosscheckMode === 'LIVE') warnings.push('AI_CROSSCHECK_MODE=LIVE — paid crosscheck will run (must be separately approved)');
+  const crosscheckModel = env.CROSSCHECK_MODEL ?? 'gpt-4.1-mini';
+  const crosscheckGeoModel = env.CROSSCHECK_GEOMETRY_MODEL ?? 'gpt-5-mini';
+  if (FORBIDDEN.includes(crosscheckModel) || FORBIDDEN.includes(crosscheckGeoModel)) {
+    blocking.push(`forbidden crosscheck model (${crosscheckModel} / ${crosscheckGeoModel}) — gpt-4o(-mini) is not used`);
+  }
 
   const perWs = Number(env.WORKSHEET_PER_WORKSHEET_CAP_USD ?? DEFAULT_STAGING_COST_CAPS.perWorksheetUsd);
   const perDay = Number(env.WORKSHEET_DAILY_CAP_USD ?? DEFAULT_STAGING_COST_CAPS.perDayUsd);

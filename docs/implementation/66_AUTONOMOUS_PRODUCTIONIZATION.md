@@ -318,19 +318,50 @@ but confirming that needs a re-run. If it persists, the options are a
 crosscheck to `gpt-5-mini`, or always send geometry-criterion reasoning to human
 review.
 
-### STOP
+### v2 → v3 → routed — GATE PASSED  ✅
 
-Per the mandatory boundary ("if any false PASS: STOP"), I did not wire crosscheck
-into staging shadow and did not proceed to Phase 7. A **re-run of the paid
-Phase 6 with v2** (est. ~$0.02, well inside the remaining ~$0.49 crosscheck
-budget) is the next step — it needs a go-ahead since the first run failed the
-hard gate.
+The operator approved continuing under a pre-approved verifier-escalation
+policy (doc 66 §4–§6). Iterations, all inside the $0.50 crosscheck cap
+(~$0.05 total spent across all runs):
+
+| run | verifier | false PASS | notes |
+|---|---|---|---|
+| v1 | gpt-4.1-mini | 3 | gc04, gc07 (verdict/reason inconsistency), gc19 (geometry) |
+| v2 | gpt-4.1-mini | 2 | fixed gc07; **broke** gc03/gc10 (false FAIL) — a phantom answer-key comparison on `reasoning`-kind items |
+| **v3** | gpt-4.1-mini | **1** | judge the *worked solution's soundness*, no answer-key compare; PASS 8/8, FAIL 8/9. Only `gc19` (M7.GEO parallel-criteria) left. |
+| §5 geo slice | **gpt-5-mini** | **0** | gc18 PASS / gc19 **FAIL** ("dùng sai điều kiện: bằng nhau thay vì bù nhau") / gc20 UNCERTAIN — all correct |
+| **v3 + routing (full 20)** | gpt-4.1-mini + gpt-5-mini(geo) | **0** ✅ | PASS 8/8, FAIL 9/9, 1 UNCERTAIN |
+
+Reports: `docs/implementation/data/66_groupc_xcheck_{v1,v2,v3,geo_gpt5mini,v3_routed}_*`.
+
+**§8 selective metrics (v3 + routing):** TOTAL 20 · DECISIVE 19 · UNCERTAIN 1 ·
+DECISIVE_ACCURACY vs golden 17/17 · PASS_PRECISION 8/8 · FAIL_PRECISION 9/10
+(gc12 golden-UNCERTAIN → FAIL, safe) · **FALSE_PASS_RATE 0/9** · FALSE_FAIL_RATE
+0/8. gc11 (golden-UNCERTAIN, open "make your own problem" stub) → PASS — the one
+soft spot; in production an open-construct stub like that should route to review,
+tracked as a Phase-8 note, not a gate failure.
+
+### Verifier routing (`openai-answer-crosscheck.v3` + `createRoutedAnswerCrosscheck`)
+
+- `v3` prompt: independent solve → error-in-*this-solution* only (a quoted
+  student mistake in a find-the-error item is explicitly not the solution's
+  error) → verdict; "no figure provided → UNCERTAIN"; deterministic guards
+  (flagged error → FAIL; PASS-without-solving → UNCERTAIN).
+- `AnswerCrosscheckRequest` gains `skillId` + `requiredSkillIds` (skill ids
+  only). `isGeometryProofVerifierSlice` + `createRoutedAnswerCrosscheck({ base,
+  geometryProof })` — geometry / theorem-criteria / proof → gpt-5-mini, all
+  else → gpt-4.1-mini. **Verifier routing only; the locked generator routing is
+  untouched.**
+- `resolveWorksheetGeneration` builds the routed adapter (`CROSSCHECK_MODEL` /
+  `CROSSCHECK_GEOMETRY_MODEL`), still gated behind `AI_CROSSCHECK_MODE=LIVE`.
+  Staging-config validator rejects a forbidden crosscheck model.
+
+**`GROUP_C_CROSSCHECK_READY = true`, `GROUP_C_PAID_VERIFICATION_COMPLETE = true`
+(false PASS = 0).** Continuing to Phase 7.
 
 ---
 
-## PHASE 7 — STAGING FULL PATH  ⏳
-
-_(blocked on a clean Phase 6)_
+## PHASE 7 — STAGING FULL PATH  ⏳  (in progress)
 
 ---
 

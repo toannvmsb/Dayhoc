@@ -11,6 +11,7 @@ import {
 import {
   createLunaItemContentGenerator,
   createOpenAiAnswerCrosscheck,
+  createRoutedAnswerCrosscheck,
   DailyCostGuard,
   InMemoryWorksheetShadowQueue,
   PgReviewQueueStore,
@@ -126,15 +127,24 @@ export function resolveWorksheetGeneration(
   // Paid crosscheck runs ONLY when AI_CROSSCHECK_MODE=LIVE (+ key). Otherwise we
   // pass NO adapter, so Group C items sit PENDING_CROSSCHECK (honest) rather than
   // flooding the review queue with the stub's always-UNCERTAIN verdict.
-  const { adapter: paidAdapter, paidEnabled } = resolveCrosscheckAdapter(env, () =>
+  // Verifier routing (doc 66 §4, paid-verification-proven): normal Group-C
+  // reasoning → CROSSCHECK_MODEL (gpt-4.1-mini); geometry / theorem-criteria /
+  // proof → CROSSCHECK_GEOMETRY_MODEL (gpt-5-mini). Verifier only — the locked
+  // generator routing is untouched.
+  const mkCrosscheck = (model: string) =>
     createOpenAiAnswerCrosscheck(
       createOpenAiProviderAdapter({
         apiKey: env.OPENAI_API_KEY!,
-        model: env.CROSSCHECK_MODEL ?? 'gpt-4.1-mini',
+        model,
         capability: 'advanced_verification' as AiCapability,
         compliance: COMPLIANCE,
       }),
-    ),
+    );
+  const { adapter: paidAdapter, paidEnabled } = resolveCrosscheckAdapter(env, () =>
+    createRoutedAnswerCrosscheck({
+      base: mkCrosscheck(env.CROSSCHECK_MODEL ?? 'gpt-4.1-mini'),
+      geometryProof: mkCrosscheck(env.CROSSCHECK_GEOMETRY_MODEL ?? 'gpt-5-mini'),
+    }),
   );
   const crosscheckAdapter = paidEnabled ? paidAdapter : undefined;
 
