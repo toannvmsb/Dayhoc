@@ -41,7 +41,8 @@ describe.skipIf(!LIVE)('doc 69 §7 — CONTROLLED INTERNAL LIVE Wave 1 (real jou
   let pool: import('pg').Pool;
   let api: ReturnType<typeof createProductionApi>;
   let worker: ReturnType<typeof createWorksheetJobWorker>;
-  const now = () => new Date('2027-03-15T09:00:00.000Z');
+  const now = () => new Date(); // REAL time — DB timestamps stay coherent
+  const day = () => new Date().toISOString().slice(0, 10);
   const kb = loadKnowledgeBase();
   const childIds: string[] = [];
   const familyIds: string[] = [];
@@ -49,7 +50,8 @@ describe.skipIf(!LIVE)('doc 69 §7 — CONTROLLED INTERNAL LIVE Wave 1 (real jou
 
   beforeAll(async () => {
     const { Pool } = await import('pg');
-    pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+    pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false }, keepAlive: true, max: 4, idleTimeoutMillis: 20_000 });
+    pool.on('error', () => undefined); // swallow the Supabase pooler's idle-connection drops
     api = createProductionApi({ pool, authAdapter: new InMemoryAuthAdapter(runTag), now });
     worker = createWorksheetJobWorker({ pool, knowledgeBase: kb, workerId: `${runTag}-worker`, leaseMs: 300_000, backoffMs: 200 });
     await setKillSwitch(pool, false, { reason: 'wave1 start', source: 'manual', actorRef: 'wave1' });
@@ -129,11 +131,11 @@ describe.skipIf(!LIVE)('doc 69 §7 — CONTROLLED INTERNAL LIVE Wave 1 (real jou
         const g4 = ['M4.FRAC.COMMON_DENOM', 'M4.FRAC.ADD', 'M4.ARITH.SUB_MULTI', 'M4.ARITH.MUL_2DIGIT'];
         const g7 = ['M7.RATIO.EQUAL_CHAIN', 'M7.RATIO.PROPORTION', 'M7.RATIO.DIRECT', 'M7.GEO.PARALLEL_CRITERIA'];
         const skills = k % 2 === 0 ? g4 : g7;
-        for (let i = 0; i < 8; i += 1) {
+        for (let i = 0; i < 10; i += 1) {
           await pool.query(
             `INSERT INTO evidence (id, child_id, source, occurred_at, recorded_at, skill_id, result, confidence_tier, provenance)
              VALUES (gen_random_uuid(), $1, 'school_test', $2, $2, $3, $4::jsonb, 'A', 'assessment')`,
-            [child.childId, new Date(2027, 1, 10 + i).toISOString(), skills[i % skills.length], i % 3 === 0 ? '{"correct":true}' : '{"correct":false}'],
+            [child.childId, new Date(Date.now() - (20 - i) * 86_400_000).toISOString(), skills[i % skills.length], i % 3 === 0 ? '{"correct":true}' : '{"correct":false}'],
           );
         }
       }
@@ -151,29 +153,32 @@ describe.skipIf(!LIVE)('doc 69 §7 — CONTROLLED INTERNAL LIVE Wave 1 (real jou
 
     // ---- 5/7. run the real journey per cohort child ----
     const cohortKids = kids.filter((k) => k.parentIdx < FAMILIES);
-    const flows: { childId: string; assignmentId: string | null; itemCount: number; evidenceDelta: number; twinChanged: boolean; nextPlanChanged: boolean }[] = [];
+    const flows: { childId: string; parentIdx: number; planBefore: string; assignmentId: string | null; itemCount: number; evidenceDelta: number; twinChanged: boolean; nextPlanChanged: boolean }[] = [];
     let killed = false;
 
-    for (let idx = 0; idx < cohortKids.length && !killed; idx += 1) {
-      const { childId, parentIdx } = cohortKids[idx]!;
+    // ---- PHASE 1: every cohort parent opens Today → enqueues one LIVE worksheet ----
+    for (const { childId, parentIdx } of cohortKids) {
+      const planBefore = JSON.stringify((await api.getToday(parents[parentIdx]!.auth, childId)) ?? {});
+      flows.push({ childId, parentIdx, planBefore, assignmentId: null, itemCount: 0, evidenceDelta: 0, twinChanged: false, nextPlanChanged: false });
+    }
+    // ---- PHASE 2: drain the durable worker (real paid generation) ----
+    for (let round = 0; round < 40 && !killed; round += 1) {
+      await worker!.runToIdle(cohortKids.length * 6);
+      const st = await pool.query<{ pending: number }>(`SELECT count(*)::int pending FROM worksheet_jobs WHERE child_ref = ANY($1::text[]) AND state IN ('PENDING','CLAIMED')`, [cohortKids.map((k) => childRefOf(k.childId))]);
+      if (Number(st.rows[0]!.pending) === 0) break;
+      // safety scan while generation is in flight
+      const { tripped, scan } = await enforceSafetyAutoStop(pool, { sinceIso: day() + 'T00:00:00Z' });
+      if (tripped || scan.critical) { killed = true; console.log(`WAVE1 SAFETY AUTO-STOP mid-generation: ${scan.criticalReasons.join('; ')}`); }
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    // ---- PHASE 3: serve + practice + verify the learning loop, per child ----
+    for (let idx = 0; idx < flows.length && !killed; idx += 1) {
+      const f = flows[idx]!;
+      const { childId, parentIdx } = f;
       const pAuth = parents[parentIdx]!.auth;
+      const planBefore = f.planBefore;
 
-      const planBefore = JSON.stringify((await api.getToday(pAuth, childId)) ?? {});
-      // getToday enqueued a LIVE job (durable). Wait for it to land, then process
-      // it, then wait for the serving intent, then read it back.
-      const cref = childRefOf(childId);
-      for (let p = 0; p < 30; p += 1) {
-        const j = await pool.query<{ n: number }>(`SELECT count(*)::int n FROM worksheet_jobs WHERE child_ref = $1 AND state IN ('PENDING','CLAIMED')`, [cref]);
-        if (Number(j.rows[0]!.n) > 0) break;
-        await new Promise((r) => setTimeout(r, 200));
-      }
-      await worker!.runToIdle(60);
-      for (let p = 0; p < 20; p += 1) {
-        const sv = await pool.query<{ n: number }>(`SELECT count(*)::int n FROM worksheet_run_serving WHERE child_ref = $1`, [cref]);
-        if (Number(sv.rows[0]!.n) > 0) break;
-        await new Promise((r) => setTimeout(r, 250));
-      }
-      // serve + inspect (getChildAssignments turns a PENDING serving intent into an assignment)
+      // getChildAssignments turns a PENDING serving intent into an AI_GENERATED assignment
       const list = await api.getChildAssignments(pAuth, childId);
       const ai = list.find((a) => a.mode === 'WORKSHEET' && a.status !== 'COMPLETED');
       const detail = ai ? await api.getAssignmentDetail(pAuth, ai.id) : null;
@@ -210,16 +215,7 @@ describe.skipIf(!LIVE)('doc 69 §7 — CONTROLLED INTERNAL LIVE Wave 1 (real jou
         nextPlanChanged = planAfter !== planBefore;
       }
 
-      flows.push({ childId, assignmentId: ai?.id ?? null, itemCount, evidenceDelta, twinChanged, nextPlanChanged });
-
-      // ---- 6. safety scan every ~7 flows ----
-      if (idx % 7 === 6) {
-        const { tripped, scan } = await enforceSafetyAutoStop(pool, { sinceIso: now().toISOString().slice(0, 10) + 'T00:00:00Z' });
-        if (tripped || scan.critical) {
-          killed = true;
-          console.log(`WAVE1 SAFETY AUTO-STOP after ${idx + 1} flows: ${scan.criticalReasons.join('; ')}`);
-        }
-      }
+      Object.assign(f, { assignmentId: ai?.id ?? null, itemCount, evidenceDelta, twinChanged, nextPlanChanged });
     }
 
     // ---- negative control: SHADOW family never gets a served worksheet ----
