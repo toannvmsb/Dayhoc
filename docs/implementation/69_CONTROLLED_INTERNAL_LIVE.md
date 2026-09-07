@@ -129,6 +129,37 @@ median PENDING→resolved time. Reviewers act via the existing
 `internal_live_cohort`, `ai_generation_runtime` (singleton), `internal_live_spend`,
 `internal_live_safety_events`, `worksheet_run_serving`, `internal_live_qa_sample`.
 
-## THE FLIP (do NOT do yet — doc 69 §12)
+## THE FLIP (anh only — doc 69 §12, still NOT done)
 
-_(see the readiness report — exact ENV + commands)_
+All 8 readiness flags are green. To start Wave 1:
+
+1. **Deploy env** (secret manager — never in source):
+   ```
+   AI_GENERATION_MODE=LIVE
+   AI_CROSSCHECK_MODE=LIVE
+   WORKSHEET_QUEUE=durable
+   AI_GENERATION_KILL_SWITCH=false
+   INTERNAL_LIVE_GEN_DAILY_CAP_USD=2.00
+   INTERNAL_LIVE_XCHECK_DAILY_CAP_USD=0.50
+   INTERNAL_LIVE_QA_SAMPLE_ONE_IN=5
+   INTERNAL_LIVE_QA_RETENTION_DAYS=7
+   OPENAI_API_KEY=<key>            # already set on staging
+   ```
+   Locked model routing unchanged: `WORKSHEET_DEFAULT_MODEL=gpt-4.1-mini`,
+   `WORKSHEET_HIGH_COMPLEXITY_MODEL=gpt-5-mini`, `CROSSCHECK_MODEL=gpt-4.1-mini`,
+   `CROSSCHECK_GEOMETRY_MODEL=gpt-5-mini`. Do **not** add `gpt-4o-mini`.
+
+2. **Run a `WorksheetJobWorker`** process (`createWorksheetJobWorker({ pool, knowledgeBase }).start()`).
+
+3. **Add the 3–5 internal families** (ADMIN token):
+   `POST /admin/internal-live/cohort  { "familyId": "<uuid>", "wave": 1, "note": "internal QA" }`
+
+4. **Schedule the safety cron** — every ~10 min:
+   `POST /admin/internal-live/safety-scan`  (activates the kill switch on any CRITICAL condition)
+   and daily: `POST /admin/internal-live/maintenance` (QA + serving-intent retention sweeps).
+
+5. **Watch** `GET /admin/internal-live/dashboard` + `/review-ops`.
+
+**Immediate stop:** `POST /admin/internal-live/kill-switch { "on": true, "reason": "..." }`
+(or `AI_GENERATION_KILL_SWITCH=true` at the platform) — halts every new paid AI
+call with no redeploy; the app keeps serving the legacy path.
