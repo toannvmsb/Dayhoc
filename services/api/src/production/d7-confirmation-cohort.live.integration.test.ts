@@ -197,12 +197,14 @@ describe.skipIf(!LIVE)('doc 67 §D7 — final confirmation cohort (staging, PAID
     });
 
     let enqueued = 0;
+    const crefAxis = new Map<string, Axis>();
     for (let i = 0; i < RUNS; i += 1) {
       if (!guard.canRun().ok) break;
       const axis = axes[i % axes.length]!;
       const spec = specForAxis(axis, `d7-${Date.now()}-${i}`);
       const cref = createHash('sha256').update(`${spec.childId}-${i}`).digest('hex').slice(0, 16);
       childRefs.push(cref);
+      crefAxis.set(cref, axis);
       const id = await queue.enqueueDurable({ mode: 'SHADOW', spec, childRef: cref, usageContext: { userRef: 'u_d7', childRef: cref, plan: 'plus' as const } });
       if (id) enqueued += 1;
     }
@@ -242,6 +244,44 @@ describe.skipIf(!LIVE)('doc 67 §D7 — final confirmation cohort (staging, PAID
       `SELECT coalesce(max(c),0) mx FROM (SELECT count(*) c FROM worksheet_generation_runs WHERE child_ref = ANY($1::text[]) GROUP BY generation_spec_id) x`,
       [childRefs],
     );
+
+    // ---- FAILURE DIAGNOSTICS (before afterAll purges staging) ----
+    const wsStateDist: Record<string, number> = {};
+    const runAxis = new Map<string, Axis>();
+    for (const r of runs.rows) wsStateDist[r.worksheet_state] = (wsStateDist[r.worksheet_state] ?? 0) + 1;
+    const runChildRef = await pool.query<{ id: string; child_ref: string }>(
+      `SELECT id, child_ref FROM worksheet_generation_runs WHERE child_ref = ANY($1::text[])`, [childRefs]);
+    for (const r of runChildRef.rows) { const ax = crefAxis.get(r.child_ref); if (ax) runAxis.set(r.id, ax); }
+    const failDetail = await pool.query<{
+      run_id: string; item_id: string; kernel_family: string | null; initial_role: string;
+      route_reason: string; content_quality_codes: string[]; final_state: string;
+    }>(
+      `SELECT run_id, item_id, kernel_family, initial_role, route_reason, content_quality_codes, final_state
+         FROM worksheet_slots WHERE run_id = ANY($1::text[]) AND final_state = 'FAILED'`, [runIds]);
+    const failAttempts = await pool.query<{ run_id: string; item_id: string; failure_category: string | null; retry_reason: string | null; step: string; model: string }>(
+      `SELECT run_id, item_id, failure_category, retry_reason, step, model
+         FROM worksheet_slot_attempts WHERE run_id = ANY($1::text[]) AND accepted = false ORDER BY attempt`, [runIds]);
+    const failByAxis: Record<string, number> = {};
+    const failByRole: Record<string, number> = {};
+    const failByFamily: Record<string, number> = {};
+    for (const f of failDetail.rows) {
+      const ax = runAxis.get(f.run_id) ?? 'unknown';
+      failByAxis[ax] = (failByAxis[ax] ?? 0) + 1;
+      failByRole[f.initial_role] = (failByRole[f.initial_role] ?? 0) + 1;
+      failByFamily[f.kernel_family ?? 'NO_KERNEL'] = (failByFamily[f.kernel_family ?? 'NO_KERNEL'] ?? 0) + 1;
+    }
+    const failCatDist: Record<string, number> = {};
+    const failReasonDist: Record<string, number> = {};
+    const failKeys = new Set(failDetail.rows.map((f) => `${f.run_id}:${f.item_id}`));
+    for (const a of failAttempts.rows) {
+      if (!failKeys.has(`${a.run_id}:${a.item_id}`)) continue;
+      failCatDist[a.failure_category ?? 'null'] = (failCatDist[a.failure_category ?? 'null'] ?? 0) + 1;
+      failReasonDist[a.retry_reason ?? 'null'] = (failReasonDist[a.retry_reason ?? 'null'] ?? 0) + 1;
+    }
+    const cqOnFailed: Record<string, number> = {};
+    for (const f of failDetail.rows) for (const c of f.content_quality_codes ?? []) cqOnFailed[c] = (cqOnFailed[c] ?? 0) + 1;
+    const perAxisTotal: Record<string, number> = {};
+    for (const s of slots.rows) { const ax = runAxis.get(s.run_id) ?? 'unknown'; perAxisTotal[ax] = (perAxisTotal[ax] ?? 0) + 1; }
 
     // ---- recovery-path classification (per slot) ----
     const attemptsBySlot = new Map<string, { attempt: number; model: string; step: string; accepted: boolean }[]>();
@@ -333,6 +373,16 @@ describe.skipIf(!LIVE)('doc 67 §D7 — final confirmation cohort (staging, PAID
       `== QUEUE / PERSISTENCE ==`,
       `job stats: ${JSON.stringify(jobStats)}`,
       `max runs per generation_spec_id: ${dupRuns.rows[0]?.mx ?? 0}   (gate: 1 — no duplicate worksheet)`,
+      ``,
+      `== FAILURE DIAGNOSTICS ==`,
+      `worksheet_state distribution: ${JSON.stringify(wsStateDist)}`,
+      `FAILED slots by axis: ${JSON.stringify(failByAxis)}`,
+      `slots per axis (total): ${JSON.stringify(perAxisTotal)}`,
+      `FAILED slots by initial_role: ${JSON.stringify(failByRole)}`,
+      `FAILED slots by kernel_family: ${JSON.stringify(failByFamily)}`,
+      `failure_category on failed slots' attempts: ${JSON.stringify(failCatDist)}`,
+      `retry_reason on failed slots' attempts: ${JSON.stringify(failReasonDist)}`,
+      `content_quality codes on FAILED slots: ${JSON.stringify(cqOnFailed)}`,
     ].join('\n');
     writeFileSync(OUT, report);
     console.log('\n' + report + '\n');
