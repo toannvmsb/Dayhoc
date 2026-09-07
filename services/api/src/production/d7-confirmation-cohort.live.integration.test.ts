@@ -81,16 +81,26 @@ function specForAxis(axis: Axis, id: string): ExerciseGenerationSpec {
     constraints: { noUnlearnedRequiredKnowledge: true, allowAboveGradeReasoning: true, requireUniqueVariants: true, language: 'vi', ageAppropriate: true, maxSolutionComplexity: 'standard' },
     provenance: { plannerVersion: 'exercise-spec.v1', targetSelectorVersion: 'target-selector.v2', curriculumRevision: 'math-dev-core-1.0', curriculumContentHash: 'deadbeefcafe0007', twinVersion: '2027-01-25T09:00:00.000Z', gapSnapshotVersion: '2027-01-25T09:00:00.000Z' },
   };
+  // The synthetic spec's difficulty envelope MUST be consistent with the buckets
+  // it requests — the same rule the real planner's `deriveDifficulty` enforces:
+  //  · a FRONTIER target lifts kMax to that target's knowledgeCeiling (K5 here);
+  //  · a THINKING target / an advanced parentGoal lets tMax reach T5.
+  // Without this, the generator produces a correct K5 frontier / T5 thinking item
+  // and the validator (correctly) rejects it as out-of-envelope — a fixture bug,
+  // not a pipeline defect. (doc 67 §D7 diagnostic 2026-09-07.)
   const mk = (
     grade: number, lesson: string, domain: string, skills: Tgt[],
     dist: Record<string, number>, mastery: Record<string, number>,
+    envelope?: { kMax?: string; tMax?: string; parentGoal?: string },
   ): ExerciseGenerationSpec => ({
     ...base, schoolGrade: grade,
+    goal: { ...base.goal, ...(envelope?.parentGoal ? { parentGoal: envelope.parentGoal } : {}) },
+    difficulty: { ...base.difficulty, ...(envelope?.kMax ? { kMax: envelope.kMax } : {}), ...(envelope?.tMax ? { tMax: envelope.tMax } : {}) },
     learningContext: { curriculum: 'KET_NOI_TRI_THUC', expectedLessonId: lesson, resolvedLessonId: lesson, source: 'TEACHER_UPDATE', confidence: 'VERIFIED', isEstimated: false },
     targets: { skills, problemTypeIds: [], skillIds: [...new Set(skills.map((s) => s.skillId))] },
     childState: {
       relevantMastery: mastery, prerequisiteGaps: [], readiness: 'ready',
-      thinkingProfile: { [domain]: 'T3' },
+      thinkingProfile: { [domain]: envelope?.tMax === 'T5' ? 'T4' : 'T3' },
       actualLearningFrontier: { [domain]: { reachedCurriculumOrigin: grade, aboveGrade: axis === 'g7_frontier', confidence: 0.6, evidenceCount: 6, masteredSkillIds: skills.map((s) => asSkillId(s.skillId)), readyNextSkillIds: [], exposureSkillIds: [] } },
     },
     generationPlan: { totalQuestions: 8, distribution: { prerequisiteRepair: 0, currentSkill: 4, variation: 2, application: 1, advanced: 0, thinkingChallenge: 1, ...dist } },
@@ -104,7 +114,7 @@ function specForAxis(axis: Axis, id: string): ExerciseGenerationSpec {
     case 'g4_word':
       return mk(4, 'C.G4.5.12', 'word_problems', [t({ skillId: 'M4.WORD.SUM_DIFF', role: 'CURRENT', domain: 'word_problems', buckets: ['currentSkill', 'variation', 'application'] })], {}, { 'M4.WORD.SUM_DIFF': 58 });
     case 'g4_reasoning':
-      return mk(4, 'C.G4.3.8', 'arithmetic', [t({ skillId: 'M4.ARITH.DISTRIBUTIVE', role: 'CURRENT', domain: 'arithmetic', buckets: ['currentSkill', 'variation'] }), t({ skillId: 'M4.ARITH.DISTRIBUTIVE', role: 'THINKING', domain: 'arithmetic', buckets: ['thinkingChallenge'], selectionReason: 'THINKING_STRETCH' })], { thinkingChallenge: 2, currentSkill: 3 }, { 'M4.ARITH.DISTRIBUTIVE': 62 });
+      return mk(4, 'C.G4.3.8', 'arithmetic', [t({ skillId: 'M4.ARITH.DISTRIBUTIVE', role: 'CURRENT', domain: 'arithmetic', buckets: ['currentSkill', 'variation'] }), t({ skillId: 'M4.ARITH.DISTRIBUTIVE', role: 'THINKING', domain: 'arithmetic', buckets: ['thinkingChallenge'], selectionReason: 'THINKING_STRETCH' })], { thinkingChallenge: 2, currentSkill: 3 }, { 'M4.ARITH.DISTRIBUTIVE': 62 }, { tMax: 'T5', parentGoal: 'phat_trien_tu_duy' });
     case 'g7_linear_eq':
       return mk(7, 'C.G7.3.9', 'algebraic_thinking', [t({ skillId: 'M7.ALG.LINEAR_EQ', role: 'CURRENT', domain: 'algebraic_thinking', curriculumOrigin: 7, buckets: ['currentSkill', 'variation', 'application'] })], {}, { 'M7.ALG.LINEAR_EQ': 57 });
     case 'g7_ratio':
@@ -113,12 +123,12 @@ function specForAxis(axis: Axis, id: string): ExerciseGenerationSpec {
       return mk(7, 'C.G7.6.21', 'algebraic_thinking', [
         t({ skillId: 'M7.QNUM.EQUAL_CHAIN', role: 'CURRENT', domain: 'algebraic_thinking', curriculumOrigin: 7, buckets: ['currentSkill', 'variation'] }),
         t({ skillId: 'M7.ALG.SYMMETRIC', role: 'FRONTIER', domain: 'algebraic_thinking', curriculumOrigin: 9, buckets: ['advanced'], knowledgeCeiling: 'K5', selectionReason: 'MASTERED_FRONTIER_STRETCH', selectedCurriculumOrigin: 9 }),
-      ], { advanced: 2, currentSkill: 3 }, { 'M7.QNUM.EQUAL_CHAIN': 72, 'M7.ALG.SYMMETRIC': 70 });
+      ], { advanced: 2, currentSkill: 3 }, { 'M7.QNUM.EQUAL_CHAIN': 72, 'M7.ALG.SYMMETRIC': 70 }, { kMax: 'K5', tMax: 'T5', parentGoal: 'phat_trien_tu_duy' });
     case 'g7_geometry':
       return mk(7, 'C.G7.4.14', 'geometry', [
         t({ skillId: 'M7.GEO.PARALLEL_CRITERIA', role: 'CURRENT', domain: 'geometry', curriculumOrigin: 7, buckets: ['currentSkill', 'variation', 'application'] }),
         t({ skillId: 'M7.GEO.PARALLEL_CRITERIA', role: 'THINKING', domain: 'geometry', curriculumOrigin: 7, buckets: ['thinkingChallenge'], selectionReason: 'THINKING_STRETCH' }),
-      ], { thinkingChallenge: 2, currentSkill: 3 }, { 'M7.GEO.PARALLEL_CRITERIA': 55 });
+      ], { thinkingChallenge: 2, currentSkill: 3 }, { 'M7.GEO.PARALLEL_CRITERIA': 55 }, { tMax: 'T5', parentGoal: 'phat_trien_tu_duy' });
   }
 }
 
@@ -160,7 +170,11 @@ describe.skipIf(!LIVE)('doc 67 §D7 — final confirmation cohort (staging, PAID
     const lib = loadReferenceLibrary();
     const pricing = new PricingRegistry();
     const RUNS = Number(process.env.D7_RUNS ?? '30');
-    const axes: Axis[] = ['g4_arith', 'g4_frac', 'g4_word', 'g4_reasoning', 'g7_linear_eq', 'g7_ratio', 'g7_frontier', 'g7_geometry'];
+    const ALL_AXES: Axis[] = ['g4_arith', 'g4_frac', 'g4_word', 'g4_reasoning', 'g7_linear_eq', 'g7_ratio', 'g7_frontier', 'g7_geometry'];
+    // D7_AXES=g7_frontier,g7_geometry restricts the cohort (targeted re-validation)
+    const axes: Axis[] = process.env.D7_AXES
+      ? (process.env.D7_AXES.split(',').map((s) => s.trim()).filter((s) => ALL_AXES.includes(s as Axis)) as Axis[])
+      : ALL_AXES;
 
     const mkGen = (model: string) =>
       createLunaItemContentGenerator({
