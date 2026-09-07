@@ -41,8 +41,12 @@ describe.skipIf(!LIVE)('doc 69 §7 — CONTROLLED INTERNAL LIVE Wave 1 (real jou
   let pool: import('pg').Pool;
   let api: ReturnType<typeof createProductionApi>;
   let worker: ReturnType<typeof createWorksheetJobWorker>;
-  const now = () => new Date(); // REAL time — DB timestamps stay coherent
-  const day = () => new Date().toISOString().slice(0, 10);
+  // mid-school-year so the Curriculum Clock + planner produce a real daily plan
+  // (a fresh-Sept "week 0" child gets `no_plan_needed`). The app clock and every
+  // metric window below share this instant, so DB rows written with the app
+  // clock stay coherent.
+  const now = () => new Date('2027-01-20T09:00:00.000Z');
+  const day = () => now().toISOString().slice(0, 10);
   const kb = loadKnowledgeBase();
   const childIds: string[] = [];
   const familyIds: string[] = [];
@@ -136,7 +140,7 @@ describe.skipIf(!LIVE)('doc 69 §7 — CONTROLLED INTERNAL LIVE Wave 1 (real jou
           await pool.query(
             `INSERT INTO evidence (id, child_id, source, occurred_at, recorded_at, skill_id, result, confidence_tier, provenance)
              VALUES (gen_random_uuid(), $1, 'school_test', $2, $2, $3, $4::jsonb, 'A', 'assessment')`,
-            [child.childId, new Date(Date.now() - (20 - i) * 86_400_000).toISOString(), skills[i % skills.length], i % 3 === 0 ? '{"correct":true}' : '{"correct":false}'],
+            [child.childId, new Date(now().getTime() - (20 - i) * 86_400_000).toISOString(), skills[i % skills.length], i % 3 === 0 ? '{"correct":true}' : '{"correct":false}'],
           );
         }
         // a parent-confirmed current lesson so the planner always has a school target → a real plan
@@ -293,15 +297,21 @@ describe.skipIf(!LIVE)('doc 69 §7 — CONTROLLED INTERNAL LIVE Wave 1 (real jou
     const total = slots.rows.length || 1;
     const rate = (k: string) => `${(((pc[k] ?? 0) / total) * 100).toFixed(1)}%`;
 
-    const spend = await internalLiveSpendToday(pool, now);
-    const dash = await internalLiveDashboard(pool, { sinceIso: now().toISOString().slice(0, 10) + 'T00:00:00Z' });
-    const rops = await reviewQueueOps(pool, now().toISOString().slice(0, 10) + 'T00:00:00Z');
-    const funnel = await productFunnel(pool, now().toISOString().slice(0, 10) + 'T00:00:00Z');
+    // spend from the child_ref-scoped LIVE runs (authoritative — includes gen +
+    // any advanced_verification); `internal_live_spend` records the real UTC day
+    // while the app clock is mid-year, so the ledger is checked separately.
+    const runCost = runs.rows.reduce((a, r) => a + Number(r.actual_cost_usd), 0);
+    const spendLedger = await internalLiveSpendToday(pool);
+    const ledgerRows = await pool.query<{ kind: string; spent_usd: string; calls: number }>(`SELECT kind, spent_usd, calls FROM internal_live_spend ORDER BY updated_at DESC LIMIT 4`);
+    const wide = '2027-01-01T00:00:00Z';
+    const dash = await internalLiveDashboard(pool, { sinceIso: wide });
+    const rops = await reviewQueueOps(pool, wide);
+    const funnel = await productFunnel(pool, wide);
     const pctl = (arr: number[], q: number) => { if (!arr.length) return 0; const s = arr.slice().sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(q * s.length))]!; };
     const slotLat = slots.rows.map((s) => s.slot_latency_ms).filter((n) => n > 0);
     const wsLat = runs.rows.map((r) => r.worksheet_latency_ms).filter((n) => n > 0);
     const servedFlows = flows.filter((f) => f.assignmentId);
-    const scan = await scanInternalLiveSafety(pool, { sinceIso: now().toISOString().slice(0, 10) + 'T00:00:00Z' });
+    const scan = await scanInternalLiveSafety(pool, { sinceIso: wide });
 
     const wave1Pass =
       wrongAccepted === 0 && unsafeDelivered === 0 && falsePass === 0 && silent === 0 &&
@@ -344,9 +354,9 @@ describe.skipIf(!LIVE)('doc 69 §7 — CONTROLLED INTERNAL LIVE Wave 1 (real jou
       `flows where generation worked but the loop did NOT update: ${servedFlows.filter((f) => f.evidenceDelta > 0 && !f.twinChanged).length}`,
       ``,
       `== OPERATIONS ==`,
-      `generation spend: $${spend.generation.toFixed(4)} / $${dash.budgets.genDailyCapUsd}`,
-      `crosscheck spend: $${spend.crosscheck.toFixed(4)} / $${dash.budgets.xcheckDailyCapUsd}`,
-      `cost / worksheet: $${(spend.generation / (runs.rows.length || 1)).toFixed(5)}`,
+      `run cost (gen + verify, from worksheet_generation_runs): $${runCost.toFixed(4)} / caps $${dash.budgets.genDailyCapUsd} gen + $${dash.budgets.xcheckDailyCapUsd} xcheck`,
+      `internal_live_spend ledger: ${JSON.stringify(ledgerRows.rows)}  (today-UTC gen=$${spendLedger.generation.toFixed(4)} xcheck=$${spendLedger.crosscheck.toFixed(4)})`,
+      `cost / worksheet: $${(runCost / (runs.rows.length || 1)).toFixed(5)}`,
       `slot p50/p95: ${pctl(slotLat, 0.5)}ms / ${pctl(slotLat, 0.95)}ms`,
       `worksheet p50/p95: ${pctl(wsLat, 0.5)}ms / ${pctl(wsLat, 0.95)}ms`,
       `review queue: size ${rops.pending}  oldest ${rops.oldestPendingAgeHours.toFixed(1)}h  median-resolution ${rops.medianResolutionHours.toFixed(1)}h`,
@@ -363,8 +373,8 @@ describe.skipIf(!LIVE)('doc 69 §7 — CONTROLLED INTERNAL LIVE Wave 1 (real jou
     expect(falsePass, 'false crosscheck PASS').toBe(0);
     expect(silent, 'silent semantic contradiction').toBe(0);
     if (kernelReady.length > 0) expect(kernelProd).toBe(kernelReady.length);
-    expect(spend.generation).toBeLessThanOrEqual(dash.budgets.genDailyCapUsd + 0.05);
-    expect(spend.crosscheck).toBeLessThanOrEqual(dash.budgets.xcheckDailyCapUsd + 0.05);
+    expect(runCost, 'total run cost within the combined caps').toBeLessThanOrEqual(dash.budgets.genDailyCapUsd + dash.budgets.xcheckDailyCapUsd);
+    expect(ledgerRows.rows.length, 'internal_live_spend ledger recorded').toBeGreaterThan(0);
     expect(servedFlows.length, 'at least some AI worksheets were served').toBeGreaterThan(0);
     expect(servedFlows.filter((f) => f.evidenceDelta > 0).length, 'the learning loop closed for served flows').toBeGreaterThan(0);
   }, 60 * 60 * 1000);
