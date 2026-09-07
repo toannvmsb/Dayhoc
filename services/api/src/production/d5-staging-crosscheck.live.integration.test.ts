@@ -179,10 +179,13 @@ describe.skipIf(!LIVE)('doc 67 §D5 — Group-C crosscheck LIVE (staging)', () =
           expect(s.productionReady).toBe(false); // AI-verified ≠ deterministic
           expect(s.crosscheckVerdict).toBe('PASS');
         }
-        if (s.finalState === 'PENDING_CROSSCHECK') {
+        // doc 68 §7 — a non-PASS Group-C slot is never delivered: an optional slot
+        // is OMITTED (review row), a REQUIRED_CORE slot goes to a safe substitute.
+        if (s.finalState === 'OMITTED') {
           pending += 1;
           expect(s.productionReady).toBe(false);
           expect(s.crosscheckVerdict).not.toBe('PASS'); // UNCERTAIN never becomes PASS
+          expect(s.omitted).toBe(true);
         }
       }
       for (const m of outcome.result.trace.totals.byModel) {
@@ -200,13 +203,13 @@ describe.skipIf(!LIVE)('doc 67 §D5 — Group-C crosscheck LIVE (staging)', () =
     );
     expect(Number(ledger.rows[0]!.n)).toBeGreaterThan(0);
 
-    // one CROSSCHECK_UNCERTAIN review row per PENDING_CROSSCHECK slot — never a PASS
+    // a CROSSCHECK_UNCERTAIN review row for every omitted-on-UNCERTAIN slot — never a PASS
     const rq = await pool.query<{ n: string }>(
       `SELECT count(*)::int n FROM review_queue
         WHERE generation_spec_id = ANY($1::text[]) AND reason = 'CROSSCHECK_UNCERTAIN'`,
       [specIds],
     );
-    expect(Number(rq.rows[0]!.n)).toBe(pending);
+    expect(Number(rq.rows[0]!.n)).toBeGreaterThanOrEqual(pending);
 
     expect(spentUsd).toBeLessThanOrEqual(CAP_USD + 0.02);
 
