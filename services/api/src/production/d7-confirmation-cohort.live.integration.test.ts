@@ -249,7 +249,9 @@ describe.skipIf(!LIVE)('doc 67 §D7 — final confirmation cohort (staging, PAID
     const reviewQueue = new PgReviewQueueStore(pool);
     const queue = new PgWorksheetJobQueue(pool);
     const events: AiUsageEvent[] = [];
-    const guard = new DailyCostGuard({ perWorksheetUsd: 0.08, perDayUsd: GEN_CAP });
+    // per-worksheet ceiling: 0.08 gives safe-substitute headroom, but never above
+    // half the day cap or a tiny GEN_CAP could never enqueue a single worksheet.
+    const guard = new DailyCostGuard({ perWorksheetUsd: Math.min(0.08, GEN_CAP / 2), perDayUsd: GEN_CAP });
 
     const worker = new WorksheetJobWorker({
       pool, workerId: 'd7', knowledgeBase: kb, referenceLibrary: lib, leaseMs: 300_000, backoffMs: 500,
