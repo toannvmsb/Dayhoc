@@ -140,6 +140,48 @@ function buildGenerationDeps(
   return { generators, ...(paidEnabled ? { crosscheckAdapter: paidAdapter } : {}) };
 }
 
+/**
+ * doc 69 §5 — after a completed run, if it was persisted as LIVE, record a
+ * serving intent (verified items held for the next authenticated child request)
+ * and the operational spend against the INTERNAL LIVE daily caps. Best-effort;
+ * never affects the product flow.
+ */
+async function recordLiveOutcome(
+  pool: Pool,
+  env: Record<string, string | undefined>,
+  job: { readonly spec: { readonly generationSpecId: string }; readonly childRef?: string | null },
+  outcome: Extract<WorksheetShadowOutcome, { ran: true }>,
+): Promise<void> {
+  const { rows } = await pool.query<{ mode: string }>(
+    `SELECT mode FROM worksheet_generation_runs WHERE id = $1`,
+    [outcome.runId],
+  );
+  if (rows[0]?.mode !== 'LIVE') return;
+
+  const { recordInternalLiveSpend } = await import('./internal-live.js');
+  const { recordServingIntent } = await import('./internal-live-serving.js');
+
+  const byModel = outcome.result.trace.totals.byModel;
+  const genUsd = byModel
+    .filter((m) => m.operationType !== 'advanced_verification')
+    .reduce((a, m) => a + (m.actualCostUsd ?? 0), 0);
+  const xUsd = byModel
+    .filter((m) => m.operationType === 'advanced_verification')
+    .reduce((a, m) => a + (m.actualCostUsd ?? 0), 0);
+  if (genUsd > 0) await recordInternalLiveSpend(pool, 'generation', genUsd).catch(() => undefined);
+  if (xUsd > 0) await recordInternalLiveSpend(pool, 'crosscheck', xUsd).catch(() => undefined);
+
+  if (job.childRef) {
+    await recordServingIntent(pool, {
+      runId: outcome.runId,
+      childRef: job.childRef,
+      generationSpecId: job.spec.generationSpecId,
+      result: outcome.result,
+      env,
+    }).catch(() => undefined);
+  }
+}
+
 export function resolveWorksheetGeneration(
   opts: ResolveWorksheetGenerationOpts,
 ): ProductionWorksheetGeneration | null {
@@ -163,6 +205,16 @@ export function resolveWorksheetGeneration(
 
   const store = new PgWorksheetGenerationStore(opts.pool);
   const reviewQueue: ReviewQueueStore = new PgReviewQueueStore(opts.pool);
+
+  // doc 69 §5 — when a LIVE run completes, record a serving intent (verified
+  // items → held for the next authenticated request from that child) + spend.
+  const onOutcome: NonNullable<ResolveWorksheetGenerationOpts['onOutcome']> = (job, outcome) => {
+    opts.onOutcome?.(job, outcome);
+    if (!outcome.ran) return;
+    // the durable job knows its own mode; the in-memory queue passes it too.
+    void recordLiveOutcome(opts.pool, env, job, outcome).catch(() => undefined);
+  };
+
   // `WORKSHEET_QUEUE=durable` → persist jobs to Postgres (restart-safe,
   // multi-worker); a deployment then runs a `WorksheetJobWorker`
   // (`createWorksheetJobWorker`). Default: the in-process queue.
@@ -170,7 +222,7 @@ export function resolveWorksheetGeneration(
     opts.queue ??
     (env.WORKSHEET_QUEUE === 'durable'
       ? new PgWorksheetJobQueue(opts.pool)
-      : new InMemoryWorksheetShadowQueue(opts.onOutcome ? { onOutcome: opts.onOutcome } : undefined));
+      : new InMemoryWorksheetShadowQueue({ onOutcome }));
   const planFor = opts.planFor ?? (() => 'free' as Plan);
   const caps: WorksheetCostCaps = validation.costCaps;
   const costGuard = opts.costGuard ?? new DailyCostGuard(caps);
@@ -245,6 +297,11 @@ export function createWorksheetJobWorker(deps: WorksheetJobWorkerDeps): Workshee
     knowledgeBase: deps.knowledgeBase,
     referenceLibrary: loadReferenceLibrary(),
     buildDeps: buildJobDeps,
+    // doc 69 §5 — record LIVE serving intent + operational spend when a run lands.
+    onOutcome: (row, outcome) => {
+      if (!outcome.ran) return;
+      void recordLiveOutcome(deps.pool, env, { spec: row.spec, childRef: row.childRef }, outcome).catch(() => undefined);
+    },
     ...(deps.leaseMs !== undefined ? { leaseMs: deps.leaseMs } : {}),
     ...(deps.backoffMs !== undefined ? { backoffMs: deps.backoffMs } : {}),
     ...(deps.pollMs !== undefined ? { pollMs: deps.pollMs } : {}),

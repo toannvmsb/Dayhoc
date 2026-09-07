@@ -113,8 +113,8 @@ describe.skipIf(!DATABASE_URL)('doc 67 §D2 — durable worksheet job queue', ()
 
   it('bounded retry: a job that always no-runs ends FAILED after max_attempts, not looping', async () => {
     const q = new PgWorksheetJobQueue(pool);
-    // LIVE mode → runWorksheetShadow treats it as OFF → {ran:false} every time
-    await q.enqueueDurable({ mode: 'LIVE', spec: spec(30) });
+    // OFF mode → runWorksheetShadow returns {ran:false} every time → retryable no-run
+    await q.enqueueDurable({ mode: 'OFF', spec: spec(30) });
     await pool.query(`UPDATE worksheet_jobs SET max_attempts=2 WHERE generation_spec_id='jobq-30'`);
 
     const processed = await mkWorker('wRetry').runToIdle(50);

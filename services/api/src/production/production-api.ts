@@ -36,7 +36,7 @@ import {
 import { PgUploadAnalysisStore } from '@copilot/uploads/pg';
 import { curriculumLabel, getCurriculumCalendar, loadKnowledgeBase, type KnowledgeBase } from '@copilot/math-data';
 import { loadReferenceLibrary } from '@copilot/reference-library';
-import { buildDailyPlan } from '@copilot/planning';
+import { buildDailyPlan, buildExerciseGenerationSpec } from '@copilot/planning';
 import { buildAssignmentsForPlan } from '@copilot/practice';
 import {
   assertChildSafe,
@@ -59,6 +59,27 @@ import { buildLearningTwin } from '@copilot/learning-twin';
 import type { AssessmentQuestionOutcome, Exam } from '@copilot/domain';
 import { createHash } from 'node:crypto';
 import { resolveWorksheetGeneration } from './worksheet-generation.js';
+import {
+  resolveEffectiveGenerationMode,
+  internalLiveBudgetGate,
+  listInternalLiveCohort,
+  addToInternalLiveCohort,
+  removeFromInternalLiveCohort,
+  familyRef as familyRefOf,
+  resolveKillSwitch,
+  setKillSwitch,
+  enforceSafetyAutoStop,
+  scanInternalLiveSafety,
+  purgeInternalLiveForChild,
+} from './internal-live.js';
+import { internalLiveDashboard, reviewQueueOps, listQaSamples, readQaSample, purgeExpiredQaSamples } from './internal-live-observability.js';
+import {
+  childRefOf,
+  pendingLiveWorksheetFor,
+  markServed,
+  purgeServingForChild,
+  purgeStaleServingIntents,
+} from './internal-live-serving.js';
 import { insertAiUsageEvent } from './pg-ai-usage.js';
 import {
   purgeReviewSnapshots,
@@ -352,6 +373,109 @@ export function createProductionApi(opts: ProductionApiOptions) {
             );
           },
         });
+
+  // ---- doc 69: CONTROLLED INTERNAL LIVE — cohort-gated AI worksheet serving ----
+
+  /** Effective generation mode for the family that owns `ctx.userId`. */
+  async function effectiveModeFor(userId: string): Promise<Awaited<ReturnType<typeof resolveEffectiveGenerationMode>>> {
+    const famId = await familyIdFor(userId);
+    return resolveEffectiveGenerationMode(pool, process.env, famId ? familyRefOf(famId) : null);
+  }
+
+  /**
+   * If the family is LIVE-eligible and within the daily budget, enqueue ONE LIVE
+   * worksheet job for today (deterministic spec id → the durable queue dedups to
+   * one/child/day). Fire-and-forget; the completed run's verified items are held
+   * as a serving intent and picked up by `serveLiveWorksheetIfPending`.
+   */
+  async function maybeEnqueueLiveWorksheet(userId: string, childId: string): Promise<void> {
+    if (!worksheetGen) return;
+    try {
+      const eff = await effectiveModeFor(userId);
+      if (eff.mode !== 'LIVE') return;
+      const gate = await internalLiveBudgetGate(pool, process.env, 'generation', 0.05);
+      if (!gate.ok) {
+        logger.warn('INTERNAL LIVE budget exhausted — degrading to SHADOW', { reason: gate.reason });
+        return;
+      }
+      const cref = childRefOf(childId);
+      const day = now().toISOString().slice(0, 10);
+      const { scoped, inputs } = await learningScene(childId);
+      const s = await scoped._scene(childId);
+      if (s.plan.kind !== 'plan') return; // "no plan needed" — nothing to generate
+      const spec = buildExerciseGenerationSpec({
+        childId: asChildId(childId),
+        gradeContext: inputs.gradeContext,
+        twin: s.twin,
+        gaps: s.gaps,
+        context: s.context,
+        knowledgeBase: kb,
+        availableMinutes: 25,
+        asOf: s.asOf,
+        newId: () => `${cref}-${day}`, // pseudonymous + deterministic → one job/child/day
+      });
+      worksheetGen.queue.enqueue('LIVE', {
+        spec,
+        generators: worksheetGen.generators,
+        referenceLibrary: worksheetGen.referenceLibrary,
+        knowledgeBase: kb,
+        ...(worksheetGen.crosscheckAdapter ? { crosscheckAdapter: worksheetGen.crosscheckAdapter } : {}),
+        ...(worksheetGen.reviewQueue ? { reviewQueue: worksheetGen.reviewQueue } : {}),
+        ...(worksheetGen.store ? { store: worksheetGen.store } : {}),
+        ...(worksheetGen.usageSink ? { usageSink: worksheetGen.usageSink } : {}),
+        ...(worksheetGen.costGuard ? { costGuard: worksheetGen.costGuard } : {}),
+        ...(worksheetGen.perWorksheetCostCeilingUsd ? { config: { costCeilingUsd: worksheetGen.perWorksheetCostCeilingUsd } } : {}),
+        usageContext: { userRef: actorRef(userId), childRef: cref, plan: 'free', learningContextSource: null },
+        childRef: cref,
+      });
+    } catch (err) {
+      logger.warn('LIVE worksheet enqueue failed', { error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+
+  /**
+   * Turn a completed LIVE worksheet (verified items held in `worksheet_run_serving`)
+   * into an `AI_GENERATED` assignment for this authenticated child. Returns the
+   * new assignment id, or null when nothing is pending. Only verified items reach
+   * the child (enforced again by `servableItemsOf` upstream).
+   */
+  async function serveLiveWorksheetIfPending(userId: string, childId: string): Promise<string | null> {
+    try {
+      const pending = await pendingLiveWorksheetFor(pool, childId);
+      if (!pending) return null;
+      const assignmentId = await withTransaction(pool, async (client) => {
+        const ls = new PgLearningStateStore(client);
+        const row = await ls.createAssignment({
+          childId,
+          source: 'AI_GENERATED',
+          assignedByUserId: userId,
+          assignedByRole: 'SYSTEM',
+          subjectId: null,
+          generationSpecId: null, // the worksheet path mints its own text egs_* id; not the uuid FK
+          mode: 'WORKSHEET',
+          targetSkillIds: [...new Set(pending.items.map((it) => it.skillId))],
+          items: pending.items.map((it) => ({
+            orderIndex: it.orderIndex,
+            questionRef: it.questionRef,
+            skillId: it.skillId,
+            problemTypeId: it.problemTypeId,
+            knowledgeLevel: it.knowledgeLevel,
+            thinkingLevel: it.thinkingLevel,
+            prompt: it.prompt,
+            answerSpec: it.answerSpec,
+            hints: [...it.hints],
+          })),
+        });
+        return row.id;
+      });
+      await markServed(pool, pending.runId, { assignmentId });
+      analytics.track({ category: 'practice', action: 'practice_started', actorRef: actorRef(userId), metadata: { source: 'AI_GENERATED' } });
+      return assignmentId;
+    } catch (err) {
+      logger.warn('LIVE worksheet serve failed', { error: err instanceof Error ? err.message : String(err) });
+      return null;
+    }
+  }
 
   /** The owning family id for a user (OWNER membership preferred), or undefined. */
   async function familyIdFor(userId: string): Promise<string | undefined> {
@@ -1123,10 +1247,14 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const ctx = await deriveContext(auth);
       if (ctx.workspace === 'STUDENT') {
         if (ctx.childScope !== childId) throw new ForbiddenError('student token is scoped to another child');
+        await serveLiveWorksheetIfPending(ctx.userId, childId); // doc 69 §5 — pick up a ready LIVE worksheet
         const { scoped } = await learningScene(childId);
         return scoped.childToday({ userId: ctx.userId, role: 'child', childScope: childId }, childId);
       }
       await authorizeChild(ctx, childId, 'view_child');
+      // doc 69 §5 — a LIVE-cohort family: serve a ready worksheet, else queue today's.
+      const served = await serveLiveWorksheetIfPending(ctx.userId, childId);
+      if (!served) void maybeEnqueueLiveWorksheet(ctx.userId, childId);
       const { scoped } = await learningScene(childId);
       return scoped.childToday({ userId: 'preview', role: 'child', childScope: childId }, childId);
     },
@@ -2351,6 +2479,10 @@ export function createProductionApi(opts: ProductionApiOptions) {
           [wsRef],
         );
         await del('worksheet_generation_runs', `DELETE FROM worksheet_generation_runs WHERE child_ref = $1`, [wsRef]);
+        // doc 69 — INTERNAL LIVE serving intents + QA samples (both keyed by the pseudonymous child_ref)
+        const servingPurged = await purgeServingForChild(client, wsRef);
+        const qaPurged = await purgeInternalLiveForChild(client, wsRef);
+        logger.info('deletion: internal-live purged', { child: wsRef, servingPurged, qaPurged });
         await del('generation_specs', `DELETE FROM generation_specs WHERE child_id = $1`, [childId]);
         await del('exam_results', `DELETE FROM exam_results WHERE child_id = $1`, [childId]);
         await del('exams', `DELETE FROM exams WHERE child_id = $1`, [childId]);
@@ -2769,6 +2901,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
       } else {
         await authorizeChild(ctx, childId, 'view_child');
       }
+      await serveLiveWorksheetIfPending(ctx.userId, childId); // doc 69 §5
       const rows = await base.learningState.listAssignmentsForChild(childId);
       return rows.map((a) => ({
         id: a.id,
@@ -3025,10 +3158,91 @@ export function createProductionApi(opts: ProductionApiOptions) {
       return { item: resolved };
     },
 
+    // ---- doc 69: CONTROLLED INTERNAL LIVE — ADMIN control plane ----------
+
+    /** ADMIN — the internal-live dashboard (doc 69 §7). No child content. */
+    async internalLiveDashboard(ctx: WorkspaceRequestContext, opts?: { sinceIso?: string }) {
+      if (ctx.workspace !== 'ADMIN') throw new AuthzError('admin only');
+      return internalLiveDashboard(pool, opts ?? {});
+    },
+
+    /** ADMIN — review-queue operations metrics (doc 69 §10). */
+    async internalLiveReviewOps(ctx: WorkspaceRequestContext, opts?: { sinceIso?: string }) {
+      if (ctx.workspace !== 'ADMIN') throw new AuthzError('admin only');
+      return reviewQueueOps(pool, opts?.sinceIso);
+    },
+
+    /** ADMIN — INTERNAL LIVE cohort (allowlist). */
+    async internalLiveCohortList(ctx: WorkspaceRequestContext) {
+      if (ctx.workspace !== 'ADMIN') throw new AuthzError('admin only');
+      return { members: await listInternalLiveCohort(pool) };
+    },
+    async internalLiveCohortAdd(ctx: WorkspaceRequestContext, familyId: string, opts?: { wave?: number; note?: string }) {
+      if (ctx.workspace !== 'ADMIN') throw new AuthzError('admin only');
+      const ref = familyRefOf(familyId);
+      await addToInternalLiveCohort(pool, ref, { ...(opts ?? {}), actorRef: actorRef(ctx.userId) });
+      logger.info('internal-live cohort add', { actor: actorRef(ctx.userId), familyRef: ref });
+      return { familyRef: ref };
+    },
+    async internalLiveCohortRemove(ctx: WorkspaceRequestContext, familyId: string) {
+      if (ctx.workspace !== 'ADMIN') throw new AuthzError('admin only');
+      const ref = familyRefOf(familyId);
+      await removeFromInternalLiveCohort(pool, ref, actorRef(ctx.userId));
+      logger.info('internal-live cohort remove', { actor: actorRef(ctx.userId), familyRef: ref });
+      return { familyRef: ref };
+    },
+
+    /** ADMIN — kill switch (doc 69 §2). `on:true` halts ALL new paid AI calls, no deploy. */
+    async internalLiveKillSwitch(ctx: WorkspaceRequestContext, on: boolean, reason?: string) {
+      if (ctx.workspace !== 'ADMIN') throw new AuthzError('admin only');
+      await setKillSwitch(pool, on, {
+        reason: reason ?? (on ? 'manual kill' : 'manual clear'),
+        source: 'manual',
+        actorRef: actorRef(ctx.userId),
+      });
+      logger.warn('internal-live kill switch', { actor: actorRef(ctx.userId), on, reason });
+      return resolveKillSwitch(pool);
+    },
+    async internalLiveKillSwitchStatus(ctx: WorkspaceRequestContext) {
+      if (ctx.workspace !== 'ADMIN') throw new AuthzError('admin only');
+      return resolveKillSwitch(pool);
+    },
+
+    /** ADMIN — run the safety scan; activates the kill switch on any CRITICAL condition (doc 69 §4). */
+    async internalLiveSafetyScan(ctx: WorkspaceRequestContext, opts?: { sinceIso?: string; enforce?: boolean }) {
+      if (ctx.workspace !== 'ADMIN') throw new AuthzError('admin only');
+      if (opts?.enforce === false) return { scan: await scanInternalLiveSafety(pool, opts ?? {}), tripped: false };
+      return enforceSafetyAutoStop(pool, opts ?? {});
+    },
+
+    /** ADMIN — Wave-1 QA sampling (doc 69 §8). List is metadata-only; read is access-logged. */
+    async internalLiveQaList(ctx: WorkspaceRequestContext, limit?: number) {
+      if (ctx.workspace !== 'ADMIN') throw new AuthzError('admin only');
+      return { samples: await listQaSamples(pool, limit ?? 50) };
+    },
+    async internalLiveQaRead(ctx: WorkspaceRequestContext, id: string) {
+      if (ctx.workspace !== 'ADMIN') throw new AuthzError('admin only');
+      const sample = await readQaSample(pool, id, actorRef(ctx.userId));
+      if (!sample) throw new NotFoundError('qa sample (missing or purged)');
+      logger.info('internal-live qa sample read', { actor: actorRef(ctx.userId), id });
+      return { sample };
+    },
+
+    /** ADMIN / cron — retention + TTL sweeps (doc 69 §8). */
+    async internalLiveMaintenance(ctx: WorkspaceRequestContext) {
+      if (ctx.workspace !== 'ADMIN') throw new AuthzError('admin only');
+      const qaPurged = await purgeExpiredQaSamples(pool);
+      const servingPurged = await purgeStaleServingIntents(pool);
+      return { qaSnapshotsPurged: qaPurged, servingIntentsExpired: servingPurged };
+    },
+
     // exposed for tests / transports
     _deriveContext: deriveContext,
     _services: base,
     _worksheetGeneration: worksheetGen,
+    _effectiveModeFor: effectiveModeFor,
+    _maybeEnqueueLiveWorksheet: maybeEnqueueLiveWorksheet,
+    _serveLiveWorksheetIfPending: serveLiveWorksheetIfPending,
   };
 
   function auditRow(

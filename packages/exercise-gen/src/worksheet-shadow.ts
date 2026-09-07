@@ -21,14 +21,15 @@ import {
 import type { DailyCostGuard } from './worksheet-guardrails.js';
 
 /**
- * SHADOW-mode wrapper for the production worksheet orchestrator (doc 65 §1/§11).
+ * Wrapper for the production worksheet orchestrator (doc 65 §1/§11, doc 69).
  *
  *   OFF   → does nothing, calls NO model.
  *   SHADOW→ runs the full orchestrator against a real planner spec, persists the
- *           run + slots + attempts, records cost telemetry — but the result
- *           NEVER becomes a child-visible worksheet.
- *   LIVE  → reserved. This wrapper treats it exactly like OFF (never serves a
- *           worksheet). Enabling real LIVE delivery is a separate, gated change.
+ *           run + slots + attempts (mode='SHADOW'), records cost telemetry — the
+ *           result NEVER becomes a child-visible worksheet.
+ *   LIVE  → identical run + persistence (mode='LIVE'); the caller (a cohort-gated
+ *           serving path — doc 69 §1/§5) decides whether to turn `result.items`
+ *           into a child assignment. This wrapper never serves anything itself.
  *
  * NEVER throws back to the caller — every failure is captured so it can only be
  * telemetry, not a user-facing error.
@@ -114,9 +115,10 @@ export async function runWorksheetShadow(
   mode: AiGenerationMode,
   job: WorksheetShadowJob,
 ): Promise<WorksheetShadowOutcome> {
-  if (mode !== 'SHADOW') {
-    return { ran: false, reason: mode === 'LIVE' ? 'LIVE reserved — treated as OFF here (doc 65 §1)' : 'mode OFF' };
+  if (mode !== 'SHADOW' && mode !== 'LIVE') {
+    return { ran: false, reason: 'mode OFF' };
   }
+  const persistMode: 'SHADOW' | 'LIVE' = mode === 'LIVE' ? 'LIVE' : 'SHADOW';
   const now = job.now ?? (() => new Date());
   const newRunId = job.newRunId ?? (() => `wsrun_${Math.random().toString(36).slice(2, 12)}`);
 
@@ -158,7 +160,7 @@ export async function runWorksheetShadow(
         toWorksheetRecords(job.spec, result, {
           runId,
           childRef: job.childRef ?? null,
-          mode: 'SHADOW',
+          mode: persistMode,
           costEventRefs: usageEvents.map((e) => e.requestId),
         }),
       );

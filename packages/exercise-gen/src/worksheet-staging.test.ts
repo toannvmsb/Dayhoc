@@ -184,10 +184,13 @@ describe('doc 65 §1/§11 — SHADOW wrapper', () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it('LIVE → reserved, treated as OFF (never serves)', async () => {
-    const out = await runWorksheetShadow('LIVE', shadowJob());
-    expect(out.ran).toBe(false);
-    if (!out.ran) expect(out.reason).toMatch(/LIVE reserved/);
+  it('LIVE → runs + persists as mode LIVE (the caller decides whether to serve; doc 69)', async () => {
+    const store = new InMemoryWorksheetGenerationStore();
+    const out = await runWorksheetShadow('LIVE', shadowJob({ store }));
+    expect(out.ran).toBe(true);
+    if (!out.ran) return;
+    const runs = await store.listRuns(SPEC.generationSpecId);
+    expect(runs[0]!.mode).toBe('LIVE');
   });
 
   it('SHADOW → runs, persists, records telemetry, produces a comparison', async () => {
