@@ -153,10 +153,49 @@ All **safety** gates passed run 1 — nothing wrong was ever delivered; the 5
 failures were REQUIRED_CORE slots correctly held back (`FAILED`, review row), not
 served.
 
-**Run 2 (targeted re-validation, g4_frac + g7_geometry + g7_frontier)** —
-_(pending — see `D7_COHORT.txt`)_
+**Run 2 (targeted, g4_frac + g7_geometry + g7_frontier, 9 ws, gen $0.1391) — commit `c3f7f89`**
+
+- **g4_frac: FIXED** — 0 failures, no `MALFORMED_VIETNAMESE`.
+- **g7_frontier: FIXED** — a CURRENT slot hit `SIMILARITY_OR_DUPLICATE`, then
+  **safe-substituted** to a kernel-backed item → `READY_WITH_SAFE_SUBSTITUTION`.
+- **g7_geometry: still 3 FAILED** — but now the PARALLEL_ANGLES kernel IS
+  assigned; the failure moved to *"deterministic last-resort could not finish the
+  slot"*: the 4 reworded-but-same-skeleton framings collided on the similarity
+  gate across a 4–5-slot geometry worksheet. Safety gates still all green
+  (VERIFIED 100% (51/51), UNSAFE 0%, kernel 100% (45/45)).
+
+**Fix (`35768b8`):** 10 structurally-varied PARALLEL_ANGLES framings (transversal
+/ fence beam / railway tà vẹt / trapezoid diagonal / …). Offline: every slot of a
+6-slot geometry worksheet completes via last-resort (v0, no collision).
+
+**Run 3 (geometry + frac spot check within the remaining D7B budget)** — **NOT
+RUN.** D7B generation budget: run 1 $0.5528 + run 2 $0.1391 = **$0.6919 / $0.75**.
+~$0.058 left is below the ~$0.08 per-worksheet floor — a $0.06 cap enqueues 0
+worksheets. **$0 spent on the aborted attempt.**
+
+## Status
+
+| flag | state |
+|---|---|
+| implementation (§1–11) | ✅ done, 830 unit tests, tsc + web typecheck clean |
+| migration `1758758400000` | ✅ on staging, down/up verified |
+| all safety gates (D7B run 1 + 2, 39 real worksheets) | ✅ VERIFIED_DELIVERY 100%, UNSAFE 0%, kernel 100%, 0 wrong, 0 contradiction, bounded retry, no dup |
+| root-cause fixes (g4_frac, g7_geometry, PARALLEL_ANGLES variety) | ✅ committed + offline-verified; g4_frac + g7_frontier confirmed on staging |
+| **full 30-worksheet D7B with all fixes** | ⏸ **not run — needs a topped-up D7B generation budget** (~$0.55 for 30, ~$0.22 for a 12-worksheet all-axes spot check) |
+| `FINAL_CONFIRMATION_COMPLETE` | ❌ pending the run above |
+| `INTERNAL_LIVE_READY` | **false** — one unrun paid confirmation |
+
+LIVE stays OFF. Locked routing unchanged. No public exposure. No billing change.
 
 ## 15. Internal LIVE
 
 If D7B passes every hard gate → `FINAL_CONFIRMATION_COMPLETE=true`,
 `INTERNAL_LIVE_READY=true`. **LIVE stays OFF.**
+
+**Current: `INTERNAL_LIVE_READY = false`** — every hard *safety* gate has passed
+on 39 real staging worksheets across two runs, and all three CORE-delivery
+blockers found in run 1 are fixed (two confirmed on staging, the third —
+PARALLEL_ANGLES last-resort variety — offline-verified). The one thing missing is
+a **full 30-worksheet D7B run with all fixes in place**, which needs a topped-up
+`D7B_GEN_CAP_USD` (the approved $0.75 is spent). Requested: **≈ $0.60** for a
+clean 30/30, or **≈ $0.25** for a 12-worksheet all-axes spot check.
