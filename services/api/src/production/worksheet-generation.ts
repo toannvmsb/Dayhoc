@@ -16,17 +16,21 @@ import {
   InMemoryWorksheetShadowQueue,
   PgReviewQueueStore,
   PgWorksheetGenerationStore,
+  PgWorksheetJobQueue,
   resolveCrosscheckAdapter,
+  WorksheetJobWorker,
   type AnswerCrosscheckAdapter,
   type ItemContentGenerator,
   type ReviewQueueStore,
   type WorksheetCostCaps,
   type WorksheetGenerationStore,
+  type WorksheetJobDeps,
   type WorksheetShadowJob,
   type WorksheetShadowOutcome,
   type WorksheetShadowQueue,
   type WorksheetUsageContext,
 } from '@copilot/exercise-gen';
+import type { KnowledgeBase } from '@copilot/math-data';
 import { validateWorksheetStagingConfig } from './worksheet-staging-config.js';
 import { loadReferenceLibrary, type ReferenceExample } from '@copilot/reference-library';
 import { createLogger, type Logger } from '@copilot/observability';
@@ -89,6 +93,53 @@ export interface ResolveWorksheetGenerationOpts {
  *  layer uses. NEVER store the raw id anywhere generation telemetry can see it. */
 export const pseudonymize = (id: string): string => createHash('sha256').update(id).digest('hex').slice(0, 16);
 
+/** the non-serializable deps a worksheet run needs — built once here so
+ *  `resolveWorksheetGeneration` (in-process) and `createWorksheetJobWorker`
+ *  (durable queue worker) share exactly the same LOCKED routing + gates. */
+function buildGenerationDeps(
+  env: Record<string, string | undefined>,
+): {
+  generators: { default: ItemContentGenerator; highComplexity: ItemContentGenerator };
+  crosscheckAdapter?: AnswerCrosscheckAdapter;
+} {
+  const mkGen = (model: string): ItemContentGenerator =>
+    createLunaItemContentGenerator({
+      adapter: createOpenAiProviderAdapter({
+        apiKey: env.OPENAI_API_KEY!,
+        model,
+        capability: 'generate_problem' as AiCapability,
+        compliance: COMPLIANCE,
+      }),
+      structuredOutputMode: 'STRICT_JSON_SCHEMA',
+    });
+  const generators = {
+    default: mkGen(env.WORKSHEET_DEFAULT_MODEL ?? 'gpt-4.1-mini'),
+    highComplexity: mkGen(env.WORKSHEET_HIGH_COMPLEXITY_MODEL ?? 'gpt-5-mini'),
+  };
+
+  // Paid crosscheck runs ONLY when AI_CROSSCHECK_MODE=LIVE (+ key). Otherwise
+  // NO adapter → Group C items sit PENDING_CROSSCHECK (honest). Verifier routing
+  // (doc 66 §4): normal reasoning → CROSSCHECK_MODEL (gpt-4.1-mini); geometry /
+  // theorem-criteria / proof → CROSSCHECK_GEOMETRY_MODEL (gpt-5-mini). Verifier
+  // only — the LOCKED generator routing is untouched.
+  const mkCrosscheck = (model: string) =>
+    createOpenAiAnswerCrosscheck(
+      createOpenAiProviderAdapter({
+        apiKey: env.OPENAI_API_KEY!,
+        model,
+        capability: 'advanced_verification' as AiCapability,
+        compliance: COMPLIANCE,
+      }),
+    );
+  const { adapter: paidAdapter, paidEnabled } = resolveCrosscheckAdapter(env, () =>
+    createRoutedAnswerCrosscheck({
+      base: mkCrosscheck(env.CROSSCHECK_MODEL ?? 'gpt-4.1-mini'),
+      geometryProof: mkCrosscheck(env.CROSSCHECK_GEOMETRY_MODEL ?? 'gpt-5-mini'),
+    }),
+  );
+  return { generators, ...(paidEnabled ? { crosscheckAdapter: paidAdapter } : {}) };
+}
+
 export function resolveWorksheetGeneration(
   opts: ResolveWorksheetGenerationOpts,
 ): ProductionWorksheetGeneration | null {
@@ -108,49 +159,18 @@ export function resolveWorksheetGeneration(
     return null;
   }
 
-  const mkGen = (model: string): ItemContentGenerator =>
-    createLunaItemContentGenerator({
-      adapter: createOpenAiProviderAdapter({
-        apiKey: env.OPENAI_API_KEY!,
-        model,
-        capability: 'generate_problem' as AiCapability,
-        compliance: COMPLIANCE,
-      }),
-      structuredOutputMode: 'STRICT_JSON_SCHEMA',
-    });
-
-  const generators = {
-    default: mkGen(env.WORKSHEET_DEFAULT_MODEL ?? 'gpt-4.1-mini'),
-    highComplexity: mkGen(env.WORKSHEET_HIGH_COMPLEXITY_MODEL ?? 'gpt-5-mini'),
-  };
-
-  // Paid crosscheck runs ONLY when AI_CROSSCHECK_MODE=LIVE (+ key). Otherwise we
-  // pass NO adapter, so Group C items sit PENDING_CROSSCHECK (honest) rather than
-  // flooding the review queue with the stub's always-UNCERTAIN verdict.
-  // Verifier routing (doc 66 §4, paid-verification-proven): normal Group-C
-  // reasoning → CROSSCHECK_MODEL (gpt-4.1-mini); geometry / theorem-criteria /
-  // proof → CROSSCHECK_GEOMETRY_MODEL (gpt-5-mini). Verifier only — the locked
-  // generator routing is untouched.
-  const mkCrosscheck = (model: string) =>
-    createOpenAiAnswerCrosscheck(
-      createOpenAiProviderAdapter({
-        apiKey: env.OPENAI_API_KEY!,
-        model,
-        capability: 'advanced_verification' as AiCapability,
-        compliance: COMPLIANCE,
-      }),
-    );
-  const { adapter: paidAdapter, paidEnabled } = resolveCrosscheckAdapter(env, () =>
-    createRoutedAnswerCrosscheck({
-      base: mkCrosscheck(env.CROSSCHECK_MODEL ?? 'gpt-4.1-mini'),
-      geometryProof: mkCrosscheck(env.CROSSCHECK_GEOMETRY_MODEL ?? 'gpt-5-mini'),
-    }),
-  );
-  const crosscheckAdapter = paidEnabled ? paidAdapter : undefined;
+  const { generators, crosscheckAdapter } = buildGenerationDeps(env);
 
   const store = new PgWorksheetGenerationStore(opts.pool);
   const reviewQueue: ReviewQueueStore = new PgReviewQueueStore(opts.pool);
-  const queue = opts.queue ?? new InMemoryWorksheetShadowQueue(opts.onOutcome ? { onOutcome: opts.onOutcome } : undefined);
+  // `WORKSHEET_QUEUE=durable` → persist jobs to Postgres (restart-safe,
+  // multi-worker); a deployment then runs a `WorksheetJobWorker`
+  // (`createWorksheetJobWorker`). Default: the in-process queue.
+  const queue =
+    opts.queue ??
+    (env.WORKSHEET_QUEUE === 'durable'
+      ? new PgWorksheetJobQueue(opts.pool)
+      : new InMemoryWorksheetShadowQueue(opts.onOutcome ? { onOutcome: opts.onOutcome } : undefined));
   const planFor = opts.planFor ?? (() => 'free' as Plan);
   const caps: WorksheetCostCaps = validation.costCaps;
   const costGuard = opts.costGuard ?? new DailyCostGuard(caps);
@@ -174,4 +194,59 @@ export function resolveWorksheetGeneration(
     }),
     resolveChildRef: (childId) => pseudonymize(childId),
   };
+}
+
+export interface WorksheetJobWorkerDeps {
+  readonly pool: Pool;
+  readonly knowledgeBase: KnowledgeBase;
+  readonly env?: Record<string, string | undefined>;
+  readonly workerId?: string;
+  readonly usageSink?: (event: AiUsageEvent) => void;
+  readonly leaseMs?: number;
+  readonly backoffMs?: number;
+  readonly pollMs?: number;
+}
+
+/**
+ * Build a `WorksheetJobWorker` bound to the SAME locked routing + gates as the
+ * in-process path (`resolveWorksheetGeneration`). A deployment using
+ * `WORKSHEET_QUEUE=durable` runs one (or a few) of these; `.start()` polls,
+ * `.stop()` drains on shutdown, `.runToIdle()` is for a one-shot/cron worker.
+ * Returns `null` for the same reasons `resolveWorksheetGeneration` does (OFF /
+ * blocking config / no key).
+ */
+export function createWorksheetJobWorker(deps: WorksheetJobWorkerDeps): WorksheetJobWorker | null {
+  const env = deps.env ?? process.env;
+  const logger = createLogger({ level: 'warn' });
+  const cfg = loadAiGenerationConfig(env);
+  const validation = validateWorksheetStagingConfig(env);
+  if (cfg.mode === 'OFF' || validation.blocking.length > 0 || !env.OPENAI_API_KEY) {
+    for (const b of validation.blocking) logger.warn(`worksheet job worker config BLOCKING: ${b}`);
+    return null;
+  }
+
+  const { generators, crosscheckAdapter } = buildGenerationDeps(env);
+  const store = new PgWorksheetGenerationStore(deps.pool);
+  const reviewQueue = new PgReviewQueueStore(deps.pool);
+  const costGuard = new DailyCostGuard(validation.costCaps);
+
+  const buildJobDeps = (): WorksheetJobDeps => ({
+    generators,
+    ...(crosscheckAdapter ? { crosscheckAdapter } : {}),
+    reviewQueue,
+    store,
+    ...(deps.usageSink ? { usageSink: deps.usageSink } : {}),
+    costGuard,
+  });
+
+  return new WorksheetJobWorker({
+    pool: deps.pool,
+    workerId: deps.workerId ?? `wjw_${pseudonymize(`${process.pid}:${Date.now()}`)}`,
+    knowledgeBase: deps.knowledgeBase,
+    referenceLibrary: loadReferenceLibrary(),
+    buildDeps: buildJobDeps,
+    ...(deps.leaseMs !== undefined ? { leaseMs: deps.leaseMs } : {}),
+    ...(deps.backoffMs !== undefined ? { backoffMs: deps.backoffMs } : {}),
+    ...(deps.pollMs !== undefined ? { pollMs: deps.pollMs } : {}),
+  });
 }
