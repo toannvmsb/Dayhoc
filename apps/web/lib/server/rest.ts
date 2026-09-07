@@ -8,7 +8,7 @@ import { getApi } from './api';
  * web stores in its httpOnly cookie.
  */
 
-type Workspace = 'PARENT' | 'STUDENT' | 'TEACHER';
+type Workspace = 'PARENT' | 'STUDENT' | 'TEACHER' | 'ADMIN';
 export type RestJson = unknown;
 
 export class RestError extends Error {
@@ -31,6 +31,16 @@ interface Ctx {
 function auth(c: Ctx, ws?: Workspace) {
   if (!c.bearer) throw new RestError(401, 'missing bearer token');
   return { bearer: c.bearer, workspace: ws ?? c.workspace };
+}
+
+/** Server-derived ADMIN context — throws 401/403 unless the caller holds ADMIN. */
+async function adminCtx(c: Ctx) {
+  if (!c.bearer) throw new RestError(401, 'missing bearer token');
+  try {
+    return await getApi()._deriveContext({ bearer: c.bearer, workspace: 'ADMIN' });
+  } catch {
+    throw new RestError(403, 'ADMIN role required');
+  }
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -312,6 +322,20 @@ const ROUTES: Record<string, Handler> = {
     });
   },
   'GET /subjects': async (c) => getApi().listSubjects(auth(c)),
+
+  // ---- ADMIN reviewer path (doc 67 §D4) ----
+  'GET /admin/review-queue': async (c) => getApi().reviewQueueListPending(await adminCtx(c)),
+  'POST /admin/review-queue/:id/resolve': async (c) => {
+    const decision = String(c.body.decision ?? '').toUpperCase();
+    if (!['APPROVED', 'REJECTED', 'REGENERATE_REQUESTED'].includes(decision)) {
+      throw new RestError(400, 'decision phải là APPROVED | REJECTED | REGENERATE_REQUESTED');
+    }
+    return getApi().reviewQueueResolve(await adminCtx(c), c.params[0]!, decision as never);
+  },
+  'GET /admin/worksheet-shadow': async (c) =>
+    getApi().worksheetShadowObservability(await adminCtx(c), {
+      ...(c.query.get('sinceIso') ? { sinceIso: c.query.get('sinceIso')! } : {}),
+    }),
 };
 
 const COMPILED = Object.entries(ROUTES).map(([key, handler]) => {
@@ -342,7 +366,7 @@ export async function dispatchRest(
     if (!ok) continue;
     const wsHeader = headers.get('x-dz-workspace')?.toUpperCase();
     const workspace: Workspace =
-      wsHeader === 'STUDENT' || wsHeader === 'TEACHER' ? wsHeader : 'PARENT';
+      wsHeader === 'STUDENT' || wsHeader === 'TEACHER' || wsHeader === 'ADMIN' ? wsHeader : 'PARENT';
     return r.handler({
       bearer: headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? null,
       workspace,

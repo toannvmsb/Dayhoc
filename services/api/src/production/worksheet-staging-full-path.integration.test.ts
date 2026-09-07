@@ -224,6 +224,51 @@ describe.skipIf(!DATABASE_URL)('doc 66 §7 — worksheet staging full path (SHAD
     expect(stillHasSnap.rows[0]!.n).toBe(0);
   });
 
+  it('reviewer path (doc 67 §D4): ADMIN lists PENDING, resolves once, non-admin refused', async () => {
+    const stamp = Date.now() + Math.random();
+    const { mkApi } = await seedFamily(stamp);
+    const api = mkApi('SHADOW', () => 'PASS');
+    const adminCtx = { userId: users[0]!, workspace: 'ADMIN' as const };
+
+    // force a PENDING review row (a genuine one comes from a FAILED slot /
+    // UNCERTAIN crosscheck; here we insert one directly to test the path)
+    await new PgReviewQueueStore(pool).create({
+      generationSpecId: `d4-${stamp}`,
+      itemId: 'slot_ps',
+      childRef: 'c_ps',
+      reason: 'BOTH_MODELS_FAILED',
+      promptSnapshot: 'Tính: 2/3 + 1/6.',
+      workedSolutionSnapshot: '2/3 + 1/6 = 5/6.',
+      detail: 'both models failed after retries',
+    });
+
+    const listed = await api.reviewQueueListPending(adminCtx);
+    const mine = listed.items.find((i) => i.generationSpecId === `d4-${stamp}`)!;
+    expect(mine.state).toBe('PENDING');
+    expect(mine.promptSnapshot).toContain('2/3'); // reviewer sees the QA snapshot
+    expect(mine.childRef).toBe('c_ps'); // pseudonymous only
+
+    // non-admin is refused
+    await expect(
+      api.reviewQueueListPending({ userId: users[0]!, workspace: 'PARENT' as const }),
+    ).rejects.toBeTruthy();
+    await expect(
+      api.reviewQueueResolve({ userId: users[0]!, workspace: 'TEACHER' as const }, mine.id, 'APPROVED'),
+    ).rejects.toBeTruthy();
+
+    // resolve once → the row records the decision + a pseudonymous reviewer
+    const resolved = await api.reviewQueueResolve(adminCtx, mine.id, 'REGENERATE_REQUESTED');
+    expect(resolved.item.state).toBe('REGENERATE_REQUESTED');
+    expect(resolved.item.resolvedBy).toBeTruthy();
+    expect(resolved.item.resolvedBy).not.toBe(users[0]); // pseudonymized
+    expect(resolved.item.resolvedAt).toBeTruthy();
+
+    // a second resolve of the same row is rejected (one-time transition)
+    await expect(api.reviewQueueResolve(adminCtx, mine.id, 'APPROVED')).rejects.toBeTruthy();
+
+    await pool.query(`DELETE FROM review_queue WHERE generation_spec_id = $1`, [`d4-${stamp}`]);
+  });
+
   it('Teacher flow is unaffected by SHADOW generation', async () => {
     const stamp = Date.now() + Math.random();
     const { mkApi, pAuth, childId, queue } = await seedFamily(stamp);

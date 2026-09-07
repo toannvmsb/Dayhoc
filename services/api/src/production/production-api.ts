@@ -60,7 +60,15 @@ import type { AssessmentQuestionOutcome, Exam } from '@copilot/domain';
 import { createHash } from 'node:crypto';
 import { resolveWorksheetGeneration } from './worksheet-generation.js';
 import { insertAiUsageEvent } from './pg-ai-usage.js';
-import { purgeReviewSnapshots, shadowRollup, failureBreakdown, reviewQueueRollup } from '@copilot/exercise-gen';
+import {
+  purgeReviewSnapshots,
+  shadowRollup,
+  failureBreakdown,
+  reviewQueueRollup,
+  PgReviewQueueStore,
+  REVIEW_QUEUE_STATES,
+  type ReviewQueueState,
+} from '@copilot/exercise-gen';
 import {
   createLogger,
   resolveAnalyticsAdapter,
@@ -2959,6 +2967,44 @@ export function createProductionApi(opts: ProductionApiOptions) {
     async purgeReviewQueueSnapshots(ctx: WorkspaceRequestContext, retentionDays = 30) {
       if (ctx.workspace !== 'ADMIN') throw new AuthzError('admin only');
       return { purged: await purgeReviewSnapshots(pool, retentionDays) };
+    },
+
+    /**
+     * ADMIN reviewer path (doc 67 §D4) — the minimal operational queue for
+     * generated items a human must judge (crosscheck UNCERTAIN, no-kernel
+     * generation failures, both models failed, non-recoverable content quality).
+     * PENDING items carry the short-retention QA snapshot the reviewer needs.
+     */
+    async reviewQueueListPending(ctx: WorkspaceRequestContext) {
+      if (ctx.workspace !== 'ADMIN') throw new AuthzError('admin only');
+      const items = await new PgReviewQueueStore(pool).listPending();
+      logger.info('review queue listed', { actor: actorRef(ctx.userId), count: items.length });
+      return { items };
+    },
+
+    /**
+     * ADMIN reviewer decision. `decision` ∈ APPROVED / REJECTED /
+     * REGENERATE_REQUESTED. Exactly once per item (the PENDING→resolved guard is
+     * in `PgReviewQueueStore`). The `review_queue` row is the audit record:
+     * `resolved_by` (pseudonymous reviewer), `resolved_at`, final `state`.
+     */
+    async reviewQueueResolve(
+      ctx: WorkspaceRequestContext,
+      itemId: string,
+      decision: Exclude<ReviewQueueState, 'PENDING'>,
+    ) {
+      if (ctx.workspace !== 'ADMIN') throw new AuthzError('admin only');
+      if (!REVIEW_QUEUE_STATES.includes(decision) || (decision as string) === 'PENDING') {
+        throw new AuthzError(`invalid review decision "${String(decision)}"`);
+      }
+      const resolved = await new PgReviewQueueStore(pool).resolve(itemId, decision, actorRef(ctx.userId));
+      logger.info('review queue resolved', {
+        actor: actorRef(ctx.userId),
+        itemId,
+        decision,
+        reason: resolved.reason,
+      });
+      return { item: resolved };
     },
 
     // exposed for tests / transports
