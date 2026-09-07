@@ -2317,22 +2317,40 @@ export function createProductionApi(opts: ProductionApiOptions) {
         await del('learning_state_snapshots', `DELETE FROM learning_state_snapshots WHERE child_id = $1`, [childId]);
         await del('learning_context_snapshots', `DELETE FROM learning_context_snapshots WHERE child_id = $1`, [childId]);
         await del('lesson_confirmations', `DELETE FROM lesson_confirmations WHERE child_id = $1`, [childId]);
-        // doc 66: the worksheet-orchestrator tables key on generation_spec_id
-        // (plain text, no FK). Purge them + review_queue by the child's spec ids
-        // BEFORE deleting generation_specs. Slots/attempts FK-cascade off the run.
-        const wsSpecScope = `generation_spec_id IN (SELECT id FROM generation_specs WHERE child_id = $1)`;
-        await del('review_queue', `DELETE FROM review_queue WHERE ${wsSpecScope}`, [childId]);
+        // doc 66/67: the worksheet-orchestrator + durable-queue tables key on
+        // `generation_spec_id` (plain text, no FK) — the worksheet SHADOW path
+        // mints its OWN `egs_*` spec id and never writes `generation_specs`, so
+        // deletion must scope by the pseudonymous `child_ref` (= sha256(childId)
+        // .slice(0,16), the same value `resolveWorksheetGeneration.resolveChildRef`
+        // stores). Purge these BEFORE `generation_specs`; slots/attempts
+        // FK-cascade off the run.
+        const wsRef = actorRef(childId);
+        // spec ids of this child's worksheet runs/jobs — catches any review row
+        // whose own child_ref was null (belt-and-suspenders).
+        const wsSpecIds = (
+          await client.query<{ generation_spec_id: string }>(
+            `SELECT generation_spec_id FROM worksheet_generation_runs WHERE child_ref = $1
+             UNION SELECT generation_spec_id FROM worksheet_jobs WHERE child_ref = $1`,
+            [wsRef],
+          )
+        ).rows.map((r) => r.generation_spec_id);
+        await del(
+          'review_queue',
+          `DELETE FROM review_queue WHERE child_ref = $1 OR generation_spec_id = ANY($2::text[])`,
+          [wsRef, wsSpecIds],
+        );
+        await del('worksheet_jobs', `DELETE FROM worksheet_jobs WHERE child_ref = $1`, [wsRef]);
         await del(
           'worksheet_slot_attempts',
-          `DELETE FROM worksheet_slot_attempts WHERE run_id IN (SELECT id FROM worksheet_generation_runs WHERE ${wsSpecScope})`,
-          [childId],
+          `DELETE FROM worksheet_slot_attempts WHERE run_id IN (SELECT id FROM worksheet_generation_runs WHERE child_ref = $1)`,
+          [wsRef],
         );
         await del(
           'worksheet_slots',
-          `DELETE FROM worksheet_slots WHERE run_id IN (SELECT id FROM worksheet_generation_runs WHERE ${wsSpecScope})`,
-          [childId],
+          `DELETE FROM worksheet_slots WHERE run_id IN (SELECT id FROM worksheet_generation_runs WHERE child_ref = $1)`,
+          [wsRef],
         );
-        await del('worksheet_generation_runs', `DELETE FROM worksheet_generation_runs WHERE ${wsSpecScope}`, [childId]);
+        await del('worksheet_generation_runs', `DELETE FROM worksheet_generation_runs WHERE child_ref = $1`, [wsRef]);
         await del('generation_specs', `DELETE FROM generation_specs WHERE child_id = $1`, [childId]);
         await del('exam_results', `DELETE FROM exam_results WHERE child_id = $1`, [childId]);
         await del('exams', `DELETE FROM exams WHERE child_id = $1`, [childId]);

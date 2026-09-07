@@ -61,6 +61,9 @@ describe.skipIf(!DATABASE_URL)('doc 66 — production worksheet SHADOW wiring', 
     const events: AiUsageEvent[] = [];
     const outcomes: WorksheetShadowOutcome[] = [];
     const queue = new InMemoryWorksheetShadowQueue({ onOutcome: (_j, o) => outcomes.push(o) });
+    // the SAME pseudonymisation resolveWorksheetGeneration uses in production.
+    const { createHash } = await import('node:crypto');
+    let childRef = 'c_ps';
     const api = createProductionApi({
       pool,
       authAdapter: new InMemoryAuthAdapter(`wg${stamp}`),
@@ -79,8 +82,8 @@ describe.skipIf(!DATABASE_URL)('doc 66 — production worksheet SHADOW wiring', 
                 events.push(e);
                 void insertAiUsageEvent(pool, e).catch(() => {});
               },
-              resolveUsageContext: () => ({ userRef: 'u_ps', childRef: 'c_ps', plan: 'plus' as const }),
-              resolveChildRef: () => 'c_ps',
+              resolveUsageContext: () => ({ userRef: 'u_ps', childRef, plan: 'plus' as const }),
+              resolveChildRef: () => childRef,
             },
     });
     const parent = await api.register({ email: `wg-p-${stamp}@x.com`, password: 'supersecret', intendedRole: 'PARENT', displayName: 'P' });
@@ -89,6 +92,7 @@ describe.skipIf(!DATABASE_URL)('doc 66 — production worksheet SHADOW wiring', 
     const pAuth = { bearer: r.rows[0]!.auth_user_id, workspace: 'PARENT' as const };
     const child = await api.createChild(pAuth, { displayName: 'Bé Test', schoolGrade: 4 });
     children.push(child.childId);
+    childRef = createHash('sha256').update(child.childId).digest('hex').slice(0, 16);
     families.push((await pool.query<{ family_id: string }>(`SELECT family_id FROM child_profiles WHERE id = $1`, [child.childId])).rows[0]!.family_id);
     // wrong answers on a core skill → a real Daily Plan (not "no plan needed")
     for (let i = 0; i < 4; i += 1) {
@@ -98,7 +102,7 @@ describe.skipIf(!DATABASE_URL)('doc 66 — production worksheet SHADOW wiring', 
         [child.childId, new Date(2027, 0, 15 + i).toISOString()],
       );
     }
-    return { api, pAuth, childId: child.childId, queue, events, outcomes };
+    return { api, pAuth, childId: child.childId, childRef, queue, events, outcomes };
   }
 
   it('OFF → getToday works, nothing enqueued', async () => {
@@ -138,28 +142,42 @@ describe.skipIf(!DATABASE_URL)('doc 66 — production worksheet SHADOW wiring', 
     void offApi;
   });
 
-  it('confirm-delete purges review_queue + cascades worksheet runs', async () => {
-    const { api, pAuth, childId, queue, outcomes } = await setup('SHADOW');
+  it('confirm-delete purges review_queue + worksheet runs by the pseudonymous child_ref', async () => {
+    const { api, pAuth, childId, childRef, queue, outcomes } = await setup('SHADOW');
     await api.getToday(pAuth, childId).catch(() => {});
     await queue.drain();
-    // force a review row for this child's spec
-    if (outcomes[0]?.ran) {
+    const ran = outcomes.find((o) => o.ran);
+    expect(ran?.ran).toBe(true); // the SHADOW run actually persisted rows to purge
+    // a review row for this child's spec — with NO child_ref, to prove the
+    // spec-id fallback in the deletion purge also catches it
+    if (ran?.ran) {
       await new PgReviewQueueStore(pool).create({
-        generationSpecId: outcomes[0].result.trace.generationSpecId,
+        generationSpecId: ran.result.trace.generationSpecId,
         itemId: 'x',
         reason: 'BOTH_MODELS_FAILED',
         detail: 'test',
       });
     }
-    await api.requestChildDeletion(pAuth, childId).catch(() => {});
-    const res = await api.confirmChildDeletion(pAuth, childId, { acknowledgement: 'Bé Test' } as never).catch(() => null);
-    // deletion purge ran (or the ack shape differs) — either way, no worksheet
-    // rows or review rows for a deleted child
-    const left = await pool.query(
-      `SELECT count(*)::int n FROM worksheet_generation_runs r
-         JOIN generation_specs s ON s.id = r.generation_spec_id WHERE s.child_id = $1`,
-      [childId],
+    const runsBefore = await pool.query<{ n: string }>(
+      `SELECT count(*)::int n FROM worksheet_generation_runs WHERE child_ref = $1`,
+      [childRef],
     );
-    if (res) expect(left.rows[0]!.n).toBe(0);
+    expect(Number(runsBefore.rows[0]!.n)).toBeGreaterThanOrEqual(1);
+
+    await api.requestChildDeletion(pAuth, childId).catch(() => {});
+    const res = await api.confirmChildDeletion(pAuth, childId, 'Bé Test').catch(() => null);
+    expect(res).toBeTruthy();
+
+    for (const tbl of ['worksheet_generation_runs', 'worksheet_jobs', 'review_queue']) {
+      const left = await pool.query<{ n: string }>(`SELECT count(*)::int n FROM ${tbl} WHERE child_ref = $1`, [childRef]);
+      expect(Number(left.rows[0]!.n), `${tbl}`).toBe(0);
+    }
+    if (ran?.ran) {
+      const rq = await pool.query<{ n: string }>(
+        `SELECT count(*)::int n FROM review_queue WHERE generation_spec_id = $1`,
+        [ran.result.trace.generationSpecId],
+      );
+      expect(Number(rq.rows[0]!.n)).toBe(0); // the no-child_ref review row too
+    }
   });
 });

@@ -1,4 +1,4 @@
-DẠYZI — PHASE 4 OFFLINE RESCORE (corrected kernel semantics + validator)  2026-09-07T06:03:44.767Z
+DẠYZI — PHASE 4 OFFLINE RESCORE (corrected kernel semantics + validator)  2026-09-07T06:26:51.593Z
 raw rows: 780   kernel-backed rows rescored: 687
 
 still DETERMINISTIC_WRONG after fix: 0
