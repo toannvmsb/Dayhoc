@@ -434,6 +434,61 @@ run (no paid AI critic):
 
 ---
 
-## PHASE 9 — INTERNAL LIVE READINESS  — STOP HERE (do not enable LIVE)
+## PHASE 9 — INTERNAL LIVE READINESS  — STOPPED (LIVE not enabled)
 
-_(pending)_
+**`AI_GENERATION_MODE` stays OFF/SHADOW. `AI_CROSSCHECK_MODE` stays OFF. No LIVE
+flip, no deploy, no user exposure, no real billing.**
+
+### Readiness flags
+
+| flag | state |
+|---|---|
+| `PRODUCTION_API_WIRED` | ✅ `resolveWorksheetGeneration` → `createProductionApi` → `maybeRunWorksheetGeneration` in `getToday`; SHADOW off the request path |
+| `PRODUCTION_QUEUE_READY` | ✅ (port + in-process `InMemoryWorksheetShadowQueue`; a deployment injects a durable one — see blockers) |
+| `POSTGRES_GENERATION_STORE_READY` | ✅ `PgWorksheetGenerationStore`, migration `1758499200000`, append-only ⊕ |
+| `POSTGRES_REVIEW_QUEUE_READY` | ✅ `PgReviewQueueStore`, guarded PENDING→resolved |
+| `PSEUDONYMIZATION_READY` | ✅ `sha256(id).slice(0,16)`; Phase 7 verified 0 PII in every persisted trace / ledger row |
+| `RETENTION_READY` | ✅ `purgeReviewQueueSnapshots` admin endpoint + `purgeReviewSnapshots` SQL; Phase 7 verified |
+| `DELETION_READY` | ✅ child-deletion purge cascades review_queue + worksheet tables under `session_replication_role=replica`; Phase 7 verified |
+| `SHADOW_OBSERVABILITY_READY` | ✅ `worksheetShadowObservability` (rollup + failure breakdown + review rollup), ADMIN-gated |
+| `STAGING_SHADOW_SMOKE_COMPLETE` | ✅ Phase 3 — 26 ws / 260 items / $0.4787, kernel correctness 100%, 0 silent contradiction |
+| `EXTENDED_SHADOW_COMPLETE` | ⚠️ **partial** — Phase 4 ran 78 ws / $1.43, tripped a kernel-semantics FP (fixed `c6fa4cd`, offline-revalidated over all 780 outputs → 0 still-wrong). Full-worksheet completion offline ≈ 96–97% vs the ≥ 99% exit target; a fresh paid re-run would exceed the $2.00 gen cap |
+| `GROUP_C_CROSSCHECK_READY` | ✅ `openai-answer-crosscheck.v3` + `createRoutedAnswerCrosscheck` (geometry → gpt-5-mini) |
+| `GROUP_C_PAID_VERIFICATION_COMPLETE` | ✅ Phase 6 — 20 golden items, **false PASS = 0**, PASS 8/8, FAIL 9/9 |
+| `STAGING_FULL_PATH_READY` | ✅ (integration-test sense — 48 DB tests; a deployed staging host is separate infra) |
+| **`INTERNAL_LIVE_READY`** | ❌ **NO** — blockers below |
+
+### Final numbers
+
+- **Final commit:** `<this Phase-9 commit>` on `main` (Phases 1–8 = 19 commits from `7d8b955`).
+- **Total paid spend:** **≈ $1.96** — generation **$1.9087** / $2.00 cap (P3 $0.4787 + P4 $1.4300); crosscheck **≈ $0.053** / $0.50 cap (v1 ~$0.011 + v2 $0.0108 + v3 $0.0122 + geo $0.0040 + v3-routed $0.0145).
+- **Deterministic (kernel) correctness:** **100%** — 229/229 (P3) + 680/680 (P4); **0** kernel items ever accepted with a wrong answer; **0** silent semantic contradiction anywhere.
+- **Worksheet completion (real generator):** P3 92.3% full / 99.2% valid-item · P4 89.7% full / 98.8% valid-item · P4 offline-corrected ≈ 96–97% full.
+- **PENDING_CROSSCHECK:** ≈ 11–12% of items (all genuine reasoning; `productionReady` stays false).
+- **Review queue:** P3 2 FAILED / 260 · P4 9 → 2 after the fix. Manageable.
+- **Cost / worksheet:** ≈ $0.02 (P3 $0.0199 · P4 $0.0204). **Cost / item:** ≈ 48 VND.
+- **Latency:** slot p50/p95 ≈ 4 s / 20 s · worksheet p50/p95 ≈ 44 s / 55 s.
+- **Group-C verification:** false PASS 0/9 · PASS agreement 8/8 · FAIL agreement 9/9 · UNCERTAIN → review queue.
+- **Tests:** 808 unit / 0 fail · 48 DB integration / 0 fail · tsc + web/mobile clean.
+
+### Unresolved P0 / P1 / P2
+
+- **P0:** none. (Phase 4 kernel-semantics FP fixed + offline-revalidated.)
+- **P1:** none.
+- **P2:**
+  1. Full-worksheet completion ≥ 99% **not confirmed live** — offline rescore ≈ 96–97%; the remaining shortfall is a small number of `construct_an_example` / `compare_and_decide` reasoning slots that route to the review queue (designed behaviour).
+  2. Group-C verifier PASSes an open-ended "make your own problem" stub (`gc11`) where the golden wanted UNCERTAIN → review. Narrow; a "solution is a content-free stub" heuristic would close it.
+  3. `buildContentFromKernel` scenario library saturates beyond ~6 same-family last-resort slots (never occurs at the observed ~0.27 last-resort/worksheet rate).
+  4. Pre-existing repo lint debt (10 errors in `luna-generator.ts` / `production-api.ts` / … — unrelated files), spawned as `task_234ac305`.
+
+### Exact blockers before Internal LIVE
+
+1. **No deployed staging/production host** — no Supabase project (its creation form needs a DB password Claude cannot type — anh must create it), no app hosting. Every Phase 3–8 result is local (real orchestrator + real OpenAI + local Postgres 16.4).
+2. **A durable `WorksheetShadowQueue`** for a deployed environment — the current one is in-process, single-instance.
+3. **Reviewer path** — `RESEND_API_KEY` + Expo push are still Noop (per memory), and there is no reviewer UI (a store + state machine only). Someone must action `PENDING_CROSSCHECK` / review-queue rows before LIVE serves them.
+4. **`AI_CROSSCHECK_MODE=LIVE` decision + a per-day crosscheck budget line** — paid crosscheck is verified (false PASS 0) but disabled.
+5. **A live ≥ 99% full-worksheet completion confirmation** — or an explicit product decision to serve LIVE at ≈ 96–97% with the shortfall going to review.
+6. **The `AI_GENERATION_MODE=LIVE` flip itself** — a deliberate, separately-approved action (mandatory STOP #1), plus an authorized ongoing LIVE generation budget (the $2.00 cap was for validation).
+
+**STOP.** Autonomous productionization is complete through Phase 8. Internal LIVE
+is a human decision gated on the blockers above.
