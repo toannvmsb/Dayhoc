@@ -70,6 +70,17 @@ export function buildContentFromKernel(dna: ProblemDNA, variant = 0): GeneratedI
     case 'ANGLE_TYPE':
       prompt = `Cho một góc có số đo ${nums[0]}°. Hỏi góc đó thuộc loại nào? Chọn đáp án đúng.`;
       break;
+    case 'PARALLEL_ANGLES': {
+      const relMatch = /Góc ([^:]+?) với góc/.exec(k.operationGraph[0] ?? '');
+      const rel = relMatch?.[1]?.trim() ?? 'so le trong';
+      prompt = [
+        `Cho hai đường thẳng song song bị cắt bởi một đường thẳng thứ ba. Một góc tạo thành có số đo ${nums[0]}°. Tính số đo góc ${rel} với góc đó.`,
+        `Hai đường thẳng a và b song song, cát tuyến c cắt chúng. Biết một góc bằng ${nums[0]}°, tìm số đo góc ${rel} với nó.`,
+        `Đường thẳng d cắt hai đường thẳng song song. Một trong các góc tạo thành là ${nums[0]}°. Góc ${rel} với góc này có số đo bao nhiêu độ?`,
+        `Hai đường thẳng song song bị một cát tuyến cắt tạo ra một góc ${nums[0]}°. Xác định số đo góc ${rel} tương ứng.`,
+      ][(n - 1) % 4]!;
+      break;
+    }
     case 'ANGLE_SUM':
       prompt = [
         `Một tam giác có hai góc bằng ${nums[0]}° và ${nums[1]}°. Tính số đo góc còn lại.`,

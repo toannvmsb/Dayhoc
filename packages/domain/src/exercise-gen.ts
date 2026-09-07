@@ -743,6 +743,7 @@ export const MATH_KERNEL_FAMILIES = [
   'LINEAR_EQ', // A — ax + b = c → x
   'ANGLE_SUM', // A — third angle of a triangle
   'ANGLE_TYPE', // A — classify an angle by its measure (choice)
+  'PARALLEL_ANGLES', // A — angle formed by two parallel lines + a transversal (so-le-trong / đồng-vị / trong-cùng-phía)
   'PERCENT', // A — p% of N
   'UNIT_CONVERSION', // A — convert a measure between units
   'RECT_GEOMETRY', // A — perimeter / area of a rectangle
@@ -761,6 +762,7 @@ export const MATH_KERNEL_GROUP: Record<MathKernelFamily, 'A' | 'B'> = {
   LINEAR_EQ: 'A',
   ANGLE_SUM: 'A',
   ANGLE_TYPE: 'A',
+  PARALLEL_ANGLES: 'A',
   PERCENT: 'A',
   UNIT_CONVERSION: 'A',
   RECT_GEOMETRY: 'A',

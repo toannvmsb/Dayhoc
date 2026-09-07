@@ -45,6 +45,7 @@ const kIdx = (k: string): number => KNOWLEDGE_LEVELS.indexOf(k as never);
 
 const NAME_ANGLE_SUM = /tổng .*góc .*tam giác|góc trong tam giác/i;
 const NAME_ANGLE_TYPE = /góc (nhọn|tù|bẹt|vuông)|nhọn.*tù.*bẹt/i;
+const NAME_PARALLEL_ANGLES = /đường thẳng song song|hai đường thẳng .*song song|so le trong|đồng vị|góc .*song song|dấu hiệu nhận biết .*song song/i;
 const NAME_FRACTION = /phân số|số hữu tỉ|hữu tỉ/i;
 const NAME_RATIO = /tỉ số|tỉ lệ|dãy tỉ số/i;
 const NAME_LINEAR_EQ = /phương trình|chuyển vế|tìm x/i;
@@ -76,6 +77,7 @@ export function resolveMathFamily(itemSpec: ItemGenerationSpec, kb: KnowledgeBas
 
   if (NAME_ANGLE_SUM.test(hay)) return 'ANGLE_SUM';
   if (NAME_ANGLE_TYPE.test(hay) && itemSpec.answerKind === 'choice') return 'ANGLE_TYPE';
+  if (NAME_PARALLEL_ANGLES.test(hay) && itemSpec.answerKind !== 'choice' && itemSpec.answerKind !== 'reasoning') return 'PARALLEL_ANGLES';
   if (NAME_UNIT_CONV.test(hay) || (dom === 'measurement' && /đổi|chuyển/.test(hay))) return 'UNIT_CONVERSION';
   if (NAME_RECT.test(hay)) return 'RECT_GEOMETRY';
   if (NAME_PERCENT.test(hay)) return 'PERCENT';
@@ -244,6 +246,16 @@ function deriveSemantics(family: MathKernelFamily, b: Built): KernelSemantics {
         scenarioType: 'GEOMETRY',
         operandRoles: roleFrom(['A', 'B']),
         askedQuantityRole: 'thirdAngle',
+      };
+    case 'PARALLEL_ANGLES':
+      return {
+        // "so le trong = x" (identity) or "trong cùng phía = 180 - x" (subtraction);
+        // MIXED keeps the op-keyword contract lenient — the deterministic last-resort
+        // owns this family's prose anyway (Group A).
+        operation: 'MIXED',
+        scenarioType: 'GEOMETRY',
+        operandRoles: roleFrom(['x']),
+        askedQuantityRole: 'relatedAngle',
       };
     case 'ANGLE_TYPE':
       return {
@@ -541,6 +553,32 @@ const GENERATORS: Record<MathKernelFamily, FamilyGen> = {
       integerResult: true,
       fractionSimplified: false,
       solutionOutline: `Tổng ba góc trong tam giác bằng 180°, nên góc còn lại = 180° - ${a}° - ${b}° = ${c}°.`,
+    };
+  },
+
+  PARALLEL_ANGLES: (_spec, rng) => {
+    // two parallel lines cut by a transversal; one marked angle = x°.
+    const x = rng.int(25, 155);
+    const rel = rng.pick([
+      { name: 'so le trong', value: x, expr: `${x}` },
+      { name: 'đồng vị', value: x, expr: `${x}` },
+      { name: 'trong cùng phía', value: 180 - x, expr: `180 - ${x}` },
+    ] as const);
+    return {
+      answerKind: 'numeric',
+      operands: [{ name: 'x', value: x, unit: '°' }],
+      operationGraph: [`Góc ${rel.name} với góc ${x}°: ${rel.expr} = ${rel.value}°`],
+      intermediateValues: { result: rel.value },
+      expectedAnswer: { kind: 'numeric', value: rel.value, tolerance: 0 },
+      canonicalVerificationExpression: rel.expr,
+      units: '°',
+      requiredNumbersInPrompt: [x],
+      integerResult: true,
+      fractionSimplified: false,
+      solutionOutline:
+        rel.value === x
+          ? `Hai góc ${rel.name} tạo bởi hai đường thẳng song song thì bằng nhau, nên góc cần tìm = ${x}°.`
+          : `Hai góc ${rel.name} tạo bởi hai đường thẳng song song thì bù nhau, nên góc cần tìm = 180° - ${x}° = ${rel.value}°.`,
     };
   },
 

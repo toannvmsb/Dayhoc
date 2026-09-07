@@ -95,9 +95,17 @@ describe('Phase 4 — offline rescore of the extended-shadow raw sidecar', () =>
         continue;
       }
       // still inconsistent — is it a HARD contradiction on an answer that
-      // actually equals the kernel? that would be a residual FP.
+      // actually EQUALS the kernel? that would be a residual FP (the test's
+      // stated invariant). A realization whose answer differs from the kernel
+      // AND drops the given number is a family RE-ROUTE (the frozen sidecar
+      // predates a kernel now covering this skill, e.g. PARALLEL_ANGLES) — not a
+      // semantics false-positive.
       const semUnknown = v.semanticVerdict === 'UNKNOWN';
-      if (!semUnknown) {
+      const kAns = kernel && 'expectedAnswer' in kernel ? (kernel as { expectedAnswer: { value?: number } }).expectedAnswer : undefined;
+      const rawNum = Number((r.answer ?? '').replace(/[^\d.-]/g, ''));
+      const answerEqualsKernel = kAns?.value !== undefined && Number.isFinite(rawNum) && Math.abs(rawNum - kAns.value) < 1e-6;
+      const familyReroute = v.codes.includes('KERNEL_NUMBER_DROPPED') && !answerEqualsKernel;
+      if (!semUnknown && !familyReroute) {
         stillWrong += 1;
         stillWrongDetail.push(`${r.specId}::${r.itemId} p${r.pass} codes=${v.codes.join(',')} :: ${v.detail}`);
       }

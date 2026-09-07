@@ -44,7 +44,8 @@ const LATEX_RE = /\\[a-zA-Z]+\b|\\[(){}[\]]|\$\$?[^$\n]*\$\$?|[A-Za-z0-9)]\^[A-Z
 
 // a Vietnamese math prompt should have letters + a question; catch obvious breakage.
 const VIET_LETTERS_RE = /[a-zà-ỹ]/i;
-const QUESTION_CUE_RE = /\?|hỏi|tính|tìm|bao nhiêu|chọn|viết|chứng minh|giải thích|so sánh/i;
+const QUESTION_CUE_RE =
+  /\?|hỏi|tính|tìm|bao nhiêu|chọn|viết|chứng minh|chứng tỏ|giải thích|so sánh|rút gọn|thực hiện|giải\b|xác định|nêu|kể|biểu diễn|quy đồng|hoàn thành|điền|vẽ|sắp xếp/i;
 
 /** operation cue words that would contradict a MULTIPLICATION kernel if the ask is "each". */
 const DIVISION_ASK_RE = /(mỗi|từng)\s+(hàng|nhóm|tổ|phần|người|hộp|túi|đội)\s+(có|được|nhận|chứa)\s+bao nhiêu|chia đều .* mỗi|mỗi .* là bao nhiêu/i;
