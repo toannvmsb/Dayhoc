@@ -115,7 +115,46 @@ P0/P1 = 0.
 
 ### D7B RESULT
 
-_(pending — see `D7_COHORT.txt` after the run)_
+**Run 1 (2026-09-07, 30 worksheets, gen $0.5528/$0.75, xcheck $0.0477/$0.15) — commit `b62e5c9`**
+
+| gate | result |
+|---|---|
+| VERIFIED_DELIVERY_RATE | **100.00%** (216/216) ✅ |
+| UNSAFE_DELIVERY_RATE | **0.00%** ✅ |
+| kernel deterministic correctness | **100.0%** (187/187) ✅ |
+| wrong accepted / silent contradiction | **0 / 0** ✅ |
+| max attempts / slot | **6** (≤ 6) ✅ |
+| no duplicate worksheet | ✅ |
+| **CORE_WORKSHEET_DELIVERY_RATE** | **83.3% (25/30)** ❌ — gate ≥ 99% |
+
+worksheet_state: `READY` 16 · `READY_WITH_OPTIONAL_OMISSIONS` 8 · `READY_WITH_SAFE_SUBSTITUTION` 1 · `FAILED` 5.
+Recovery: FIRST_PASS 55% · RETRY 11% · FALLBACK 9% · LAST_RESORT 2.5% · CROSSCHECK 12% ·
+SAFE_SUBSTITUTION 0.4% · OMITTED 5.4% · FAILED 4.6%. Review-queue rate 10%.
+
+**5 FAILED worksheets, two root causes (both fixed, commit `c3f7f89`):**
+
+1. **g4_frac (2)** — a FRACTION_ARITH deterministic-last-resort framing
+   `"Cho biểu thức A = …; rút gọn A"` had no word in `QUESTION_CUE_RE`, so it
+   tripped `MALFORMED_VIETNAMESE:BLOCK` and last-resort could not finish a
+   REQUIRED_CORE slot. Fix: `rút gọn / thực hiện / giải / xác định / …` added to
+   the cue vocabulary.
+2. **g7_geometry (3)** — `M7.GEO.PARALLEL_CRITERIA` `currentSkill` items were
+   forced to answerKind `choice` (classification) by an over-greedy
+   `CLASSIFICATION_NAME_RE` (`song song` / `dấu hiệu nhận biết`), had **no kernel**
+   and **no last-resort backstop**, and failed on SIMILARITY / COMPOSE
+   (choice-as-numeric) / crosscheck-UNCERTAIN. Fix: (a) new **`PARALLEL_ANGLES`
+   Group-A MathKernel** (so-le-trong / đồng-vị = x; trong-cùng-phía = 180 − x —
+   deterministic, oracle-verified); (b) `CLASSIFICATION_NAME_RE` narrowed so
+   parallel-line work is numeric angle computation. 5 of 6 geometry slots now
+   kernel-backed; the 6th safe-substitutes to a kernel-backed `PARALLEL_ANGLES`
+   item.
+
+All **safety** gates passed run 1 — nothing wrong was ever delivered; the 5
+failures were REQUIRED_CORE slots correctly held back (`FAILED`, review row), not
+served.
+
+**Run 2 (targeted re-validation, g4_frac + g7_geometry + g7_frontier)** —
+_(pending — see `D7_COHORT.txt`)_
 
 ## 15. Internal LIVE
 
