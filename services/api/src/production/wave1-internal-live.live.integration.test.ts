@@ -131,7 +131,7 @@ describe.skipIf(!LIVE)('doc 69 §7 — CONTROLLED INTERNAL LIVE Wave 1 (real jou
         const g4 = ['M4.FRAC.COMMON_DENOM', 'M4.FRAC.ADD', 'M4.ARITH.SUB_MULTI', 'M4.ARITH.MUL_2DIGIT'];
         const g7 = ['M7.RATIO.EQUAL_CHAIN', 'M7.RATIO.PROPORTION', 'M7.RATIO.DIRECT', 'M7.GEO.PARALLEL_CRITERIA'];
         const skills = k % 2 === 0 ? g4 : g7;
-        const lesson = k % 2 === 0 ? 'C.G4.5.12' : 'C.G7.6.21'; // a mid-curriculum node
+        const lesson = k % 2 === 0 ? 'C.G4.10.6' : 'C.G7.6.21'; // a real mid-curriculum node
         for (let i = 0; i < 10; i += 1) {
           await pool.query(
             `INSERT INTO evidence (id, child_id, source, occurred_at, recorded_at, skill_id, result, confidence_tier, provenance)
