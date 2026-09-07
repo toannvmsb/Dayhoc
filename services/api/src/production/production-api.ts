@@ -389,11 +389,14 @@ export function createProductionApi(opts: ProductionApiOptions) {
    * SHADOW enqueue (child still gets the legacy worksheet via `childToday`).
    * Non-cohort families are handled by the legacy SHADOW hook (`childToday`).
    */
-  async function maybeEnqueueLiveWorksheet(userId: string, childId: string): Promise<void> {
-    if (!worksheetGen) return;
+  async function maybeEnqueueLiveWorksheet(
+    userId: string,
+    childId: string,
+  ): Promise<{ enqueued: boolean; reason: string }> {
+    if (!worksheetGen) return { enqueued: false, reason: 'worksheet generation not configured' };
     try {
       const eff = await effectiveModeFor(userId);
-      if (eff.mode !== 'LIVE') return;
+      if (eff.mode !== 'LIVE') return { enqueued: false, reason: `effective mode ${eff.mode}: ${eff.reason}` };
       let mode: 'SHADOW' | 'LIVE' = 'LIVE';
       const gate = await internalLiveBudgetGate(pool, process.env, 'generation', 0.05);
       if (!gate.ok) {
@@ -404,7 +407,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const day = now().toISOString().slice(0, 10);
       const { scoped, inputs } = await learningScene(childId);
       const s = await scoped._scene(childId);
-      if (s.plan.kind !== 'plan') return; // "no plan needed" — nothing to generate
+      if (s.plan.kind !== 'plan') return { enqueued: false, reason: `planner returned "${s.plan.kind}" — nothing to generate` };
       const spec = buildExerciseGenerationSpec({
         childId: asChildId(childId),
         gradeContext: inputs.gradeContext,
@@ -445,8 +448,11 @@ export function createProductionApi(opts: ProductionApiOptions) {
           childRef: cref,
         });
       }
+      return { enqueued: true, reason: `${mode} worksheet enqueued (spec ${spec.generationSpecId})` };
     } catch (err) {
-      logger.warn('LIVE worksheet enqueue failed', { error: err instanceof Error ? err.message : String(err) });
+      const reason = err instanceof Error ? err.message : String(err);
+      logger.warn('LIVE worksheet enqueue failed', { error: reason });
+      return { enqueued: false, reason: `enqueue error: ${reason}` };
     }
   }
 

@@ -159,8 +159,15 @@ describe.skipIf(!LIVE)('doc 69 §7 — CONTROLLED INTERNAL LIVE Wave 1 (real jou
     // ---- PHASE 1: every cohort parent opens Today → enqueues one LIVE worksheet ----
     for (const { childId, parentIdx } of cohortKids) {
       const planBefore = JSON.stringify((await api.getToday(parents[parentIdx]!.auth, childId)) ?? {});
+      const dbg = await api._maybeEnqueueLiveWorksheet(parents[parentIdx]!.userId, childId);
+      if (cohortKids.indexOf(cohortKids.find((k) => k.childId === childId)!) < 3) console.log(`WAVE1 enqueue ${childId.slice(0, 8)}: ${JSON.stringify(dbg)}`);
       flows.push({ childId, parentIdx, planBefore, assignmentId: null, itemCount: 0, evidenceDelta: 0, twinChanged: false, nextPlanChanged: false });
     }
+    const enqCheck = await pool.query<{ n: number }>(
+      `SELECT count(*)::int n FROM worksheet_jobs WHERE child_ref = ANY($1::text[])`,
+      [cohortKids.map((k) => childRefOf(k.childId))],
+    );
+    console.log(`WAVE1 phase 1: ${enqCheck.rows[0]!.n} LIVE jobs enqueued for ${cohortKids.length} cohort children`);
     // ---- PHASE 2: drain the durable worker (real paid generation) ----
     for (let round = 0; round < 40 && !killed; round += 1) {
       await worker!.runToIdle(cohortKids.length * 6);
