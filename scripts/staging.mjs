@@ -12,9 +12,13 @@ import path from 'node:path';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const env = { ...process.env };
+// `.env` FILLS values the shell did not already provide — an explicit shell
+// env var (e.g. `AI_GENERATION_MODE=LIVE node scripts/staging.mjs …`) wins.
 for (const line of readFileSync(path.join(root, '.env'), 'utf8').split('\n')) {
   const m = /^([A-Z0-9_]+)\s*=\s*(.*)$/.exec(line.trim());
-  if (m && !line.trim().startsWith('#')) env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+  if (m && !line.trim().startsWith('#') && (process.env[m[1]] === undefined || process.env[m[1]] === '')) {
+    env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+  }
 }
 const staging = env.STAGING_DATABASE_URL;
 if (!staging || /[<>[\]]/.test(staging)) {
