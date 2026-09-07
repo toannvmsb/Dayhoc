@@ -57,11 +57,67 @@ _(nothing else is blocked — Auth, Storage, Resend, OpenAI all verified working
 
 ---
 
-## PHASE D2 — DURABLE WORKSHEET QUEUE  ⏳
-## PHASE D3 — REAL POSTGRES / STORAGE / AUTH  ⏳
-## PHASE D4 — REVIEWER PATH  ⏳
-## PHASE D5 — GROUP-C STAGING CROSSCHECK  ⏳
-## PHASE D6 — FULL PRODUCTION-PATH STAGING TEST  ⏳
-## PHASE D7 — FINAL CONFIRMATION COHORT  ⏳
+## PHASE D2 — DURABLE WORKSHEET QUEUE  ✅  (`main` D2 commit; FREE, local Postgres)
 
-_(pending D1)_
+`migrations/1758585600000_worksheet_job_queue.js` — **`worksheet_jobs`** (mutable):
+`dedup_key UNIQUE` (idempotent enqueue), `state` PENDING/CLAIMED/DONE/FAILED,
+`attempts`/`max_attempts`, `available_at` (retry backoff), `claimed_by` +
+`lease_expires_at` (crash recovery), `run_id` on DONE, `last_error` (category
+only — never content). up/down/up verified.
+
+`@copilot/exercise-gen/worksheet-job-queue.ts`:
+- **`PgWorksheetJobQueue implements WorksheetShadowQueue`** — `enqueue` persists
+  ONLY the serializable slice (`spec` + mode + refs + config); `ON CONFLICT
+  (dedup_key) DO NOTHING`. Non-serializable deps (generators, adapters, stores)
+  are rebuilt per job by the worker.
+- **`WorksheetJobWorker`** — claims one job with `FOR UPDATE SKIP LOCKED`, runs
+  `runWorksheetShadow`, moves it to DONE / FAILED / back to PENDING (bounded
+  retry + backoff). A crashed worker's CLAIMED job is reclaimed once its lease
+  expires. `start()` / `stop()` / `runToIdle()`.
+
+`services/api`: `WORKSHEET_QUEUE=durable` → `PgWorksheetJobQueue`;
+`createWorksheetJobWorker()` builds a worker on the **same locked routing + gates**
+as the in-process path (`buildGenerationDeps` extracted + shared).
+
+**4 integration tests, real Postgres, no paid AI:** idempotent enqueue ·
+restart recovery (fresh worker finishes an abandoned job, exactly one
+`worksheet_generation_runs` row per spec — no double-serve) · lease-steal (two
+workers, no concurrent double-process) · bounded retry (FAILED after
+`max_attempts`, no infinite loop).
+
+---
+
+## PHASE D3 — REAL POSTGRES / STORAGE / AUTH  ⏸  (blocked on D1's `STAGING_DATABASE_URL`)
+
+Auth + Storage already verified against the real Supabase project (D1 table).
+Migrations + persistence/deletion/retention verification against the staging
+Postgres wait on the connection string.
+
+---
+
+## PHASE D4 — REVIEWER PATH  ✅  (`main` D4 commit; FREE)
+
+- `production-api.ts` — **`reviewQueueListPending(ctx)`** (ADMIN-only; returns
+  PENDING items **with** the short-retention QA snapshot) and
+  **`reviewQueueResolve(ctx, itemId, decision)`** (ADMIN-only; APPROVED /
+  REJECTED / REGENERATE_REQUESTED; one-time PENDING→resolved transition guarded
+  in `PgReviewQueueStore`). The `review_queue` row is the audit record:
+  `resolved_by` (pseudonymous reviewer), `resolved_at`, final `state`.
+- `apps/web/lib/server/rest.ts` — ADMIN workspace + `adminCtx()` (server-derived,
+  403 unless the caller holds the ADMIN role via `sessionContext`) +
+  `GET /admin/review-queue`, `POST /admin/review-queue/:id/resolve`,
+  `GET /admin/worksheet-shadow`.
+- Integration test: ADMIN list + resolve-once + non-admin refused +
+  double-resolve rejected + reviewer id pseudonymised.
+
+---
+
+## PHASE D5 — GROUP-C STAGING CROSSCHECK  ⏸  (blocked on D3)
+## PHASE D6 — FULL PRODUCTION-PATH STAGING TEST  ⏸  (blocked on D3)
+## PHASE D7 — FINAL CONFIRMATION COHORT  ⏸  (blocked on D3 + a generation budget)
+
+_The architecture for D5–D7 is in place (`AI_CROSSCHECK_MODE=LIVE` gate,
+`createRoutedAnswerCrosscheck`, `createWorksheetJobWorker`, the full-path
+integration harness). They run against the staging Postgres once
+`STAGING_DATABASE_URL` exists; D7 additionally needs an explicit generation
+budget._
