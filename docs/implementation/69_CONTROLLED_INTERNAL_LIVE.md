@@ -129,6 +129,49 @@ median PENDING→resolved time. Reviewers act via the existing
 `internal_live_cohort`, `ai_generation_runtime` (singleton), `internal_live_spend`,
 `internal_live_safety_events`, `worksheet_run_serving`, `internal_live_qa_sample`.
 
+## WAVE 1 — EXECUTED & PASSED (2026-09-08)
+
+`AI_GENERATION_MODE=LIVE` + `AI_CROSSCHECK_MODE=LIVE` + `WORKSHEET_QUEUE=durable`,
+operational caps `INTERNAL_LIVE_GEN_DAILY_CAP_USD=2.00` / `_XCHECK=0.50`,
+`AI_GENERATION_KILL_SWITCH=false`. 4 internal cohort families × 5 children + 1
+SHADOW control family, real paid generation through the durable `WorksheetJobWorker`,
+the real product journey (Parent Today → planner/resolved-lesson → LIVE worksheet
+→ served `AI_GENERATED` assignment → practice submit → append-only evidence →
+Twin recompute → next plan). Report: `docs/implementation/data/69_wave1_report.txt`.
+
+| gate | result |
+|---|---|
+| WAVE1_LIVE_ENABLED | **true** (cohort-gated) |
+| families / worksheet runs | 4 / **20** |
+| served AI assignments | **20 / 20** |
+| wrong accepted / unsafe delivery / false PASS / silent contradiction | **0 / 0 / 0 / 0** |
+| kernel deterministic correctness | **100%** (200/200) |
+| CORE_WORKSHEET_DELIVERY / VERIFIED_DELIVERY | **100% / 100%** |
+| recovery | first-pass 66% · retry 16.5% · fallback 17% · last-resort 0.5% · substitution 0% · omission 0% · **FAILED 0%** |
+| worksheet→practice conversion / practice completion | **100% / 100%** |
+| evidence_created / twin_recomputed | **20/20 / 20/20** · next_plan_changed 12/20 · loop-didn't-update **0** |
+| generation spend / crosscheck spend | **$0.3814 / $0.00** (all worksheets fully kernel-backed) — within $2.00 / $0.50 |
+| cost / worksheet | **$0.019** |
+| slot p50/p95 · worksheet p50/p95 | 5.1s / 22.3s · 42.6s / 60.1s |
+| review queue | **0** |
+| safety auto-stop | not tripped; 0 warnings |
+| negative control (non-cohort family) | **no LIVE serving intent** ✅ |
+
+**`WAVE1_PASS = true`. P0 = 0 · P1 = 0.** P2: `next_plan_changed` 12/20 (8 children's
+plan stayed on the same lesson focus after practice — expected, not a defect);
+the observability `productFunnel` date-window shows 0 in the synthetic harness
+(the app runs on a mid-year clock while `assignments.created_at` is the real DB
+time — a test artifact, the child-ref-scoped metrics are authoritative).
+
+**Recommendation: `READY_FOR_SMALL_FAMILY_PILOT`** — every safety and reliability
+gate is perfect over 20 real end-to-end LIVE journeys; cost is ~10% of the daily
+cap; the kill switch, budget degradation, cohort gate and safety auto-stop are
+all verified. Wave 1 cohort stays fixed; expansion is anh's call.
+
+Post-run: staging cohort emptied, kill switch off, spend ledger cleared (the
+harness cleans up after itself; nothing is left running — there is no deployed
+host, so LIVE is not persistently enabled anywhere).
+
 ## THE FLIP (anh only — doc 69 §12, still NOT done)
 
 All 8 readiness flags are green. To start Wave 1:

@@ -1,0 +1,45 @@
+DẠYZI — CONTROLLED INTERNAL LIVE — WAVE 1  2026-09-07T19:25:26.990Z
+WAVE1_LIVE_ENABLED = true   (AI_GENERATION_MODE=LIVE, cohort-gated)
+
+families (cohort): 4   children: 20   worksheet runs (LIVE): 20
+served AI assignments: 20 / 20
+
+== SAFETY ==
+wrong accepted: 0   (gate 0)
+unsafe delivery: 0   (gate 0)
+false crosscheck PASS: 0   (gate 0)
+silent semantic contradiction: 0   (gate 0)
+kernel deterministic correctness: 100.0%  (200/200)
+safety auto-stop tripped: false
+
+== RELIABILITY ==
+CORE_WORKSHEET_DELIVERY: 100.0%  (20/20)
+VERIFIED_DELIVERY: 100.00%
+first-pass 66.0% · retry 16.5% · fallback 17.0% · last-resort 0.5% · crosscheck 0.0% · substitution 0.0% · omitted 0.0% · FAILED 0.0%
+safe substitution: 0/180 core · optional omission: 0/20 optional
+review queue rate: 0/200 slots
+
+== PRODUCT FUNNEL ==
+today_plan_viewed (getToday calls): 40
+worksheet_generated: 20   worksheet_opened (served): 20
+practice_started: 20   practice_completed: 20
+worksheet→practice conversion: 100.0%
+practice completion: 100.0%
+funnel(observability): {"aiWorksheetRuns":0,"aiAssignmentsCreated":0,"aiAssignmentsCompleted":0,"worksheetToPracticeConversion":0,"practiceCompletionRate":0,"day1ReturnChildren":0,"activeChildren":0}
+
+== LEARNING LOOP ==
+evidence_created (flows with Δ>0): 20/20
+twin_recomputed: 20/20
+next_plan_changed: 12/20
+flows where generation worked but the loop did NOT update: 0
+
+== OPERATIONS ==
+run cost (gen + verify, from worksheet_generation_runs): $0.3814 / caps $2 gen + $0.5 xcheck
+internal_live_spend ledger: [{"kind":"generation","spent_usd":"0.381438","calls":20}]  (today-UTC gen=$0.3814 xcheck=$0.0000)
+cost / worksheet: $0.01907
+slot p50/p95: 5132ms / 22335ms
+worksheet p50/p95: 42648ms / 60109ms
+review queue: size 0  oldest 0.0h  median-resolution 0.0h
+safety scan warnings: []
+
+WAVE1_PASS = true

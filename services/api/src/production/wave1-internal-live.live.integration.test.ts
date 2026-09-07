@@ -88,7 +88,10 @@ describe.skipIf(!LIVE)('doc 69 §7 — CONTROLLED INTERNAL LIVE Wave 1 (real jou
       await c.query(`DELETE FROM child_profiles WHERE id = ANY($1::uuid[])`, [childIds]).catch(() => {});
       await c.query(`DELETE FROM internal_live_cohort WHERE family_ref = ANY($1::text[])`, [familyIds.map(familyRef)]).catch(() => {});
       await c.query(`DELETE FROM family_subscriptions WHERE family_id = ANY($1::uuid[])`, [familyIds]).catch(() => {});
-      await c.query(`DELETE FROM internal_live_spend WHERE spend_date = $1`, [now().toISOString().slice(0, 10)]).catch(() => {});
+      // the ledger keys on the real UTC day (worker records with a real clock),
+      // not the mid-year app clock — clear the day this run actually spent on.
+      await c.query(`DELETE FROM internal_live_spend WHERE updated_at > now() - interval '3 hours'`).catch(() => {});
+      await c.query(`DELETE FROM internal_live_safety_events WHERE detected_at > now() - interval '3 hours'`).catch(() => {});
       await c.query(`SET session_replication_role = origin`);
     } finally {
       c.release();
