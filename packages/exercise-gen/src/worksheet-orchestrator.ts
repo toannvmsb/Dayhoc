@@ -431,6 +431,7 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
     // ---- rebuild any slot entering the SAFE SUBSTITUTE pass (doc 68 §5) ----
     for (const s of active) {
       if (s.state !== 'SUBSTITUTING') continue;
+      const before = s.itemSpec;
       const sub = buildSafeSubstitute(s.itemSpec, input.knowledgeBase, input.referenceLibrary, usedNumberTuples);
       s.substituteApplied = true;
       if (!sub) {
@@ -438,6 +439,13 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
         s.degradeReason = s.degradeReason ?? 'no safe substitute permitted';
         continue;
       }
+      // full before/after trail — the substitute must preserve the skill and stay
+      // inside the planner envelope (doc 68 §7).
+      s.degradeReason =
+        `safe substitute: ${before.knowledgeLevel}/${before.thinkingLevel} ${before.problemStructure}` +
+        ` → ${sub.itemSpec.knowledgeLevel}/${sub.itemSpec.thinkingLevel} ${sub.itemSpec.problemStructure}` +
+        ` (skill ${before.skillId === sub.itemSpec.skillId ? 'PRESERVED' : 'CHANGED'};` +
+        ` kernelBacked=${sub.kernelBacked}; was: ${s.degradeReason ?? 'model failed'})`;
       s.itemSpec = sub.itemSpec;
       s.kernel = sub.kernel;
       s.dna = sub.dna;

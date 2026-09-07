@@ -42,15 +42,21 @@ import { insertAiUsageEvent } from './pg-ai-usage.js';
  * accepted · 0 silent semantic contradiction · Group-C false-PASS pathway
  * (UNCERTAIN never → PASS) · bounded retry/fallback · spend within the caps.
  */
-// D7B (doc 68 §12): dedicated confirmation budget — gen $0.75, xcheck $0.15.
-const GEN_CAP = Number(process.env.D7B_GEN_CAP_USD ?? process.env.D7_GEN_CAP_USD ?? 'NaN');
-const XCHECK_CAP = Number(process.env.D7B_CROSSCHECK_CAP_USD ?? process.env.D7_XCHECK_CAP_USD ?? '0.15');
+// D7B FINAL confirmation (doc 68 §12 / final directive §1): dedicated caps.
+const GEN_CAP = Number(
+  process.env.D7B_FINAL_GEN_CAP_USD ?? process.env.D7B_GEN_CAP_USD ?? process.env.D7_GEN_CAP_USD ?? 'NaN',
+);
+const XCHECK_CAP = Number(
+  process.env.D7B_FINAL_CROSSCHECK_CAP_USD ?? process.env.D7B_CROSSCHECK_CAP_USD ?? process.env.D7_XCHECK_CAP_USD ?? '0.15',
+);
 const LIVE =
-  (process.env.RUN_D7B === '1' || process.env.RUN_D7 === '1') &&
+  (process.env.RUN_D7B_FINAL === '1' || process.env.RUN_D7B === '1' || process.env.RUN_D7 === '1') &&
   !!process.env.DATABASE_URL &&
   !!process.env.OPENAI_API_KEY &&
   Number.isFinite(GEN_CAP) &&
   GEN_CAP > 0;
+// per-run nonce so a re-run never replays a prior cohort's persisted rows (§2).
+const RUN_TAG = process.env.D7_RUN_TAG ?? `r${Date.now().toString(36)}`;
 const OUT = 'D:/Lap trinh/Claude/Dayhoc/D7_COHORT.txt';
 const COMPLIANCE: Omit<ProviderCompliance, 'provider'> = {
   processingRegion: 'staging-d7', crossBorder: true, dataCategoriesAllowed: [],
@@ -263,8 +269,8 @@ describe.skipIf(!LIVE)('doc 67 §D7 — final confirmation cohort (staging, PAID
     for (let i = 0; i < RUNS; i += 1) {
       if (!guard.canRun().ok) break;
       const axis = axes[i % axes.length]!;
-      const spec = specForAxis(axis, `d7-${Date.now()}-${i}`);
-      const cref = createHash('sha256').update(`${spec.childId}-${i}`).digest('hex').slice(0, 16);
+      const spec = specForAxis(axis, `d7-${RUN_TAG}-${i}`);
+      const cref = createHash('sha256').update(`${spec.childId}-${RUN_TAG}-${i}`).digest('hex').slice(0, 16);
       childRefs.push(cref);
       crefAxis.set(cref, axis);
       const id = await queue.enqueueDurable({ mode: 'SHADOW', spec, childRef: cref, usageContext: { userRef: 'u_d7', childRef: cref, plan: 'plus' as const } });
@@ -418,7 +424,7 @@ describe.skipIf(!LIVE)('doc 67 §D7 — final confirmation cohort (staging, PAID
     const maxAtt = Number(attempts.rows[0]?.mx ?? 0);
 
     const report = [
-      `DẠYZI — D7B SAFE DEGRADED CONFIRMATION COHORT (staging)  ${new Date().toISOString()}`,
+      `DẠYZI — D7B FINAL CLEAN CONFIRMATION COHORT (staging)  ${new Date().toISOString()}  run=${RUN_TAG}`,
       `caps: generation $${GEN_CAP}  crosscheck $${XCHECK_CAP}`,
       ``,
       `== COUNTS ==`,
@@ -450,9 +456,14 @@ describe.skipIf(!LIVE)('doc 67 §D7 — final confirmation cohort (staging, PAID
       ``,
       `== OPTIONAL BEHAVIOR (doc 68 §14) ==`,
       `OPTIONAL_CHALLENGE_AVAILABILITY: ${((wsWithOptional / n) * 100).toFixed(1)}%  (${wsWithOptional}/${runs.rows.length} worksheets carry ≥1 optional item)`,
-      `SAFE_SUBSTITUTION_RATE: ${coreSlotRows.length ? ((substitutedRows.length / coreSlotRows.length) * 100).toFixed(1) : '0'}%  (${substitutedRows.length}/${coreSlotRows.length} core slots)`,
+      `SAFE_SUBSTITUTION_RATE (overall): ${slots.rows.length ? ((substitutedRows.length / slots.rows.length) * 100).toFixed(1) : '0'}%  (${substitutedRows.length}/${slots.rows.length} slots)`,
+      `SAFE_SUBSTITUTION_RATE (REQUIRED_CORE): ${coreSlotRows.length ? ((substitutedRows.length / coreSlotRows.length) * 100).toFixed(1) : '0'}%  (${substitutedRows.length}/${coreSlotRows.length} core slots)${substitutedRows.length / (coreSlotRows.length || 1) > 0.1 ? '  ⚠ HIGH — flag for product review (doc 68 §7)' : ''}`,
       `OPTIONAL_OMISSION_RATE: ${optionalSlotRows.length ? ((omittedRows.length / optionalSlotRows.length) * 100).toFixed(1) : '0'}%  (${omittedRows.length}/${optionalSlotRows.length} optional slots)`,
       `REVIEW_QUEUE_RATE: ${((reviewRows.length / (slots.rows.length || 1)) * 100).toFixed(1)}%  (${reviewRows.length}/${slots.rows.length} slots)`,
+      `-- substituted items: original → substitute (K/T + structure), skill/objective preservation (doc 68 §7) --`,
+      ...(substitutedRows.length
+        ? degradeDetail.rows.filter((d) => d.substituted).map((d) => `  ${runAxis.get(d.run_id) ?? '?'} ${d.item_id.slice(-7)} :: ${d.degrade_reason ?? '?'}`)
+        : ['  (none)']),
       `-- exact reason per omitted / substituted item --`,
       ...(degradeReasonLines.length ? degradeReasonLines : ['  (none)']),
       ``,
@@ -483,16 +494,20 @@ describe.skipIf(!LIVE)('doc 67 §D7 — final confirmation cohort (staging, PAID
     writeFileSync(OUT, report);
     console.log('\n' + report + '\n');
 
-    // hard exit gates (doc 68 §13)
+    // hard exit gates (doc 68 §13 + final directive §4/§5)
     expect(wrongAccepted.length, 'wrong answer accepted').toBe(0);
     expect(semUnknownAccepted.length, 'silent semantic contradiction').toBe(0);
     expect(unsafeDelivered.length, 'UNSAFE_DELIVERY_RATE must be 0').toBe(0);
     expect(verifiedDeliveryRate, 'VERIFIED_DELIVERY_RATE must be 100%').toBe(1);
     if (kernelReady.length > 0) expect(kernelProdReady.length).toBe(kernelReady.length);
-    expect(coreDeliveryRate, 'CORE_WORKSHEET_DELIVERY_RATE ≥ 99%').toBeGreaterThanOrEqual(0.99);
     expect(maxAtt, 'bounded retry').toBeLessThanOrEqual(6);
     expect(Number(dupRuns.rows[0]?.mx ?? 0), 'duplicate worksheet').toBeLessThanOrEqual(1);
     expect(guard.spentTodayUsd).toBeLessThanOrEqual(GEN_CAP + 0.08);
     expect(xcheckUsd).toBeLessThanOrEqual(XCHECK_CAP + 0.05);
+    // §5 — 30/30: EVERY persisted worksheet must be core-delivered (no rounding),
+    // and the cohort must actually be ~30 worksheets (the cost guard must not have
+    // silently truncated the run).
+    expect(coreDelivered, `CORE_WORKSHEET_DELIVERY must be ${runs.rows.length}/${runs.rows.length} — no rounding`).toBe(runs.rows.length);
+    expect(runs.rows.length, 'cohort must be ~30 worksheets').toBeGreaterThanOrEqual(28);
   }, 60 * 60 * 1000);
 });
