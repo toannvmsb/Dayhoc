@@ -210,13 +210,24 @@ describe.skipIf(!LIVE)('doc 67 §D7 — final confirmation cohort (staging, PAID
     await worker.runToIdle(RUNS * 8 + 20);
 
     // ---- score against the exit gates ----
-    const runs = await pool.query<{ id: string; worksheet_state: string }>(
-      `SELECT id, worksheet_state FROM worksheet_generation_runs WHERE child_ref = ANY($1::text[])`,
+    const runs = await pool.query<{ id: string; worksheet_state: string; worksheet_latency_ms: number; actual_cost_usd: string }>(
+      `SELECT id, worksheet_state, worksheet_latency_ms, actual_cost_usd FROM worksheet_generation_runs WHERE child_ref = ANY($1::text[])`,
       [childRefs],
     );
     const runIds = runs.rows.map((r) => r.id);
-    const slots = await pool.query<{ final_state: string; answer_status: string | null; production_ready: boolean; kernel_family: string | null }>(
-      `SELECT final_state, answer_status, production_ready, kernel_family FROM worksheet_slots WHERE run_id = ANY($1::text[])`,
+    const slots = await pool.query<{
+      item_id: string; run_id: string; final_state: string; answer_status: string | null;
+      production_ready: boolean; kernel_family: string | null; last_resort_used: boolean;
+      crosscheck_required: boolean; crosscheck_verdict: string | null; review_queue_id: string | null;
+      slot_latency_ms: number;
+    }>(
+      `SELECT item_id, run_id, final_state, answer_status, production_ready, kernel_family,
+              last_resort_used, crosscheck_required, crosscheck_verdict, review_queue_id, slot_latency_ms
+         FROM worksheet_slots WHERE run_id = ANY($1::text[])`,
+      [runIds],
+    );
+    const attemptRows = await pool.query<{ run_id: string; item_id: string; attempt: number; model: string; step: string; accepted: boolean }>(
+      `SELECT run_id, item_id, attempt, model, step, accepted FROM worksheet_slot_attempts WHERE run_id = ANY($1::text[]) ORDER BY attempt`,
       [runIds],
     );
     const kernelSlots = slots.rows.filter((s) => s.kernel_family);
@@ -227,21 +238,101 @@ describe.skipIf(!LIVE)('doc 67 §D7 — final confirmation cohort (staging, PAID
     const fullComplete = runs.rows.filter((r) => r.worksheet_state !== 'FAILED').length;
     const attempts = await pool.query<{ mx: string }>(`SELECT max(cnt) mx FROM (SELECT count(*) cnt FROM worksheet_slot_attempts WHERE run_id = ANY($1::text[]) GROUP BY run_id, item_id) x`, [runIds]);
     const jobStats = await queue.stats();
+    const dupRuns = await pool.query<{ mx: string }>(
+      `SELECT coalesce(max(c),0) mx FROM (SELECT count(*) c FROM worksheet_generation_runs WHERE child_ref = ANY($1::text[]) GROUP BY generation_spec_id) x`,
+      [childRefs],
+    );
+
+    // ---- recovery-path classification (per slot) ----
+    const attemptsBySlot = new Map<string, { attempt: number; model: string; step: string; accepted: boolean }[]>();
+    for (const a of attemptRows.rows) {
+      const k = `${a.run_id}:${a.item_id}`;
+      let list = attemptsBySlot.get(k);
+      if (!list) { list = []; attemptsBySlot.set(k, list); }
+      list.push(a);
+    }
+    type Path = 'READY_FIRST_PASS' | 'READY_AFTER_RETRY' | 'READY_AFTER_FALLBACK' | 'READY_AFTER_LAST_RESORT' | 'READY_AFTER_CROSSCHECK' | 'REVIEW_REQUIRED' | 'FAILED';
+    const pathCount: Record<Path, number> = {
+      READY_FIRST_PASS: 0, READY_AFTER_RETRY: 0, READY_AFTER_FALLBACK: 0, READY_AFTER_LAST_RESORT: 0,
+      READY_AFTER_CROSSCHECK: 0, REVIEW_REQUIRED: 0, FAILED: 0,
+    };
+    for (const s of slots.rows) {
+      const at = (attemptsBySlot.get(`${s.run_id}:${s.item_id}`) ?? []).slice().sort((x, y) => x.attempt - y.attempt);
+      let p: Path;
+      if (s.final_state === 'FAILED') p = 'FAILED';
+      else if (s.review_queue_id || s.final_state === 'PENDING_CROSSCHECK') p = 'REVIEW_REQUIRED';
+      else if (s.last_resort_used || at.some((a) => a.step === 'last_resort' && a.accepted)) p = 'READY_AFTER_LAST_RESORT';
+      else if (s.crosscheck_required && s.crosscheck_verdict === 'PASS') p = 'READY_AFTER_CROSSCHECK';
+      else if (at.some((a) => a.step === 'escalate' && a.accepted)) p = 'READY_AFTER_FALLBACK';
+      else if (at.some((a) => a.step === 'retry_same' && a.accepted) || at.length > 1) p = 'READY_AFTER_RETRY';
+      else p = 'READY_FIRST_PASS';
+      pathCount[p] += 1;
+    }
+    const totalSlots = slots.rows.length || 1;
+    const pct = (n: number) => `${((n / totalSlots) * 100).toFixed(1)}%`;
+    const avgAttempts = attemptRows.rows.length / totalSlots;
+
+    // ---- model share ----
+    const genAttempts = attemptRows.rows.filter((a) => a.model.startsWith('gpt-'));
+    const m41 = genAttempts.filter((a) => a.model.includes('4.1-mini')).length;
+    const m5 = genAttempts.filter((a) => a.model.includes('gpt-5-mini')).length;
+
+    // ---- latency percentiles ----
+    const pctl = (arr: number[], q: number) => {
+      if (!arr.length) return 0;
+      const s = arr.slice().sort((a, b) => a - b);
+      return s[Math.min(s.length - 1, Math.floor(q * s.length))]!;
+    };
+    const slotLat = slots.rows.map((s) => s.slot_latency_ms).filter((n) => n > 0);
+    const wsLat = runs.rows.map((r) => r.worksheet_latency_ms).filter((n) => n > 0);
+    const itemCount = slots.rows.length;
+    const doneWs = jobStats.DONE || 1;
 
     const report = [
       `DẠYZI — D7 CONFIRMATION COHORT (staging)  ${new Date().toISOString()}`,
+      `final commit: see git HEAD at run time`,
       `caps: generation $${GEN_CAP}  crosscheck $${XCHECK_CAP}`,
-      `worksheets enqueued/done/failed: ${enqueued} / ${jobStats.DONE} / ${jobStats.FAILED}`,
-      `generation spend: $${guard.spentTodayUsd.toFixed(4)}   crosscheck spend: $${xcheckUsd.toFixed(4)}`,
       ``,
+      `== COUNTS ==`,
+      `worksheets enqueued/done/failed: ${enqueued} / ${jobStats.DONE} / ${jobStats.FAILED}`,
+      `persisted runs: ${runs.rows.length}   items (slots): ${itemCount}`,
       `full worksheet completion: ${runs.rows.length ? ((fullComplete / runs.rows.length) * 100).toFixed(1) : '0'}%  (${fullComplete}/${runs.rows.length})`,
+      ``,
+      `== HARD SAFETY GATES ==`,
       `kernel deterministic correctness: ${kernelReady.length ? ((kernelProdReady.length / kernelReady.length) * 100).toFixed(1) : 'n/a'}%  (${kernelProdReady.length}/${kernelReady.length})`,
-      `kernel item accepted WRONG: ${wrongAccepted.length}`,
-      `silent SEMANTIC_UNKNOWN accepted: ${semUnknownAccepted.length}`,
+      `kernel item accepted WRONG: ${wrongAccepted.length}   (gate: 0)`,
+      `silent SEMANTIC_UNKNOWN accepted: ${semUnknownAccepted.length}   (gate: 0)`,
+      `max attempts / slot: ${attempts.rows[0]?.mx ?? 0}   (gate: <= 6, unbounded retry = 0)`,
+      ``,
+      `== RECOVERY PATHS (per item) ==`,
+      `READY_FIRST_PASS:        ${pathCount.READY_FIRST_PASS}  (${pct(pathCount.READY_FIRST_PASS)})`,
+      `READY_AFTER_RETRY:       ${pathCount.READY_AFTER_RETRY}  (${pct(pathCount.READY_AFTER_RETRY)})`,
+      `READY_AFTER_FALLBACK:    ${pathCount.READY_AFTER_FALLBACK}  (${pct(pathCount.READY_AFTER_FALLBACK)})`,
+      `READY_AFTER_LAST_RESORT: ${pathCount.READY_AFTER_LAST_RESORT}  (${pct(pathCount.READY_AFTER_LAST_RESORT)})`,
+      `READY_AFTER_CROSSCHECK:  ${pathCount.READY_AFTER_CROSSCHECK}  (${pct(pathCount.READY_AFTER_CROSSCHECK)})`,
+      `REVIEW_REQUIRED:         ${pathCount.REVIEW_REQUIRED}  (${pct(pathCount.REVIEW_REQUIRED)})`,
+      `FAILED:                  ${pathCount.FAILED}  (${pct(pathCount.FAILED)})`,
+      `average attempts / item: ${avgAttempts.toFixed(2)}`,
       `PENDING_CROSSCHECK slots: ${slots.rows.filter((s) => s.final_state === 'PENDING_CROSSCHECK').length}`,
-      `FAILED slots: ${slots.rows.filter((s) => s.final_state === 'FAILED').length}`,
-      `max attempts / slot: ${attempts.rows[0]?.mx ?? 0}`,
       `review-queue rows: ${(await pool.query(`SELECT count(*)::int n FROM review_queue WHERE child_ref = ANY($1::text[])`, [childRefs])).rows[0].n}`,
+      ``,
+      `== COST ==`,
+      `generation spend: $${guard.spentTodayUsd.toFixed(4)} / $${GEN_CAP}`,
+      `crosscheck spend: $${xcheckUsd.toFixed(4)} / $${XCHECK_CAP}`,
+      `cost / item: $${(guard.spentTodayUsd / itemCount).toFixed(5)}`,
+      `cost / completed worksheet: $${(guard.spentTodayUsd / doneWs).toFixed(5)}`,
+      ``,
+      `== MODEL SHARE (generation attempts) ==`,
+      `gpt-4.1-mini: ${m41}  (${genAttempts.length ? ((m41 / genAttempts.length) * 100).toFixed(1) : '0'}%)`,
+      `gpt-5-mini:   ${m5}  (${genAttempts.length ? ((m5 / genAttempts.length) * 100).toFixed(1) : '0'}%)`,
+      ``,
+      `== LATENCY ==`,
+      `slot  p50/p95: ${pctl(slotLat, 0.5)}ms / ${pctl(slotLat, 0.95)}ms`,
+      `sheet p50/p95: ${pctl(wsLat, 0.5)}ms / ${pctl(wsLat, 0.95)}ms`,
+      ``,
+      `== QUEUE / PERSISTENCE ==`,
+      `job stats: ${JSON.stringify(jobStats)}`,
+      `max runs per generation_spec_id: ${dupRuns.rows[0]?.mx ?? 0}   (gate: 1 — no duplicate worksheet)`,
     ].join('\n');
     writeFileSync(OUT, report);
     console.log('\n' + report + '\n');
@@ -251,6 +342,7 @@ describe.skipIf(!LIVE)('doc 67 §D7 — final confirmation cohort (staging, PAID
     expect(semUnknownAccepted.length, 'silent SEMANTIC_UNKNOWN acceptance').toBe(0);
     if (kernelReady.length > 0) expect(kernelProdReady.length).toBe(kernelReady.length); // 100%
     expect(Number(attempts.rows[0]?.mx ?? 0)).toBeLessThanOrEqual(6);
+    expect(Number(dupRuns.rows[0]?.mx ?? 0), 'duplicate worksheet for one spec').toBeLessThanOrEqual(1);
     expect(guard.spentTodayUsd).toBeLessThanOrEqual(GEN_CAP + 0.06);
     expect(xcheckUsd).toBeLessThanOrEqual(XCHECK_CAP + 0.05);
   }, 60 * 60 * 1000);
