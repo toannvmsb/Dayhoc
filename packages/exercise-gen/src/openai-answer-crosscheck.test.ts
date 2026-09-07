@@ -50,30 +50,28 @@ describe('createOpenAiAnswerCrosscheck', () => {
     expect(out.usage?.inputTokens).toBeGreaterThan(0);
   });
 
-  it('[guard] PASS verdict + a flagged error → forced FAIL (v1 false-PASS class)', async () => {
+  it('[guard] PASS verdict + a flagged error in the solution → forced FAIL (v1 false-PASS class)', async () => {
     const cc = createOpenAiAnswerCrosscheck(mockAdapter(() =>
-      '{"ket_qua_ban_tu_giai":"954","ket_qua_trong_dap_an":"954","loi_sai_phat_hien":"phép cộng 846+108 ghi thành 944","verdict":"PASS","confidence":0.7,"reason":"đáp án sửa đúng"}',
+      '{"tu_giai_doc_lap":"846 + 108 = 954","loi_sai_trong_loi_giai":"lời giải cộng 846 + 108 = 944, sai; đúng là 954","verdict":"PASS","confidence":0.7,"reason":"đáp án sửa đúng"}',
     ));
     const out = await cc.crosscheck(toCrosscheckRequest(reasoningItem, 4));
     expect(out.verdict).toBe('FAIL');
     expect(out.detail).toMatch(/guard/);
   });
 
-  it('[guard] PASS verdict + self-solved result ≠ stated result → forced FAIL', async () => {
+  it('[guard] PASS verdict but the verifier could not solve it → forced UNCERTAIN, never PASS', async () => {
     const cc = createOpenAiAnswerCrosscheck(mockAdapter(() =>
-      '{"ket_qua_ban_tu_giai":"24 và 36","ket_qua_trong_dap_an":"20","loi_sai_phat_hien":"khong","verdict":"PASS","confidence":0.6,"reason":"ổn"}',
+      '{"tu_giai_doc_lap":"khong_lam_duoc — thiếu hình vẽ","loi_sai_trong_loi_giai":"khong","verdict":"PASS","confidence":0.5,"reason":"có vẻ hợp lý"}',
     ));
-    // "24 và 36" is prose → not numeric; "20" is numeric → no numeric mismatch,
-    // but a single bare number vs prose should still not spuriously FAIL.
     const out = await cc.crosscheck(toCrosscheckRequest(reasoningItem, 4));
-    expect(out.verdict).toBe('PASS'); // guard only fires on a clean numeric mismatch
+    expect(out.verdict).toBe('UNCERTAIN');
   });
 
-  it('[guard] PASS + clean numeric mismatch (944 vs 954) → forced FAIL', async () => {
+  it('[guard] a clean PASS (solved, no error found) is left alone', async () => {
     const cc = createOpenAiAnswerCrosscheck(mockAdapter(() =>
-      '{"ket_qua_ban_tu_giai":"954","ket_qua_trong_dap_an":"944","loi_sai_phat_hien":"khong","verdict":"PASS","confidence":0.8,"reason":"khớp"}',
+      '{"tu_giai_doc_lap":"vế trái 217, vế phải 217","loi_sai_trong_loi_giai":"khong","verdict":"PASS","confidence":0.9,"reason":"hai vế bằng nhau"}',
     ));
-    expect((await cc.crosscheck(toCrosscheckRequest(reasoningItem, 4))).verdict).toBe('FAIL');
+    expect((await cc.crosscheck(toCrosscheckRequest(reasoningItem, 4))).verdict).toBe('PASS');
   });
 
   it('an unparseable response is UNCERTAIN, never PASS', async () => {
