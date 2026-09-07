@@ -114,7 +114,7 @@ function specForAxis(axis: Axis, id: string): ExerciseGenerationSpec {
     case 'g4_word':
       return mk(4, 'C.G4.5.12', 'word_problems', [t({ skillId: 'M4.WORD.SUM_DIFF', role: 'CURRENT', domain: 'word_problems', buckets: ['currentSkill', 'variation', 'application'] })], {}, { 'M4.WORD.SUM_DIFF': 58 });
     case 'g4_reasoning':
-      return mk(4, 'C.G4.3.8', 'arithmetic', [t({ skillId: 'M4.ARITH.DISTRIBUTIVE', role: 'CURRENT', domain: 'arithmetic', buckets: ['currentSkill', 'variation'] }), t({ skillId: 'M4.ARITH.DISTRIBUTIVE', role: 'THINKING', domain: 'arithmetic', buckets: ['thinkingChallenge'], selectionReason: 'THINKING_STRETCH' })], { thinkingChallenge: 2, currentSkill: 3 }, { 'M4.ARITH.DISTRIBUTIVE': 62 }, { tMax: 'T5', parentGoal: 'phat_trien_tu_duy' });
+      return mk(4, 'C.G4.3.8', 'arithmetic', [t({ skillId: 'M4.ARITH.DISTRIBUTIVE', role: 'CURRENT', domain: 'arithmetic', buckets: ['currentSkill', 'variation'] }), t({ skillId: 'M4.ARITH.DISTRIBUTIVE', role: 'THINKING', domain: 'arithmetic', buckets: ['thinkingChallenge'], selectionReason: 'THINKING_STRETCH' })], { thinkingChallenge: 1, currentSkill: 4 }, { 'M4.ARITH.DISTRIBUTIVE': 62 }, { tMax: 'T5', parentGoal: 'phat_trien_tu_duy' });
     case 'g7_linear_eq':
       return mk(7, 'C.G7.3.9', 'algebraic_thinking', [t({ skillId: 'M7.ALG.LINEAR_EQ', role: 'CURRENT', domain: 'algebraic_thinking', curriculumOrigin: 7, buckets: ['currentSkill', 'variation', 'application'] })], {}, { 'M7.ALG.LINEAR_EQ': 57 });
     case 'g7_ratio':
@@ -123,12 +123,12 @@ function specForAxis(axis: Axis, id: string): ExerciseGenerationSpec {
       return mk(7, 'C.G7.6.21', 'algebraic_thinking', [
         t({ skillId: 'M7.QNUM.EQUAL_CHAIN', role: 'CURRENT', domain: 'algebraic_thinking', curriculumOrigin: 7, buckets: ['currentSkill', 'variation'] }),
         t({ skillId: 'M7.ALG.SYMMETRIC', role: 'FRONTIER', domain: 'algebraic_thinking', curriculumOrigin: 9, buckets: ['advanced'], knowledgeCeiling: 'K5', selectionReason: 'MASTERED_FRONTIER_STRETCH', selectedCurriculumOrigin: 9 }),
-      ], { advanced: 2, currentSkill: 3 }, { 'M7.QNUM.EQUAL_CHAIN': 72, 'M7.ALG.SYMMETRIC': 70 }, { kMax: 'K5', tMax: 'T5', parentGoal: 'phat_trien_tu_duy' });
+      ], { advanced: 1, currentSkill: 4, thinkingChallenge: 0 }, { 'M7.QNUM.EQUAL_CHAIN': 72, 'M7.ALG.SYMMETRIC': 70 }, { kMax: 'K5', tMax: 'T5', parentGoal: 'phat_trien_tu_duy' });
     case 'g7_geometry':
       return mk(7, 'C.G7.4.14', 'geometry', [
         t({ skillId: 'M7.GEO.PARALLEL_CRITERIA', role: 'CURRENT', domain: 'geometry', curriculumOrigin: 7, buckets: ['currentSkill', 'variation', 'application'] }),
         t({ skillId: 'M7.GEO.PARALLEL_CRITERIA', role: 'THINKING', domain: 'geometry', curriculumOrigin: 7, buckets: ['thinkingChallenge'], selectionReason: 'THINKING_STRETCH' }),
-      ], { thinkingChallenge: 2, currentSkill: 3 }, { 'M7.GEO.PARALLEL_CRITERIA': 55 }, { tMax: 'T5', parentGoal: 'phat_trien_tu_duy' });
+      ], { thinkingChallenge: 1, currentSkill: 4 }, { 'M7.GEO.PARALLEL_CRITERIA': 55 }, { tMax: 'T5', parentGoal: 'phat_trien_tu_duy' });
   }
 }
 
