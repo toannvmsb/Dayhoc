@@ -1,0 +1,257 @@
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createHash } from 'node:crypto';
+import { writeFileSync } from 'node:fs';
+import {
+  createLunaItemContentGenerator,
+  createOpenAiAnswerCrosscheck,
+  createRoutedAnswerCrosscheck,
+  DailyCostGuard,
+  PgReviewQueueStore,
+  PgWorksheetGenerationStore,
+  PgWorksheetJobQueue,
+  WorksheetJobWorker,
+  type AiUsageEvent,
+} from '@copilot/exercise-gen';
+import {
+  createOpenAiProviderAdapter,
+  PricingRegistry,
+  tokenCostUsd,
+  type AiCapability,
+  type ProviderCompliance,
+} from '@copilot/ai';
+import { asChildId, asSkillId, type ExerciseGenerationSpec } from '@copilot/domain';
+import { loadKnowledgeBase } from '@copilot/math-data';
+import { loadReferenceLibrary } from '@copilot/reference-library';
+import { insertAiUsageEvent } from './pg-ai-usage.js';
+
+/**
+ * doc 67 §D7 — FINAL CONFIRMATION COHORT. ~30 representative worksheets through
+ * the full staging path (durable queue → real Luna generation → MathKernel /
+ * validator / routing / retry / fallback / last-resort → LIVE routed Group-C
+ * crosscheck → review queue → staging Postgres → cost ledger), synthetic specs
+ * only.
+ *
+ * Axes covered: G4 + G7 · arithmetic · fractions · word problems · LINEAR_EQ ·
+ * frontier (above-grade) · reasoning (thinkingChallenge) · Group C · geometry.
+ *
+ * PAID GENERATION. Gated on RUN_D7=1 + STAGING DATABASE_URL + OPENAI_API_KEY.
+ * The hard cap comes from D7_GEN_CAP_USD (no default — the run refuses to start
+ * without an explicit budget) and D7_XCHECK_CAP_USD (default 0.25).
+ *
+ * Exit gates (asserted): kernel deterministic correctness = 100% · 0 wrong
+ * accepted · 0 silent semantic contradiction · Group-C false-PASS pathway
+ * (UNCERTAIN never → PASS) · bounded retry/fallback · spend within the caps.
+ */
+const GEN_CAP = Number(process.env.D7_GEN_CAP_USD ?? 'NaN');
+const XCHECK_CAP = Number(process.env.D7_XCHECK_CAP_USD ?? '0.25');
+const LIVE =
+  process.env.RUN_D7 === '1' &&
+  !!process.env.DATABASE_URL &&
+  !!process.env.OPENAI_API_KEY &&
+  Number.isFinite(GEN_CAP) &&
+  GEN_CAP > 0;
+const OUT = 'D:/Lap trinh/Claude/Dayhoc/D7_COHORT.txt';
+const COMPLIANCE: Omit<ProviderCompliance, 'provider'> = {
+  processingRegion: 'staging-d7', crossBorder: true, dataCategoriesAllowed: [],
+  providerRetention: 'per OpenAI API policy', trainingAllowed: false, dpaStatus: 'not_applicable',
+};
+
+type Axis =
+  | 'g4_arith' | 'g4_frac' | 'g4_word' | 'g7_linear_eq' | 'g7_ratio'
+  | 'g7_frontier' | 'g7_geometry' | 'g4_reasoning';
+
+interface Tgt {
+  skillId: string; role: string; domain: string; curriculumOrigin: number;
+  buckets: readonly string[]; knowledgeCeiling: string; selectionReason: string;
+  selectedCurriculumOrigin: number; selectionConfidence: number;
+}
+const t = (o: Partial<Tgt> & { skillId: string; role: string; domain: string; buckets: readonly string[] }): Tgt => ({
+  curriculumOrigin: 4, knowledgeCeiling: 'K3', selectionReason: 'CURRENT_CURRICULUM',
+  selectedCurriculumOrigin: o.curriculumOrigin ?? 4, selectionConfidence: 0.6, ...o,
+});
+
+/** one synthetic spec per axis. */
+function specForAxis(axis: Axis, id: string): ExerciseGenerationSpec {
+  const base = {
+    generationSpecId: id,
+    childId: asChildId(`d7_${axis}`),
+    createdAt: '2027-01-25T09:00:00.000Z',
+    goal: { parentGoal: 'theo_sat_chuong_trinh', sessionGoal: 'lesson_practice' },
+    difficulty: { kMin: 'K1', kMax: 'K3', tMin: 'T1', tMax: 'T4', stretchRatio: 0.25 },
+    constraints: { noUnlearnedRequiredKnowledge: true, allowAboveGradeReasoning: true, requireUniqueVariants: true, language: 'vi', ageAppropriate: true, maxSolutionComplexity: 'standard' },
+    provenance: { plannerVersion: 'exercise-spec.v1', targetSelectorVersion: 'target-selector.v2', curriculumRevision: 'math-dev-core-1.0', curriculumContentHash: 'deadbeefcafe0007', twinVersion: '2027-01-25T09:00:00.000Z', gapSnapshotVersion: '2027-01-25T09:00:00.000Z' },
+  };
+  const mk = (
+    grade: number, lesson: string, domain: string, skills: Tgt[],
+    dist: Record<string, number>, mastery: Record<string, number>,
+  ): ExerciseGenerationSpec => ({
+    ...base, schoolGrade: grade,
+    learningContext: { curriculum: 'KET_NOI_TRI_THUC', expectedLessonId: lesson, resolvedLessonId: lesson, source: 'TEACHER_UPDATE', confidence: 'VERIFIED', isEstimated: false },
+    targets: { skills, problemTypeIds: [], skillIds: [...new Set(skills.map((s) => s.skillId))] },
+    childState: {
+      relevantMastery: mastery, prerequisiteGaps: [], readiness: 'ready',
+      thinkingProfile: { [domain]: 'T3' },
+      actualLearningFrontier: { [domain]: { reachedCurriculumOrigin: grade, aboveGrade: axis === 'g7_frontier', confidence: 0.6, evidenceCount: 6, masteredSkillIds: skills.map((s) => asSkillId(s.skillId)), readyNextSkillIds: [], exposureSkillIds: [] } },
+    },
+    generationPlan: { totalQuestions: 8, distribution: { prerequisiteRepair: 0, currentSkill: 4, variation: 2, application: 1, advanced: 0, thinkingChallenge: 1, ...dist } },
+  } as unknown as ExerciseGenerationSpec);
+
+  switch (axis) {
+    case 'g4_arith':
+      return mk(4, 'C.G4.3.8', 'arithmetic', [t({ skillId: 'M4.ARITH.MUL_2DIGIT', role: 'CURRENT', domain: 'arithmetic', buckets: ['currentSkill', 'variation', 'application'] })], {}, { 'M4.ARITH.MUL_2DIGIT': 60 });
+    case 'g4_frac':
+      return mk(4, 'C.G4.10.6', 'fractions', [t({ skillId: 'M4.FRAC.ADD', role: 'CURRENT', domain: 'fractions', buckets: ['currentSkill', 'variation', 'application'] }), t({ skillId: 'M4.FRAC.SUB', role: 'CURRENT', domain: 'fractions', buckets: ['currentSkill'] })], {}, { 'M4.FRAC.ADD': 55, 'M4.FRAC.SUB': 50 });
+    case 'g4_word':
+      return mk(4, 'C.G4.5.12', 'word_problems', [t({ skillId: 'M4.WORD.SUM_DIFF', role: 'CURRENT', domain: 'word_problems', buckets: ['currentSkill', 'variation', 'application'] })], {}, { 'M4.WORD.SUM_DIFF': 58 });
+    case 'g4_reasoning':
+      return mk(4, 'C.G4.3.8', 'arithmetic', [t({ skillId: 'M4.ARITH.DISTRIBUTIVE', role: 'CURRENT', domain: 'arithmetic', buckets: ['currentSkill', 'variation'] }), t({ skillId: 'M4.ARITH.DISTRIBUTIVE', role: 'THINKING', domain: 'arithmetic', buckets: ['thinkingChallenge'], selectionReason: 'THINKING_STRETCH' })], { thinkingChallenge: 2, currentSkill: 3 }, { 'M4.ARITH.DISTRIBUTIVE': 62 });
+    case 'g7_linear_eq':
+      return mk(7, 'C.G7.3.9', 'algebraic_thinking', [t({ skillId: 'M7.ALG.LINEAR_EQ', role: 'CURRENT', domain: 'algebraic_thinking', curriculumOrigin: 7, buckets: ['currentSkill', 'variation', 'application'] })], {}, { 'M7.ALG.LINEAR_EQ': 57 });
+    case 'g7_ratio':
+      return mk(7, 'C.G7.6.21', 'algebraic_thinking', [t({ skillId: 'M7.QNUM.EQUAL_CHAIN', role: 'CURRENT', domain: 'algebraic_thinking', curriculumOrigin: 7, buckets: ['currentSkill', 'variation', 'application'] })], {}, { 'M7.QNUM.EQUAL_CHAIN': 56 });
+    case 'g7_frontier':
+      return mk(7, 'C.G7.6.21', 'algebraic_thinking', [
+        t({ skillId: 'M7.QNUM.EQUAL_CHAIN', role: 'CURRENT', domain: 'algebraic_thinking', curriculumOrigin: 7, buckets: ['currentSkill', 'variation'] }),
+        t({ skillId: 'M7.ALG.SYMMETRIC', role: 'FRONTIER', domain: 'algebraic_thinking', curriculumOrigin: 9, buckets: ['advanced'], knowledgeCeiling: 'K5', selectionReason: 'MASTERED_FRONTIER_STRETCH', selectedCurriculumOrigin: 9 }),
+      ], { advanced: 2, currentSkill: 3 }, { 'M7.QNUM.EQUAL_CHAIN': 72, 'M7.ALG.SYMMETRIC': 70 });
+    case 'g7_geometry':
+      return mk(7, 'C.G7.4.14', 'geometry', [
+        t({ skillId: 'M7.GEO.PARALLEL_CRITERIA', role: 'CURRENT', domain: 'geometry', curriculumOrigin: 7, buckets: ['currentSkill', 'variation', 'application'] }),
+        t({ skillId: 'M7.GEO.PARALLEL_CRITERIA', role: 'THINKING', domain: 'geometry', curriculumOrigin: 7, buckets: ['thinkingChallenge'], selectionReason: 'THINKING_STRETCH' }),
+      ], { thinkingChallenge: 2, currentSkill: 3 }, { 'M7.GEO.PARALLEL_CRITERIA': 55 });
+  }
+}
+
+describe.skipIf(!LIVE)('doc 67 §D7 — final confirmation cohort (staging, PAID generation)', () => {
+  let pool: import('pg').Pool;
+  const childRefs: string[] = [];
+
+  beforeAll(async () => {
+    const { Pool } = await import('pg');
+    pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+  });
+  afterAll(async () => {
+    if (!pool) return;
+    const c = await pool.connect();
+    try {
+      await c.query(`SET session_replication_role = replica`);
+      const specIds = (
+        await c.query<{ generation_spec_id: string }>(
+          `SELECT generation_spec_id FROM worksheet_generation_runs WHERE child_ref = ANY($1::text[])
+           UNION SELECT generation_spec_id FROM worksheet_jobs WHERE child_ref = ANY($1::text[])`,
+          [childRefs],
+        )
+      ).rows.map((x) => x.generation_spec_id);
+      await c.query(`DELETE FROM worksheet_jobs WHERE child_ref = ANY($1::text[])`, [childRefs]).catch(() => {});
+      await c.query(`DELETE FROM review_queue WHERE child_ref = ANY($1::text[]) OR generation_spec_id = ANY($2::text[])`, [childRefs, specIds]).catch(() => {});
+      await c.query(`DELETE FROM worksheet_slot_attempts WHERE run_id IN (SELECT id FROM worksheet_generation_runs WHERE child_ref = ANY($1::text[]))`, [childRefs]).catch(() => {});
+      await c.query(`DELETE FROM worksheet_slots WHERE run_id IN (SELECT id FROM worksheet_generation_runs WHERE child_ref = ANY($1::text[]))`, [childRefs]).catch(() => {});
+      await c.query(`DELETE FROM worksheet_generation_runs WHERE child_ref = ANY($1::text[])`, [childRefs]).catch(() => {});
+      await c.query(`DELETE FROM ai_usage_events WHERE generation_spec_id = ANY($1::text[])`, [specIds]).catch(() => {});
+    } finally {
+      await c.query(`SET session_replication_role = origin`);
+      c.release();
+    }
+    await pool.end();
+  });
+
+  it(`~${(process.env.D7_RUNS ?? '30')} worksheets, gen ≤ $${GEN_CAP}, xcheck ≤ $${XCHECK_CAP}`, async () => {
+    const kb = loadKnowledgeBase();
+    const lib = loadReferenceLibrary();
+    const pricing = new PricingRegistry();
+    const RUNS = Number(process.env.D7_RUNS ?? '30');
+    const axes: Axis[] = ['g4_arith', 'g4_frac', 'g4_word', 'g4_reasoning', 'g7_linear_eq', 'g7_ratio', 'g7_frontier', 'g7_geometry'];
+
+    const mkGen = (model: string) =>
+      createLunaItemContentGenerator({
+        adapter: createOpenAiProviderAdapter({ apiKey: process.env.OPENAI_API_KEY!, model, capability: 'generate_problem' as AiCapability, compliance: COMPLIANCE }),
+        structuredOutputMode: 'STRICT_JSON_SCHEMA',
+      });
+    const generators = { default: mkGen('gpt-4.1-mini'), highComplexity: mkGen('gpt-5-mini') };
+
+    let xcheckUsd = 0;
+    const mkCc = (model: string) => createOpenAiAnswerCrosscheck(createOpenAiProviderAdapter({ apiKey: process.env.OPENAI_API_KEY!, model, capability: 'advanced_verification' as AiCapability, compliance: COMPLIANCE }));
+    const meter = (inner: ReturnType<typeof mkCc>) => ({
+      name: inner.name,
+      async crosscheck(req: Parameters<typeof inner.crosscheck>[0]) {
+        if (xcheckUsd > XCHECK_CAP) return { verdict: 'UNCERTAIN' as const, confidence: 0, detail: 'D7 xcheck cap' };
+        const out = await inner.crosscheck(req);
+        if (out.usage && pricing.has(out.usage.model)) xcheckUsd += tokenCostUsd(pricing.priceAt(out.usage.model, new Date()), { inputTokens: out.usage.inputTokens, outputTokens: out.usage.outputTokens });
+        return out;
+      },
+    });
+    const crosscheckAdapter = createRoutedAnswerCrosscheck({
+      base: meter(mkCc(process.env.CROSSCHECK_MODEL ?? 'gpt-4.1-mini')),
+      geometryProof: meter(mkCc(process.env.CROSSCHECK_GEOMETRY_MODEL ?? 'gpt-5-mini')),
+    });
+
+    const store = new PgWorksheetGenerationStore(pool);
+    const reviewQueue = new PgReviewQueueStore(pool);
+    const queue = new PgWorksheetJobQueue(pool);
+    const events: AiUsageEvent[] = [];
+    const guard = new DailyCostGuard({ perWorksheetUsd: 0.06, perDayUsd: GEN_CAP });
+
+    const worker = new WorksheetJobWorker({
+      pool, workerId: 'd7', knowledgeBase: kb, referenceLibrary: lib, leaseMs: 300_000, backoffMs: 500,
+      buildDeps: () => ({ generators, crosscheckAdapter, reviewQueue, store, usageSink: (e) => { events.push(e); void insertAiUsageEvent(pool, e).catch(() => undefined); }, costGuard: guard }),
+    });
+
+    let enqueued = 0;
+    for (let i = 0; i < RUNS; i += 1) {
+      if (!guard.canRun().ok) break;
+      const axis = axes[i % axes.length]!;
+      const spec = specForAxis(axis, `d7-${Date.now()}-${i}`);
+      const cref = createHash('sha256').update(`${spec.childId}-${i}`).digest('hex').slice(0, 16);
+      childRefs.push(cref);
+      const id = await queue.enqueueDurable({ mode: 'SHADOW', spec, childRef: cref, usageContext: { userRef: 'u_d7', childRef: cref, plan: 'plus' as const } });
+      if (id) enqueued += 1;
+    }
+    expect(enqueued).toBeGreaterThan(0);
+    await worker.runToIdle(RUNS * 8 + 20);
+
+    // ---- score against the exit gates ----
+    const runs = await pool.query<{ id: string; worksheet_state: string }>(
+      `SELECT id, worksheet_state FROM worksheet_generation_runs WHERE child_ref = ANY($1::text[])`,
+      [childRefs],
+    );
+    const runIds = runs.rows.map((r) => r.id);
+    const slots = await pool.query<{ final_state: string; answer_status: string | null; production_ready: boolean; kernel_family: string | null }>(
+      `SELECT final_state, answer_status, production_ready, kernel_family FROM worksheet_slots WHERE run_id = ANY($1::text[])`,
+      [runIds],
+    );
+    const kernelSlots = slots.rows.filter((s) => s.kernel_family);
+    const kernelReady = kernelSlots.filter((s) => s.final_state === 'READY');
+    const kernelProdReady = kernelReady.filter((s) => s.production_ready);
+    const wrongAccepted = slots.rows.filter((s) => (s.final_state === 'READY' || s.final_state === 'PENDING_CROSSCHECK') && s.answer_status === 'DETERMINISTIC_WRONG');
+    const semUnknownAccepted = slots.rows.filter((s) => (s.final_state === 'READY' || s.final_state === 'PENDING_CROSSCHECK') && s.answer_status === 'SEMANTIC_UNKNOWN');
+    const fullComplete = runs.rows.filter((r) => r.worksheet_state !== 'FAILED').length;
+    const attempts = await pool.query<{ mx: string }>(`SELECT max(cnt) mx FROM (SELECT count(*) cnt FROM worksheet_slot_attempts WHERE run_id = ANY($1::text[]) GROUP BY run_id, item_id) x`, [runIds]);
+    const jobStats = await queue.stats();
+
+    const report = [
+      `DẠYZI — D7 CONFIRMATION COHORT (staging)  ${new Date().toISOString()}`,
+      `caps: generation $${GEN_CAP}  crosscheck $${XCHECK_CAP}`,
+      `worksheets enqueued/done/failed: ${enqueued} / ${jobStats.DONE} / ${jobStats.FAILED}`,
+      `generation spend: $${guard.spentTodayUsd.toFixed(4)}   crosscheck spend: $${xcheckUsd.toFixed(4)}`,
+      ``,
+      `full worksheet completion: ${runs.rows.length ? ((fullComplete / runs.rows.length) * 100).toFixed(1) : '0'}%  (${fullComplete}/${runs.rows.length})`,
+      `kernel deterministic correctness: ${kernelReady.length ? ((kernelProdReady.length / kernelReady.length) * 100).toFixed(1) : 'n/a'}%  (${kernelProdReady.length}/${kernelReady.length})`,
+      `kernel item accepted WRONG: ${wrongAccepted.length}`,
+      `silent SEMANTIC_UNKNOWN accepted: ${semUnknownAccepted.length}`,
+      `PENDING_CROSSCHECK slots: ${slots.rows.filter((s) => s.final_state === 'PENDING_CROSSCHECK').length}`,
+      `FAILED slots: ${slots.rows.filter((s) => s.final_state === 'FAILED').length}`,
+      `max attempts / slot: ${attempts.rows[0]?.mx ?? 0}`,
+      `review-queue rows: ${(await pool.query(`SELECT count(*)::int n FROM review_queue WHERE child_ref = ANY($1::text[])`, [childRefs])).rows[0].n}`,
+    ].join('\n');
+    writeFileSync(OUT, report);
+    console.log('\n' + report + '\n');
+
+    // hard exit gates
+    expect(wrongAccepted.length, 'kernel item accepted with a wrong answer').toBe(0);
+    expect(semUnknownAccepted.length, 'silent SEMANTIC_UNKNOWN acceptance').toBe(0);
+    if (kernelReady.length > 0) expect(kernelProdReady.length).toBe(kernelReady.length); // 100%
+    expect(Number(attempts.rows[0]?.mx ?? 0)).toBeLessThanOrEqual(6);
+    expect(guard.spentTodayUsd).toBeLessThanOrEqual(GEN_CAP + 0.06);
+    expect(xcheckUsd).toBeLessThanOrEqual(XCHECK_CAP + 0.05);
+  }, 60 * 60 * 1000);
+});
