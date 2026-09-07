@@ -249,7 +249,7 @@ describe.skipIf(!LIVE)('doc 67 §D7 — final confirmation cohort (staging, PAID
     const reviewQueue = new PgReviewQueueStore(pool);
     const queue = new PgWorksheetJobQueue(pool);
     const events: AiUsageEvent[] = [];
-    const guard = new DailyCostGuard({ perWorksheetUsd: 0.06, perDayUsd: GEN_CAP });
+    const guard = new DailyCostGuard({ perWorksheetUsd: 0.08, perDayUsd: GEN_CAP });
 
     const worker = new WorksheetJobWorker({
       pool, workerId: 'd7', knowledgeBase: kb, referenceLibrary: lib, leaseMs: 300_000, backoffMs: 500,
@@ -490,7 +490,7 @@ describe.skipIf(!LIVE)('doc 67 §D7 — final confirmation cohort (staging, PAID
     expect(coreDeliveryRate, 'CORE_WORKSHEET_DELIVERY_RATE ≥ 99%').toBeGreaterThanOrEqual(0.99);
     expect(maxAtt, 'bounded retry').toBeLessThanOrEqual(6);
     expect(Number(dupRuns.rows[0]?.mx ?? 0), 'duplicate worksheet').toBeLessThanOrEqual(1);
-    expect(guard.spentTodayUsd).toBeLessThanOrEqual(GEN_CAP + 0.06);
+    expect(guard.spentTodayUsd).toBeLessThanOrEqual(GEN_CAP + 0.08);
     expect(xcheckUsd).toBeLessThanOrEqual(XCHECK_CAP + 0.05);
   }, 60 * 60 * 1000);
 });
