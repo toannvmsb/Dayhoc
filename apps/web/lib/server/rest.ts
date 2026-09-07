@@ -336,6 +336,41 @@ const ROUTES: Record<string, Handler> = {
     getApi().worksheetShadowObservability(await adminCtx(c), {
       ...(c.query.get('sinceIso') ? { sinceIso: c.query.get('sinceIso')! } : {}),
     }),
+
+  // ---- ADMIN Controlled Internal LIVE (doc 69) ----
+  'GET /admin/internal-live/dashboard': async (c) =>
+    getApi().internalLiveDashboard(await adminCtx(c), {
+      ...(c.query.get('sinceIso') ? { sinceIso: c.query.get('sinceIso')! } : {}),
+    }),
+  'GET /admin/internal-live/review-ops': async (c) =>
+    getApi().internalLiveReviewOps(await adminCtx(c), {
+      ...(c.query.get('sinceIso') ? { sinceIso: c.query.get('sinceIso')! } : {}),
+    }),
+  'GET /admin/internal-live/cohort': async (c) => getApi().internalLiveCohortList(await adminCtx(c)),
+  'POST /admin/internal-live/cohort': async (c) => {
+    const familyId = String(c.body.familyId ?? '');
+    if (!familyId) throw new RestError(400, 'familyId là bắt buộc');
+    return getApi().internalLiveCohortAdd(await adminCtx(c), familyId, {
+      ...(c.body.wave !== undefined ? { wave: Number(c.body.wave) } : {}),
+      ...(c.body.note ? { note: String(c.body.note) } : {}),
+    });
+  },
+  'DELETE /admin/internal-live/cohort/:familyId': async (c) =>
+    getApi().internalLiveCohortRemove(await adminCtx(c), c.params[0]!),
+  'GET /admin/internal-live/kill-switch': async (c) => getApi().internalLiveKillSwitchStatus(await adminCtx(c)),
+  'POST /admin/internal-live/kill-switch': async (c) => {
+    const on = c.body.on === true || String(c.body.on).toLowerCase() === 'true';
+    return getApi().internalLiveKillSwitch(await adminCtx(c), on, c.body.reason ? String(c.body.reason) : undefined);
+  },
+  'POST /admin/internal-live/safety-scan': async (c) =>
+    getApi().internalLiveSafetyScan(await adminCtx(c), {
+      ...(c.query.get('sinceIso') ? { sinceIso: c.query.get('sinceIso')! } : {}),
+      ...(c.body.enforce === false ? { enforce: false } : {}),
+    }),
+  'GET /admin/internal-live/qa': async (c) =>
+    getApi().internalLiveQaList(await adminCtx(c), c.query.get('limit') ? Number(c.query.get('limit')) : undefined),
+  'GET /admin/internal-live/qa/:id': async (c) => getApi().internalLiveQaRead(await adminCtx(c), c.params[0]!),
+  'POST /admin/internal-live/maintenance': async (c) => getApi().internalLiveMaintenance(await adminCtx(c)),
 };
 
 const COMPILED = Object.entries(ROUTES).map(([key, handler]) => {
