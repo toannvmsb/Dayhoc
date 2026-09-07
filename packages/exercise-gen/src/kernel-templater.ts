@@ -73,12 +73,22 @@ export function buildContentFromKernel(dna: ProblemDNA, variant = 0): GeneratedI
     case 'PARALLEL_ANGLES': {
       const relMatch = /Góc ([^:]+?) với góc/.exec(k.operationGraph[0] ?? '');
       const rel = relMatch?.[1]?.trim() ?? 'so le trong';
+      const x = nums[0];
+      // structurally-varied framings (different geometric setups + sentence
+      // shapes) so a worksheet with several parallel-angle slots does not collide
+      // on the similarity skeleton.
       prompt = [
-        `Cho hai đường thẳng song song bị cắt bởi một đường thẳng thứ ba. Một góc tạo thành có số đo ${nums[0]}°. Tính số đo góc ${rel} với góc đó.`,
-        `Hai đường thẳng a và b song song, cát tuyến c cắt chúng. Biết một góc bằng ${nums[0]}°, tìm số đo góc ${rel} với nó.`,
-        `Đường thẳng d cắt hai đường thẳng song song. Một trong các góc tạo thành là ${nums[0]}°. Góc ${rel} với góc này có số đo bao nhiêu độ?`,
-        `Hai đường thẳng song song bị một cát tuyến cắt tạo ra một góc ${nums[0]}°. Xác định số đo góc ${rel} tương ứng.`,
-      ][(n - 1) % 4]!;
+        `Hai đường thẳng a và b song song với nhau, đường thẳng c cắt a tại M và cắt b tại N. Biết một góc tại M có số đo ${x}°. Tính số đo góc ${rel} với góc đó tại N.`,
+        `Cho hình vẽ: đường thẳng xy song song với đường thẳng zt, cát tuyến uv cắt cả hai. Một góc tạo thành bằng ${x}°. Số đo góc ${rel} với nó là bao nhiêu độ?`,
+        `Một thanh sắt bắc chéo qua hai xà ngang song song của một khung cửa. Góc giữa thanh và xà thứ nhất là ${x}°. Tính góc ${rel} giữa thanh và xà thứ hai.`,
+        `Hai con đường thẳng chạy song song bị một con đường thứ ba cắt ngang. Tại giao điểm thứ nhất đo được góc ${x}°. Hỏi góc ${rel} tại giao điểm thứ hai bằng bao nhiêu?`,
+        `Đường ray tàu gồm hai thanh song song; một tà vẹt đặt chéo tạo với thanh trái góc ${x}°. Xác định góc ${rel} mà tà vẹt tạo với thanh phải.`,
+        `Trong một bài hình học, cho p // q và một đường thẳng r cắt qua. Một trong các góc là ${x}°. Viết số đo của góc ${rel} với góc ${x}°.`,
+        `Cho hai đường thẳng song song và một cát tuyến. Đánh số các góc tạo thành; góc số 1 bằng ${x}°. Góc ${rel} với góc số 1 có số đo bao nhiêu?`,
+        `Hai cạnh đối của một hình thang là hai đường thẳng song song. Một đường chéo tạo với cạnh trên góc ${x}°. Tính góc ${rel} mà đường chéo đó tạo với cạnh dưới.`,
+        `Bạn Nam vẽ hai đường thẳng song song rồi kẻ thêm một đường xiên cắt qua. Nam đo được một góc là ${x}°. Giúp Nam tính góc ${rel} với góc vừa đo.`,
+        `Cho m // n, đường thẳng t cắt m và n. Biết số đo một góc bằng ${x}°, hãy tính số đo góc ${rel} với góc đó và giải thích ngắn gọn.`,
+      ][(n - 1) % 10]!;
       break;
     }
     case 'ANGLE_SUM':
