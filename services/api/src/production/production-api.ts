@@ -407,7 +407,17 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const day = now().toISOString().slice(0, 10);
       const { scoped, inputs } = await learningScene(childId);
       const s = await scoped._scene(childId);
-      if (s.plan.kind !== 'plan') return { enqueued: false, reason: `planner returned "${s.plan.kind}" — nothing to generate` };
+      // "Hôm nay dạy con gì?" always has an answer: generate for the resolved
+      // current lesson / open gaps / active skills even when the deterministic
+      // planner returns `no_plan_needed` (mirrors `createPracticeAssignment`'s
+      // zero-data fallback). Only skip when there is genuinely nothing to target.
+      const hasTarget =
+        s.plan.kind === 'plan' ||
+        !!s.context.resolved.lessonId ||
+        s.gaps.gaps.length > 0 ||
+        s.context.resolved.activeSkillIds.length > 0 ||
+        s.context.activeSkillIds.length > 0;
+      if (!hasTarget) return { enqueued: false, reason: 'no resolved lesson, gap or active skill — nothing to generate' };
       const spec = buildExerciseGenerationSpec({
         childId: asChildId(childId),
         gradeContext: inputs.gradeContext,
