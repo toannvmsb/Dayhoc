@@ -179,21 +179,100 @@ anything).
 
 ---
 
-## PHASE D7 — FINAL CONFIRMATION COHORT  ⏸  STOP — needs an explicit generation budget
+## PHASE D7 — FINAL CONFIRMATION COHORT  ⏸  STOP — completion gate FAILED; needs a decision + a fresh budget
 
-`d7-confirmation-cohort.live.integration.test.ts` is **built** (`RUN_D7=1` +
-`D7_GEN_CAP_USD` required — the run refuses to start without an explicit budget).
-~30 synthetic worksheets through the full staging path with the **real Luna
-generator**, covering G4 + G7 · arithmetic · fractions · word problems ·
-LINEAR_EQ · frontier (above-grade) · reasoning · Group C · geometry. Persists a
-`D7_COHORT.txt` report and asserts the hard exit gates (kernel correctness 100%,
-0 wrong accepted, 0 silent semantic contradiction, bounded retry, spend ≤ caps).
+`d7-confirmation-cohort.live.integration.test.ts` — ~30 synthetic worksheets
+through the full staging path with the **real Luna generator**, covering G4 + G7
+· arithmetic · fractions · word problems · LINEAR_EQ · frontier · reasoning ·
+Group C · geometry. Persists `D7_COHORT.txt`, asserts the hard *safety* gates.
 
-**Why STOP:** D7 is **paid generation**, and the autonomous generation budget
-($2.00) is at **$1.9087** — ~$0.09 left. ~30 real worksheets ≈ **$0.60–0.90**.
-Per the directive ("if a new paid generation budget is required, STOP and
-request it before running"), this is a mandatory boundary.
+### Run 1 (2026-09-07, `D7_GEN_CAP_USD=1.00`, 30 worksheets)  — commit `b8e7002`
 
-**Request:** an explicit `D7_GEN_CAP_USD` (≈ **$1.00** covers ~30 worksheets with
-headroom) for the confirmation cohort. Crosscheck for D7 stays inside a $0.25
-sub-cap of the existing $0.50 crosscheck budget (~$0.07 spent so far).
+| Gate | Result |
+|---|---|
+| kernel deterministic correctness | **100.0%** (162/162) ✅ |
+| kernel item accepted WRONG | **0** ✅ |
+| silent SEMANTIC_UNKNOWN accepted | **0** ✅ |
+| Group-C false PASS (UNCERTAIN never → PASS) | **0** ✅ (3 PENDING_CROSSCHECK, 3 REVIEW) |
+| max attempts / slot | **5** (≤ 6) — bounded ✅ |
+| no duplicate worksheet | **1 run / spec** ✅ |
+| spend | gen **$0.6478** / $1.00 · xcheck **$0.0526** / $0.25 ✅ |
+| **full worksheet completion** | **0/30 (0.0%)** ❌ — hard fail vs the ≥99% (30/30) gate |
+
+Recovery paths (243 items): FIRST_PASS 109 (44.9%) · AFTER_RETRY 33 (13.6%) ·
+AFTER_FALLBACK 12 (4.9%) · AFTER_LAST_RESORT 8 (3.3%) · AFTER_CROSSCHECK 35
+(14.4%) · REVIEW_REQUIRED 3 (1.2%) · **FAILED 43 (17.7%)**. avg 1.63 attempts/item.
+cost/item $0.00267 · cost/worksheet $0.020. model share 48.6% mini / 51.4%
+5-mini. slot p50/p95 8.1s / 29.6s · sheet p50/p95 63s / 145s.
+
+**All safety gates pass — nothing wrong was ever served.** The blocker is the
+**completion gate**: every worksheet was marked `FAILED` because the orchestrator
+sets `worksheetState = failedSlots > 0 ? 'FAILED'` — one failing slot fails the
+whole sheet (the 7 good items and a `review_queue` row for the 8th are still
+persisted).
+
+### Run 2 — diagnostic (`D7_GEN_CAP_USD=0.30`, 12 worksheets)  — commit `320348c`
+
+Captured `failure_category` before the staging purge. **The exact failure path:**
+
+- **25 of ~42 failed-slot attempts = `CURRICULUM_OR_LEVEL`.** Root cause: the
+  synthetic specs hard-coded `difficulty { kMax: K3, tMax: T4 }` for **every**
+  axis. The generator then produces a *correct* K5 frontier / T5 thinking-
+  challenge item and the validator rejects it as out-of-envelope. The real
+  planner's `deriveDifficulty` lifts `kMax` to the FRONTIER target's ceiling and
+  `tMax` to T5 for an advanced `parentGoal` — **a fixture bug, not a pipeline
+  defect.**
+- 14 of 17 FAILED slots were `NO_KERNEL` (frontier / geometry / thinking) with
+  `initial_role: HIGH_COMPLEXITY` — no deterministic last-resort exists for
+  non-Group-A families, so they terminate `FAILED` after retry + escalation.
+- Residual genuine model-quality failures (minority): `COMPOSE` 6 (geometry
+  multiple-choice item generated as a numeric "tìm x"), `RAW_LATEX` 3 (model
+  emits `\frac` despite the corrective instruction), `CROSSCHECK_FAIL` 3,
+  `SIMILARITY_OR_DUPLICATE` 2.
+
+### Fix + Run 3 — targeted re-validation (`D7_GEN_CAP_USD=0.09`, `D7_AXES=g7_frontier,g7_geometry,g4_reasoning`)  — commit `320348c`
+
+Fixture fix: `specForAxis` now derives a per-axis envelope consistent with its
+buckets (frontier → `kMax K5`; thinking → `tMax T5`; advanced `parentGoal`), and
+the distribution was corrected to **1 hard slot / worksheet** to match the real
+planner mix (`78e04ae`).
+
+Result on the two hardest axes: **`CURRICULUM_OR_LEVEL` dropped from 25 → 3**
+(absolute), safety gates still 100% / 0 / 0. But **frontier and geometry
+worksheets still `FAILED`** — residual `SIMILARITY_OR_DUPLICATE` (3, narrow
+`M7.ALG.SYMMETRIC` frontier content), `RAW_LATEX` (1), `COMPOSE` (1),
+`CROSSCHECK_FAIL` (1) still put ≥1 slot/worksheet into `FAILED`.
+
+### Where this leaves INTERNAL_LIVE_READY
+
+`INTERNAL_LIVE_READY = false`. **Exact blocker:** the ≥99% "full worksheet
+completion (30/30)" gate is unreachable while **(a)** the orchestrator hard-fails
+an entire worksheet on any single failed slot **and (b)** residual per-slot
+failure on the hardest above-grade / geometry-multiple-choice / LaTeX-suppression
+content is non-zero and not deterministically recoverable (no kernel → no
+last-resort). Every failed slot already produces a `review_queue` row, so no
+child is ever shown a broken or wrong item — the failure is a *label*, not a
+served defect.
+
+**Two mutually-exclusive decisions are needed from anh (either unblocks D7):**
+
+1. **Partial-worksheet delivery semantics.** Change `worksheetState` so a sheet
+   with ≥1 accepted slot and the rest routed to REVIEW is `READY_WITH_REVIEW`
+   (delivered: N good items now + the gaps tracked for a reviewer), and
+   redefine the completion gate as "≥ 99% of *items* land READY or REVIEW, 0
+   silently wrong". This is a **product/architecture decision** (MVP loop + doc
+   65 §8) — Claude will not make it unilaterally.
+2. **Keep strict semantics**, accept that "full worksheet completion" as defined
+   will sit around the first-pass-clean rate (~40–60% of worksheets in run 1),
+   and treat the review queue as the operational completion path. Internal LIVE
+   then gates on *item* completion + review-queue throughput instead.
+
+**Also required before a real 30-run:** a fresh `D7_GEN_CAP_USD` — the approved
+$1.00 was consumed by runs 1–3 ($0.976 total). ~$1.00 more covers a clean 30-run
+under the chosen semantics.
+
+### Spend to date (D7)
+
+generation **$0.976** / $1.00 approved · crosscheck **$0.089** / $0.25 sub-cap.
+Cumulative session generation spend **$2.885** (autonomous $1.909 + D7 $0.976);
+cumulative crosscheck **$0.164** / $0.50.
