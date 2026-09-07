@@ -1,0 +1,74 @@
+DẠYZI — D7B FINAL CLEAN CONFIRMATION COHORT (staging)  2026-09-07T17:15:07.455Z  run=rmtrh8b9n
+caps: generation $0.7  crosscheck $0.15
+
+== COUNTS ==
+worksheets enqueued/done/failed: 30 / 32 / 0
+persisted runs: 30   items (slots): 240   delivered items: 230
+REQUIRED_CORE slots: 200   OPTIONAL slots: 40
+
+== HARD SAFETY GATES (doc 68 §13) ==
+CORE_WORKSHEET_DELIVERY_RATE: 100.0%  (30/30)   gate ≥ 99%
+VERIFIED_DELIVERY_RATE:       100.00%  (230/230)   gate = 100%
+UNSAFE_DELIVERY_RATE:         0.00%  (0)   gate = 0%
+kernel deterministic correctness: 100.0%  (207/207)   gate = 100%
+kernel item accepted WRONG: 0   gate = 0
+silent SEMANTIC_UNKNOWN accepted: 0   gate = 0
+max attempts / slot: 5   gate ≤ 6 (unbounded retry = 0)
+max runs per generation_spec_id: 1   gate = 1 (no duplicate worksheet)
+
+== RECOVERY PATHS (per item) ==
+READY_FIRST_PASS:              142  (59.2%)
+READY_AFTER_RETRY:            32  (13.3%)
+READY_AFTER_FALLBACK:         20  (8.3%)
+READY_AFTER_LAST_RESORT:      12  (5.0%)
+READY_AFTER_CROSSCHECK:       23  (9.6%)
+READY_AFTER_SAFE_SUBSTITUTION: 1  (0.4%)
+OPTIONAL_OMITTED:             10  (4.2%)
+REVIEW_REQUIRED (rows):       10  (4.2%)
+FAILED:                       0  (0.0%)
+average attempts / item: 1.53
+
+== OPTIONAL BEHAVIOR (doc 68 §14) ==
+OPTIONAL_CHALLENGE_AVAILABILITY: 100.0%  (30/30 worksheets carry ≥1 optional item)
+SAFE_SUBSTITUTION_RATE (overall): 0.4%  (1/240 slots)
+SAFE_SUBSTITUTION_RATE (REQUIRED_CORE): 0.5%  (1/200 core slots)
+OPTIONAL_OMISSION_RATE: 25.0%  (10/40 optional slots)
+REVIEW_QUEUE_RATE: 4.2%  (10/240 slots)
+-- substituted items: original → substitute (K/T + structure), skill/objective preservation (doc 68 §7) --
+  g7_linear_eq item-07 :: safe substitute: K2/T3 compare_and_decide → K1/T1 direct_computation (skill PRESERVED; kernelBacked=true; was: both models failed (last category CROSSCHECK_FAIL))
+-- exact reason per omitted / substituted item --
+  g4_reasoning item-07 OMITTED [OPTIONAL_STRETCH] deterministic last-resort could not finish the slot
+  g7_frontier item-07 OMITTED [OPTIONAL_STRETCH] both models failed (last category SIMILARITY_OR_DUPLICATE)
+  g4_arith item-08 OMITTED [OPTIONAL_STRETCH] both models failed (last category SIMILARITY_OR_DUPLICATE)
+  g4_reasoning item-07 OMITTED [OPTIONAL_STRETCH] deterministic last-resort could not finish the slot
+  g7_frontier item-07 OMITTED [OPTIONAL_STRETCH] both models failed (last category CURRICULUM_OR_LEVEL)
+  g4_reasoning item-07 OMITTED [OPTIONAL_STRETCH] deterministic last-resort could not finish the slot
+  g7_linear_eq item-07 SUBSTITUTED [REQUIRED_CORE] safe substitute: K2/T3 compare_and_decide → K1/T1 direct_computation (skill PRESERVED; kernelBacked=true; was: both models failed (last category CROSSCHECK_FAIL))
+  g7_ratio item-08 OMITTED [OPTIONAL_STRETCH] both models failed (last category CONTENT_QUALITY)
+  g7_frontier item-07 OMITTED [OPTIONAL_STRETCH] both models failed (last category SIMILARITY_OR_DUPLICATE)
+  g7_geometry item-08 OMITTED [OPTIONAL_REASONING] both models failed (last category COMPOSE)
+  g4_reasoning item-07 OMITTED [OPTIONAL_STRETCH] deterministic last-resort could not finish the slot
+
+== COST ==
+generation spend: $0.4894 / $0.7
+crosscheck spend: $0.0256 / $0.15
+cost / item: $0.00204   cost / delivered worksheet: $0.01631
+
+== MODEL SHARE (generation attempts) ==
+gpt-4.1-mini: 198  (56.4%)
+gpt-5-mini:   153  (43.6%)
+
+== LATENCY ==
+slot  p50/p95: 6814ms / 22368ms
+sheet p50/p95: 39725ms / 98858ms
+
+== QUEUE / PERSISTENCE ==
+job stats: {"PENDING":0,"CLAIMED":0,"DONE":32,"FAILED":0}
+worksheet_state distribution: {"READY":19,"READY_WITH_SAFE_SUBSTITUTION":1,"READY_WITH_OPTIONAL_OMISSIONS":10}
+
+== FAILED-SLOT DIAGNOSTICS (if any) ==
+FAILED slots by axis: {}
+slots per axis (total): {"g4_arith":32,"g4_frac":32,"g4_word":32,"g4_reasoning":32,"g7_linear_eq":32,"g7_ratio":32,"g7_frontier":24,"g7_geometry":24}
+FAILED slots by kernel_family: {}
+failure_category on failed slots' attempts: {}
+content_quality codes on FAILED slots: {}

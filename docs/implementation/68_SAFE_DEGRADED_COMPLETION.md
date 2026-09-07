@@ -168,34 +168,74 @@ served.
 / fence beam / railway tà vẹt / trapezoid diagonal / …). Offline: every slot of a
 6-slot geometry worksheet completes via last-resort (v0, no collision).
 
-**Run 3 (geometry + frac spot check within the remaining D7B budget)** — **NOT
-RUN.** D7B generation budget: run 1 $0.5528 + run 2 $0.1391 = **$0.6919 / $0.75**.
-~$0.058 left is below the ~$0.08 per-worksheet floor — a $0.06 cap enqueues 0
-worksheets. **$0 spent on the aborted attempt.**
+**Run 3 (geometry spot check)** — NOT RUN; ~$0.058 left was below the per-worksheet
+floor. **$0 spent.**
 
-## Status
+### D7B FINAL CLEAN CONFIRMATION (fresh 30-worksheet cohort, all fixes in place) — 2026-09-08, `run=rmtrh8b9n`, commit `4ffc17d`
 
-| flag | state |
+Fresh cohort (`RUN_TAG` nonce in the spec id + child_ref — no replay of a prior
+realization), all 8 axes, complete real staging path (planner → slot criticality
+→ fallback envelope → durable queue → orchestrator v2 → MathKernel → locked
+routing → validator → content-quality → retry → fallback → last-resort → safe
+substitute → Group-C crosscheck → optional omission/review → assembly →
+persistence → cost ledger → observability). Report:
+`docs/implementation/data/68_d7b_final_cohort.txt`.
+
+| hard gate | result |
 |---|---|
-| implementation (§1–11) | ✅ done, 830 unit tests, tsc + web typecheck clean |
-| migration `1758758400000` | ✅ on staging, down/up verified |
-| all safety gates (D7B run 1 + 2, 39 real worksheets) | ✅ VERIFIED_DELIVERY 100%, UNSAFE 0%, kernel 100%, 0 wrong, 0 contradiction, bounded retry, no dup |
-| root-cause fixes (g4_frac, g7_geometry, PARALLEL_ANGLES variety) | ✅ committed + offline-verified; g4_frac + g7_frontier confirmed on staging |
-| **full 30-worksheet D7B with all fixes** | ⏸ **not run — needs a topped-up D7B generation budget** (~$0.55 for 30, ~$0.22 for a 12-worksheet all-axes spot check) |
-| `FINAL_CONFIRMATION_COMPLETE` | ❌ pending the run above |
-| `INTERNAL_LIVE_READY` | **false** — one unrun paid confirmation |
+| **CORE_WORKSHEET_DELIVERY_RATE** | **100.0% (30/30)** ✅ — no rounding |
+| **VERIFIED_DELIVERY_RATE** | **100.00% (230/230)** ✅ |
+| **UNSAFE_DELIVERY_RATE** | **0.00%** ✅ |
+| kernel deterministic correctness | **100.0% (207/207)** ✅ |
+| wrong accepted / silent semantic contradiction | **0 / 0** ✅ |
+| Group-C false PASS | **0** ✅ |
+| max attempts / slot | **5** (≤ 6) ✅ |
+| no duplicate worksheet | ✅ |
+| FAILED slots | **0** ✅ |
+| spend | gen **$0.4894 / $0.70** · xcheck **$0.0256 / $0.15** ✅ |
 
-LIVE stays OFF. Locked routing unchanged. No public exposure. No billing change.
+worksheet_state: `READY` 19 · `READY_WITH_SAFE_SUBSTITUTION` 1 · `READY_WITH_OPTIONAL_OMISSIONS` 10 · `FAILED` 0.
+
+Recovery (240 items): FIRST_PASS 59.2% · RETRY 13.3% · FALLBACK 8.3% ·
+LAST_RESORT 5.0% · CROSSCHECK 9.6% · **SAFE_SUBSTITUTION 0.4%** · OMITTED 4.2% ·
+**FAILED 0**. avg 1.53 attempts/item.
+
+**Safe substitution — 1 slot** (`g7_linear_eq item-07`: K2/T3 `compare_and_decide`
+→ K1/T1 `direct_computation`, **skill PRESERVED**, kernel-backed, was CROSSCHECK_FAIL).
+`SAFE_SUBSTITUTION_RATE (core) = 0.5%` — well below the 10% review threshold;
+completion is **not** hidden behind degradation.
+
+**Optional omissions — 10/40 (25%)**, all `OPTIONAL_STRETCH` / `OPTIONAL_REASONING`,
+each → review queue, none block delivery: `g4_reasoning item-07` (thinking, ×4 —
+last-resort variety), `g7_frontier item-07` (`M7.ALG.SYMMETRIC` similarity /
+curriculum, ×3), `g4_arith item-08`, `g7_ratio item-08` (content-quality),
+`g7_geometry item-08` (reasoning COMPOSE). `OPTIONAL_CHALLENGE_AVAILABILITY 100%`
+(every worksheet carries ≥1 optional). `REVIEW_QUEUE_RATE 4.2%`.
+
+Cost/item **$0.00204**; cost/delivered-worksheet **$0.0163**. Latency: slot
+p50/p95 6.8s / 22.4s; worksheet p50/p95 40s / 99s. Model share 56.4% gpt-4.1-mini
+/ 43.6% gpt-5-mini.
+
+## Verdict
+
+- `FINAL_CONFIRMATION_COMPLETE = true`
+- `INTERNAL_LIVE_READY = true`
+
+**P0 = 0 · P1 = 0.** P2 (recorded, not fixed — per final directive §10): narrow
+`M7.ALG.SYMMETRIC` frontier content and the geometry `explain_or_justify` optional
+item drive most omissions; the g4_reasoning thinking-challenge item (`DISTRIBUTIVE`
+`find_the_error`) has thin last-resort variety. All are OPTIONAL — omitted to
+review, never served broken.
+
+**LIVE stays OFF. Locked routing unchanged. No public exposure. No billing
+change. No further paid cohorts.** Total additional paid spend this directive:
+generation **$0.4894**, crosscheck **$0.0256**.
 
 ## 15. Internal LIVE
 
 If D7B passes every hard gate → `FINAL_CONFIRMATION_COMPLETE=true`,
 `INTERNAL_LIVE_READY=true`. **LIVE stays OFF.**
 
-**Current: `INTERNAL_LIVE_READY = false`** — every hard *safety* gate has passed
-on 39 real staging worksheets across two runs, and all three CORE-delivery
-blockers found in run 1 are fixed (two confirmed on staging, the third —
-PARALLEL_ANGLES last-resort variety — offline-verified). The one thing missing is
-a **full 30-worksheet D7B run with all fixes in place**, which needs a topped-up
-`D7B_GEN_CAP_USD` (the approved $0.75 is spent). Requested: **≈ $0.60** for a
-clean 30/30, or **≈ $0.25** for a 12-worksheet all-axes spot check.
+**`INTERNAL_LIVE_READY = true`** as of the D7B FINAL clean confirmation
+(2026-09-08, 30/30 core delivery, every hard gate green, $0.4894/$0.70).
+**LIVE is NOT enabled** — that flip is a separate, explicit decision.
