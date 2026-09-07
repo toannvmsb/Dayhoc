@@ -13,6 +13,9 @@ Object.assign(env, {
   RUN_GROUPC_XCHECK: '1',
   GROUPC_XCHECK_CAP_USD: process.env.GROUPC_XCHECK_CAP_USD ?? '0.50',
   CROSSCHECK_MODEL: process.env.CROSSCHECK_MODEL ?? 'gpt-4.1-mini',
+  ...(process.env.GROUPC_XCHECK_GEO_MODEL ? { GROUPC_XCHECK_GEO_MODEL: process.env.GROUPC_XCHECK_GEO_MODEL } : {}),
+  ...(process.env.GROUPC_XCHECK_ONLY ? { GROUPC_XCHECK_ONLY: process.env.GROUPC_XCHECK_ONLY } : {}),
+  ...(process.env.GROUPC_XCHECK_TAG ? { GROUPC_XCHECK_TAG: process.env.GROUPC_XCHECK_TAG } : {}),
 });
 
 const r = spawnSync(
