@@ -416,20 +416,35 @@ export function createProductionApi(opts: ProductionApiOptions) {
         asOf: s.asOf,
         newId: () => `${mode === 'LIVE' ? 'live' : 'shadow'}-${cref}-${day}`, // pseudonymous + deterministic → one job/child/day/mode
       });
-      worksheetGen.queue.enqueue(mode, {
+      const q = worksheetGen.queue as {
+        enqueue: (m: 'SHADOW' | 'LIVE', j: unknown) => void;
+        enqueueDurable?: (rec: { mode: 'SHADOW' | 'LIVE'; spec: unknown; childRef: string; usageContext: unknown }) => Promise<string | null>;
+      };
+      const rec = {
+        mode,
         spec,
-        generators: worksheetGen.generators,
-        referenceLibrary: worksheetGen.referenceLibrary,
-        knowledgeBase: kb,
-        ...(worksheetGen.crosscheckAdapter ? { crosscheckAdapter: worksheetGen.crosscheckAdapter } : {}),
-        ...(worksheetGen.reviewQueue ? { reviewQueue: worksheetGen.reviewQueue } : {}),
-        ...(worksheetGen.store ? { store: worksheetGen.store } : {}),
-        ...(worksheetGen.usageSink ? { usageSink: worksheetGen.usageSink } : {}),
-        ...(worksheetGen.costGuard ? { costGuard: worksheetGen.costGuard } : {}),
-        ...(worksheetGen.perWorksheetCostCeilingUsd ? { config: { costCeilingUsd: worksheetGen.perWorksheetCostCeilingUsd } } : {}),
-        usageContext: { userRef: actorRef(userId), childRef: cref, plan: 'free', learningContextSource: null },
         childRef: cref,
-      });
+        usageContext: { userRef: actorRef(userId), childRef: cref, plan: 'free' as const, learningContextSource: null },
+      };
+      if (typeof q.enqueueDurable === 'function') {
+        // durable queue — AWAIT the persist so a follow-up worker/read sees the job.
+        await q.enqueueDurable(rec);
+      } else {
+        q.enqueue(mode, {
+          spec,
+          generators: worksheetGen.generators,
+          referenceLibrary: worksheetGen.referenceLibrary,
+          knowledgeBase: kb,
+          ...(worksheetGen.crosscheckAdapter ? { crosscheckAdapter: worksheetGen.crosscheckAdapter } : {}),
+          ...(worksheetGen.reviewQueue ? { reviewQueue: worksheetGen.reviewQueue } : {}),
+          ...(worksheetGen.store ? { store: worksheetGen.store } : {}),
+          ...(worksheetGen.usageSink ? { usageSink: worksheetGen.usageSink } : {}),
+          ...(worksheetGen.costGuard ? { costGuard: worksheetGen.costGuard } : {}),
+          ...(worksheetGen.perWorksheetCostCeilingUsd ? { config: { costCeilingUsd: worksheetGen.perWorksheetCostCeilingUsd } } : {}),
+          usageContext: rec.usageContext,
+          childRef: cref,
+        });
+      }
     } catch (err) {
       logger.warn('LIVE worksheet enqueue failed', { error: err instanceof Error ? err.message : String(err) });
     }
@@ -1254,9 +1269,10 @@ export function createProductionApi(opts: ProductionApiOptions) {
         return scoped.childToday({ userId: ctx.userId, role: 'child', childScope: childId }, childId);
       }
       await authorizeChild(ctx, childId, 'view_child');
-      // doc 69 §5 — a LIVE-cohort family: serve a ready worksheet, else queue today's.
+      // doc 69 §5 — a LIVE-cohort family: serve a ready worksheet, else queue
+      // today's (deterministic spec + one INSERT — fast, errors swallowed).
       const served = await serveLiveWorksheetIfPending(ctx.userId, childId);
-      if (!served) void maybeEnqueueLiveWorksheet(ctx.userId, childId);
+      if (!served) await maybeEnqueueLiveWorksheet(ctx.userId, childId);
       const { scoped } = await learningScene(childId);
       return scoped.childToday({ userId: 'preview', role: 'child', childScope: childId }, childId);
     },

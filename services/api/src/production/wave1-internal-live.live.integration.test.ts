@@ -126,8 +126,8 @@ describe.skipIf(!LIVE)('doc 69 §7 — CONTROLLED INTERNAL LIVE Wave 1 (real jou
           );
         }
         // seed a little assessment evidence so the planner produces a real plan
-        const g4 = ['M4.FRAC.ADD', 'M4.FRAC.SUB', 'M4.ARITH.MUL_2DIGIT', 'M4.WORD.SUM_DIFF'];
-        const g7 = ['M7.QNUM.EQUAL_CHAIN', 'M7.ALG.LINEAR_EQ', 'M7.QNUM.PROPORTION', 'M7.GEO.PARALLEL_CRITERIA'];
+        const g4 = ['M4.FRAC.COMMON_DENOM', 'M4.FRAC.ADD', 'M4.ARITH.SUB_MULTI', 'M4.ARITH.MUL_2DIGIT'];
+        const g7 = ['M7.RATIO.EQUAL_CHAIN', 'M7.RATIO.PROPORTION', 'M7.RATIO.DIRECT', 'M7.GEO.PARALLEL_CRITERIA'];
         const skills = k % 2 === 0 ? g4 : g7;
         for (let i = 0; i < 8; i += 1) {
           await pool.query(
@@ -159,9 +159,21 @@ describe.skipIf(!LIVE)('doc 69 §7 — CONTROLLED INTERNAL LIVE Wave 1 (real jou
       const pAuth = parents[parentIdx]!.auth;
 
       const planBefore = JSON.stringify((await api.getToday(pAuth, childId)) ?? {});
-      // getToday enqueued a LIVE job — drain the worker
+      // getToday enqueued a LIVE job (durable). Wait for it to land, then process
+      // it, then wait for the serving intent, then read it back.
+      const cref = childRefOf(childId);
+      for (let p = 0; p < 30; p += 1) {
+        const j = await pool.query<{ n: number }>(`SELECT count(*)::int n FROM worksheet_jobs WHERE child_ref = $1 AND state IN ('PENDING','CLAIMED')`, [cref]);
+        if (Number(j.rows[0]!.n) > 0) break;
+        await new Promise((r) => setTimeout(r, 200));
+      }
       await worker!.runToIdle(60);
-      // serve + inspect
+      for (let p = 0; p < 20; p += 1) {
+        const sv = await pool.query<{ n: number }>(`SELECT count(*)::int n FROM worksheet_run_serving WHERE child_ref = $1`, [cref]);
+        if (Number(sv.rows[0]!.n) > 0) break;
+        await new Promise((r) => setTimeout(r, 250));
+      }
+      // serve + inspect (getChildAssignments turns a PENDING serving intent into an assignment)
       const list = await api.getChildAssignments(pAuth, childId);
       const ai = list.find((a) => a.mode === 'WORKSHEET' && a.status !== 'COMPLETED');
       const detail = ai ? await api.getAssignmentDetail(pAuth, ai.id) : null;
