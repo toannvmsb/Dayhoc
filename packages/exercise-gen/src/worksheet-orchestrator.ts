@@ -5,8 +5,10 @@ import type {
   ItemAnswerStatus,
   MathKernel,
   ProblemStructure,
+  SlotCriticality,
 } from '@copilot/domain';
 import { MATH_KERNEL_GROUP } from '@copilot/domain';
+import { buildSafeSubstitute, SUBSTITUTE_BUILDER_VERSION } from './substitute.js';
 import type { KnowledgeBase } from '@copilot/math-data';
 import { PricingRegistry } from '@copilot/ai';
 import type { ReferenceExample } from '@copilot/reference-library';
@@ -37,16 +39,33 @@ export const SLOT_STATES = [
   'RETRYING',
   'ESCALATING',
   'LAST_RESORT',
+  'SUBSTITUTING',
   'PENDING_CROSSCHECK',
   'READY',
+  'OMITTED',
   'FAILED',
 ] as const;
 export type SlotState = (typeof SLOT_STATES)[number];
 
-export const WORKSHEET_STATES = ['READY', 'READY_WITH_PENDING_CROSSCHECK', 'FAILED'] as const;
+/**
+ * SAFE DEGRADED WORKSHEET COMPLETION (doc 68 §7). A child-facing worksheet is
+ * delivered iff every REQUIRED_CORE slot is READY:
+ *   READY                          — all core ready, no substitution, no omission
+ *   READY_WITH_SAFE_SUBSTITUTION   — all core ready, ≥1 core via a safe substitute
+ *   READY_WITH_OPTIONAL_OMISSIONS  — all core ready, ≥1 optional slot omitted
+ *   FAILED                         — a REQUIRED_CORE slot never reached READY
+ * `READY_WITH_PENDING_CROSSCHECK` is GONE — a pending/review item is operational
+ * state only and is never a child-serving worksheet state.
+ */
+export const WORKSHEET_STATES = [
+  'READY',
+  'READY_WITH_SAFE_SUBSTITUTION',
+  'READY_WITH_OPTIONAL_OMISSIONS',
+  'FAILED',
+] as const;
 export type WorksheetState = (typeof WORKSHEET_STATES)[number];
 
-export const WORKSHEET_ORCHESTRATOR_VERSION = 'worksheet-orchestrator.v1';
+export const WORKSHEET_ORCHESTRATOR_VERSION = 'worksheet-orchestrator.v2';
 
 export interface WorksheetOrchestratorConfig {
   /** retries on the SAME model before escalating (doc 63 §2). */
@@ -57,6 +76,8 @@ export interface WorksheetOrchestratorConfig {
   readonly costCeilingUsd: number | null;
   /** deterministic last-resort for the final unresolved Group A slot (doc 63 §4). */
   readonly enableLastResort: boolean;
+  /** SAFE SUBSTITUTE for an unresolved REQUIRED_CORE slot (doc 68 §5). Default ON. */
+  readonly enableSafeSubstitute?: boolean;
   readonly highComplexityStructures?: ReadonlySet<ProblemStructure>;
   /** capture each slot's last-attempt raw text into `result.rawSlots` (audit). */
   readonly captureRaw?: boolean;
@@ -69,6 +90,7 @@ export const DEFAULT_WORKSHEET_ORCHESTRATOR_CONFIG: WorksheetOrchestratorConfig 
   concurrency: { default: 4, highComplexity: 2 },
   costCeilingUsd: null,
   enableLastResort: true,
+  enableSafeSubstitute: true,
 };
 
 export interface WorksheetOrchestratorInput {
@@ -115,7 +137,7 @@ export interface SlotAttemptTrace {
   readonly attempt: number;
   readonly model: string;
   readonly role: ModelRole;
-  readonly step: 'default' | 'retry_same' | 'escalate' | 'last_resort';
+  readonly step: 'default' | 'retry_same' | 'escalate' | 'last_resort' | 'substitute';
   readonly accepted: boolean;
   readonly failureCategory: SlotFailureCategory | null;
   readonly retryReason: RetryReason | null;
@@ -128,9 +150,17 @@ export interface SlotTrace {
   readonly kernelFamily: string | null;
   readonly initialRole: ModelRole;
   readonly routeReason: string;
+  /** Deterministic slot criticality (doc 68 §1). */
+  readonly criticality: SlotCriticality;
   readonly finalState: SlotState;
   readonly attempts: readonly SlotAttemptTrace[];
   readonly lastResortUsed: boolean;
+  /** a safe substitute was generated AND delivered for this slot (doc 68 §5). */
+  readonly substituted: boolean;
+  /** the slot was omitted from the child worksheet (optional, unresolved) (doc 68 §3). */
+  readonly omitted: boolean;
+  /** why the slot was omitted / substituted — for operational reporting. */
+  readonly degradeReason: string | null;
   readonly crosscheckRequired: boolean;
   /** result of the Group C answer crosscheck, if it ran (doc 65 §6). */
   readonly crosscheckVerdict: CrosscheckVerdict | null;
@@ -180,6 +210,7 @@ export interface WorksheetTrace {
   readonly routerVersion: string;
   readonly retryContextVersion: string;
   readonly lastResortVersion: string;
+  readonly substituteBuilderVersion: string;
   readonly contentQualityVersion: string;
   readonly crosscheckAdapterName: string | null;
   readonly itemValidatorVersion: string;
@@ -203,13 +234,33 @@ export interface RawSlotContent {
   readonly answer: string | null;
 }
 
+export interface OmittedSlotReport {
+  readonly itemId: string;
+  readonly index: number;
+  readonly criticality: SlotCriticality;
+  readonly reason: string;
+  readonly reviewQueueId: string | null;
+}
+
 export interface WorksheetResult {
   readonly worksheetState: WorksheetState;
-  /** accepted exercises in worksheet order (production-ready + pending-crosscheck). */
+  /** child-serving exercises in worksheet order — every one is READY and verified
+   *  (deterministically correct or crosscheck-PASS). Never a pending/omitted item. */
   readonly items: readonly GeneratedExercise[];
   readonly readySlots: number;
+  /**
+   * @deprecated always 0 — a pending crosscheck is no longer a delivered state
+   * (doc 68 §7). Kept so shadow/read-model consumers keep compiling.
+   */
   readonly pendingCrosscheckSlots: number;
   readonly failedSlots: number;
+  /** REQUIRED_CORE slots delivered via a safe substitute (doc 68 §5). */
+  readonly substitutedSlots: number;
+  /** optional slots omitted from the child worksheet (doc 68 §3). */
+  readonly omittedSlots: number;
+  /** exact reason for each omitted / substituted slot (doc 68 §14). */
+  readonly omittedReports: readonly OmittedSlotReport[];
+  readonly substitutedReports: readonly OmittedSlotReport[];
   readonly trace: WorksheetTrace;
   /** only when `config.captureRaw` — never logged as telemetry. */
   readonly rawSlots?: readonly RawSlotContent[];
@@ -221,6 +272,7 @@ interface SlotWork {
   itemId: string;
   index: number;
   itemSpec: ReturnType<typeof buildItemGenerationSpecs>[number];
+  criticality: SlotCriticality;
   kernel: MathKernel | null;
   dna: ReturnType<typeof buildProblemDNA>;
   initialRole: ModelRole;
@@ -236,6 +288,9 @@ interface SlotWork {
   productionReady: boolean;
   crosscheckRequired: boolean;
   lastResortUsed: boolean;
+  /** a safe substitute has already been tried for this slot (at most once). */
+  substituteApplied: boolean;
+  degradeReason: string | null;
   slotLatencyMs: number;
   lastContent: GeneratedItemContent | null;
   crosscheckVerdict: CrosscheckVerdict | null;
@@ -305,6 +360,7 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
       itemId: is.itemId,
       index: is.index,
       itemSpec: is,
+      criticality: is.criticality,
       kernel,
       dna: buildProblemDNA(is, input.knowledgeBase, refs, { mathKernel: kernel }),
       initialRole: role,
@@ -320,6 +376,8 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
       productionReady: false,
       crosscheckRequired: false,
       lastResortUsed: false,
+      substituteApplied: false,
+      degradeReason: null,
       slotLatencyMs: 0,
       lastContent: null,
       crosscheckVerdict: null,
@@ -327,6 +385,10 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
       reviewQueueId: null,
     };
   });
+
+  // number tuples already realised by a kernel — the safe substitute avoids them.
+  const usedNumberTuples: number[][] = [];
+  for (const s of slots) if (s.kernel) usedNumberTuples.push([...s.kernel.requiredNumbersInPrompt]);
 
   const totals: {
     modelCalls: number; retries: number; fallbackCalls: number; lastResortCalls: number;
@@ -357,17 +419,45 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
   const ceilingReached = () =>
     cfg.costCeilingUsd !== null && totals.actualCostUsd + EST_CALL_USD > cfg.costCeilingUsd;
 
-  const MAX_ROUNDS = 2 + 2 * (cfg.maxRetriesPerModel + 1); // default + retries + escalate + retries + last-resort + slack
+  // full pipeline once for the preferred target, then once more for a safe
+  // substitute: (default + retries + escalate + retries + last-resort) × 2 + slack.
+  const perPassRounds = 2 + 2 * (cfg.maxRetriesPerModel + 1);
+  const MAX_ROUNDS = perPassRounds * 2 + 2;
+  const TERMINAL: readonly SlotState[] = ['READY', 'OMITTED', 'FAILED'];
   for (let round = 0; round < MAX_ROUNDS; round += 1) {
-    const active = slots.filter(
-      (s) => !['READY', 'PENDING_CROSSCHECK', 'FAILED'].includes(s.state),
-    );
+    const active = slots.filter((s) => !TERMINAL.includes(s.state));
     if (active.length === 0) break;
+
+    // ---- rebuild any slot entering the SAFE SUBSTITUTE pass (doc 68 §5) ----
+    for (const s of active) {
+      if (s.state !== 'SUBSTITUTING') continue;
+      const sub = buildSafeSubstitute(s.itemSpec, input.knowledgeBase, input.referenceLibrary, usedNumberTuples);
+      s.substituteApplied = true;
+      if (!sub) {
+        s.state = 'FAILED';
+        s.degradeReason = s.degradeReason ?? 'no safe substitute permitted';
+        continue;
+      }
+      s.itemSpec = sub.itemSpec;
+      s.kernel = sub.kernel;
+      s.dna = sub.dna;
+      if (sub.kernel) usedNumberTuples.push([...sub.kernel.requiredNumbersInPrompt]);
+      s.role = 'DEFAULT';
+      s.perModelAttempts = 0;
+      s.retryInstruction = null;
+      s.crosscheckRequired = false;
+      s.crosscheckVerdict = null;
+      s.answerStatus = null;
+      s.productionReady = false;
+      // a kernel-backed substitute goes STRAIGHT to the deterministic last-resort
+      // — no model call, one attempt, guaranteed (keeps attempts/slot bounded).
+      s.state = sub.kernelBacked && cfg.enableLastResort ? 'LAST_RESORT' : 'PENDING';
+    }
 
     // ---- generation phase: per-model bounded concurrency ----
     const byRole: Record<ModelRole, SlotWork[]> = { DEFAULT: [], HIGH_COMPLEXITY: [] };
     for (const s of active) {
-      if (s.state === 'LAST_RESORT') continue; // handled in the acceptance phase, no model call
+      if (s.state === 'LAST_RESORT' || TERMINAL.includes(s.state)) continue; // last-resort has no model call; skip newly-terminal
       byRole[s.role].push(s);
     }
     const contentBySlot = new Map<string, { content: GeneratedItemContent | null; latencyMs: number; step: SlotAttemptTrace['step'] }>();
@@ -426,6 +516,7 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
 
     // ---- acceptance phase: SEQUENTIAL in worksheet order (siblings grow) ----
     for (const s of active) {
+      if (TERMINAL.includes(s.state)) continue; // e.g. a slot with no permitted substitute
       s.totalAttempts += 1;
       s.perModelAttempts += 1;
       const attemptNo = s.totalAttempts;
@@ -555,20 +646,51 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
       if (usedLastResort) s.lastResortUsed = true;
 
       // ---- transition ----
+      // Route an unresolved slot by CRITICALITY (doc 68 §2/§3): a REQUIRED_CORE
+      // slot exhausts generate → retry → escalate → last-resort → SAFE SUBSTITUTE
+      // → FAILED; an OPTIONAL / CHALLENGE slot is OMITTED (never blocks delivery,
+      // never shown unverified).
+      const degrade = async (reason: string, reviewReason: 'CROSSCHECK_UNCERTAIN' | 'NO_KERNEL_GENERATION_FAILED' | 'BOTH_MODELS_FAILED' | 'CONTENT_QUALITY_NONRECOVERABLE'): Promise<void> => {
+        s.degradeReason = s.degradeReason ?? reason;
+        if (
+          s.criticality === 'REQUIRED_CORE' &&
+          cfg.enableSafeSubstitute !== false &&
+          s.itemSpec.fallback &&
+          !s.substituteApplied
+        ) {
+          s.state = 'SUBSTITUTING';
+          return;
+        }
+        if (s.criticality === 'REQUIRED_CORE') {
+          s.state = 'FAILED';
+          return;
+        }
+        // optional / challenge → omit from the child worksheet
+        s.state = 'OMITTED';
+        s.accepted = null;
+        if (input.reviewQueue && !s.reviewQueueId) {
+          const rq = await input.reviewQueue.create({
+            generationSpecId: input.spec.generationSpecId,
+            itemId: s.itemId,
+            childRef: input.childRef ?? null,
+            reason: reviewReason,
+            promptSnapshot: s.lastContent?.prompt ?? null,
+            workedSolutionSnapshot: s.lastContent?.workedSolution ?? null,
+            detail: `optional slot OMITTED (${s.criticality}): ${reason}`,
+          });
+          s.reviewQueueId = rq.id;
+        }
+      };
+
       if (accepted) {
-        if (!s.crosscheckRequired) {
+        if (!s.crosscheckRequired || s.crosscheckVerdict === 'PASS') {
           s.state = 'READY';
           continue;
         }
-        // Group C — crosscheck ran in the acceptance phase; PASS keeps `accepted`.
-        // AI-crosschecked ≠ deterministically verified: productionReady stays false.
-        if (s.crosscheckVerdict === 'PASS') {
-          s.state = 'READY';
-          continue;
-        }
-        // UNCERTAIN (or no adapter) → PENDING_CROSSCHECK, never silently verified.
-        s.state = 'PENDING_CROSSCHECK';
-        if (s.crosscheckVerdict === 'UNCERTAIN' && input.reviewQueue && s.accepted) {
+        // Group C answer NOT verified (UNCERTAIN, or no adapter). It is NEVER
+        // delivered: a REQUIRED_CORE slot goes to a safe substitute, an optional
+        // slot is omitted. Either way a review row is raised for UNCERTAIN.
+        if (s.crosscheckVerdict === 'UNCERTAIN' && input.reviewQueue && s.accepted && s.criticality === 'REQUIRED_CORE') {
           const rq = await input.reviewQueue.create({
             generationSpecId: input.spec.generationSpecId,
             itemId: s.itemId,
@@ -576,14 +698,21 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
             reason: 'CROSSCHECK_UNCERTAIN',
             promptSnapshot: s.accepted.prompt,
             workedSolutionSnapshot: s.accepted.workedSolution,
-            detail: 'answer crosscheck UNCERTAIN',
+            detail: 'answer crosscheck UNCERTAIN — REQUIRED_CORE, routing to safe substitute',
           });
           s.reviewQueueId = rq.id;
         }
+        await degrade(`crosscheck ${s.crosscheckVerdict ?? 'unavailable'}`, 'CROSSCHECK_UNCERTAIN');
         continue;
       }
       if (usedLastResort) {
-        s.state = 'FAILED';
+        await degrade('deterministic last-resort could not finish the slot', 'BOTH_MODELS_FAILED');
+        continue;
+      }
+      // the SAFE-SUBSTITUTE pass gets ONE model shot — no retry / escalate cycle
+      // (keeps attempts/slot bounded; a kernel-backed substitute never gets here).
+      if (s.substituteApplied) {
+        await degrade(`safe substitute could not be generated (${failureCategory ?? 'OTHER'})`, 'BOTH_MODELS_FAILED');
         continue;
       }
       const canRetrySame = s.perModelAttempts <= cfg.maxRetriesPerModel && !ceilingReached();
@@ -600,17 +729,22 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
       } else if (lastResortEligible) {
         s.state = 'LAST_RESORT';
       } else {
-        s.state = 'FAILED';
+        await degrade(
+          `both models failed (last category ${failureCategory ?? 'OTHER'})`,
+          s.kernel === null ? 'NO_KERNEL_GENERATION_FAILED' : 'BOTH_MODELS_FAILED',
+        );
       }
     }
   }
 
-  // any slot still mid-flight after MAX_ROUNDS
+  // any slot still mid-flight after MAX_ROUNDS — resolve by criticality
   for (const s of slots) {
-    if (!['READY', 'PENDING_CROSSCHECK', 'FAILED'].includes(s.state)) s.state = 'FAILED';
+    if (['READY', 'OMITTED', 'FAILED'].includes(s.state)) continue;
+    s.degradeReason = s.degradeReason ?? 'unresolved after max rounds';
+    s.state = s.criticality === 'REQUIRED_CORE' ? 'FAILED' : 'OMITTED';
   }
 
-  // review queue for every genuinely FAILED slot (doc 65 §8)
+  // review queue for every genuinely FAILED (REQUIRED_CORE) slot (doc 65 §8)
   if (input.reviewQueue) {
     for (const s of slots) {
       if (s.state !== 'FAILED' || s.reviewQueueId) continue;
@@ -622,24 +756,47 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
         reason,
         promptSnapshot: s.lastContent?.prompt ?? null,
         workedSolutionSnapshot: s.lastContent?.workedSolution ?? null,
-        detail: `final state FAILED after ${s.totalAttempts} attempts; last category ${s.attemptsTrace.at(-1)?.failureCategory ?? 'OTHER'}`,
+        detail: `REQUIRED_CORE slot FAILED after ${s.totalAttempts} attempts; ${s.degradeReason ?? 'OTHER'}`,
       });
       s.reviewQueueId = rq.id;
     }
   }
 
   const readySlots = slots.filter((s) => s.state === 'READY').length;
-  const pendingCrosscheckSlots = slots.filter((s) => s.state === 'PENDING_CROSSCHECK').length;
+  const pendingCrosscheckSlots = 0; // no longer a delivered state (doc 68 §7)
   const failedSlots = slots.filter((s) => s.state === 'FAILED').length;
+  const substitutedSlotList = slots.filter((s) => s.substituteApplied && s.state === 'READY');
+  const omittedSlotList = slots.filter((s) => s.state === 'OMITTED');
 
+  // SAFE DEGRADED COMPLETION (doc 68 §6/§7): the worksheet is delivered iff every
+  // REQUIRED_CORE slot reached READY. Optional omissions / safe substitutions do
+  // not block delivery but ARE surfaced in the state.
+  const coreSlots = slots.filter((s) => s.criticality === 'REQUIRED_CORE');
+  const coreReady = coreSlots.filter((s) => s.state === 'READY').length;
+  const readyItemSlots = slots.filter((s) => s.state === 'READY');
   const worksheetState: WorksheetState =
-    failedSlots > 0 ? 'FAILED' : pendingCrosscheckSlots > 0 ? 'READY_WITH_PENDING_CROSSCHECK' : 'READY';
+    coreReady < coreSlots.length || readyItemSlots.length === 0
+      ? 'FAILED'
+      : substitutedSlotList.length > 0
+        ? 'READY_WITH_SAFE_SUBSTITUTION'
+        : omittedSlotList.length > 0
+          ? 'READY_WITH_OPTIONAL_OMISSIONS'
+          : 'READY';
 
-  const items = slots
+  // only READY slots reach the child (never OMITTED / FAILED / mid-flight).
+  const items = readyItemSlots
     .slice()
     .sort((a, b) => a.index - b.index)
     .filter((s) => s.accepted)
     .map((s) => s.accepted!);
+
+  const toReport = (s: SlotWork): OmittedSlotReport => ({
+    itemId: s.itemId,
+    index: s.index,
+    criticality: s.criticality,
+    reason: s.degradeReason ?? 'unknown',
+    reviewQueueId: s.reviewQueueId,
+  });
 
   const trace: WorksheetTrace = {
     generationSpecId: input.spec.generationSpecId,
@@ -647,6 +804,7 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
     routerVersion: MODEL_ROUTER_VERSION,
     retryContextVersion: RETRY_CONTEXT_VERSION,
     lastResortVersion: LAST_RESORT_VERSION,
+    substituteBuilderVersion: SUBSTITUTE_BUILDER_VERSION,
     contentQualityVersion: CONTENT_QUALITY_VERSION,
     crosscheckAdapterName: input.crosscheckAdapter?.name ?? null,
     itemValidatorVersion: ITEM_VALIDATOR_VERSION,
@@ -663,9 +821,13 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
         kernelFamily: s.kernel?.family ?? null,
         initialRole: s.initialRole,
         routeReason: s.routeReason,
+        criticality: s.criticality,
         finalState: s.state,
         attempts: s.attemptsTrace,
         lastResortUsed: s.lastResortUsed,
+        substituted: s.substituteApplied && s.state === 'READY',
+        omitted: s.state === 'OMITTED',
+        degradeReason: s.degradeReason,
         crosscheckRequired: s.crosscheckRequired,
         crosscheckVerdict: s.crosscheckVerdict,
         contentQualityFindings: s.contentQualityFindings,
@@ -692,9 +854,24 @@ export async function orchestrateWorksheet(input: WorksheetOrchestratorInput): P
         }))
     : undefined;
 
-  return { worksheetState, items, readySlots, pendingCrosscheckSlots, failedSlots, trace, ...(rawSlots ? { rawSlots } : {}) };
+  return {
+    worksheetState,
+    items,
+    readySlots,
+    pendingCrosscheckSlots,
+    failedSlots,
+    substitutedSlots: substitutedSlotList.length,
+    omittedSlots: omittedSlotList.length,
+    omittedReports: omittedSlotList.map(toReport),
+    substitutedReports: substitutedSlotList.map(toReport),
+    trace,
+    ...(rawSlots ? { rawSlots } : {}),
+  };
 
   function stepOf(s: SlotWork): SlotAttemptTrace['step'] {
+    // the whole post-substitute pass is tagged 'substitute' so the trace shows
+    // which items were delivered via a safe substitute (doc 68 §5/§14).
+    if (s.substituteApplied && s.state !== 'LAST_RESORT') return 'substitute';
     if (s.state === 'PENDING') return 'default';
     if (s.state === 'RETRYING') return 'retry_same';
     if (s.state === 'ESCALATING') return 'escalate';

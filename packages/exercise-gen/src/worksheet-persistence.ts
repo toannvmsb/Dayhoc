@@ -20,6 +20,10 @@ export interface WorksheetRunRecord {
   readonly readySlots: number;
   readonly pendingCrosscheckSlots: number;
   readonly failedSlots: number;
+  /** REQUIRED_CORE slots delivered via a safe substitute (doc 68 §5). */
+  readonly substitutedSlots: number;
+  /** optional slots omitted from the child worksheet (doc 68 §3). */
+  readonly omittedSlots: number;
   readonly orchestratorVersion: string;
   readonly routerVersion: string;
   readonly retryContextVersion: string;
@@ -50,8 +54,15 @@ export interface WorksheetSlotRecord {
   readonly kernelFamily: string | null;
   readonly initialRole: string;
   readonly routeReason: string;
+  /** Deterministic slot criticality (doc 68 §1). */
+  readonly criticality: string;
   readonly finalState: string;
   readonly lastResortUsed: boolean;
+  /** delivered via a safe substitute (doc 68 §5). */
+  readonly substituted: boolean;
+  /** omitted from the child worksheet (doc 68 §3). */
+  readonly omitted: boolean;
+  readonly degradeReason: string | null;
   readonly crosscheckRequired: boolean;
   readonly crosscheckVerdict: string | null;
   readonly contentQualityCodes: readonly string[];
@@ -129,6 +140,8 @@ export function toWorksheetRecords(
     readySlots: result.readySlots,
     pendingCrosscheckSlots: result.pendingCrosscheckSlots,
     failedSlots: result.failedSlots,
+    substitutedSlots: result.substitutedSlots,
+    omittedSlots: result.omittedSlots,
     orchestratorVersion: t.orchestratorVersion,
     routerVersion: t.routerVersion,
     retryContextVersion: t.retryContextVersion,
@@ -158,8 +171,12 @@ export function toWorksheetRecords(
     kernelFamily: s.kernelFamily,
     initialRole: s.initialRole,
     routeReason: s.routeReason,
+    criticality: s.criticality,
     finalState: s.finalState,
     lastResortUsed: s.lastResortUsed,
+    substituted: s.substituted,
+    omitted: s.omitted,
+    degradeReason: s.degradeReason,
     crosscheckRequired: s.crosscheckRequired,
     crosscheckVerdict: s.crosscheckVerdict,
     contentQualityCodes: s.contentQualityFindings.map((f) => `${f.code}:${f.severity}`),

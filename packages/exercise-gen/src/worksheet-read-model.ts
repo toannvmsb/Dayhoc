@@ -9,13 +9,21 @@ import type { Pool } from 'pg';
 export interface ShadowRollup {
   readonly runs: number;
   readonly worksheetsReady: number;
+  /** @deprecated always 0 — pending crosscheck is no longer a delivered state (doc 68). */
   readonly worksheetsReadyWithPendingCrosscheck: number;
+  readonly worksheetsReadyWithSafeSubstitution: number;
+  readonly worksheetsReadyWithOptionalOmissions: number;
   readonly worksheetsFailed: number;
-  readonly fullWorksheetCompletionRate: number; // failed_slots = 0
+  /** @deprecated old "0 failed slots" metric — use `coreWorksheetDeliveryRate` (doc 68 §8). */
+  readonly fullWorksheetCompletionRate: number;
+  /** worksheets where every REQUIRED_CORE slot is READY (doc 68 §8). */
+  readonly coreWorksheetDeliveryRate: number;
   readonly items: number;
   readonly readySlots: number;
   readonly pendingCrosscheckSlots: number;
   readonly failedSlots: number;
+  readonly substitutedSlots: number;
+  readonly omittedSlots: number;
   readonly deterministicProductionRate: number; // production_ready slots / kernel slots
   readonly kernelSlots: number;
   readonly avgRetriesPerItem: number;
@@ -50,12 +58,14 @@ export async function shadowRollup(pool: Pool, sinceIso?: string, mode = 'SHADOW
      SELECT
        (SELECT count(*) FROM runs)                                              AS runs,
        (SELECT count(*) FROM runs WHERE worksheet_state = 'READY')              AS ws_ready,
-       (SELECT count(*) FROM runs WHERE worksheet_state = 'READY_WITH_PENDING_CROSSCHECK') AS ws_ready_pc,
+       (SELECT count(*) FROM runs WHERE worksheet_state = 'READY_WITH_SAFE_SUBSTITUTION')  AS ws_ready_sub,
+       (SELECT count(*) FROM runs WHERE worksheet_state = 'READY_WITH_OPTIONAL_OMISSIONS') AS ws_ready_omit,
        (SELECT count(*) FROM runs WHERE worksheet_state = 'FAILED')             AS ws_failed,
-       (SELECT count(*) FROM runs WHERE failed_slots = 0)                       AS ws_full,
+       (SELECT count(*) FROM runs WHERE worksheet_state <> 'FAILED')            AS ws_core_delivered,
+       (SELECT coalesce(sum(substituted_slots),0) FROM runs)                    AS sub_slots,
+       (SELECT coalesce(sum(omitted_slots),0) FROM runs)                        AS omit_slots,
        (SELECT count(*) FROM slots)                                             AS items,
        (SELECT count(*) FROM slots WHERE final_state = 'READY')                 AS ready_slots,
-       (SELECT count(*) FROM slots WHERE final_state = 'PENDING_CROSSCHECK')    AS pc_slots,
        (SELECT count(*) FROM slots WHERE final_state = 'FAILED')                AS failed_slots,
        (SELECT count(*) FROM slots WHERE kernel_family IS NOT NULL)             AS kernel_slots,
        (SELECT count(*) FROM slots WHERE kernel_family IS NOT NULL AND production_ready) AS kernel_prod,
@@ -71,25 +81,30 @@ export async function shadowRollup(pool: Pool, sinceIso?: string, mode = 'SHADOW
   const runs = Number(r.runs);
   const items = Number(r.items);
   const kernelSlots = Number(r.kernel_slots);
-  const wsFull = Number(r.ws_full);
+  const wsCoreDelivered = Number(r.ws_core_delivered);
   const cost = Number(r.cost);
   return {
     runs,
     worksheetsReady: Number(r.ws_ready),
-    worksheetsReadyWithPendingCrosscheck: Number(r.ws_ready_pc),
+    worksheetsReadyWithPendingCrosscheck: 0,
+    worksheetsReadyWithSafeSubstitution: Number(r.ws_ready_sub),
+    worksheetsReadyWithOptionalOmissions: Number(r.ws_ready_omit),
     worksheetsFailed: Number(r.ws_failed),
-    fullWorksheetCompletionRate: runs > 0 ? wsFull / runs : 0,
+    fullWorksheetCompletionRate: runs > 0 ? wsCoreDelivered / runs : 0,
+    coreWorksheetDeliveryRate: runs > 0 ? wsCoreDelivered / runs : 0,
     items,
     readySlots: Number(r.ready_slots),
-    pendingCrosscheckSlots: Number(r.pc_slots),
+    pendingCrosscheckSlots: 0,
     failedSlots: Number(r.failed_slots),
+    substitutedSlots: Number(r.sub_slots),
+    omittedSlots: Number(r.omit_slots),
     kernelSlots,
     deterministicProductionRate: kernelSlots > 0 ? Number(r.kernel_prod) / kernelSlots : 0,
     avgRetriesPerItem: items > 0 ? Number(r.retries) / items : 0,
     fallbackCalls: Number(r.fallback_calls),
     lastResortCalls: Number(r.last_resort_calls),
     totalActualCostUsd: cost,
-    costPerCompletedWorksheetUsd: wsFull > 0 ? cost / wsFull : 0,
+    costPerCompletedWorksheetUsd: wsCoreDelivered > 0 ? cost / wsCoreDelivered : 0,
     p50WorksheetLatencyMs: Number(r.p50),
     p95WorksheetLatencyMs: Number(r.p95),
     costCeilingEvents: Number(r.ceiling_events),

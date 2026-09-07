@@ -66,7 +66,7 @@ describe('doc 65 §6 — Group C crosscheck flow (mock verifier)', () => {
     expect(slot.attempts.some((a) => a.failureCategory === 'CROSSCHECK_FAIL')).toBe(true);
   });
 
-  it('UNCERTAIN → PENDING_CROSSCHECK + a review-queue row', async () => {
+  it('doc 68 §3 — UNCERTAIN on an OPTIONAL slot → OMITTED + a review-queue row, never delivered', async () => {
     if (groupCIds.length === 0) return;
     const rq = createInMemoryReviewQueue();
     const r = await orchestrateWorksheet({
@@ -75,21 +75,28 @@ describe('doc 65 §6 — Group C crosscheck flow (mock verifier)', () => {
       reviewQueue: rq, childRef: 'child_ref_pseudo',
     });
     const slot = r.trace.perSlot.find((s) => s.itemId === groupCIds[0])!;
-    expect(slot.finalState).toBe('PENDING_CROSSCHECK');
+    expect(slot.criticality).not.toBe('REQUIRED_CORE');
+    expect(slot.finalState).toBe('OMITTED');
+    expect(slot.omitted).toBe(true);
     expect(slot.reviewQueueId).toBeTruthy();
+    expect(r.items.some((it) => it.id === slot.itemId)).toBe(false); // not in the delivered set
     const pending = await rq.listPending();
     expect(pending.some((p) => p.reason === 'CROSSCHECK_UNCERTAIN' && p.childRef === 'child_ref_pseudo')).toBe(true);
     // review-queue row carries NO name/school — pseudonymous ref only
     expect(JSON.stringify(pending)).not.toMatch(/school|tên|họ và tên/i);
   });
 
-  it('no adapter → PENDING_CROSSCHECK, never marked production-verified', async () => {
+  it('doc 68 §3 — no adapter on an OPTIONAL slot → OMITTED, never delivered unverified', async () => {
     if (groupCIds.length === 0) return;
-    const r = await orchestrateWorksheet({ spec: SPEC, knowledgeBase: kb, referenceLibrary: lib, generators: gens() });
+    const r = await orchestrateWorksheet({
+      spec: SPEC, knowledgeBase: kb, referenceLibrary: lib, generators: gens(),
+      reviewQueue: createInMemoryReviewQueue(),
+    });
     const slot = r.trace.perSlot.find((s) => s.itemId === groupCIds[0])!;
-    expect(slot.finalState).toBe('PENDING_CROSSCHECK');
+    expect(slot.finalState).toBe('OMITTED');
     expect(slot.productionReady).toBe(false);
     expect(slot.crosscheckVerdict).toBeNull();
+    expect(r.pendingCrosscheckSlots).toBe(0);
   });
 });
 
@@ -111,7 +118,7 @@ describe('doc 65 §8 — review queue', () => {
     const script: FaultScript = { failAttempts: 99, mode: 'KERNEL_DRIFT' };
     const r = await orchestrateWorksheet({
       spec: SPEC, knowledgeBase: kb, referenceLibrary: lib, generators: gens({ [doomed]: script }, { [doomed]: script }),
-      config: { enableLastResort: false }, reviewQueue: rq,
+      config: { enableLastResort: false, enableSafeSubstitute: false }, reviewQueue: rq,
     });
     expect(r.failedSlots).toBe(1);
     const pending = await rq.listPending();
@@ -190,7 +197,7 @@ describe('doc 65 §1/§11 — SHADOW wrapper', () => {
       store, usageSink: (e) => sink.push(e),
       usageContext: { userRef: 'u', childRef: 'cref', plan: 'plus' },
       childRef: 'cref',
-      legacyMetrics: { path: 'legacy', completedItems: 6, totalItems: 8, pendingCrosscheck: 1, failed: 1, modelCalls: 8, retries: 0, fallbackCalls: 0, lastResortCalls: 0, actualCostUsd: 0.02, latencyMs: 4000 },
+      legacyMetrics: { path: 'legacy', completedItems: 6, totalItems: 8, pendingCrosscheck: 0, substituted: 0, omitted: 1, failed: 1, modelCalls: 8, retries: 0, fallbackCalls: 0, lastResortCalls: 0, actualCostUsd: 0.02, latencyMs: 4000 },
     }));
     expect(out.ran).toBe(true);
     if (!out.ran) return;

@@ -5,18 +5,23 @@ import { makeSpec } from './_spec-fixture.js';
 import { buildItemGenerationSpecs } from './item-spec.js';
 import { reconstructKernels } from './item-orchestrator.js';
 import { createFaultInjectingGenerator, type FaultScript } from './fault-injecting-generator.js';
+import { createMockAnswerCrosscheck } from './answer-crosscheck.js';
+import { createInMemoryReviewQueue } from './review-queue.js';
 import { orchestrateWorksheet } from './worksheet-orchestrator.js';
+import { computeWorksheetCohortMetrics } from './worksheet-metrics.js';
 
 /**
- * doc 63 §10/§11 — production recovery orchestrator, offline fault-injection.
- * No paid calls. Demonstrates: routing, per-model retry, cross-model escalation,
- * deterministic last-resort, cost ceiling, Group C PENDING_CROSSCHECK, and that
- * accepted slots are never regenerated.
+ * doc 63 §10/§11 + doc 68 — production recovery orchestrator, offline
+ * fault-injection. No paid calls. Demonstrates: routing, per-model retry,
+ * cross-model escalation, deterministic last-resort, SAFE DEGRADED COMPLETION
+ * (criticality-aware safe substitute / optional omission), cost ceiling, and
+ * that accepted slots are never regenerated.
  */
 
 const kb = loadKnowledgeBase();
 const lib = loadReferenceLibrary();
 const SPEC = makeSpec();
+const PASS_XCHECK = createMockAnswerCrosscheck(() => 'PASS');
 
 const itemSpecs = buildItemGenerationSpecs(SPEC, kb);
 const kernels = reconstructKernels(SPEC, kb, lib);
@@ -28,6 +33,7 @@ function run(
   highScripts: Record<string, FaultScript> = {},
   config = {},
   provider: 'mock' | 'openai' = 'mock',
+  opts: { crosscheck?: 'pass' | 'none' } = {},
 ) {
   return orchestrateWorksheet({
     spec: SPEC,
@@ -37,6 +43,8 @@ function run(
       default: createFaultInjectingGenerator({ name: 'def', model: 'gpt-4.1-mini', role: 'default', scripts: defaultScripts, provider, usage: { inputTokens: 800, outputTokens: 300 } }),
       highComplexity: createFaultInjectingGenerator({ name: 'high', model: 'gpt-5-mini', role: 'high', scripts: highScripts, provider, usage: { inputTokens: 900, outputTokens: 600 } }),
     },
+    ...(opts.crosscheck === 'none' ? {} : { crosscheckAdapter: PASS_XCHECK }),
+    reviewQueue: createInMemoryReviewQueue(),
     config,
     now: () => new Date('2027-02-01T00:00:00Z'),
     fxVndPerUsd: 26000,
@@ -46,9 +54,11 @@ function run(
 describe('doc 63 §10 — happy path + routing', () => {
   it('all-success: every slot READY on the first attempt, one model call each', async () => {
     const r = await run({});
-    expect(r.worksheetState).not.toBe('FAILED');
-    expect(r.readySlots + r.pendingCrosscheckSlots).toBe(itemSpecs.length);
+    expect(r.worksheetState).toBe('READY');
+    expect(r.readySlots).toBe(itemSpecs.length);
+    expect(r.items.length).toBe(itemSpecs.length);
     expect(r.failedSlots).toBe(0);
+    expect(r.omittedSlots).toBe(0);
     expect(r.trace.totals.modelCalls).toBe(itemSpecs.length);
     // routing is deterministic + versioned
     expect(r.trace.routerVersion).toBe('model-router.v1');
@@ -139,29 +149,53 @@ describe('doc 63 §4 — deterministic last resort', () => {
   });
 });
 
-describe('doc 63 §5 — Group C', () => {
-  it('reasoning slots pass CONTENT but stay PENDING_CROSSCHECK, never production-verified', async () => {
+describe('doc 68 §3/§4 — Group C without a passing crosscheck is never delivered', () => {
+  it('an OPTIONAL reasoning slot with no crosscheck adapter is OMITTED, not shown to the child', async () => {
+    if (groupCItemIds.length === 0) return;
+    const r = await run({}, {}, {}, 'mock', { crosscheck: 'none' });
+    for (const id of groupCItemIds) {
+      const slot = r.trace.perSlot.find((s) => s.itemId === id)!;
+      // every no-kernel slot in makeSpec is an OPTIONAL_REASONING thinkingChallenge
+      expect(slot.criticality).not.toBe('REQUIRED_CORE');
+      expect(slot.finalState).toBe('OMITTED');
+      expect(slot.omitted).toBe(true);
+      expect(slot.reviewQueueId).toBeTruthy(); // tracked for a human reviewer
+    }
+    // the child worksheet is still delivered — every REQUIRED_CORE slot is READY
+    expect(r.worksheetState).toBe('READY_WITH_OPTIONAL_OMISSIONS');
+    expect(r.items.every((it) => it)).toBe(true);
+    expect(r.omittedSlots).toBe(groupCItemIds.length);
+    // NEVER a pending-crosscheck item in the delivered set
+    expect(r.pendingCrosscheckSlots).toBe(0);
+  });
+
+  it('with a PASS crosscheck the same slot IS delivered (READY)', async () => {
     if (groupCItemIds.length === 0) return;
     const r = await run({});
     for (const id of groupCItemIds) {
       const slot = r.trace.perSlot.find((s) => s.itemId === id)!;
-      expect(slot.finalState).toBe('PENDING_CROSSCHECK');
-      expect(slot.crosscheckRequired).toBe(true);
-      expect(slot.productionReady).toBe(false);
+      expect(slot.finalState).toBe('READY');
+      expect(slot.crosscheckVerdict).toBe('PASS');
+      expect(slot.productionReady).toBe(false); // AI-crosschecked ≠ deterministically verified
     }
-    expect(r.worksheetState).toBe('READY_WITH_PENDING_CROSSCHECK');
   });
 });
 
 describe('doc 63 §6 — worksheet assembly', () => {
-  it('a failing slot never discards already-accepted sibling slots', async () => {
+  it('a failing REQUIRED_CORE slot never discards already-accepted sibling slots', async () => {
     const doomed = kernelItemIds[0]!;
-    // doomed fails everywhere AND last resort disabled → FAILED, but the rest survive
+    // doomed fails everywhere AND last-resort + safe-substitute disabled → FAILED,
+    // but the rest survive
     const script: FaultScript = { failAttempts: 99, mode: 'KERNEL_DRIFT' };
-    const r = await run({ [doomed]: script }, { [doomed]: script }, { enableLastResort: false });
+    const r = await run(
+      { [doomed]: script },
+      { [doomed]: script },
+      { enableLastResort: false, enableSafeSubstitute: false },
+    );
     const slot = r.trace.perSlot.find((s) => s.itemId === doomed)!;
+    expect(slot.criticality).toBe('REQUIRED_CORE');
     expect(slot.finalState).toBe('FAILED');
-    expect(r.worksheetState).toBe('FAILED');
+    expect(r.worksheetState).toBe('FAILED'); // a REQUIRED_CORE slot failed
     expect(r.items.length).toBe(itemSpecs.length - 1); // every other slot delivered
   });
 });
@@ -210,23 +244,19 @@ describe('doc 63 §11 — product targets under fault injection', () => {
       expect(s.answerStatus).not.toBe('DETERMINISTIC_WRONG');
     }
     expect(r.failedSlots).toBe(0);
-    expect(['READY', 'READY_WITH_PENDING_CROSSCHECK']).toContain(r.worksheetState);
-    // bounded retries
+    expect(r.worksheetState).not.toBe('FAILED');
+    // bounded retries — a kernel-backed safe substitute adds at most one
+    // (deterministic last-resort) attempt
     for (const s of r.trace.perSlot) expect(s.attempts.length).toBeLessThanOrEqual(6);
   });
 
-  it('aggregate over many worksheets with a verification-calibrated fault mix hits the §11 targets', async () => {
-    // ~18% of items fail somewhere (matches the paid verification), spread across
-    // categories; escalation-needing (KERNEL_DRIFT deep) is the minority.
+  it('doc 68 §8/§13 — aggregate cohort hits the SAFE DEGRADED product gates', async () => {
+    // ~18% of items fail somewhere; escalation-needing (KERNEL_DRIFT deep) is the minority.
     const MODES: FaultScript['mode'][] = ['SIMILARITY', 'SCHEMA', 'LEAKAGE', 'KERNEL_DRIFT', 'SEMANTIC_UNKNOWN', 'DUPLICATE'];
-    let worksheets = 0;
-    let full = 0;
-    let items = 0;
-    let deliveredOrCrosscheck = 0;
-    let kernelReady = 0;
-    let kernelProdReady = 0;
+    const results = [];
     let maxAttempts = 0;
     let totalCalls = 0;
+    let items = 0;
 
     for (let seed = 0; seed < 40; seed += 1) {
       const dScripts: Record<string, FaultScript> = {};
@@ -237,39 +267,30 @@ describe('doc 63 §11 — product targets under fault injection', () => {
           const mode = MODES[(seed + i) % MODES.length]!;
           const deep = mode === 'KERNEL_DRIFT' && roll < 6;
           dScripts[id] = { failAttempts: deep ? 4 : 1, mode };
-          if (deep) hScripts[id] = { failAttempts: 4, mode }; // force last-resort sometimes
+          if (deep) hScripts[id] = { failAttempts: 4, mode };
         }
       });
       const r = await run(dScripts, hScripts);
-      worksheets += 1;
-      if (r.failedSlots === 0) full += 1;
+      results.push(r);
       for (const s of r.trace.perSlot) {
         items += 1;
-        if (['READY', 'PENDING_CROSSCHECK'].includes(s.finalState)) deliveredOrCrosscheck += 1;
         if (s.kernelFamily && s.finalState === 'READY') {
-          kernelReady += 1;
-          if (s.productionReady) kernelProdReady += 1;
-          // NEVER a silent unknown/wrong acceptance
-          expect(s.answerStatus).toBe('DETERMINISTIC_CORRECT');
+          expect(s.productionReady).toBe(true); // kernel-supported → deterministically verified
+          expect(s.answerStatus).toBe('DETERMINISTIC_CORRECT'); // never a silent unknown/wrong
         }
         maxAttempts = Math.max(maxAttempts, s.attempts.length);
       }
       totalCalls += r.trace.totals.modelCalls + r.trace.totals.lastResortCalls;
     }
 
-    if (process.env.DUMP_WS_METRICS) {
-      console.log(JSON.stringify({
-        worksheets, fullWorksheetRate: full / worksheets, validItemCompletion: deliveredOrCrosscheck / items,
-        kernelDeterministicCorrectness: kernelReady ? kernelProdReady / kernelReady : 1,
-        maxAttempts, callsPerItem: totalCalls / items,
-      }, null, 2));
-    }
+    const m = computeWorksheetCohortMetrics(results);
+    if (process.env.DUMP_WS_METRICS) console.log(JSON.stringify(m, null, 2));
 
-    // §11 targets
-    expect(kernelProdReady).toBe(kernelReady); // kernel-supported deterministic correctness = 100%
-    expect(deliveredOrCrosscheck / items).toBeGreaterThanOrEqual(0.995); // valid-item completion
-    expect(full / worksheets).toBeGreaterThanOrEqual(0.99); // full worksheet completion
+    // doc 68 §13 hard gates
+    expect(m.verifiedDeliveryRate).toBe(1); // 100% — every delivered item is verified
+    expect(m.unsafeDeliveryRate).toBe(0); // 0% — no unverified item ever delivered
+    expect(m.coreWorksheetDeliveryRate).toBeGreaterThanOrEqual(0.99); // ≥ 99%
     expect(maxAttempts).toBeLessThanOrEqual(6); // bounded retries
-    expect(totalCalls / items).toBeLessThan(2.2); // bounded cost (calls/item)
+    expect(totalCalls / items).toBeLessThan(2.2); // bounded cost
   });
 });

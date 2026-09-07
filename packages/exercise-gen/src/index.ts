@@ -52,6 +52,8 @@ export * from './retry-context.js';
 export * from './kernel-templater.js';
 export * from './last-resort.js';
 export * from './worksheet-orchestrator.js';
+export * from './substitute.js';
+export * from './worksheet-metrics.js';
 export * from './fault-injecting-generator.js';
 export * from './content-quality.js';
 export * from './review-queue.js';

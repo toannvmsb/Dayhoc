@@ -60,7 +60,10 @@ export interface WorksheetComparisonMetrics {
   readonly path: 'legacy' | 'new';
   readonly completedItems: number;
   readonly totalItems: number;
+  /** @deprecated always 0 (doc 68 §7). */
   readonly pendingCrosscheck: number;
+  readonly substituted: number;
+  readonly omitted: number;
   readonly failed: number;
   readonly modelCalls: number;
   readonly retries: number;
@@ -92,9 +95,11 @@ function metricsOf(result: WorksheetResult): WorksheetComparisonMetrics {
   const t = result.trace;
   return {
     path: 'new',
-    completedItems: result.readySlots + result.pendingCrosscheckSlots,
+    completedItems: result.readySlots,
     totalItems: t.perSlot.length,
-    pendingCrosscheck: result.pendingCrosscheckSlots,
+    pendingCrosscheck: 0,
+    substituted: result.substitutedSlots,
+    omitted: result.omittedSlots,
     failed: result.failedSlots,
     modelCalls: t.totals.modelCalls,
     retries: t.totals.retries,

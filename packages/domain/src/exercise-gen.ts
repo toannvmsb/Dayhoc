@@ -183,6 +183,58 @@ export const BUCKET_ROLE: Record<keyof ExerciseDistribution, TargetRole> = {
   thinkingChallenge: 'THINKING',
 };
 
+/**
+ * SAFE DEGRADED WORKSHEET COMPLETION (doc 68) — every planned slot carries a
+ * deterministic criticality decided by the planner (via its bucket), NEVER by
+ * the model.
+ *   REQUIRED_CORE      — must reach READY (generate → retry → fallback →
+ *                        deterministic last-resort → SAFE SUBSTITUTE) before the
+ *                        worksheet may be delivered; if none succeeds the
+ *                        worksheet stays FAILED. Never delivered unverified.
+ *   OPTIONAL_STRETCH   — an applied / extension item. If unresolved after bounded
+ *   OPTIONAL_REASONING   recovery it is routed to REVIEW_QUEUE and OMITTED from
+ *   CHALLENGE            the child worksheet — it never blocks delivery and is
+ *                        never shown unverified.
+ */
+export const SLOT_CRITICALITIES = [
+  'REQUIRED_CORE',
+  'OPTIONAL_STRETCH',
+  'OPTIONAL_REASONING',
+  'CHALLENGE',
+] as const;
+export type SlotCriticality = (typeof SLOT_CRITICALITIES)[number];
+
+/** Deterministic bucket → criticality map (doc 68 §1). The model cannot choose. */
+export const BUCKET_CRITICALITY: Record<keyof ExerciseDistribution, SlotCriticality> = {
+  prerequisiteRepair: 'REQUIRED_CORE',
+  currentSkill: 'REQUIRED_CORE',
+  variation: 'REQUIRED_CORE',
+  application: 'OPTIONAL_STRETCH',
+  advanced: 'CHALLENGE',
+  thinkingChallenge: 'OPTIONAL_REASONING',
+};
+
+export function isRequiredCore(c: SlotCriticality): boolean {
+  return c === 'REQUIRED_CORE';
+}
+
+/**
+ * Planner-authoritative fallback envelope for a REQUIRED_CORE slot (doc 68 §5).
+ * When the preferred target cannot be generated, the orchestrator may build ONE
+ * safe substitute that stays within this envelope. AI never lowers K/T itself.
+ * `null` on a slot ⇒ no safe substitute is permitted (a failure there fails the
+ * worksheet).
+ */
+export interface SlotFallbackEnvelope {
+  /** The floor the substitute may drop to — never below the spec's kMin/tMin. */
+  readonly minKnowledgeLevel: KnowledgeLevel;
+  readonly minThinkingLevel: ThinkingLevel;
+  /** Problem structures acceptable for a substitute (kernel-supported first). */
+  readonly allowedProblemStructures: readonly ProblemStructure[];
+  /** The substitute must still practise this skill and stay curriculum/prereq safe. */
+  readonly preserveSkillId: SkillId;
+}
+
 export const DISTRIBUTION_BUCKETS = [
   'prerequisiteRepair',
   'currentSkill',
@@ -507,6 +559,10 @@ export interface ItemGenerationSpec {
   readonly skillId: SkillId;
   readonly targetRole: TargetRole;
   readonly bucket: keyof ExerciseDistribution;
+  /** Deterministic slot criticality (doc 68 §1) — from the bucket, never the model. */
+  readonly criticality: SlotCriticality;
+  /** Safe-substitute envelope for a REQUIRED_CORE slot (doc 68 §5); null otherwise. */
+  readonly fallback: SlotFallbackEnvelope | null;
   readonly domain: string;
   readonly curriculumNodeId: string;
   readonly curriculumOrigin: number;

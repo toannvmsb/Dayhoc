@@ -1,4 +1,5 @@
 import {
+  BUCKET_CRITICALITY,
   DISTRIBUTION_BUCKETS,
   KNOWLEDGE_LEVELS,
   THINKING_LEVELS,
@@ -11,6 +12,8 @@ import {
   type ProblemStructure,
   type ProblemTypeId,
   type SkillId,
+  type SlotCriticality,
+  type SlotFallbackEnvelope,
   type TargetRole,
   type TargetSkill,
   type ThinkingLevel,
@@ -48,7 +51,7 @@ const CLASSIFICATION_NAME_RE =
   /góc (nhọn|tù|bẹt|vuông)|nhọn.*tù.*bẹt|vuông góc|song song|dấu hiệu nhận biết|nhận biết|phân loại|gọi tên|loại (góc|tam giác|tứ giác)/i;
 
 /** Answer family from the problem structure + skill — never the model's choice. */
-function answerKindFor(structure: ProblemStructure, domain: string, skillName: string): AnswerKind {
+export function answerKindFor(structure: ProblemStructure, domain: string, skillName: string): AnswerKind {
   switch (structure) {
     case 'explain_or_justify':
     case 'find_the_error':
@@ -69,7 +72,7 @@ function answerKindFor(structure: ProblemStructure, domain: string, skillName: s
   }
 }
 
-function verificationPolicyFor(kind: AnswerKind, structure: ProblemStructure): AnswerVerificationPolicy {
+export function verificationPolicyFor(kind: AnswerKind, structure: ProblemStructure): AnswerVerificationPolicy {
   // only a single closed NUMERIC computation is a "supported math type" the
   // deterministic verifier is expected to re-derive (doc 56 §7). Everything else
   // — word problems, fractions-in-context, choice, reasoning — is accepted at an
@@ -143,6 +146,10 @@ export function buildItemGenerationSpecs(
       .filter((p) => masteredSet.has(p) && !weakSet.has(p))
       .slice(0, 2) as SkillId[];
 
+    const criticality: SlotCriticality = BUCKET_CRITICALITY[slot.bucket];
+    const fallback: SlotFallbackEnvelope | null =
+      criticality === 'REQUIRED_CORE' ? fallbackEnvelopeFor(spec, slot, domain) : null;
+
     specs.push({
       itemId: `${spec.generationSpecId}::item-${String(index + 1).padStart(2, '0')}`,
       generationSpecId: spec.generationSpecId,
@@ -150,6 +157,8 @@ export function buildItemGenerationSpecs(
       skillId: slot.target.skillId,
       targetRole: slot.target.role as TargetRole,
       bucket: slot.bucket,
+      criticality,
+      fallback,
       domain,
       curriculumNodeId: skill?.curriculumNodeId ?? spec.learningContext.resolvedLessonId ?? 'unknown',
       curriculumOrigin: skill?.curriculumOrigin ?? slot.target.curriculumOrigin,
@@ -178,6 +187,28 @@ export function buildItemGenerationSpecs(
   });
 
   return specs;
+}
+
+/**
+ * Planner-authoritative safe-substitute envelope for a REQUIRED_CORE slot
+ * (doc 68 §5). The substitute may drop to the spec's K/T floor and to a
+ * kernel-supported structure — never below, and it MUST keep the same skill.
+ * The generator/model never lowers K/T itself.
+ */
+function fallbackEnvelopeFor(
+  spec: ExerciseGenerationSpec,
+  slot: Slot,
+  _domain: string,
+): SlotFallbackEnvelope {
+  // direct_computation first (INT_ARITH / FRACTION_ARITH / kernel-backed → the
+  // deterministic last-resort can always finish it); a one-step word problem is
+  // the second-choice structure (WORD_1STEP kernel).
+  return {
+    minKnowledgeLevel: spec.difficulty.kMin,
+    minThinkingLevel: spec.difficulty.tMin,
+    allowedProblemStructures: ['direct_computation', 'single_step_word_problem'],
+    preserveSkillId: slot.target.skillId,
+  };
 }
 
 /** One flat slot per bucket-count, round-robin over the bucket's bound targets. */
@@ -233,7 +264,7 @@ function pinLevels(
 }
 
 /** The KB problem type closest to the pinned (K, T), or null. */
-function pickProblemType(
+export function pickProblemType(
   kb: KnowledgeBase,
   skillId: SkillId,
   k: KnowledgeLevel,

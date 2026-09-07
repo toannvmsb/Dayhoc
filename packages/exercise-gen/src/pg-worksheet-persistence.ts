@@ -26,16 +26,18 @@ export class PgWorksheetGenerationStore implements WorksheetGenerationStore {
       await client.query(
         `INSERT INTO worksheet_generation_runs
            (id, generation_spec_id, child_ref, mode, worksheet_state, ready_slots,
-            pending_crosscheck_slots, failed_slots, orchestrator_version, router_version,
+            pending_crosscheck_slots, failed_slots, substituted_slots, omitted_slots,
+            orchestrator_version, router_version,
             retry_context_version, last_resort_version, content_quality_version,
             item_validator_version, crosscheck_adapter_name, model_calls, retries,
             fallback_calls, last_resort_calls, input_tokens, output_tokens,
             estimated_cost_usd, actual_cost_usd, cost_ceiling_hit, worksheet_latency_ms,
             cost_event_refs, created_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29)`,
         [
           r.id, r.generationSpecId, r.childRef, r.mode, r.worksheetState, r.readySlots,
-          r.pendingCrosscheckSlots, r.failedSlots, r.orchestratorVersion, r.routerVersion,
+          r.pendingCrosscheckSlots, r.failedSlots, r.substitutedSlots, r.omittedSlots,
+          r.orchestratorVersion, r.routerVersion,
           r.retryContextVersion, r.lastResortVersion, r.contentQualityVersion,
           r.itemValidatorVersion, r.crosscheckAdapterName, r.modelCalls, r.retries,
           r.fallbackCalls, r.lastResortCalls, r.inputTokens, r.outputTokens,
@@ -47,13 +49,15 @@ export class PgWorksheetGenerationStore implements WorksheetGenerationStore {
         await client.query(
           `INSERT INTO worksheet_slots
              (id, run_id, generation_spec_id, item_id, index, kernel_family, initial_role,
-              route_reason, final_state, last_resort_used, crosscheck_required,
+              route_reason, criticality, final_state, last_resort_used, substituted, omitted,
+              degrade_reason, crosscheck_required,
               crosscheck_verdict, content_quality_codes, review_queue_id, answer_status,
               production_ready, slot_latency_ms)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`,
           [
             s.id, s.runId, s.generationSpecId, s.itemId, s.index, s.kernelFamily, s.initialRole,
-            s.routeReason, s.finalState, s.lastResortUsed, s.crosscheckRequired,
+            s.routeReason, s.criticality, s.finalState, s.lastResortUsed, s.substituted, s.omitted,
+            s.degradeReason, s.crosscheckRequired,
             s.crosscheckVerdict, s.contentQualityCodes, s.reviewQueueId, s.answerStatus,
             s.productionReady, s.slotLatencyMs,
           ],
@@ -110,6 +114,7 @@ function rowToRun(x: any): WorksheetRunRecord {
     id: x.id, generationSpecId: x.generation_spec_id, childRef: x.child_ref, mode: x.mode,
     worksheetState: x.worksheet_state, readySlots: x.ready_slots,
     pendingCrosscheckSlots: x.pending_crosscheck_slots, failedSlots: x.failed_slots,
+    substitutedSlots: x.substituted_slots ?? 0, omittedSlots: x.omitted_slots ?? 0,
     orchestratorVersion: x.orchestrator_version, routerVersion: x.router_version,
     retryContextVersion: x.retry_context_version, lastResortVersion: x.last_resort_version,
     contentQualityVersion: x.content_quality_version, itemValidatorVersion: x.item_validator_version,
@@ -125,7 +130,10 @@ function rowToSlot(x: any): WorksheetSlotRecord {
   return {
     id: x.id, runId: x.run_id, generationSpecId: x.generation_spec_id, itemId: x.item_id, index: x.index,
     kernelFamily: x.kernel_family, initialRole: x.initial_role, routeReason: x.route_reason,
-    finalState: x.final_state, lastResortUsed: x.last_resort_used, crosscheckRequired: x.crosscheck_required,
+    criticality: x.criticality ?? 'REQUIRED_CORE',
+    finalState: x.final_state, lastResortUsed: x.last_resort_used,
+    substituted: x.substituted ?? false, omitted: x.omitted ?? false, degradeReason: x.degrade_reason ?? null,
+    crosscheckRequired: x.crosscheck_required,
     crosscheckVerdict: x.crosscheck_verdict, contentQualityCodes: x.content_quality_codes ?? [],
     reviewQueueId: x.review_queue_id, answerStatus: x.answer_status, productionReady: x.production_ready,
     slotLatencyMs: x.slot_latency_ms,
