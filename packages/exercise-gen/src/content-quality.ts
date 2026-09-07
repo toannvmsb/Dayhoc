@@ -36,8 +36,11 @@ export interface ContentQualityResult {
   readonly findings: readonly ContentQualityFinding[];
 }
 
-// LaTeX the SGK plain-text pilot UI does not render.
-const LATEX_RE = /\\frac\b|\\dfrac\b|\\left|\\right|\\begin\{|\\\(|\\\)|\\\[|\\\]|\$\$?[^$]*\$\$?|\\times\b|\\div\b|\\cdot\b|\\sqrt\b|\^\{|_\{/;
+// LaTeX / TeX markup the SGK plain-text pilot UI does not render. Backslash is
+// never used in Vietnamese prose, so ANY `\<letter>` command is markup; `$…$`
+// math mode; and a caret/underscore bound to an alnum is a super/subscript that
+// should be a real Unicode ² ³ ₁ … instead.
+const LATEX_RE = /\\[a-zA-Z]+\b|\\[(){}[\]]|\$\$?[^$\n]*\$\$?|[A-Za-z0-9)]\^[A-Za-z0-9{(]|[A-Za-z]_[A-Za-z0-9{]/;
 
 // a Vietnamese math prompt should have letters + a question; catch obvious breakage.
 const VIET_LETTERS_RE = /[a-zà-ỹ]/i;

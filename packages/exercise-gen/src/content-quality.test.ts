@@ -44,6 +44,30 @@ describe('content-quality', () => {
     expect(r.findings.map((f) => f.code)).toContain('RAW_LATEX');
   });
 
+  it('rejects additional TeX markup that v1 missed (\\angle, \\parallel, x^2, a_1, $…$)', () => {
+    for (const p of [
+      'Cho \\angle ABC = 40°. Tính góc kề bù với nó.',
+      'Biết a \\parallel b, tính số đo góc so le trong.',
+      'Tính giá trị của x^2 khi x = 3.',
+      'Cho dãy a_1, a_2, a_3. Tìm a_2 biết tổng bằng 12.',
+      'Tính $2 + 3 \\times 4$ theo thứ tự thực hiện phép tính.',
+    ]) {
+      const r = checkContentQuality(ex({ prompt: p }), null);
+      expect(r.findings.map((f) => f.code), p).toContain('RAW_LATEX');
+    }
+  });
+
+  it('does NOT flag legitimate Unicode super/subscript or plain prose', () => {
+    for (const p of [
+      'Một hình vuông cạnh 5 cm. Tính diện tích (cm²) của hình.',
+      'Tính chu vi hình chữ nhật có chiều dài 8 m và chiều rộng 3 m.',
+      'Cho góc A₁ và góc A₂ đối đỉnh. Giải thích vì sao chúng bằng nhau.',
+    ]) {
+      const r = checkContentQuality(ex({ prompt: p }), null);
+      expect(r.findings.map((f) => f.code), p).not.toContain('RAW_LATEX');
+    }
+  });
+
   it('rejects a prompt that is not a Vietnamese question', () => {
     const r = checkContentQuality(ex({ prompt: '12 + 8' }), null);
     expect(r.ok).toBe(false);

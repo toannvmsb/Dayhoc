@@ -402,11 +402,35 @@ host is a separate infra dependency, flagged in the Phase 9 report).
 
 ---
 
-## PHASE 8 — CONTENT QUALITY HARDENING  ⏳
+## PHASE 8 — CONTENT QUALITY HARDENING  ✅  (`main` Phase-8 commit)
 
-_(pending; P2 candidates already logged: FRACTION_ARITH reasoning-structure
-generation, `choice`-kind drift on geometry skills — the compose-retry fix in
-Phase 4b is the first of these)_
+FREE deterministic fixes driven by the staging + benchmark telemetry from this
+run (no paid AI critic):
+
+- **`content-quality.v1` LaTeX gate widened** — v1 enumerated ~15 TeX commands
+  and a real `\(…\frac…\)` prompt still slipped through in the paid E2E (doc 64).
+  Now: **any** `\<letter>` command (backslash never appears in Vietnamese prose),
+  `$…$` math mode, and a caret/underscore bound to an alnum (`x^2`, `a_1` →
+  should be `x²`, `a₁`). 2 new tests incl. a "does NOT flag Unicode ² ³ ₁ or
+  plain prose" guard.
+- **`kernel-templater` scenario libraries expanded** — `buildContentFromKernel`
+  (mock generator + `deterministicLastResort`) had a single fixed template for
+  `FRACTION_ARITH` (→ 12 framings), `LINEAR_EQ` / `SUM_DIFF` / `ANGLE_SUM` /
+  `RECT_GEOMETRY` (→ 4 each), `PERCENT` / `UNIT_CONVERSION` (→ 3–4). Every
+  framing stays an explicit expression (no narrative verb that could contradict
+  the kernel operation) — one candidate framing ("phân số đã cho") tripped the
+  validator's SUBTRACTION keyword and was dropped.
+- **`last-resort-diversity.test.ts`** — the last resort now completes ≥5
+  same-family Group-A slots collision-free (was ~1 for `FRACTION_ARITH`). The
+  last resort fires ~0.27×/worksheet (Phase 3), so ≥6 same-family last-resort
+  slots in one worksheet does not occur; the fixed library saturates beyond
+  that — documented, acceptable.
+- **`choice`-kind geometry drift** — already fixed in Phase 4b (compose-failure
+  correction fed into the retry).
+
+808 unit / 0 fail; 48 DB integration green; lint unchanged.
+
+`CONTENT_QUALITY_GATE_READY = true`.
 
 ---
 
