@@ -221,10 +221,16 @@ Any of Fly.io / Render / Railway works (Docker). Requirements: builds the repo
 
 ### C. Cron / scheduled jobs
 
-- `npm run cron:pilot:safety` — **every 10 minutes**. (Fly: `[[services]]` cron or
-  a `machine run`; Render: Cron Job; Railway: cron.) Exit 10 = kill switch just
-  tripped → page anh.
-- `npm run cron:pilot:maintenance` — **once daily** (e.g. 03:00 local).
+- `npm run cron:pilot:safety` — **every 10 minutes** (`*/10 * * * *`). (Fly:
+  `[[services]]` cron; Render: Cron Job; Railway: a service with a Cron Schedule.)
+  Exits 0 on a normal run **and** when it has to auto-stop LIVE; a stop is logged
+  as a `CRITICAL` line — watch the logs / the kill-switch status, not the exit
+  code. Exit 1 only on script error (bad config / DB unreachable).
+- `npm run cron:pilot:maintenance` — **once daily**, `0 20 * * *` UTC = 03:00
+  Asia/Ho_Chi_Minh.
+- Every cron service needs the **same full env block** as the web/worker
+  services — Railway shared/project variables are not auto-attached, add them per
+  service (or paste the block into each service's Variables → Raw Editor).
 
 ### D. Environment (platform secret store — NOT `.env` in git)
 

@@ -13,7 +13,10 @@ import { purgeExpiredQaSamples, purgeStaleServingIntents } from '../services/api
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {
-  console.error('set DATABASE_URL');
+  console.error(
+    '[pilot-cron-maintenance] DATABASE_URL is not set. On Railway: open this service → ' +
+      'Variables → add DATABASE_URL (and the rest of the pilot env block from doc 70).',
+  );
   process.exit(1);
 }
 

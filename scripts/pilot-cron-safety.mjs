@@ -9,14 +9,20 @@
  *
  *   DATABASE_URL=postgres://... node scripts/pilot-cron-safety.mjs
  *
- * Exit code: 0 clean, 10 tripped (kill switch now active), 1 error.
+ * Exit code: 0 = ran OK (whether or not it had to stop LIVE), 1 = script error
+ * (bad config / DB unreachable). A trip is logged as a `CRITICAL` line; watch
+ * the logs or the kill-switch status for that — do not rely on the exit code,
+ * some schedulers (Railway) flag any non-zero exit as "Crashed".
  */
 import { Pool } from 'pg';
 import { enforceSafetyAutoStop, resolveKillSwitch } from '../services/api/dist/index.js';
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {
-  console.error('set DATABASE_URL');
+  console.error(
+    '[pilot-cron-safety] DATABASE_URL is not set. On Railway: open this service → ' +
+      'Variables → add DATABASE_URL (and the rest of the pilot env block from doc 70).',
+  );
   process.exit(1);
 }
 
@@ -32,7 +38,7 @@ const pool = new Pool({
 try {
   const pre = await resolveKillSwitch(pool, process.env);
   if (pre.active) {
-    console.log(JSON.stringify({ ok: true, killSwitch: 'already-active', source: pre.source, reason: pre.reason }));
+    console.log(JSON.stringify({ ts: new Date().toISOString(), ok: true, killSwitch: 'already-active', source: pre.source, reason: pre.reason }));
     process.exit(0);
   }
   const res = await enforceSafetyAutoStop(pool, { sinceIso });
@@ -46,7 +52,13 @@ try {
       killSwitchActive: post.active,
     }),
   );
-  process.exit(res.tripped ? 10 : 0);
+  if (res.tripped) {
+    console.error(
+      `[pilot-cron-safety] CRITICAL — LIVE generation auto-stopped. kill switch is now ACTIVE. ` +
+        `reasons: ${res.scan.criticalReasons?.join('; ') || 'see scan'}. Investigate before clearing it.`,
+    );
+  }
+  process.exit(0); // ran successfully — a trip is a success for this job
 } catch (e) {
   console.error('[pilot-cron-safety] error', e);
   process.exit(1);
