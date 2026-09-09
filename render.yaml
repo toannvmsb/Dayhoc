@@ -1,0 +1,105 @@
+# DẠYZI — Small Family Pilot on Render (doc 70 §Deploy, path C1).
+#
+# One Docker image (./Dockerfile), four Render services:
+#   dayzi-pilot-api          web     — Next.js host (public HTTPS)
+#   dayzi-pilot-worker       worker  — durable WorksheetJobWorker
+#   dayzi-pilot-safety       cron    — safety auto-stop, every 10 min
+#   dayzi-pilot-maintenance  cron    — QA/serving purge, daily 03:00 Asia/Ho_Chi_Minh (20:00 UTC)
+#
+# Setup: Render Dashboard → New → Blueprint → pick this repo. Then open the
+# "dayzi-pilot" env group and fill every value marked `sync: false` (secrets).
+# Blueprint deploys are gated on those being present.
+#
+# NOTE: paid — 2 always-on services (web + worker) on `starter` ≈ $7/mo each,
+# plus cron compute. This is the "purchasing paid hosting" decision — yours to make.
+
+services:
+  - type: web
+    name: dayzi-pilot-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    region: singapore
+    healthCheckPath: /
+    autoDeploy: false
+    envVars:
+      - fromGroup: dayzi-pilot
+
+  - type: worker
+    name: dayzi-pilot-worker
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: npm run worker:worksheet
+    plan: starter
+    region: singapore
+    autoDeploy: false
+    envVars:
+      - fromGroup: dayzi-pilot
+
+  - type: cron
+    name: dayzi-pilot-safety
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: npm run cron:pilot:safety
+    schedule: "*/10 * * * *"
+    region: singapore
+    envVars:
+      - fromGroup: dayzi-pilot
+
+  - type: cron
+    name: dayzi-pilot-maintenance
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: npm run cron:pilot:maintenance
+    schedule: "0 20 * * *"
+    region: singapore
+    envVars:
+      - fromGroup: dayzi-pilot
+
+envVarGroups:
+  - name: dayzi-pilot
+    envVars:
+      # --- non-secret config (safe to keep here) ---
+      - key: NODE_ENV
+        value: production
+      - key: AI_GENERATION_MODE
+        value: LIVE
+      - key: AI_CROSSCHECK_MODE
+        value: LIVE
+      - key: CROSSCHECK_MODEL
+        value: gpt-4.1-mini
+      - key: WORKSHEET_QUEUE
+        value: durable
+      - key: AI_GENERATION_KILL_SWITCH
+        value: "false"
+      - key: INTERNAL_LIVE_GEN_DAILY_CAP_USD
+        value: "2.00"
+      - key: INTERNAL_LIVE_XCHECK_DAILY_CAP_USD
+        value: "0.50"
+      - key: INTERNAL_LIVE_QA_SAMPLE_ONE_IN
+        value: "5"
+      - key: INTERNAL_LIVE_QA_RETENTION_DAYS
+        value: "7"
+      - key: PILOT_QA_SAMPLE_RATE
+        value: "0.08"
+      - key: PILOT_SAFETY_WINDOW_MIN
+        value: "60"
+      - key: LOG_LEVEL
+        value: info
+      - key: PORT
+        value: "3100"
+      # --- secrets: fill in the Render dashboard (never in git) ---
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false

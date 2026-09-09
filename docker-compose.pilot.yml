@@ -1,0 +1,48 @@
+# DẠYZI — Small Family Pilot on a single VPS (doc 70 §Deploy, path C2).
+#
+#   docker compose -f docker-compose.pilot.yml --env-file .env.pilot up -d --build
+#
+# Runs the API + the durable worker. TLS is terminated by Caddy (auto Let's
+# Encrypt) — set PILOT_DOMAIN in .env.pilot to a DNS name pointing at the box.
+#
+# The two cron jobs run from the HOST crontab (see doc 70), calling:
+#   docker compose -f docker-compose.pilot.yml run --rm worker npm run cron:pilot:safety
+#   docker compose -f docker-compose.pilot.yml run --rm worker npm run cron:pilot:maintenance
+#
+# .env.pilot holds every secret + config var (see doc 70 §checklist). NEVER commit it.
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    env_file: [.env.pilot]
+    environment:
+      PORT: "3100"
+    expose: ["3100"]
+    # no host port — only Caddy reaches it
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: npm run worker:worksheet
+    restart: always
+    env_file: [.env.pilot]
+
+  caddy:
+    image: caddy:2
+    restart: always
+    ports: ["80:80", "443:443"]
+    environment:
+      PILOT_DOMAIN: ${PILOT_DOMAIN}
+    command: caddy reverse-proxy --from ${PILOT_DOMAIN} --to api:3100
+    depends_on: [api]
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

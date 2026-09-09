@@ -1,0 +1,52 @@
+# Build context hygiene for the pilot image (doc 70). Keep the context small —
+# the Dockerfile only needs source + workspace manifests + migrations + scripts.
+
+# deps + build output (reinstalled / rebuilt inside the image)
+**/node_modules
+**/dist
+**/build
+**/.next
+**/out
+**/*.tsbuildinfo
+
+# the mobile app is NOT part of the pilot API image (4+ GB of android/ + deps)
+apps/mobile
+
+# secrets & local env — never in an image
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# vcs / editor / OS
+.git
+.github
+.idea
+.vscode
+**/.DS_Store
+**/Thumbs.db
+
+# large local-only material
+Tai lieu
+File du an
+packages/testing/vision-benchmark-data/images
+**/.dz-uploads
+
+# paid-run artifacts / scratch reports (also gitignored)
+CALIB*.txt
+ROUND*.txt
+ROUND*.jsonl
+WS_*.txt
+WS_*.jsonl
+GROUPC_XCHECK*
+D7_COHORT*.txt
+WAVE1_REPORT*.txt
+INSP.txt
+PICK.txt
+
+# coverage / playwright (test SOURCE stays — some tsconfigs compile it)
+**/coverage
+**/test-results
+**/playwright-report
+**/.playwright
