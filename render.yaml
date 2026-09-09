@@ -21,7 +21,7 @@ services:
     dockerContext: .
     plan: starter
     region: singapore
-    healthCheckPath: /
+    healthCheckPath: /api/v1/health
     autoDeploy: false
     envVars:
       - fromGroup: dayzi-pilot
