@@ -12,3 +12,22 @@ export * from './production/production-api.js';
 export * from './production/context.js';
 export * from './production/transaction.js';
 export { resolveChildLearningInputs, syncSchoolGradeCache } from './production/learning-scene.js';
+
+// deploy surface — durable worksheet worker + operational maintenance (doc 69/70)
+export { createWorksheetJobWorker } from './production/worksheet-generation.js';
+export {
+  resolveKillSwitch,
+  setKillSwitch,
+  scanInternalLiveSafety,
+  enforceSafetyAutoStop,
+  loadInternalLiveBudgets,
+  internalLiveSpendToday,
+  listInternalLiveCohort,
+} from './production/internal-live.js';
+export {
+  purgeExpiredQaSamples,
+  internalLiveDashboard,
+  pilotDashboard,
+} from './production/internal-live-observability.js';
+export { purgeStaleServingIntents } from './production/internal-live-serving.js';
+export { listPilotFamilies, feedbackRollup } from './production/pilot.js';

@@ -5,6 +5,36 @@ import type { WorksheetResult } from '@copilot/exercise-gen';
 import { captureQaSamples, qaSampleRate } from './internal-live-observability.js';
 
 /**
+ * doc 69 §8 / doc 70 §9 — decide whether to keep a short-retention QA sample of
+ * a delivered worksheet. Event-triggered on any degraded path (safe substitution
+ * / optional omission / crosscheck-uncertain / review-required / high retry) so a
+ * reviewer always sees the risky ones; otherwise at the configured base rate
+ * (1-in-N for internal LIVE, `PILOT_QA_SAMPLE_RATE` for pilot families).
+ */
+export function shouldSampleQa(
+  result: WorksheetResult,
+  runId: string,
+  env: Record<string, string | undefined> = process.env,
+): { sample: boolean; reason: string } {
+  const perSlot = result.trace.perSlot;
+  if (result.substitutedSlots > 0) return { sample: true, reason: 'safe_substitution' };
+  if (result.omittedSlots > 0) return { sample: true, reason: 'optional_omission' };
+  if (perSlot.some((s) => s.crosscheckVerdict === 'UNCERTAIN')) return { sample: true, reason: 'crosscheck_uncertain' };
+  if (perSlot.some((s) => s.reviewQueueId)) return { sample: true, reason: 'review_required' };
+  if (perSlot.some((s) => s.attempts.length >= 3)) return { sample: true, reason: 'high_retry' };
+  const pilotRate = Number.parseFloat(env.PILOT_QA_SAMPLE_RATE ?? '');
+  if (Number.isFinite(pilotRate) && pilotRate >= 0 && pilotRate <= 1) {
+    return hashInt(runId) % 1000 < pilotRate * 1000
+      ? { sample: true, reason: 'pilot_base_rate' }
+      : { sample: false, reason: 'not_sampled' };
+  }
+  const oneIn = qaSampleRate(env);
+  return oneIn > 0 && hashInt(runId) % oneIn === 0
+    ? { sample: true, reason: 'internal_one_in_n' }
+    : { sample: false, reason: 'not_sampled' };
+}
+
+/**
  * CONTROLLED INTERNAL LIVE — turn a completed LIVE worksheet run into a
  * child-visible `AI_GENERATED` assignment (doc 69 §5/§6).
  *
@@ -102,9 +132,10 @@ export async function recordServingIntent(pool: Pool, input: RecordServingIntent
       [input.runId, childRef, input.generationSpecId, JSON.stringify(items)],
     );
 
-    // 1-in-N QA sample of the delivered worksheet (doc 69 §8)
-    const rate = qaSampleRate(input.env);
-    if (rate > 0 && hashInt(input.runId) % rate === 0) {
+    // QA sample of the delivered worksheet (doc 69 §8 / doc 70 §9) —
+    // event-triggered on degraded paths, else at the configured base rate.
+    const qa = shouldSampleQa(input.result, input.runId, input.env);
+    if (qa.sample) {
       const samples = input.result.trace.perSlot
         .filter((s) => s.finalState === 'READY')
         .slice(0, 3)

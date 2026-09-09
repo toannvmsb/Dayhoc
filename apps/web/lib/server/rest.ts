@@ -371,6 +371,36 @@ const ROUTES: Record<string, Handler> = {
     getApi().internalLiveQaList(await adminCtx(c), c.query.get('limit') ? Number(c.query.get('limit')) : undefined),
   'GET /admin/internal-live/qa/:id': async (c) => getApi().internalLiveQaRead(await adminCtx(c), c.params[0]!),
   'POST /admin/internal-live/maintenance': async (c) => getApi().internalLiveMaintenance(await adminCtx(c)),
+
+  // ---- doc 70: SMALL FAMILY PILOT ----
+  // ADMIN — pilot cohort + funnel + feedback
+  'GET /admin/pilot/dashboard': async (c) =>
+    getApi().pilotDashboard(await adminCtx(c), {
+      ...(c.query.get('sinceIso') ? { sinceIso: c.query.get('sinceIso')! } : {}),
+    }),
+  'GET /admin/pilot/cohort': async (c) => getApi().pilotFamilyList(await adminCtx(c)),
+  'POST /admin/pilot/cohort': async (c) => {
+    const familyId = String(c.body.familyId ?? '');
+    if (!familyId) throw new RestError(400, 'familyId là bắt buộc');
+    return getApi().pilotFamilyAdd(await adminCtx(c), familyId, c.body.note ? String(c.body.note) : undefined);
+  },
+  'GET /admin/pilot/feedback': async (c) =>
+    getApi().pilotFeedbackRollup(await adminCtx(c), {
+      ...(c.query.get('sinceIso') ? { sinceIso: c.query.get('sinceIso')! } : {}),
+    }),
+
+  // PARENT — guardian consent + today's-content feedback
+  'GET /children/:id/pilot/consent': async (c) => getApi().pilotConsentStatus(auth(c), c.params[0]!),
+  'POST /children/:id/pilot/consent': async (c) => getApi().recordPilotConsent(auth(c), c.params[0]!),
+  'DELETE /children/:id/pilot/consent': async (c) => getApi().withdrawPilotConsent(auth(c), c.params[0]!),
+  'POST /children/:id/pilot/feedback': async (c) => {
+    const verdict = String(c.body.verdict ?? '').toUpperCase();
+    return getApi().submitParentFeedback(auth(c), c.params[0]!, {
+      verdict: verdict as never,
+      ...(c.body.note ? { note: String(c.body.note) } : {}),
+      ...(c.body.assignmentId ? { assignmentId: String(c.body.assignmentId) } : {}),
+    });
+  },
 };
 
 const COMPILED = Object.entries(ROUTES).map(([key, handler]) => {

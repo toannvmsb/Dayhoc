@@ -27,7 +27,11 @@
     "db:migrate": "node-pg-migrate up",
     "db:migrate:down": "node-pg-migrate down",
     "seed:pilot": "node scripts/seed-pilot.mjs",
-    "seed:pilot:reset": "node scripts/seed-pilot.mjs --reset"
+    "seed:pilot:reset": "node scripts/seed-pilot.mjs --reset",
+    "start:web": "npm run start --workspace @copilot/web",
+    "worker:worksheet": "node services/api/dist/bin/worksheet-worker.js",
+    "cron:pilot:safety": "node scripts/pilot-cron-safety.mjs",
+    "cron:pilot:maintenance": "node scripts/pilot-cron-maintenance.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

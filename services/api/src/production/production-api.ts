@@ -80,6 +80,23 @@ import {
   purgeServingForChild,
   purgeStaleServingIntents,
 } from './internal-live-serving.js';
+import { pilotDashboard } from './internal-live-observability.js';
+import {
+  pilotChildRef,
+  pilotFamilyRef,
+  recordPilotConsent as recordPilotConsentRow,
+  hasPilotConsent,
+  withdrawPilotConsent as withdrawPilotConsentRow,
+  familyRequiresConsent,
+  addPilotFamily,
+  listPilotFamilies,
+  recordParentFeedback,
+  feedbackRollup,
+  recordPilotActivity,
+  purgePilotForChild,
+  FEEDBACK_VERDICTS,
+  type FeedbackVerdict,
+} from './pilot.js';
 import { insertAiUsageEvent } from './pg-ai-usage.js';
 import {
   purgeReviewSnapshots,
@@ -476,6 +493,16 @@ export function createProductionApi(opts: ProductionApiOptions) {
     try {
       const pending = await pendingLiveWorksheetFor(pool, childId);
       if (!pending) return null;
+      // doc 70 §4 — a pilot family must have recorded guardian consent for the
+      // child before any AI-generated content is served. Non-pilot (internal)
+      // families are unaffected.
+      const famId = await familyIdFor(userId);
+      const fref = famId ? familyRefOf(famId) : null;
+      if (fref && (await familyRequiresConsent(pool, fref)) && !(await hasPilotConsent(pool, childId))) {
+        logger.warn('LIVE worksheet held — pilot child has no guardian consent on file', { family: fref });
+        await markServed(pool, pending.runId, { skipReason: 'pilot: no guardian consent' });
+        return null;
+      }
       const assignmentId = await withTransaction(pool, async (client) => {
         const ls = new PgLearningStateStore(client);
         const row = await ls.createAssignment({
@@ -503,10 +530,39 @@ export function createProductionApi(opts: ProductionApiOptions) {
       });
       await markServed(pool, pending.runId, { assignmentId });
       analytics.track({ category: 'practice', action: 'practice_started', actorRef: actorRef(userId), metadata: { source: 'AI_GENERATED' } });
+      if (fref) {
+        // best-effort telemetry — never on the serve latency path
+        void recordPilotActivity(pool, { familyRef: fref, childRef: childRefOf(childId), actor: 'SYSTEM', event: 'first_worksheet_generated', meta: { runId: pending.runId } });
+        void recordPilotActivity(pool, { familyRef: fref, childRef: childRefOf(childId), actor: 'SYSTEM', event: 'practice_started' });
+      }
       return assignmentId;
     } catch (err) {
       logger.warn('LIVE worksheet serve failed', { error: err instanceof Error ? err.message : String(err) });
       return null;
+    }
+  }
+
+  /** doc 70 §6 — best-effort pilot activity event (pseudonymous). No-op for
+   *  a user with no owning family; never blocks the product flow. */
+  async function recordPilotActivityFor(
+    userId: string,
+    childId: string | null,
+    actor: 'PARENT' | 'STUDENT' | 'SYSTEM',
+    event: import('./pilot.js').PilotEvent,
+    meta?: Record<string, unknown>,
+  ): Promise<void> {
+    try {
+      const famId = await familyIdFor(userId);
+      if (!famId) return;
+      await recordPilotActivity(pool, {
+        familyRef: pilotFamilyRef(famId),
+        ...(childId ? { childRef: pilotChildRef(childId) } : {}),
+        actor,
+        event,
+        ...(meta ? { meta } : {}),
+      });
+    } catch {
+      /* telemetry only */
     }
   }
 
@@ -1106,6 +1162,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
         const row = (await client.query(`SELECT * FROM child_profiles WHERE id = $1`, [childId]))
           .rows[0];
         analytics.track({ category: 'child', action: 'child_created', actorRef: actorRef(ctx.userId), metadata: { grade: input.schoolGrade } });
+        void recordPilotActivityFor(ctx.userId, childId as string, 'PARENT', 'profile_created', { grade: input.schoolGrade });
         return childDto(row);
       });
     },
@@ -1285,6 +1342,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
         return scoped.childToday({ userId: ctx.userId, role: 'child', childScope: childId }, childId);
       }
       await authorizeChild(ctx, childId, 'view_child');
+      void recordPilotActivityFor(ctx.userId, childId, 'PARENT', 'today_viewed');
       // doc 69 §5 — a LIVE-cohort family: serve a ready worksheet, else queue
       // today's (deterministic spec + one INSERT — fast, errors swallowed).
       const served = await serveLiveWorksheetIfPending(ctx.userId, childId);
@@ -2513,10 +2571,12 @@ export function createProductionApi(opts: ProductionApiOptions) {
           [wsRef],
         );
         await del('worksheet_generation_runs', `DELETE FROM worksheet_generation_runs WHERE child_ref = $1`, [wsRef]);
-        // doc 69 — INTERNAL LIVE serving intents + QA samples (both keyed by the pseudonymous child_ref)
+        // doc 69/70 — INTERNAL LIVE serving intents + QA samples + pilot feedback/activity
+        // (all keyed by the pseudonymous child_ref)
         const servingPurged = await purgeServingForChild(client, wsRef);
         const qaPurged = await purgeInternalLiveForChild(client, wsRef);
-        logger.info('deletion: internal-live purged', { child: wsRef, servingPurged, qaPurged });
+        const pilotPurged = await purgePilotForChild(client, wsRef);
+        logger.info('deletion: internal-live + pilot purged', { child: wsRef, servingPurged, qaPurged, pilotPurged });
         await del('generation_specs', `DELETE FROM generation_specs WHERE child_id = $1`, [childId]);
         await del('exam_results', `DELETE FROM exam_results WHERE child_id = $1`, [childId]);
         await del('exams', `DELETE FROM exams WHERE child_id = $1`, [childId]);
@@ -2957,6 +3017,9 @@ export function createProductionApi(opts: ProductionApiOptions) {
       } else {
         await authorizeChild(ctx, childId, 'view_child');
       }
+      if (full.assignment.source === 'AI_GENERATED') {
+        void recordPilotActivityFor(ctx.userId, childId, ctx.workspace === 'STUDENT' ? 'STUDENT' : 'PARENT', 'worksheet_open', { assignmentId });
+      }
       // child-safe item shape — the 5 progressive hints (rungs 1-5, §17) ARE
       // sent, so the ladder can reveal real guidance client-side
       // (packages/practice/src/hint-ladder.ts). The 6th rung — the full
@@ -3132,6 +3195,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
         actorRef: actorRef(ctx.userId),
         metadata: { itemCount: result.results.length },
       });
+      void recordPilotActivityFor(ctx.userId, childId, ctx.workspace === 'STUDENT' ? 'STUDENT' : 'PARENT', 'practice_completed', { items: result.results.length, source: full.assignment.source });
       return result;
     },
 
@@ -3268,6 +3332,79 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const qaPurged = await purgeExpiredQaSamples(pool);
       const servingPurged = await purgeStaleServingIntents(pool);
       return { qaSnapshotsPurged: qaPurged, servingIntentsExpired: servingPurged };
+    },
+
+    // ---- doc 70: SMALL FAMILY PILOT --------------------------------------
+
+    /** ADMIN — add a family to the PILOT cohort (LIVE + consent-required). */
+    async pilotFamilyAdd(ctx: WorkspaceRequestContext, familyId: string, note?: string) {
+      if (ctx.workspace !== 'ADMIN') throw new AuthzError('admin only');
+      const ref = familyRefOf(familyId);
+      await addPilotFamily(pool, ref, { ...(note ? { note } : {}), actorRef: actorRef(ctx.userId) });
+      logger.info('pilot family add', { actor: actorRef(ctx.userId), familyRef: ref });
+      return { familyRef: ref };
+    },
+    async pilotFamilyList(ctx: WorkspaceRequestContext) {
+      if (ctx.workspace !== 'ADMIN') throw new AuthzError('admin only');
+      return { families: await listPilotFamilies(pool) };
+    },
+    async pilotDashboard(ctx: WorkspaceRequestContext, opts?: { sinceIso?: string }) {
+      if (ctx.workspace !== 'ADMIN') throw new AuthzError('admin only');
+      return pilotDashboard(pool, opts ?? {});
+    },
+    async pilotFeedbackRollup(ctx: WorkspaceRequestContext, opts?: { sinceIso?: string }) {
+      if (ctx.workspace !== 'ADMIN') throw new AuthzError('admin only');
+      return feedbackRollup(pool, opts?.sinceIso);
+    },
+
+    /** PARENT — record guardian consent for a child to join the pilot (doc 70 §4). */
+    async recordPilotConsent(auth: CallerAuth, childId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'manage_child');
+      const { consentId } = await recordPilotConsentRow(pool, { childId, grantedByUserId: ctx.userId });
+      logger.info('pilot consent recorded', { actor: actorRef(ctx.userId), consentId });
+      return { consentId, recorded: true };
+    },
+    async withdrawPilotConsent(auth: CallerAuth, childId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'manage_child');
+      const n = await withdrawPilotConsentRow(pool, childId, ctx.userId);
+      return { withdrawn: n };
+    },
+    async pilotConsentStatus(auth: CallerAuth, childId: string) {
+      const ctx = await deriveContext(auth);
+      await authorizeChild(ctx, childId, 'view_child');
+      return { hasConsent: await hasPilotConsent(pool, childId) };
+    },
+
+    /** PARENT — lightweight feedback on today's worksheet / plan (doc 70 §5).
+     *  Append-only; NEVER auto-alters mastery — may create a hypothesis only. */
+    async submitParentFeedback(
+      auth: CallerAuth,
+      childId: string,
+      input: { verdict: FeedbackVerdict; note?: string; assignmentId?: string },
+    ) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'view_child');
+      if (!FEEDBACK_VERDICTS.includes(input.verdict)) throw new AuthzError(`invalid feedback verdict "${String(input.verdict)}"`);
+      if (input.assignmentId) {
+        const a = await base.learningState.getAssignment(input.assignmentId);
+        if (a && a.assignment.childId !== childId) throw new ForbiddenError('assignment belongs to another child');
+      }
+      const famId = await familyIdFor(ctx.userId);
+      const res = await recordParentFeedback(pool, {
+        childRef: childRefOf(childId),
+        familyRef: famId ? familyRefOf(famId) : null,
+        assignmentId: input.assignmentId ?? null,
+        verdict: input.verdict,
+        note: input.note ?? null,
+      });
+      void recordPilotActivityFor(ctx.userId, childId, 'PARENT', 'feedback_submitted', { verdict: input.verdict });
+      analytics.track({ category: 'practice', action: 'parent_feedback', actorRef: actorRef(ctx.userId), metadata: { verdict: input.verdict } });
+      return { feedbackId: res.feedbackId, hypothesis: res.hypothesis };
     },
 
     // exposed for tests / transports

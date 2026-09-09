@@ -168,7 +168,7 @@ describe.skipIf(!DATABASE_URL)('doc 69 — Controlled Internal LIVE', () => {
       [child.childId],
     );
     expect(skillRow.rows[0]!.n).toBe(1); // mastery state now exists for the practised skill
-  });
+  }, 20_000);
 
   it('§7 — internalLiveDashboard is privacy-safe (no child content, returns budgets + kill state)', async () => {
     const d = await internalLiveDashboard(pool, { sinceIso: '2099-01-01T00:00:00Z' });

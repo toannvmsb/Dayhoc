@@ -362,3 +362,160 @@ export async function purgeExpiredQaSamples(pool: Pool): Promise<number> {
   );
   return rowCount ?? 0;
 }
+
+// ---------------------------------------------------------------------------
+// SMALL FAMILY PILOT dashboard (doc 70 §10) — privacy-safe, pseudonymous
+// ---------------------------------------------------------------------------
+
+const one = row1;
+
+export interface PilotDashboard {
+  readonly windowSinceIso: string;
+  readonly families: number;
+  readonly childrenActive: number;
+  readonly activation: {
+    readonly profileCreated: number;
+    readonly todayViewed: number;
+    readonly firstWorksheetGenerated: number;
+    readonly firstPracticeStarted: number;
+    readonly firstPracticeCompleted: number;
+  };
+  readonly engagement: {
+    readonly todayViews: number;
+    readonly worksheetOpens: number;
+    readonly practiceStarts: number;
+    readonly practiceCompletes: number;
+    readonly day1ReturnFamilies: number;
+    readonly day3ReturnFamilies: number;
+    readonly day7ReturnFamilies: number;
+  };
+  readonly conversion: {
+    readonly worksheetToPractice: number;
+    readonly practiceCompletion: number;
+  };
+  readonly parentValue: {
+    readonly planAccepted: number;
+    readonly planEdited: number;
+    readonly planSkipped: number;
+    readonly feedbackTotal: number;
+    readonly feedbackByVerdict: Readonly<Record<string, number>>;
+    readonly openHypotheses: number;
+  };
+  readonly learningLoop: {
+    readonly evidenceCreated: number;
+    readonly twinRecomputes: number;
+    readonly gapsCreated: number;
+    readonly masteryRows: number;
+  };
+}
+
+export async function pilotDashboard(pool: Pool, opts: { sinceIso?: string } = {}): Promise<PilotDashboard> {
+  const since = opts.sinceIso ?? new Date(Date.now() - 14 * 86_400_000).toISOString();
+
+  const fam = row1(await pool.query<{ n: string }>(`SELECT count(*)::int n FROM internal_live_cohort WHERE removed_at IS NULL AND kind = 'pilot'`));
+  const ev = one(
+    await pool.query<Record<string, string>>(
+      `SELECT
+         count(*) FILTER (WHERE event='profile_created') profile_created,
+         count(*) FILTER (WHERE event='today_viewed') today_viewed,
+         count(DISTINCT family_ref) FILTER (WHERE event='today_viewed') today_fams,
+         count(*) FILTER (WHERE event='first_worksheet_generated') first_ws,
+         count(*) FILTER (WHERE event='worksheet_open') ws_open,
+         count(*) FILTER (WHERE event='practice_started') p_start,
+         count(*) FILTER (WHERE event='practice_completed') p_done,
+         count(*) FILTER (WHERE event='plan_accepted') plan_ok,
+         count(*) FILTER (WHERE event='plan_edited') plan_edit,
+         count(*) FILTER (WHERE event='plan_skipped') plan_skip,
+         count(DISTINCT child_ref) FILTER (WHERE event IN ('practice_started','practice_completed','today_viewed')) active_kids
+       FROM pilot_activity WHERE at >= $1`,
+      [since],
+    ),
+  );
+  const firsts = one(
+    await pool.query<Record<string, string>>(
+      `WITH f AS (
+         SELECT family_ref,
+           min(at) FILTER (WHERE event='first_worksheet_generated') g,
+           min(at) FILTER (WHERE event='practice_started') ps,
+           min(at) FILTER (WHERE event='practice_completed') pc
+         FROM pilot_activity WHERE at >= $1 GROUP BY family_ref
+       )
+       SELECT count(g) first_ws_fams, count(ps) first_ps_fams, count(pc) first_pc_fams FROM f`,
+      [since],
+    ),
+  );
+  const ret = one(
+    await pool.query<{ d1: string; d3: string; d7: string }>(
+      `WITH days AS (
+         SELECT family_ref, date_trunc('day', at) d FROM pilot_activity
+          WHERE at >= $1 AND event IN ('today_viewed','practice_started','practice_completed')
+          GROUP BY family_ref, date_trunc('day', at)
+       ), first AS (SELECT family_ref, min(d) d0 FROM days GROUP BY family_ref)
+       SELECT
+         count(*) FILTER (WHERE EXISTS (SELECT 1 FROM days x WHERE x.family_ref = first.family_ref AND x.d = first.d0 + interval '1 day')) d1,
+         count(*) FILTER (WHERE EXISTS (SELECT 1 FROM days x WHERE x.family_ref = first.family_ref AND x.d = first.d0 + interval '3 day')) d3,
+         count(*) FILTER (WHERE EXISTS (SELECT 1 FROM days x WHERE x.family_ref = first.family_ref AND x.d = first.d0 + interval '7 day')) d7
+       FROM first`,
+      [since],
+    ),
+  );
+  const fb = one(
+    await pool.query<{ total: string }>(`SELECT count(*)::int total FROM parent_feedback WHERE created_at >= $1`, [since]),
+  );
+  const fbByV = (
+    await pool.query<{ verdict: string; n: string }>(`SELECT verdict, count(*)::int n FROM parent_feedback WHERE created_at >= $1 GROUP BY verdict`, [since])
+  ).rows;
+  const hyp = row1(await pool.query<{ n: string }>(`SELECT count(*)::int n FROM parent_feedback WHERE created_at >= $1 AND hypothesis IS NOT NULL`, [since]));
+  const loop = one(
+    await pool.query<Record<string, string>>(
+      `SELECT
+         (SELECT count(*) FROM pilot_activity WHERE event='practice_completed' AND at >= $1) practice_done,
+         (SELECT count(*) FROM knowledge_gaps WHERE detected_at >= $1) gaps,
+         (SELECT count(*) FROM skill_states) mastery,
+         (SELECT count(*) FROM learning_state_snapshots WHERE computed_at >= $1) twins`,
+      [since],
+    ),
+  );
+
+  const g = Number(ev.first_ws) || 0;
+  const startN = Number(ev.p_start) || 0;
+  return {
+    windowSinceIso: since,
+    families: Number(fam.n),
+    childrenActive: Number(ev.active_kids),
+    activation: {
+      profileCreated: Number(ev.profile_created),
+      todayViewed: Number(ev.today_viewed),
+      firstWorksheetGenerated: Number(firsts.first_ws_fams),
+      firstPracticeStarted: Number(firsts.first_ps_fams),
+      firstPracticeCompleted: Number(firsts.first_pc_fams),
+    },
+    engagement: {
+      todayViews: Number(ev.today_viewed),
+      worksheetOpens: Number(ev.ws_open),
+      practiceStarts: startN,
+      practiceCompletes: Number(ev.p_done),
+      day1ReturnFamilies: Number(ret.d1),
+      day3ReturnFamilies: Number(ret.d3),
+      day7ReturnFamilies: Number(ret.d7),
+    },
+    conversion: {
+      worksheetToPractice: g > 0 ? startN / g : 0,
+      practiceCompletion: startN > 0 ? Number(ev.p_done) / startN : 0,
+    },
+    parentValue: {
+      planAccepted: Number(ev.plan_ok),
+      planEdited: Number(ev.plan_edit),
+      planSkipped: Number(ev.plan_skip),
+      feedbackTotal: Number(fb.total),
+      feedbackByVerdict: Object.fromEntries(fbByV.map((r) => [r.verdict, Number(r.n)])),
+      openHypotheses: Number(hyp.n),
+    },
+    learningLoop: {
+      evidenceCreated: Number(loop.practice_done),
+      twinRecomputes: Number(loop.twins),
+      gapsCreated: Number(loop.gaps),
+      masteryRows: Number(loop.mastery),
+    },
+  };
+}
