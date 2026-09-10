@@ -293,6 +293,46 @@ enter a DB password, which is a MANDATORY STOP (§13). Once the host is up and
 step E passes, flip `SMALL_FAMILY_PILOT_READY = true` and enroll the invited
 families.
 
+## Deploy execution notes (anh, Railway — 2026-09)
+
+- **Migrations against the pilot DB:** `.env` gets `PILOT_DATABASE_URL=` (the
+  pilot Supabase session-pooler URI); `npm run db:migrate:pilot` (and
+  `:status`) runs node-pg-migrate against it via `scripts/pilot-db.mjs` —
+  password never in shell history. (PowerShell: `VAR=x cmd` is bash-only.)
+- **Operator CLI** `scripts/pilot-admin.mjs` (`npm run pilot:admin …`) — runs
+  against `PILOT_DATABASE_URL` directly, no bearer/admin-REST dance:
+  `status | grant-admin <email> | add-family <email> [note] | consent
+  <parent-email> | list | safety | kill <on|off>`.
+- **Railway = 4 services from the one Dockerfile**: `api` (default CMD, port
+  3100, healthcheck `/api/v1/health`), `worker` (`npm run worker:worksheet`,
+  restart always), `cron-safety` (`npm run cron:pilot:safety`, `*/10 * * * *`),
+  `cron-maintenance` (`npm run cron:pilot:maintenance`, `0 20 * * *`). The full
+  env block must be on **every** service (Railway shared vars are not
+  auto-attached). Region → Singapore for all; keep Supabase in the same region
+  (co-location is the dominant latency factor — a distant DB ≈ 1–3 s/nav).
+- Crons exit 0 on a clean run **and** on a successful auto-stop (a trip is a
+  `CRITICAL` log line, not a non-zero exit — Railway flags non-zero as Crashed).
+- `apps/web` `start` honours `$PORT`; `render.yaml` + `docker-compose.pilot.yml`
+  + `.dockerignore` committed for the two non-Railway paths.
+
+## Onboarding — parent pins the child's position (2026-09)
+
+Child creation is now **2 steps** so the deterministic engine has real data
+instead of a calendar estimate:
+
+1. name + grade (`/onboarding`)
+2. `/be/:childId/bat-dau` — **"Con đang học đến bài nào?"** (required, a
+   chapter-grouped picker from `getCurriculumProgram`) + optional school / class
+   text. `setChildLearningStart` writes the school label to
+   `child_profiles.school_context` and records a **PARENT lesson-confirmation
+   (STRONG)** → the Curriculum Clock RESOLVES that position (not ESTIMATED), so
+   review content matches what the child has actually studied.
+
+Re-confirm any time from **Hồ sơ con → "Bài con đang học"**. Also this session:
+guardian card shows a name + Vietnamese relationship label (was raw
+`GUARDIAN · SELF_DECLARED`); parent bottom nav is `Hôm nay · Tiến độ · Bài tập ·
+Hồ sơ con · Cài đặt` (Kết nối moved inside Cài đặt).
+
 ## §13 — MANDATORY STOP boundaries (not crossed)
 
 - ❌ external hosting account / project creation — **STOPPED HERE** (§Deploy).
