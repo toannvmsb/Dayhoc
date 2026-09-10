@@ -255,7 +255,7 @@ export function ParentNav({
   active,
 }: {
   childId: string;
-  active: 'home' | 'progress' | 'practice' | 'profile' | 'connect';
+  active: 'home' | 'progress' | 'practice' | 'profile' | 'settings';
 }) {
   const base = `/be/${childId}`;
   const items: { key: typeof active; label: string; glyph: string; href: string }[] = [
@@ -263,7 +263,7 @@ export function ParentNav({
     { key: 'progress', label: 'Tiến độ', glyph: '◔', href: `${base}/tien-do` },
     { key: 'practice', label: 'Bài tập', glyph: '⌗', href: `${base}/bai-tap` },
     { key: 'profile', label: 'Hồ sơ con', glyph: '◍', href: `${base}/ho-so` },
-    { key: 'connect', label: 'Kết nối', glyph: '⇄', href: `${base}/ket-noi` },
+    { key: 'settings', label: 'Cài đặt', glyph: '⚙', href: `${base}/cai-dat` },
   ];
   return (
     <nav className="bottomnav">

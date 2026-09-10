@@ -1,5 +1,6 @@
+import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { ParentNav, Screen } from '../../../components';
+import { Screen } from '../../../components';
 import { getApi, getViewer, parentAuth } from '@/lib/server/api';
 import { InviteCode, PendingRequest, TeacherLinkCard } from './client';
 
@@ -38,7 +39,8 @@ export default async function Connect({ params }: { params: { childId: string } 
   );
 
   return (
-    <Screen nav={<ParentNav childId={params.childId} active="connect" />}>
+    <Screen nav={null}>
+      <Link href={`/be/${params.childId}/cai-dat`} className="chip">‹ Cài đặt</Link>
       <h1 className="h1">Kết nối giáo viên</h1>
       <p className="card" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: 'var(--c-text-body)' }}>
         Bố mẹ vẫn dùng đầy đủ DạyZi mà không cần kết nối. Trước khi bố mẹ chấp thuận,

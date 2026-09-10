@@ -6,6 +6,13 @@ import { StudentAccess } from './student-access';
 
 export const dynamic = 'force-dynamic';
 
+const REL_LABEL: Record<string, string> = {
+  FATHER: 'Bố',
+  MOTHER: 'Mẹ',
+  GUARDIAN: 'Người giám hộ',
+  OTHER: 'Người thân',
+};
+
 export default async function Profile({ params }: { params: { childId: string } }) {
   const viewer = await getViewer();
   if (!viewer) redirect('/welcome');
@@ -28,10 +35,7 @@ export default async function Profile({ params }: { params: { childId: string } 
 
   return (
     <Screen nav={<ParentNav childId={params.childId} active="profile" />}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h1 className="h1">Hồ sơ {name}</h1>
-        <Link href={`/be/${params.childId}/cai-dat`} className="chip">Cài đặt ⚙</Link>
-      </div>
+      <h1 className="h1">Hồ sơ {name}</h1>
       <div className="card">
         <span className="overline">Thông tin</span>
         <div style={{ fontSize: 14 }}>Tên: <b>{name}</b></div>
@@ -40,9 +44,15 @@ export default async function Profile({ params }: { params: { childId: string } 
       <div className="card">
         <span className="overline">Người giám hộ</span>
         {guardians.map((g) => (
-          <div key={g.parentUserId} style={{ fontSize: 13.5 }}>
-            {g.relationshipType} · {g.authoritySource}
-            {g.capabilities.canManagePrivacy ? ' · quản lý quyền riêng tư' : ''}
+          <div key={g.parentUserId} style={{ fontSize: 13.5, color: 'var(--c-text-heading)' }}>
+            {viewer.userId === g.parentUserId ? (viewer.displayName ?? 'Bạn') : REL_LABEL[g.relationshipType] ?? 'Người thân'}
+            {' · '}
+            {REL_LABEL[g.relationshipType] ?? 'người giám hộ'}
+            {g.capabilities.canManagePrivacy && (
+              <span className="muted" style={{ display: 'block', fontWeight: 500, fontSize: 12 }}>
+                Quản lý toàn bộ quyền riêng tư &amp; dữ liệu của con
+              </span>
+            )}
           </div>
         ))}
       </div>
