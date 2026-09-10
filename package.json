@@ -28,6 +28,7 @@
     "db:migrate:down": "node-pg-migrate down",
     "db:migrate:pilot": "node scripts/pilot-db.mjs -- npx node-pg-migrate up",
     "db:migrate:pilot:status": "node scripts/pilot-db.mjs -- npx node-pg-migrate up --dry-run",
+    "pilot:admin": "node scripts/pilot-admin.mjs",
     "seed:pilot": "node scripts/seed-pilot.mjs",
     "seed:pilot:reset": "node scripts/seed-pilot.mjs --reset",
     "start:web": "npm run start --workspace @copilot/web",

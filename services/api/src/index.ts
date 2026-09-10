@@ -23,6 +23,7 @@ export {
   loadInternalLiveBudgets,
   internalLiveSpendToday,
   listInternalLiveCohort,
+  addToInternalLiveCohort,
 } from './production/internal-live.js';
 export {
   purgeExpiredQaSamples,
@@ -30,4 +31,13 @@ export {
   pilotDashboard,
 } from './production/internal-live-observability.js';
 export { purgeStaleServingIntents } from './production/internal-live-serving.js';
-export { listPilotFamilies, feedbackRollup } from './production/pilot.js';
+export {
+  listPilotFamilies,
+  feedbackRollup,
+  addPilotFamily,
+  pilotFamilyRef,
+  pilotChildRef,
+  recordPilotConsent,
+  hasPilotConsent,
+  withdrawPilotConsent,
+} from './production/pilot.js';
