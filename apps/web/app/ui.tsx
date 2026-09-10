@@ -116,6 +116,54 @@ function EyeIcon({ off }: { off: boolean }) {
   );
 }
 
+export interface LessonChapter {
+  chapter: number;
+  name: string;
+  lessons: { lessonId: string; name: string }[];
+}
+
+/** "Con đang học đến bài nào?" — native select, grouped by SGK chapter. */
+export function LessonPicker({ chapters, name = 'lessonId' }: { chapters: LessonChapter[]; name?: string }) {
+  return (
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--c-text-label)' }}>
+        Con đang học đến bài nào? <span style={{ color: 'var(--c-attention-text)' }}>*</span>
+      </span>
+      <select
+        name={name}
+        required
+        defaultValue=""
+        style={{
+          height: 48,
+          borderRadius: 'var(--r-input)',
+          border: '1px solid var(--c-border)',
+          padding: '0 12px',
+          fontSize: 15,
+          fontFamily: 'inherit',
+          background: 'var(--c-surface)',
+          color: 'var(--c-text-heading)',
+        }}
+      >
+        <option value="" disabled>
+          — Chọn bài gần nhất con đã học trên lớp —
+        </option>
+        {chapters.map((ch) => (
+          <optgroup key={ch.chapter} label={`Chương ${ch.chapter}. ${ch.name}`}>
+            {ch.lessons.map((l) => (
+              <option key={l.lessonId} value={l.lessonId}>
+                {l.name}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+      <span className="muted">
+        DạyZi coi mọi bài trước đó là con đã học, và ra bài ôn tập đúng mức kiến thức hiện tại — không đoán.
+      </span>
+    </label>
+  );
+}
+
 export function GradePicker() {
   return (
     <fieldset style={{ border: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>

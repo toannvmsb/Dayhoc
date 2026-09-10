@@ -74,6 +74,28 @@ export async function createChildAction(_prev: FormState, form: FormData): Promi
     return { error: friendly(e) };
   }
   revalidatePath('/');
+  // onboarding step 2 — pin where the child actually is before showing "hôm nay".
+  redirect(`/be/${childId}/bat-dau`);
+}
+
+export async function setLearningStartAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const childId = String(form.get('childId') ?? '');
+  const lessonId = String(form.get('lessonId') ?? '').trim();
+  const schoolName = String(form.get('schoolName') ?? '').trim();
+  const className = String(form.get('className') ?? '').trim();
+  if (!childId || !lessonId) {
+    return { error: 'Chọn bài con đang học đến để DạyZi tính đúng nội dung ôn tập.' };
+  }
+  try {
+    await getApi().setChildLearningStart(parentAuth(), childId, {
+      lessonId,
+      ...(schoolName ? { schoolName } : {}),
+      ...(className ? { className } : {}),
+    });
+  } catch (e) {
+    return { error: friendly(e) };
+  }
+  revalidatePath(`/be/${childId}`);
   redirect(`/be/${childId}`);
 }
 

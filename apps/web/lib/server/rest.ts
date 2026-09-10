@@ -111,6 +111,18 @@ const ROUTES: Record<string, Handler> = {
     getApi().getParentTeachingPlan(auth(c, 'PARENT'), c.params[0]!, c.query.get('gapId') ?? undefined),
   'GET /children/:id/enrollments': async (c) => getApi().listEnrollments(auth(c, 'PARENT'), c.params[0]!),
 
+  // ---- onboarding: curriculum lesson picker + "where the child is now" ----
+  'GET /curriculum-program': async (c) => getApi().getCurriculumProgram(auth(c), Number(c.query.get('grade'))),
+  'POST /children/:id/learning-start': async (c) => {
+    const lessonId = String(c.body.lessonId ?? '').trim();
+    if (!lessonId) throw new RestError(400, 'Chọn bài con đang học đến.');
+    return getApi().setChildLearningStart(auth(c, 'PARENT'), c.params[0]!, {
+      lessonId,
+      ...(c.body.schoolName ? { schoolName: String(c.body.schoolName) } : {}),
+      ...(c.body.className ? { className: String(c.body.className) } : {}),
+    });
+  },
+
   // ---- school / class directory (M3) ----
   'GET /schools': async (c) =>
     getApi().searchSchools(auth(c, 'PARENT'), {

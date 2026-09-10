@@ -374,6 +374,33 @@ export function createProductionApi(opts: ProductionApiOptions) {
     role: 'admin', // authorization already enforced above; 'admin' bypasses the legacy family check
   });
 
+  /**
+   * The SGK chapter/lesson list for a grade — static curriculum content, no
+   * child data. Backs the onboarding "con đang học đến bài nào?" picker and the
+   * teacher "bài đang dạy" picker. A grade with no seeded calendar returns an
+   * empty chapter list (not an error) so a data gap shows as "nothing to pick".
+   */
+  async function curriculumProgramFor(grade: 4 | 7) {
+    const ay = (
+      await pool.query(`SELECT label FROM academic_years WHERE status = 'ACTIVE' ORDER BY label DESC LIMIT 1`)
+    ).rows[0] as { label: string } | undefined;
+    const academicYear = ay?.label ?? '2026-2027';
+    const cal = getCurriculumCalendar('KET_NOI_TRI_THUC', grade, academicYear);
+    if (!cal) return { curriculum: curriculumLabel('KET_NOI_TRI_THUC'), academicYear, chapters: [] };
+    const chapters = [...cal.pacing]
+      .sort((a, b) => a.chapter - b.chapter)
+      .map((p) => ({
+        chapter: p.chapter,
+        name: p.name,
+        lessons: p.lesson_ids.map((id) => ({
+          lessonId: id,
+          name: kb.curriculum.get(id)?.lesson ?? id,
+          skillIds: skillIdsForCurriculumNode(id),
+        })),
+      }));
+    return { curriculum: curriculumLabel(cal.curriculum), academicYear, chapters };
+  }
+
   // ---- doc 66: production worksheet recovery orchestrator (SHADOW) ----------
   // OFF (default) → null, nothing runs. SHADOW → full run + persist + telemetry,
   // NEVER served to a child. LIVE → still SHADOW-only here (gated).
@@ -1968,27 +1995,55 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const ctx = await deriveContext(auth);
       if (ctx.workspace !== 'TEACHER') throw new ForbiddenError('TEACHER workspace required');
       if (grade !== 4 && grade !== 7) throw new ForbiddenError('grade phải là 4 hoặc 7');
-      const ay = (
-        await pool.query(`SELECT label FROM academic_years WHERE status = 'ACTIVE' ORDER BY label DESC LIMIT 1`)
-      ).rows[0] as { label: string } | undefined;
-      const academicYear = ay?.label ?? '2026-2027';
-      const cal = getCurriculumCalendar('KET_NOI_TRI_THUC', grade, academicYear);
-      if (!cal) return { curriculum: curriculumLabel('KET_NOI_TRI_THUC'), academicYear, chapters: [] };
-      const chapters = [...cal.pacing]
-        .sort((a, b) => a.chapter - b.chapter)
-        .map((p) => ({
-          chapter: p.chapter,
-          name: p.name,
-          lessons: p.lesson_ids.map((id) => {
-            const node = kb.curriculum.get(id);
-            return {
-              lessonId: id,
-              name: node?.lesson ?? id,
-              skillIds: skillIdsForCurriculumNode(id),
-            };
-          }),
-        }));
-      return { curriculum: curriculumLabel(cal.curriculum), academicYear, chapters };
+      return curriculumProgramFor(grade);
+    },
+
+    /**
+     * GET /curriculum-program?grade=4|7 — same SGK chapter/lesson list, for the
+     * PARENT onboarding "con đang học đến bài nào?" picker. Static curriculum
+     * content, no child data — any authenticated caller may read it.
+     */
+    async getCurriculumProgram(auth: CallerAuth, grade: number) {
+      await deriveContext(auth); // authenticated only
+      if (grade !== 4 && grade !== 7) throw new ForbiddenError('grade phải là 4 hoặc 7');
+      return curriculumProgramFor(grade);
+    },
+
+    /**
+     * POST /children/:id/learning-start (doc 70 onboarding) — the parent tells
+     * DạyZi where the child actually is: an optional school + class label, and
+     * the lesson the child has most recently studied. The lesson becomes a
+     * PARENT lesson-confirmation (confidence STRONG) so the Curriculum Clock
+     * resolves the real position instead of estimating from the calendar date —
+     * everything before it is "đã học", everything after is "chưa học".
+     */
+    async setChildLearningStart(
+      auth: CallerAuth,
+      childId: string,
+      input: { lessonId: string; schoolName?: string; className?: string },
+    ) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'manage_child');
+      const schoolName = (input.schoolName ?? '').trim();
+      const className = (input.className ?? '').trim();
+      if (schoolName || className) {
+        await pool.query(
+          `UPDATE child_profiles
+              SET school_context = school_context
+                    || jsonb_build_object('name', $2::text, 'className', $3::text)
+            WHERE id = $1`,
+          [childId, schoolName || null, className || null],
+        );
+      }
+      const { scoped } = await learningScene(childId);
+      const res = await scoped.confirmLesson(parentDelegateCtx(ctx.userId), childId, {
+        lessonId: input.lessonId,
+        confidence: 'STRONG',
+        ...(className ? { topicNote: `Lớp ${className}${schoolName ? ` · ${schoolName}` : ''}` } : {}),
+      });
+      logger.info('learning start set', { actor: actorRef(ctx.userId), lessonId: input.lessonId });
+      return { resolved: res.resolved, expected: res.expected };
     },
 
     /**

@@ -56,6 +56,16 @@ export default async function Profile({ params }: { params: { childId: string } 
           </div>
         ))}
       </div>
+      <Link href={`/be/${params.childId}/bat-dau`} className="card" style={{ flexDirection: 'row', alignItems: 'center', textDecoration: 'none' }}>
+        <span style={{ flex: 1, fontWeight: 700, color: 'var(--c-text-heading)' }}>
+          Bài con đang học
+          <span className="muted" style={{ display: 'block', fontWeight: 500 }}>
+            Cập nhật khi con học sang bài mới — DạyZi ra bài ôn đúng mức
+          </span>
+        </span>
+        <span style={{ color: 'var(--c-primary)', fontWeight: 700 }}>›</span>
+      </Link>
+
       <Link href={`/be/${params.childId}/truong-lop`} className="card" style={{ flexDirection: 'row', alignItems: 'center', textDecoration: 'none' }}>
         <span style={{ flex: 1, fontWeight: 700, color: 'var(--c-text-heading)' }}>
           Trường &amp; lớp

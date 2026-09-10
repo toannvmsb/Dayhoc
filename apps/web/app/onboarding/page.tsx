@@ -13,15 +13,15 @@ export default async function Onboarding() {
     <div className="screen">
       <div className="screen__body" style={{ gap: 20 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span className="overline">Bắt đầu</span>
+          <span className="overline">Bước 1 / 2</span>
           <h1 className="h1">Thêm con của bạn</h1>
           <p style={{ margin: 0, color: 'var(--c-text-body)', fontSize: 15, lineHeight: 1.55 }}>
-            Không bắt buộc kết nối trường/lớp. DạyZi sẽ ước tính nội dung con đang học
-            theo tiến độ chương trình, và bạn có thể xác nhận lại bất cứ lúc nào.
+            Bước tiếp theo bạn sẽ cho DạyZi biết con đang học đến bài nào trên lớp — để
+            nội dung ôn tập bám đúng chương trình, không đoán.
           </p>
         </div>
 
-        <ActionForm action={createChildAction} submitLabel="Tạo hồ sơ & xem hôm nay dạy gì">
+        <ActionForm action={createChildAction} submitLabel="Tiếp tục">
           <Field name="displayName" label="Tên con" placeholder="Bé An" required />
           <GradePicker />
         </ActionForm>
