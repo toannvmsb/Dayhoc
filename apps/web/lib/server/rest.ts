@@ -400,6 +400,7 @@ const ROUTES: Record<string, Handler> = {
     getApi().pilotFeedbackRollup(await adminCtx(c), {
       ...(c.query.get('sinceIso') ? { sinceIso: c.query.get('sinceIso')! } : {}),
     }),
+  'GET /admin/pilot/diagnose/:childId': async (c) => getApi().pilotDiagnose(await adminCtx(c), c.params[0]!),
 
   // PARENT — guardian consent + today's-content feedback
   'GET /children/:id/pilot/consent': async (c) => getApi().pilotConsentStatus(auth(c), c.params[0]!),

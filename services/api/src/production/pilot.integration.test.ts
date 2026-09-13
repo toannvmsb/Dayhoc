@@ -226,4 +226,44 @@ describe.skipIf(!DATABASE_URL)('doc 70 — Small Family Pilot', () => {
     const left = await pool.query<{ n: number }>(`SELECT count(*)::int n FROM parent_feedback WHERE child_ref = $1`, [cref]);
     expect(left.rows[0]!.n).toBe(0);
   }, 20_000);
+
+  it('pilotDiagnose — ADMIN-only "why isn\'t this child getting AI worksheets" report', async () => {
+    const stamp = Date.now();
+    const parent = await reg(`pil-diag-${stamp}@x.com`, 'PARENT');
+    const pAuth = { bearer: parent.bearer, workspace: 'PARENT' as const };
+    const child = await api.createChild(pAuth, { displayName: 'Bé Diagnose', schoolGrade: 4 });
+    children.push(child.childId);
+    const cref = childRefOf(child.childId);
+    childRefs.push(cref);
+    const fam = await pool.query<{ family_id: string }>(`SELECT family_id FROM child_profiles WHERE id = $1`, [child.childId]);
+    const familyId = fam.rows[0]!.family_id;
+    families.push(familyId);
+    const fref = pilotFamilyRef(familyId);
+    familyRefs.push(fref);
+
+    const admin = await reg(`pil-diag-admin-${stamp}@x.com`, 'PARENT');
+    await pool.query(`INSERT INTO user_roles (user_id, role) VALUES ($1,'ADMIN') ON CONFLICT DO NOTHING`, [admin.userId]);
+    const aAuth = { bearer: admin.bearer, workspace: 'ADMIN' as const };
+
+    // non-ADMIN caller is refused
+    await expect(api.pilotDiagnose(pAuth, child.childId)).rejects.toThrow();
+
+    // before cohort/consent: not in cohort, no consent, zero jobs/runs
+    const before = await api.pilotDiagnose(aAuth, child.childId);
+    expect(before.cohort.inCohort).toBe(false);
+    expect(before.cohort.hasConsent).toBe(false);
+    expect(before.jobsByState).toEqual({});
+    expect(before.runsByMode).toEqual({});
+    // this DB-only test env has no OPENAI_API_KEY / durable queue configured —
+    // exactly the shape a misconfigured deploy would report.
+    expect(before.deployment.worksheetGenerationConfigured).toBe(false);
+
+    // after cohort + consent: both flip, still zero jobs (nothing enqueued yet)
+    await addPilotFamily(pool, fref, { note: 'diagnose test', actorRef: 'test' });
+    await recordPilotConsent(pool, { childId: child.childId, grantedByUserId: parent.userId });
+    const after = await api.pilotDiagnose(aAuth, child.childId);
+    expect(after.cohort.inCohort).toBe(true);
+    expect(after.cohort.requiresConsent).toBe(true);
+    expect(after.cohort.hasConsent).toBe(true);
+  }, 20_000);
 });

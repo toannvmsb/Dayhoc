@@ -71,6 +71,7 @@ import {
   enforceSafetyAutoStop,
   scanInternalLiveSafety,
   purgeInternalLiveForChild,
+  isInInternalLiveCohort,
 } from './internal-live.js';
 import { internalLiveDashboard, reviewQueueOps, listQaSamples, readQaSample, purgeExpiredQaSamples } from './internal-live-observability.js';
 import {
@@ -3410,6 +3411,63 @@ export function createProductionApi(opts: ProductionApiOptions) {
     async pilotFeedbackRollup(ctx: WorkspaceRequestContext, opts?: { sinceIso?: string }) {
       if (ctx.workspace !== 'ADMIN') throw new AuthzError('admin only');
       return feedbackRollup(pool, opts?.sinceIso);
+    },
+
+    /**
+     * ADMIN — "why isn't this child getting an AI worksheet?" self-service
+     * diagnostic (doc 70). Reads the exact same decision points the serving
+     * path reads (cohort / consent / kill switch / budget / config), plus
+     * whether this deployment is even wired for a durable cross-process queue —
+     * a `worker` Railway service can only see jobs written to Postgres; if
+     * `WORKSHEET_QUEUE` isn't `durable` on the enqueuing side, jobs never
+     * leave that process and nothing here will ever error. No child content.
+     */
+    async pilotDiagnose(ctx: WorkspaceRequestContext, childId: string) {
+      if (ctx.workspace !== 'ADMIN') throw new AuthzError('admin only');
+      const row = (await pool.query<{ family_id: string }>(`SELECT family_id FROM child_profiles WHERE id = $1`, [childId])).rows[0];
+      if (!row) throw new NotFoundError('child');
+      const fref = familyRefOf(row.family_id);
+      const [effective, inCohort, requiresConsent, consent, kill, budget] = await Promise.all([
+        resolveEffectiveGenerationMode(pool, process.env, fref),
+        isInInternalLiveCohort(pool, fref),
+        familyRequiresConsent(pool, fref),
+        hasPilotConsent(pool, childId),
+        resolveKillSwitch(pool, process.env),
+        internalLiveBudgetGate(pool, process.env, 'generation', 0.05),
+      ]);
+      const jobStats = (
+        await pool.query<{ state: string; n: string }>(
+          `SELECT state, count(*)::int n FROM worksheet_jobs WHERE child_ref = $1 GROUP BY state`,
+          [childRefOf(childId)],
+        )
+      ).rows;
+      const runStats = (
+        await pool.query<{ mode: string; n: string }>(
+          `SELECT mode, count(*)::int n FROM worksheet_generation_runs WHERE child_ref = $1 GROUP BY mode`,
+          [childRefOf(childId)],
+        )
+      ).rows;
+      const queue = worksheetGen?.queue as { enqueueDurable?: unknown } | undefined;
+      return {
+        familyRef: fref,
+        childRef: childRefOf(childId),
+        deployment: {
+          worksheetGenerationConfigured: worksheetGen !== null,
+          queueIsDurable: typeof queue?.enqueueDurable === 'function',
+          env: {
+            AI_GENERATION_MODE: process.env.AI_GENERATION_MODE ?? null,
+            AI_CROSSCHECK_MODE: process.env.AI_CROSSCHECK_MODE ?? null,
+            WORKSHEET_QUEUE: process.env.WORKSHEET_QUEUE ?? null,
+            hasOpenAiKey: Boolean(process.env.OPENAI_API_KEY),
+          },
+        },
+        cohort: { inCohort, requiresConsent, hasConsent: consent },
+        effectiveMode: effective, // what a real getToday call would compute right now
+        killSwitch: kill,
+        budgetGate: budget,
+        jobsByState: Object.fromEntries(jobStats.map((r) => [r.state, Number(r.n)])),
+        runsByMode: Object.fromEntries(runStats.map((r) => [r.mode, Number(r.n)])),
+      };
     },
 
     /** PARENT — record guardian consent for a child to join the pilot (doc 70 §4). */
