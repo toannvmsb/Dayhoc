@@ -172,7 +172,7 @@ describe.skipIf(!DATABASE_URL)('doc 66 §7 — worksheet staging full path (SHAD
     const scan = JSON.stringify({ run, slots, attempts, events });
     expect(scan).not.toMatch(/Bé Phở/);
     expect(scan).not.toMatch(/Đáp số|workedSolution|prompt"\s*:/);
-  });
+  }, 30_000);
 
   it('Group-C crosscheck: UNCERTAIN → PENDING_CROSSCHECK + a review-queue row; observability + retention', async () => {
     const stamp = Date.now() + Math.random();

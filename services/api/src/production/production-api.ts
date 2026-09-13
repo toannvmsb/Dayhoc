@@ -1382,11 +1382,19 @@ export function createProductionApi(opts: ProductionApiOptions) {
     /**
      * GET /children/:childId/home — the hero screen ("Hôm nay dạy con gì?").
      * DB-authorized → recompute-if-stale learning state → tested Parent projection.
+     *
+     * This is the REAL "Hôm nay" screen the deployed web app calls
+     * (`/be/:childId` → GET .../home) — `getToday` below is not reachable from
+     * any route/page, so the doc 69 §5 LIVE trigger (serve a ready worksheet,
+     * else queue today's) belongs HERE, not there.
      */
     async getParentHome(auth: CallerAuth, childId: string) {
       const ctx = await deriveContext(auth);
       if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
       await authorizeChild(ctx, childId, 'view_child');
+      void recordPilotActivityFor(ctx.userId, childId, 'PARENT', 'today_viewed');
+      const served = await serveLiveWorksheetIfPending(ctx.userId, childId);
+      if (!served) await maybeEnqueueLiveWorksheet(ctx.userId, childId);
       const s = await refreshLearningState(childId);
       analytics.track({ category: 'navigation', action: 'parent_home_viewed', actorRef: actorRef(ctx.userId) });
       return buildParentHome(projInput(s));
@@ -2178,6 +2186,9 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const ctx = await deriveContext(auth);
       if (ctx.workspace !== 'STUDENT' || !ctx.childScope) throw new ForbiddenError('STUDENT workspace required');
       const childId = ctx.childScope;
+      // doc 69 §5 — pick up a ready LIVE worksheet (real STUDENT "Hôm nay";
+      // only the PARENT path above enqueues new generation).
+      await serveLiveWorksheetIfPending(ctx.userId, childId);
       const { scoped } = await learningScene(childId);
       const preview = await scoped.childToday(
         { userId: ctx.userId, role: 'child', childScope: childId },

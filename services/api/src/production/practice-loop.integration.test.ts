@@ -142,7 +142,7 @@ describe.skipIf(!DATABASE_URL)('F8 — practice loop (assignment → attempt →
       expect(teach.steps.length).toBeGreaterThan(0);
       expect(JSON.stringify(teach)).not.toContain('"mastery"');
     }
-  });
+  }, 30_000);
 
   it('Journey 7 — student completes practice → append-only evidence → derived state invalidated', async () => {
     const stamp = Date.now();
@@ -211,5 +211,5 @@ describe.skipIf(!DATABASE_URL)('F8 — practice loop (assignment → attempt →
     await expect(
       pool.query(`DELETE FROM attempt_answers WHERE attempt_id = $1`, [result.attemptId]),
     ).rejects.toThrow(/append-only/);
-  });
+  }, 30_000);
 });

@@ -162,5 +162,5 @@ describe.skipIf(!DATABASE_URL)('M7 — entitlements + real deletion (DB)', () =>
     // the child no longer appears for the parent
     const kids = await api.listChildren(pAuth);
     expect(kids.some((k) => k.childId === child.childId)).toBe(false);
-  });
+  }, 30_000);
 });

@@ -333,6 +333,52 @@ guardian card shows a name + Vietnamese relationship label (was raw
 `GUARDIAN · SELF_DECLARED`); parent bottom nav is `Hôm nay · Tiến độ · Bài tập ·
 Hồ sơ con · Cài đặt` (Kết nối moved inside Cài đặt).
 
+## CRITICAL FIX — the deployed app never triggered LIVE generation (2026-09-14)
+
+First real pilot test on Railway: env correct (`AI_GENERATION_MODE=LIVE`,
+`WORKSHEET_QUEUE=durable`, key present), cohort + consent correct, yet
+`worksheet_jobs` / `worksheet_generation_runs` had **zero rows, ever**.
+Root cause, found via the new `pilotDiagnose` endpoint + a source trace: the
+doc 69 §5 LIVE enqueue/serve trigger was wired into `getToday` — a method **no
+route or page in `apps/web` ever calls**. The real screens call different
+methods:
+
+| real screen | method it calls | had the LIVE trigger? |
+|---|---|---|
+| Parent "Hôm nay" (`/be/:childId`) | `getParentHome` | ❌ no |
+| Student "Hôm nay" (`/hoc-sinh`) | `studentGetToday` | ❌ no |
+| "Bài tập" (`getChildAssignments`) | — | ✅ serve-only (this part worked) |
+
+So every LIVE-path test (Wave 1, `internal-live.integration.test.ts`,
+`pilot.integration.test.ts`) called `api.getToday(...)` directly in-process —
+which passes — while the actual deployed UI silently never reached that code.
+**Fixed**: moved the trigger onto the real paths — `getParentHome` now does
+`serveLiveWorksheetIfPending` → else `maybeEnqueueLiveWorksheet` (+ `today_viewed`
+pilot-activity tracking, previously also only on the dead `getToday`);
+`studentGetToday` now does `serveLiveWorksheetIfPending`. `getToday` itself is
+unchanged (still exercised by tests) but is dead code from the app's
+perspective — worth deleting later, left alone here to avoid touching tested
+surface under pressure.
+
+New regression test `parent-home-live-enqueue.integration.test.ts` (free, mock
+generator + a real durable `PgWorksheetJobQueue`): proves `getParentHome` takes
+a cohort+consented family from 0→1 `worksheet_jobs` row, is idempotent same-day,
+and does nothing for a non-cohort family. This is the test that would have
+caught the gap — the existing LIVE tests all bypassed `apps/web` entirely.
+
+Side effect: `getParentHome`/`studentGetToday` now do 1–3 more DB round trips
+per call (cohort/consent/kill-switch checks) — raised `vitest.config.ts`
+`testTimeout`/`hookTimeout` to 15s (was 5s/10s default) since these are real
+Supabase-pooler round trips, not a regression in logic; one deletion test
+needed an explicit 30s.
+
+**New diagnostic**: `GET /admin/pilot/diagnose/:childId` (ADMIN) — returns
+cohort/consent/kill-switch/budget state, the live `AI_GENERATION_MODE` /
+`WORKSHEET_QUEUE` / key-presence the RUNNING process actually has, and
+job/run counts for that child. Use this FIRST for any "no AI worksheet"
+report — it distinguishes config problems from wiring problems from "just
+hasn't loaded Hôm nay yet" in one call.
+
 ## §13 — MANDATORY STOP boundaries (not crossed)
 
 - ❌ external hosting account / project creation — **STOPPED HERE** (§Deploy).
