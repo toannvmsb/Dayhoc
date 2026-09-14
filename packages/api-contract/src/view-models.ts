@@ -40,6 +40,8 @@ export interface ParentHomeView {
     readonly estimatedLessonName: string | null;
     /** True when the resolver flagged conflicting sources. */
     readonly hasConflict: boolean;
+    /** ISO — when a VERIFIED/STRONG confirmation last set the resolved lesson; null if never confirmed (pure estimate). Drives the "cập nhật hôm nay" nudge. */
+    readonly lastVerifiedAt: string | null;
   };
   readonly todayPlan: TodayPlanView | { readonly kind: 'no_plan_needed'; readonly reason: string };
   readonly attention: readonly AttentionItem[];

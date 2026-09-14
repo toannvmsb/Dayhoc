@@ -48,8 +48,20 @@ export function ChildSwitcher({ name, sub }: { name: string; sub: string }) {
   );
 }
 
-export function LearningContextCard({ ctx }: { ctx: ParentHomeView['learningContext'] }) {
+/** "hôm nay" / "hôm qua" / "3 ngày trước" — null → "chưa từng cập nhật". */
+export function daysAgoLabel(iso: string | null): string {
+  if (!iso) return 'chưa từng cập nhật';
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  if (days <= 0) return 'hôm nay';
+  if (days === 1) return 'hôm qua';
+  return `${days} ngày trước`;
+}
+
+export function LearningContextCard({ ctx, childId }: { ctx: ParentHomeView['learningContext']; childId: string }) {
   const estimated = ctx.status === 'ESTIMATED_FROM_CALENDAR';
+  // stale = never confirmed, or the last confirmation isn't from today — a daily
+  // nudge, not an error: yesterday's confirmation is still trustworthy, just old.
+  const stale = !ctx.lastVerifiedAt || daysAgoLabel(ctx.lastVerifiedAt) !== 'hôm nay';
   return (
     <div className="card">
       <span className="overline">{estimated ? 'Dự kiến con đang học' : 'Con đang học'}</span>
@@ -89,6 +101,28 @@ export function LearningContextCard({ ctx }: { ctx: ParentHomeView['learningCont
       {estimated ? (
         <span className="chip" style={{ marginTop: 6, alignSelf: 'flex-start' }}>DạyZi đang ước tính</span>
       ) : null}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 8,
+          marginTop: 8,
+          paddingTop: 8,
+          borderTop: '1px solid var(--c-border)',
+        }}
+      >
+        <span style={{ fontSize: 11.5, color: 'var(--c-text-faint)' }}>
+          Cập nhật lần cuối: {daysAgoLabel(ctx.lastVerifiedAt)}
+        </span>
+        <a
+          href={`/be/${childId}/bat-dau`}
+          className="chip"
+          style={stale ? { background: 'var(--c-primary)', color: '#fff', fontWeight: 700 } : undefined}
+        >
+          {stale ? 'Cập nhật hôm nay ›' : 'Cập nhật ›'}
+        </a>
+      </div>
     </div>
   );
 }

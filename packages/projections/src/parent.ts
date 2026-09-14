@@ -112,6 +112,7 @@ export function buildParentHome(input: ParentViewInput): ParentHomeView {
       sources: contextSources(context),
       needsUpdate: !context.teacherParticipated && context.activeSkillIds.length === 0,
       ...contextStatus(context, kb),
+      lastVerifiedAt: context.resolved.lastVerifiedAt,
     },
     todayPlan: todayPlanView(plan),
     attention,

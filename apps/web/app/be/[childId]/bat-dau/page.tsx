@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { getApi, getViewer, parentAuth } from '@/lib/server/api';
+import { daysAgoLabel } from '../../../components';
 import { ActionForm, Field, LessonPicker, type LessonChapter } from '../../../ui';
 import { setLearningStartAction } from '@/lib/server/actions';
 
@@ -11,10 +12,20 @@ export default async function LearningStart({ params }: { params: { childId: str
 
   let child;
   let program: { chapters: LessonChapter[] } = { chapters: [] };
+  let currentLessonId = '';
+  let lastVerifiedAt: string | null = null;
+  let hasConfirmedBefore = false;
   try {
     child = await getApi().getChild(parentAuth(), params.childId);
     const grade = 'schoolGrade' in child ? (child.schoolGrade as number) : 4;
-    program = (await getApi().getCurriculumProgram(parentAuth(), grade)) as { chapters: LessonChapter[] };
+    const [prog, ctx] = await Promise.all([
+      getApi().getCurriculumProgram(parentAuth(), grade),
+      getApi().getLearningContext(parentAuth(), params.childId),
+    ]);
+    program = prog as { chapters: LessonChapter[] };
+    currentLessonId = ctx.resolved.lessonId ?? '';
+    lastVerifiedAt = ctx.resolved.lastVerifiedAt;
+    hasConfirmedBefore = ctx.resolved.confidence === 'VERIFIED' || ctx.resolved.confidence === 'STRONG';
   } catch {
     notFound();
   }
@@ -25,12 +36,20 @@ export default async function LearningStart({ params }: { params: { childId: str
     <div className="screen">
       <div className="screen__body" style={{ gap: 20 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span className="overline">Bước 2 / 2</span>
-          <h1 className="h1">{name} đang học đến đâu?</h1>
+          <span className="overline">{hasConfirmedBefore ? 'Cập nhật hằng ngày' : 'Bước 2 / 2'}</span>
+          <h1 className="h1">
+            {hasConfirmedBefore ? `Hôm nay ${name} học đến đâu?` : `${name} đang học đến đâu?`}
+          </h1>
           <p style={{ margin: 0, color: 'var(--c-text-body)', fontSize: 15, lineHeight: 1.55 }}>
-            Cho DạyZi biết con đang học đến bài nào trên lớp. Từ đó DạyZi tính ra phần con
-            đã học qua và ra bài ôn tập đúng với kiến thức hiện tại của con — thay vì đoán.
+            {hasConfirmedBefore
+              ? 'Cập nhật mỗi khi con học sang bài mới ở trường — DạyZi tính lại đúng phần con đã học qua theo thời gian thực tế, để ra bài ôn tập bám sát con thay vì đoán theo lịch chương trình.'
+              : 'Cho DạyZi biết con đang học đến bài nào trên lớp. Từ đó DạyZi tính ra phần con đã học qua và ra bài ôn tập đúng với kiến thức hiện tại của con — thay vì đoán.'}
           </p>
+          {hasConfirmedBefore && (
+            <span className="chip" style={{ alignSelf: 'flex-start', marginTop: 2 }}>
+              Lần xác nhận gần nhất: {daysAgoLabel(lastVerifiedAt)}
+            </span>
+          )}
         </div>
 
         {program.chapters.length === 0 ? (
@@ -42,9 +61,12 @@ export default async function LearningStart({ params }: { params: { childId: str
             </a>
           </p>
         ) : (
-          <ActionForm action={setLearningStartAction} submitLabel="Xong — xem hôm nay ôn gì">
+          <ActionForm
+            action={setLearningStartAction}
+            submitLabel={hasConfirmedBefore ? 'Cập nhật' : 'Xong — xem hôm nay ôn gì'}
+          >
             <input type="hidden" name="childId" value={params.childId} />
-            <LessonPicker chapters={program.chapters} />
+            <LessonPicker chapters={program.chapters} defaultValue={currentLessonId} />
             <Field name="schoolName" label="Tên trường (không bắt buộc)" placeholder="Tiểu học Nguyễn Du" />
             <Field name="className" label="Tên lớp (không bắt buộc)" placeholder="4A2" />
           </ActionForm>

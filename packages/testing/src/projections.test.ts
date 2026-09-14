@@ -54,6 +54,22 @@ describe('Parent projections', () => {
     expect(home.attention.some((a) => a.kind === 'exam')).toBe(true);
   });
 
+  it('Home: surfaces resolved.lastVerifiedAt so the parent can see how fresh the confirmed lesson is', () => {
+    // this fixture's context is evidence-derived (no explicit lesson
+    // confirmation) — confirm the field passes through as null, not dropped.
+    expect(input.context.resolved.lastVerifiedAt === null || typeof input.context.resolved.lastVerifiedAt === 'string').toBe(true);
+    const home = buildParentHome(input);
+    expect(home.learningContext.lastVerifiedAt).toBe(input.context.resolved.lastVerifiedAt);
+
+    // a real VERIFIED confirmation timestamp flows through unchanged.
+    const confirmedAt = '2026-08-30T08:00:00.000Z';
+    const confirmed = {
+      ...input,
+      context: { ...s.context, resolved: { ...s.context.resolved, confidence: 'VERIFIED' as const, lastVerifiedAt: confirmedAt } },
+    };
+    expect(buildParentHome(confirmed).learningContext.lastVerifiedAt).toBe(confirmedAt);
+  });
+
   it('Progress: three separate axes, no single overall score', () => {
     const prog = buildParentProgress(input);
     expect(prog).not.toHaveProperty('overallScore');

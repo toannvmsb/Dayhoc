@@ -32,7 +32,7 @@ export default async function ParentHome({ params }: { params: { childId: string
         </Link>
       </header>
 
-      <LearningContextCard ctx={home.learningContext} />
+      <LearningContextCard ctx={home.learningContext} childId={params.childId} />
       <TodayPlanCard plan={home.todayPlan} />
 
       <Link href={`/be/${params.childId}/bai-tap`} className="cta" style={{ textDecoration: 'none' }}>

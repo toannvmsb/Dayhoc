@@ -149,7 +149,16 @@ export interface LessonChapter {
 }
 
 /** "Con đang học đến bài nào?" — native select, grouped by SGK chapter. */
-export function LessonPicker({ chapters, name = 'lessonId' }: { chapters: LessonChapter[]; name?: string }) {
+export function LessonPicker({
+  chapters,
+  name = 'lessonId',
+  defaultValue = '',
+}: {
+  chapters: LessonChapter[];
+  name?: string;
+  /** preselect the currently-resolved lesson when re-confirming, instead of a blank picker */
+  defaultValue?: string;
+}) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--c-text-label)' }}>
@@ -158,7 +167,7 @@ export function LessonPicker({ chapters, name = 'lessonId' }: { chapters: Lesson
       <select
         name={name}
         required
-        defaultValue=""
+        defaultValue={defaultValue}
         style={{
           height: 48,
           borderRadius: 'var(--r-input)',
