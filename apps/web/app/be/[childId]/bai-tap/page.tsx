@@ -36,7 +36,24 @@ export default async function Assignments({ params }: { params: { childId: strin
       {open.map((a) => (
         <Link key={a.id} href={`/bai/${a.id}`} className="card" style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <span style={{ flex: 1, fontWeight: 700, color: 'var(--c-text-heading)' }}>
-            Buổi luyện tập
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              Buổi luyện tập
+              {a.source === 'AI_GENERATED' && (
+                <span
+                  title="DạyZi AI soạn riêng cho con, theo đúng bài con đang học"
+                  style={{
+                    fontSize: 10.5,
+                    fontWeight: 700,
+                    color: 'var(--c-primary)',
+                    background: 'var(--c-primary-tint, rgba(59,91,255,.1))',
+                    borderRadius: 999,
+                    padding: '2px 8px',
+                  }}
+                >
+                  ✨ AI soạn riêng
+                </span>
+              )}
+            </span>
             <span className="muted" style={{ display: 'block', fontWeight: 500 }}>
               {a.targetSkillIds.length} kỹ năng · {STATUS_LABEL[a.status]}
             </span>
@@ -50,7 +67,7 @@ export default async function Assignments({ params }: { params: { childId: strin
           <span className="overline">Đã hoàn thành</span>
           {done.map((a) => (
             <div key={a.id} style={{ fontSize: 13.5, color: 'var(--c-text-body)' }}>
-              Buổi luyện tập — {a.completedAt?.slice(0, 10) ?? 'xong'}
+              Buổi luyện tập{a.source === 'AI_GENERATED' ? ' ✨' : ''} — {a.completedAt?.slice(0, 10) ?? 'xong'}
             </div>
           ))}
         </div>

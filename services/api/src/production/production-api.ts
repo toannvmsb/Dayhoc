@@ -3093,6 +3093,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
         id: a.id,
         status: a.status,
         mode: a.mode,
+        source: a.source, // 'AI_GENERATED' | 'LEGACY_PRACTICE' — parent-facing only, so they can see LIVE content actually landed
         targetSkillIds: a.targetSkillIds,
         createdAt: a.createdAt,
         completedAt: a.completedAt,
