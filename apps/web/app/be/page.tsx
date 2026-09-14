@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getApi, getViewer, parentAuth } from '@/lib/server/api';
 import { logoutAction } from '@/lib/server/actions';
+import { BackChip } from '../ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +14,7 @@ export default async function Children() {
   return (
     <div className="screen">
       <div className="screen__body" style={{ gap: 12 }}>
+        <BackChip fallbackHref="/" />
         <span className="overline">DạyZi</span>
         <h1 className="h1">Con của bạn</h1>
         {children.map((c) => (

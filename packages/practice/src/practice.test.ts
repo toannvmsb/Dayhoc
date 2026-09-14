@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { asChildId, asSkillId, type ChildLearningTwin, type Submission } from '@copilot/domain';
+import {
+  asChildId,
+  asSkillId,
+  KNOWLEDGE_LEVELS,
+  type ChildLearningTwin,
+  type PlannedAction,
+  type Question,
+  type Submission,
+} from '@copilot/domain';
 import { examplesForSkill, loadReferenceLibrary } from '@copilot/reference-library';
+import { buildAssignment } from './assignment.js';
 import { advanceHintLadder, currentHintText, initHintLadder } from './hint-ladder.js';
 import { selectStretchSet } from './stretch-zone.js';
 import { submissionToEvidence } from './submission.js';
@@ -53,7 +62,91 @@ describe('stretch-zone selection (Math Core §17)', () => {
     // at least one comfortable (common denom, mastery 80) and one stretch (distributive, mastery 30)
     expect(set.some((q) => q.skillId === 'M4.FRAC.COMMON_DENOM')).toBe(true);
   });
+
+  it('ramps low → high: every zone is sorted ascending, and comfortable (easier on average) comes before stretch', () => {
+    const twin = {
+      skillMastery: new Map([[asSkillId('M4.FRAC.COMMON_DENOM'), { mastery: 60, confidence: 0.5, evidenceCount: 4, lastObservedAt: null, retention: 0.6, recentErrorStreak: 0, lastVerifiedAt: null }]]),
+      problemTypeMastery: new Map(),
+      thinkingProfile: new Map(),
+      frontier: [],
+      childId: asChildId('c'),
+      computedAt: '',
+      computedFromEvidenceCount: 0,
+    } as unknown as ChildLearningTwin;
+
+    // shuffled input order on purpose — output order must come from the sort, not input order
+    const pool: Question[] = [
+      mkQuestion('q-k4', 'K4'),
+      mkQuestion('q-k1', 'K1'),
+      mkQuestion('q-k5', 'K5'),
+      mkQuestion('q-k0', 'K0'),
+      mkQuestion('q-k3', 'K3'),
+      mkQuestion('q-k2', 'K2'),
+    ];
+    const set = selectStretchSet(twin, pool, 6);
+    expect(set).toHaveLength(6);
+    const ranks = set.map((q) => KNOWLEDGE_LEVELS.indexOf(q.knowledgeLevel));
+    for (let i = 1; i < ranks.length; i += 1) expect(ranks[i]).toBeGreaterThanOrEqual(ranks[i - 1]!);
+  });
 });
+
+describe('assignment item count scales with the minutes the action was actually given (was a flat 4/1)', () => {
+  const pool: Question[] = Array.from({ length: 8 }, (_, i) => mkQuestion(`q-${i}`, KNOWLEDGE_LEVELS[Math.min(i, 5)]!));
+  const twin = {
+    skillMastery: new Map([[asSkillId('M4.FRAC.COMMON_DENOM'), { mastery: 50, confidence: 0.5, evidenceCount: 4, lastObservedAt: null, retention: 0.6, recentErrorStreak: 0, lastVerifiedAt: null }]]),
+    problemTypeMastery: new Map(),
+    thinkingProfile: new Map(),
+    frontier: [],
+    childId: asChildId('c'),
+    computedAt: '',
+    computedFromEvidenceCount: 0,
+  } as unknown as ChildLearningTwin;
+
+  function mkAction(overrides: Partial<PlannedAction>): PlannedAction {
+    return {
+      kind: 'practice_current_skill',
+      mixBucket: 'school',
+      targetSkillId: asSkillId('M4.FRAC.COMMON_DENOM'),
+      estimatedMinutes: 10,
+      roiPerMinute: 0.5,
+      parentFacingTitle: 'Bài trên lớp',
+      childFacingTitle: 'Bài trên lớp',
+      rationale: 'test',
+      ...overrides,
+    };
+  }
+
+  it('a 10-minute action gets more items than a 4-minute action', () => {
+    const short = buildAssignment({ childId: asChildId('c'), action: mkAction({ kind: 'retention_check', estimatedMinutes: 4 }), twin, planDate: '2026-09-15', at: '2026-09-15T00:00:00Z', newId: () => '1', pool });
+    const long = buildAssignment({ childId: asChildId('c'), action: mkAction({ estimatedMinutes: 10 }), twin, planDate: '2026-09-15', at: '2026-09-15T00:00:00Z', newId: () => '1', pool });
+    expect(short!.questionIds.length).toBeGreaterThanOrEqual(2);
+    expect(long!.questionIds.length).toBeGreaterThan(short!.questionIds.length);
+  });
+
+  it('thinking_challenge is always exactly 1 substantial problem, regardless of estimatedMinutes', () => {
+    const a = buildAssignment({ childId: asChildId('c'), action: mkAction({ kind: 'thinking_challenge', estimatedMinutes: 6 }), twin, planDate: '2026-09-15', at: '2026-09-15T00:00:00Z', newId: () => '1', pool });
+    expect(a!.questionIds).toHaveLength(1);
+  });
+
+  it('an explicit itemsPerSession still overrides the derived count', () => {
+    const a = buildAssignment({ childId: asChildId('c'), action: mkAction({ estimatedMinutes: 10 }), twin, planDate: '2026-09-15', at: '2026-09-15T00:00:00Z', newId: () => '1', pool, itemsPerSession: 3 });
+    expect(a!.questionIds).toHaveLength(3);
+  });
+});
+
+function mkQuestion(id: string, knowledgeLevel: (typeof KNOWLEDGE_LEVELS)[number]): Question {
+  return {
+    id,
+    skillId: asSkillId('M4.FRAC.COMMON_DENOM'),
+    knowledgeLevel,
+    thinkingLevel: 'T2',
+    prompt: `prompt ${id}`,
+    answerSpec: { kind: 'numeric', value: 1, tolerance: 0 },
+    hints: ['a', 'b', 'c', 'd', 'e', 'f'],
+    workedSolution: 'solution',
+    origin: 'authored',
+  };
+}
 
 describe('submission → evidence (loop close, Math Core §29)', () => {
   const q = examplesForSkill('M4.FRAC.COMMON_DENOM')[0]!;

@@ -2,7 +2,33 @@
 
 import { useFormState, useFormStatus } from 'react-dom';
 import { useState, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import type { FormState } from '@/lib/server/actions';
+
+/**
+ * A "‹ Quay lại" chip that uses browser history (`router.back()`) instead of a
+ * fixed href — for a screen reached from more than one place (e.g. the
+ * children list, which any child's "Hôm nay" can link into), a static link
+ * can only go to ONE parent screen; this always returns wherever the visitor
+ * actually came from. Falls back to `fallbackHref` if there's no history
+ * (e.g. the page was opened directly / a new tab).
+ */
+export function BackChip({ label = '‹ Quay lại', fallbackHref }: { label?: string; fallbackHref: string }) {
+  const router = useRouter();
+  return (
+    <button
+      type="button"
+      className="chip"
+      style={{ border: 'none', cursor: 'pointer' }}
+      onClick={() => {
+        if (typeof window !== 'undefined' && window.history.length > 1) router.back();
+        else router.push(fallbackHref);
+      }}
+    >
+      {label}
+    </button>
+  );
+}
 
 export function SubmitButton({ children, onTeal }: { children: ReactNode; onTeal?: boolean }) {
   const { pending } = useFormStatus();

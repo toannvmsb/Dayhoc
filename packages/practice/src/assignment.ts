@@ -44,7 +44,20 @@ export function buildAssignment(input: BuildAssignmentInput): Assignment | null 
   );
   if (pool.length === 0) return null;
 
-  const count = input.itemsPerSession ?? (input.action.kind === 'thinking_challenge' ? 1 : 4);
+  // item count scales with the minutes this action was actually given — was a
+  // flat 4 (1 for thinking) regardless of estimatedMinutes, so a 20-minute
+  // session could land 1 assignment (4 items) or 3-4 assignments (12-16 items)
+  // depending only on which/how-many NBLA actions the planner happened to pick,
+  // with no relation to the requested time. Same pacing assumption the AI
+  // worksheet spec uses (minutesPerItem, Math Core §17/§24), so a legacy and an
+  // AI-generated session feel proportionate to each other too.
+  const MINUTES_PER_ITEM = 2.5;
+  const MIN_ITEMS_PER_ACTION = 2;
+  const count =
+    input.itemsPerSession ??
+    (input.action.kind === 'thinking_challenge'
+      ? 1 // one substantial reasoning problem by design (§35), not an item-count bug
+      : Math.max(MIN_ITEMS_PER_ACTION, Math.round(input.action.estimatedMinutes / MINUTES_PER_ITEM)));
   const chosen =
     input.action.kind === 'thinking_challenge'
       ? pool

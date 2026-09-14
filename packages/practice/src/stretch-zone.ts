@@ -1,4 +1,4 @@
-import type { ChildLearningTwin, Question, SkillId } from '@copilot/domain';
+import { KNOWLEDGE_LEVELS, type ChildLearningTwin, type Question, type SkillId } from '@copilot/domain';
 
 /**
  * Stretch-zone selection (Math Core §17): a practice set that is
@@ -32,8 +32,12 @@ export function selectStretchSet(
     return { q, comfortable };
   });
 
-  const comfortable = graded.filter((g) => g.comfortable).map((g) => g.q);
-  const stretch = graded.filter((g) => !g.comfortable).map((g) => g.q);
+  // low → high within each zone (anh's ask: ramp difficulty, not a random order)
+  // so the comfortable-then-stretch concatenation below is a genuine easy→hard ramp,
+  // not just two coarsely-ordered blocks.
+  const byKAsc = (a: Question, b: Question) => KNOWLEDGE_LEVELS.indexOf(a.knowledgeLevel) - KNOWLEDGE_LEVELS.indexOf(b.knowledgeLevel);
+  const comfortable = graded.filter((g) => g.comfortable).map((g) => g.q).sort(byKAsc);
+  const stretch = graded.filter((g) => !g.comfortable).map((g) => g.q).sort(byKAsc);
 
   const nComfort = Math.max(1, Math.round(count * config.solvableShare));
   const nStretch = Math.max(1, count - nComfort);
