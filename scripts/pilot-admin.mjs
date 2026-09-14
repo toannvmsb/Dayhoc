@@ -7,6 +7,7 @@
 //   node scripts/pilot-admin.mjs grant-admin  toannv.msb@gmail.com
 //   node scripts/pilot-admin.mjs add-family   parent@example.com  "Gia đình A"
 //   node scripts/pilot-admin.mjs consent      parent@example.com          # all that parent's children
+//   node scripts/pilot-admin.mjs requeue      parent@example.com          # after granting consent post-hoc
 //   node scripts/pilot-admin.mjs list
 //   node scripts/pilot-admin.mjs safety                                   # read-only scan
 //   node scripts/pilot-admin.mjs kill on  "reason"       |  kill off
@@ -92,6 +93,23 @@ try {
       }
       break;
     }
+    case 'requeue': {
+      // clear this child's worksheet_jobs bookkeeping (NOT the generated-content
+      // history in worksheet_generation_runs) so the next "Hôm nay" open enqueues
+      // a fresh job today. Use when a run already completed+cost money but got
+      // SKIPPED at serving (e.g. consent was granted AFTER that run finished) —
+      // the durable queue's per-day dedup key would otherwise block a re-enqueue
+      // until tomorrow.
+      const u = await userByEmail(a1);
+      const kids = await childrenOf(u.id);
+      if (kids.length === 0) throw new Error('that parent has no child profiles');
+      for (const k of kids) {
+        const ref = api.pilotChildRef(k.id);
+        const del = await pool.query(`DELETE FROM worksheet_jobs WHERE child_ref = $1`, [ref]);
+        console.log(`- ${k.display_name}: cleared ${del.rowCount} job row(s) — next "Hôm nay" open enqueues fresh today`);
+      }
+      break;
+    }
     case 'list': {
       const fams = await api.listPilotFamilies(pool);
       const cohort = await api.listInternalLiveCohort(pool);
@@ -116,7 +134,7 @@ try {
       break;
     }
     default:
-      console.error('commands: status | grant-admin <email> | add-family <email> [note] | consent <parent-email> | list | safety | kill <on|off> [reason]');
+      console.error('commands: status | grant-admin <email> | add-family <email> [note] | consent <parent-email> | requeue <parent-email> | list | safety | kill <on|off> [reason]');
       process.exit(2);
   }
 } catch (e) {
