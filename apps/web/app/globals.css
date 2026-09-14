@@ -58,6 +58,13 @@ a:active {
   flex-direction: column;
   gap: var(--sp-sm);
 }
+/* `.card` on a <p> — a <p> holds inline content (text + <b>/<span>/...), and
+   flex-column blockifies every text run and inline child into its own
+   stacked line ("bất cẩn" / "," / "hổng kiến thức" each on a separate row).
+   A paragraph should just wrap normally; block still gets the card visuals. */
+p.card {
+  display: block;
+}
 .card--teal {
   background: var(--c-primary);
   color: var(--c-text-on-primary);
