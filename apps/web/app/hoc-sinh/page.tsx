@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Screen, StudentNav } from '../components';
 import { getApi, getViewer, studentAuth } from '@/lib/server/api';
+import { logoutAction } from '@/lib/server/actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +22,28 @@ export default async function StudentToday() {
   return (
     <Screen nav={<StudentNav active="home" />}>
       <div className="child-hero">
-        <span className="overline overline--onteal">Xin chào {today.greetingName}</span>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+          <span className="overline overline--onteal">Xin chào {today.greetingName}</span>
+          <form action={logoutAction}>
+            <button
+              type="submit"
+              aria-label="Đăng xuất"
+              style={{
+                background: 'rgba(255,255,255,.18)',
+                border: 'none',
+                borderRadius: 999,
+                color: '#fff',
+                fontSize: 12.5,
+                fontWeight: 700,
+                padding: '6px 14px',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Đăng xuất
+            </button>
+          </form>
+        </div>
         <h1 className="h1" style={{ color: '#fff' }}>Hôm nay của con</h1>
         <p style={{ margin: 0, color: 'rgba(255,255,255,.9)', fontSize: 14.5 }}>{today.summary}</p>
       </div>

@@ -31,7 +31,7 @@ export default async function Welcome({
 
         {login ? (
           <ActionForm action={loginAction} submitLabel="Đăng nhập">
-            <Field name="email" label="Email" type="email" required />
+            <Field name="email" label="Email hoặc tên đăng nhập" placeholder="email@... hoặc tên bố mẹ đặt cho con" required />
             <Field name="password" label="Mật khẩu" type="password" required />
           </ActionForm>
         ) : teacher ? (

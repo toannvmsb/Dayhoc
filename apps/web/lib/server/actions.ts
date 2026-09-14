@@ -38,11 +38,15 @@ export async function registerAction(_prev: FormState, form: FormData): Promise<
 }
 
 export async function loginAction(_prev: FormState, form: FormData): Promise<FormState> {
-  const email = String(form.get('email') ?? '').trim().toLowerCase();
+  const typed = String(form.get('email') ?? '').trim().toLowerCase();
   // `password` is optional on the wire (dev/in-memory backends still log in by
   // email alone); a real Supabase backend needs it and `signIn` says so.
   const password = form.get('password') !== null ? String(form.get('password')) : undefined;
-  if (!email || !email.includes('@')) return { error: 'Nhập email đã đăng ký.' };
+  if (!typed) return { error: 'Nhập email hoặc tên đăng nhập.' };
+  // a child logs in with a plain username the parent chose (P-03) — the
+  // identity core is email-shaped internally, so a bare username (no "@")
+  // is the student login form; parents/teachers still type a real email.
+  const email = typed.includes('@') ? typed : `${typed}@dayzi.local`;
   if (process.env.NODE_ENV === 'production' && !process.env.SUPABASE_URL) {
     return { error: 'Đăng nhập cần cấu hình Supabase (ENV_REQUIRED).' };
   }
@@ -119,12 +123,17 @@ export async function createStudentAccessAction(
 ): Promise<FormState> {
   const childId = String(form.get('childId') ?? '');
   const password = String(form.get('password') ?? '');
+  const username = String(form.get('username') ?? '').trim().toLowerCase();
   const displayName = String(form.get('displayName') ?? '').trim() || undefined;
   if (!childId || password.length < 8) {
     return { error: 'Mật khẩu cho con tối thiểu 8 ký tự.' };
   }
+  if (!username || !/^[a-z][a-z0-9_]{2,19}$/.test(username)) {
+    return { error: 'Tên đăng nhập cần 3-20 ký tự (chữ/số/gạch dưới), bắt đầu bằng chữ cái.' };
+  }
   try {
     await getApi().createStudentAccess(parentAuth(), childId, {
+      username,
       password,
       ...(displayName ? { displayName } : {}),
     });

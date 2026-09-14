@@ -6,7 +6,7 @@ import { useFormState } from 'react-dom';
 import { createStudentAccessAction, revokeStudentAccessAction } from '@/lib/server/actions';
 import { SubmitButton } from '../../../ui';
 
-type Access = { loginEmail: string; status: string; createdAt: string } | null;
+type Access = { loginEmail: string; username?: string; status: string; createdAt: string } | null;
 
 export function StudentAccess({ childId, access }: { childId: string; access: Access }) {
   const [state, formAction] = useFormState(createStudentAccessAction, {});
@@ -23,7 +23,7 @@ export function StudentAccess({ childId, access }: { childId: string; access: Ac
       {active ? (
         <>
           <p style={{ margin: 0, fontSize: 13.5, color: 'var(--c-text-body)' }}>
-            Con đăng nhập bằng email: <b>{access!.loginEmail}</b>
+            Con đăng nhập bằng tên: <b>{access!.username ?? access!.loginEmail}</b>
           </p>
           <button
             type="button"
@@ -56,6 +56,21 @@ export function StudentAccess({ childId, access }: { childId: string; access: Ac
               <input type="hidden" name="childId" value={childId} />
               <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--c-text-label)' }}>
+                  Tên đăng nhập cho con
+                </span>
+                <input
+                  name="username"
+                  required
+                  pattern="[a-zA-Z][a-zA-Z0-9_]{2,19}"
+                  placeholder="vd: minhan, beMinh2015"
+                  style={{ ...inp, textTransform: 'lowercase' }}
+                />
+                <span className="muted" style={{ fontSize: 11.5 }}>
+                  3-20 ký tự, chữ/số/gạch dưới, bắt đầu bằng chữ. Con dùng tên này để đăng nhập.
+                </span>
+              </label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--c-text-label)' }}>
                   Tên hiển thị (không bắt buộc)
                 </span>
                 <input name="displayName" style={inp} />
@@ -64,7 +79,7 @@ export function StudentAccess({ childId, access }: { childId: string; access: Ac
                 <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--c-text-label)' }}>
                   Mật khẩu cho con (tối thiểu 8 ký tự)
                 </span>
-                <input name="password" type="password" required style={inp} />
+                <input name="password" type="password" required minLength={8} style={inp} />
               </label>
               {state?.error && (
                 <p className="card card--attention" style={{ margin: 0, fontSize: 13 }}>{state.error}</p>

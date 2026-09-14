@@ -2292,11 +2292,18 @@ export function createProductionApi(opts: ProductionApiOptions) {
 
     // ---- STUDENT ACCOUNT LINKING (parent side) ------------------
 
-    /** POST /children/:childId/student-access — parent creates + links a student login. */
+    /**
+     * POST /children/:childId/student-access — parent creates + links a student
+     * login (P-03: username + password the parent sets, child can change later).
+     * `username` is stored internally as `<slug>@dayzi.local` (the identity core
+     * is email-shaped) but is what the child actually types — never a synthetic
+     * id the parent didn't choose. Checked for uniqueness across every account
+     * on the system (parents/teachers/students alike), not just other students.
+     */
     async createStudentAccess(
       auth: CallerAuth,
       childId: string,
-      input: { displayName?: string; password: string },
+      input: { username?: string; displayName?: string; password: string },
     ) {
       const ctx = await deriveContext(auth);
       if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
@@ -2307,9 +2314,26 @@ export function createProductionApi(opts: ProductionApiOptions) {
         [childId],
       );
       if (existing.rows[0]) {
-        return { loginEmail: (existing.rows[0] as any).primary_email as string, alreadyExists: true };
+        const email = (existing.rows[0] as any).primary_email as string;
+        return { loginEmail: email, username: studentUsernameFromEmail(email), alreadyExists: true };
       }
-      const loginEmail = `hs-${childId.slice(0, 8)}@dayzi.local`;
+      let loginEmail: string;
+      let username: string | undefined;
+      if (input.username !== undefined) {
+        const slug = normalizeStudentUsername(input.username);
+        if (!slug) {
+          throw new ForbiddenError('Tên đăng nhập cần 3-20 ký tự, chỉ gồm chữ/số/dấu gạch dưới, bắt đầu bằng chữ.');
+        }
+        loginEmail = `${slug}@${STUDENT_LOGIN_DOMAIN}`;
+        username = slug;
+        const taken = await pool.query(`SELECT 1 FROM users WHERE lower(primary_email) = $1 LIMIT 1`, [loginEmail]);
+        if (taken.rows[0]) {
+          throw new ForbiddenError(`Tên đăng nhập "${slug}" đã có người dùng — chọn tên khác.`);
+        }
+      } else {
+        // legacy fallback (no username supplied) — an opaque, collision-safe id.
+        loginEmail = `hs-${childId.slice(0, 8)}@${STUDENT_LOGIN_DOMAIN}`;
+      }
       const student = await registrar.register({
         email: loginEmail,
         password: input.password,
@@ -2322,7 +2346,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
         linkMethod: 'GUARDIAN_MANUAL',
         linkedByUserId: ctx.userId as never,
       });
-      return { loginEmail, alreadyExists: false };
+      return { loginEmail, username, alreadyExists: false };
     },
 
     async getStudentAccess(auth: CallerAuth, childId: string) {
@@ -2338,6 +2362,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
       return x
         ? {
             loginEmail: x.primary_email as string,
+            username: studentUsernameFromEmail(x.primary_email as string),
             status: x.status as string,
             createdAt: new Date(x.created_at).toISOString(),
           }
@@ -3563,6 +3588,21 @@ export function createProductionApi(opts: ProductionApiOptions) {
 
 function cryptoRandom(): string {
   return globalThis.crypto?.randomUUID?.() ?? `evt-${Math.random().toString(36).slice(2)}`;
+}
+
+const STUDENT_LOGIN_DOMAIN = 'dayzi.local';
+const STUDENT_USERNAME_RE = /^[a-z][a-z0-9_]{2,19}$/;
+
+/** lowercase + trim a parent-typed child username; null if it fails the shape check. */
+function normalizeStudentUsername(raw: string): string | null {
+  const slug = raw.trim().toLowerCase();
+  return STUDENT_USERNAME_RE.test(slug) ? slug : null;
+}
+
+/** the username half of a `<slug>@dayzi.local` synthetic login email, or the raw email if it's not one (legacy auto-generated ids). */
+function studentUsernameFromEmail(email: string): string | undefined {
+  const m = new RegExp(`^([a-z0-9_]+)@${STUDENT_LOGIN_DOMAIN.replace('.', '\\.')}$`).exec(email.toLowerCase());
+  return m && !m[1]!.startsWith('hs-') ? m[1] : undefined;
 }
 
 

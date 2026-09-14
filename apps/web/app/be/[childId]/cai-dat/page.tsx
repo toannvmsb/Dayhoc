@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { Screen } from '../../../components';
 import { getApi, getViewer, parentAuth } from '@/lib/server/api';
+import { logoutAction } from '@/lib/server/actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,10 +60,19 @@ export default async function ChildSettings({ params }: { params: { childId: str
       <Link href={`/be/${params.childId}/ho-so`} className="chip">‹ Hồ sơ con</Link>
       <h1 className="h1">Cài đặt</h1>
 
-      <div className="card" style={{ gap: 2 }}>
+      <div className="card" style={{ gap: 8 }}>
         <span className="overline">Tài khoản</span>
         <span style={{ fontSize: 13.5, color: 'var(--c-text-heading)' }}>{me.displayName ?? '—'}</span>
         <span className="muted" style={{ fontSize: 12 }}>{me.roles.join(' · ')}</span>
+        <form action={logoutAction}>
+          <button
+            type="submit"
+            className="cta"
+            style={{ background: 'var(--c-attention-text)', height: 40, fontSize: 13.5 }}
+          >
+            Đăng xuất
+          </button>
+        </form>
       </div>
 
       <Row href={`/be/${params.childId}/ho-so`} title="Hồ sơ con" sub={`${name} · lớp ${'schoolGrade' in child ? child.schoolGrade : '—'}`} />
@@ -70,7 +80,7 @@ export default async function ChildSettings({ params }: { params: { childId: str
       <Row
         href={`/be/${params.childId}/ho-so`}
         title="Tài khoản của con"
-        sub={studentAccess?.status === 'ACTIVE' ? `Đang bật · ${studentAccess.loginEmail}` : 'Chưa tạo'}
+        sub={studentAccess?.status === 'ACTIVE' ? `Đang bật · ${studentAccess.username ?? studentAccess.loginEmail}` : 'Chưa tạo'}
       />
       <Row
         href={`/be/${params.childId}/ket-noi`}
