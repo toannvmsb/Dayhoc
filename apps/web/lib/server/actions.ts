@@ -121,12 +121,22 @@ export async function createTargetedPracticeAction(childId: string, gapId: strin
   return { assignmentId };
 }
 
+export interface PracticeResultItem {
+  readonly assignmentItemId: string;
+  readonly correct: boolean | null;
+  readonly verificationLevel: string;
+  readonly expectedAnswer: string | null;
+}
+
+/** The child MUST see whether each answer was right or wrong (anh's core-loop
+ * spec §4) — submitPractice already computes this per item; this used to
+ * discard it and return only `{ok:true}`. */
 export async function submitPracticeAction(
   assignmentId: string,
   answers: ReadonlyArray<{ assignmentItemId: string; answer: string; hintsUsed?: number }>,
-): Promise<{ ok: true }> {
-  await getApi().submitPractice(await preferredAuth(), assignmentId, answers);
-  return { ok: true };
+): Promise<{ ok: true; results: readonly PracticeResultItem[] }> {
+  const { results } = await getApi().submitPractice(await preferredAuth(), assignmentId, answers);
+  return { ok: true, results };
 }
 
 export async function createStudentAccessAction(

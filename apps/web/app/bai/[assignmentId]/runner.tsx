@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { submitPracticeAction } from '@/lib/server/actions';
+import { submitPracticeAction, type PracticeResultItem } from '@/lib/server/actions';
 
 type Item = {
   id: string;
@@ -16,6 +16,61 @@ type Detail = { id: string; status: string; mode: string; items: Item[] };
 
 const HINT_LABEL = ['Gợi ý định hướng', 'Câu hỏi dẫn', 'Ví dụ đơn giản hơn', 'Thử lại', 'Lời giải đầy đủ', 'Lời giải đầy đủ'];
 
+function promptTextOf(p: unknown): string {
+  const v = p as { text?: string } | string | undefined;
+  return typeof v === 'string' ? v : (v?.text ?? '');
+}
+
+/** "Con làm đúng X/Y câu" — anh's core-loop spec §4: the child must see
+ * correct/incorrect per question, not just a generic "done" message. */
+function ResultScreen({ items, results, onFinish }: { items: Item[]; results: readonly PracticeResultItem[]; onFinish: () => void }) {
+  const byId = new Map(results.map((r) => [r.assignmentItemId, r]));
+  // reasoning items (verificationLevel AI_CROSSCHECK_REQUIRED) have no known
+  // right/wrong yet — never claim correctness for those (only count graded ones).
+  const graded = results.filter((r) => r.verificationLevel !== 'AI_CROSSCHECK_REQUIRED');
+  const correctCount = graded.filter((r) => r.correct === true).length;
+  const total = graded.length;
+  const headline =
+    total === 0 ? 'Con đã gửi cách nghĩ' : correctCount === total ? `Con làm đúng cả ${total} câu` : `Con làm đúng ${correctCount}/${total} câu`;
+  const encouragement = total === 0 || correctCount === total ? 'Rất tốt! Con nắm chắc phần này rồi.' : 'Cùng xem lại vài câu để lần sau chắc hơn nhé.';
+
+  return (
+    <div className="screen">
+      <div className="screen__body" style={{ gap: 14 }}>
+        <div style={{ textAlign: 'center', paddingTop: 8 }}>
+          <div style={{ fontSize: 44 }}>{total === 0 || correctCount === total ? '✓' : '✍️'}</div>
+          <h1 className="h1">{headline}</h1>
+          <p style={{ color: 'var(--c-text-body)', margin: '4px 0 0' }}>{encouragement}</p>
+        </div>
+
+        {items.map((it, idx) => {
+          const r = byId.get(it.id);
+          if (!r || r.verificationLevel === 'AI_CROSSCHECK_REQUIRED') return null;
+          const ok = r.correct === true;
+          return (
+            <div key={it.id} className="card" style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+              <span style={{ fontSize: 18, lineHeight: 1.4 }}>{ok ? '✓' : '✗'}</span>
+              <span style={{ flex: 1 }}>
+                <span className="muted" style={{ display: 'block', fontSize: 12 }}>Câu {idx + 1}</span>
+                <span style={{ fontSize: 14, color: 'var(--c-text-heading)', display: 'block' }}>{promptTextOf(it.prompt)}</span>
+                {!ok && r.expectedAnswer && (
+                  <span style={{ fontSize: 13.5, color: 'var(--c-primary-strong)', fontWeight: 700, display: 'block', marginTop: 4 }}>
+                    Đáp án đúng: {r.expectedAnswer}
+                  </span>
+                )}
+              </span>
+            </div>
+          );
+        })}
+
+        <button className="cta" type="button" onClick={onFinish}>
+          Về trang chính
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function PracticeRunner({ assignmentId, detail }: { assignmentId: string; detail: Detail }) {
   const router = useRouter();
   const items = detail.items;
@@ -23,15 +78,17 @@ export function PracticeRunner({ assignmentId, detail }: { assignmentId: string;
   const [answers, setAnswers] = useState<Record<string, { answer: string; hintsUsed: number }>>({});
   const [hintOpen, setHintOpen] = useState(0);
   const [pending, start] = useTransition();
-  const [done, setDone] = useState(false);
+  const [results, setResults] = useState<readonly PracticeResultItem[] | null>(null);
+  const [failed, setFailed] = useState(false);
 
   const item = items[i];
-  const promptText = useMemo(() => {
-    const p = item?.prompt as { text?: string } | string | undefined;
-    return typeof p === 'string' ? p : (p?.text ?? '');
-  }, [item]);
+  const promptText = useMemo(() => promptTextOf(item?.prompt), [item]);
 
-  if (!item || done) {
+  if (results) {
+    return <ResultScreen items={items} results={results} onFinish={() => router.push('/')} />;
+  }
+
+  if (!item || failed) {
     return (
       <div className="screen">
         <div className="screen__body" style={{ justifyContent: 'center', textAlign: 'center', gap: 14 }}>
@@ -57,7 +114,7 @@ export function PracticeRunner({ assignmentId, detail }: { assignmentId: string;
   const submit = () =>
     start(async () => {
       try {
-        await submitPracticeAction(
+        const res = await submitPracticeAction(
           assignmentId,
           items.map((it) => ({
             assignmentItemId: it.id,
@@ -65,10 +122,10 @@ export function PracticeRunner({ assignmentId, detail }: { assignmentId: string;
             hintsUsed: answers[it.id]?.hintsUsed ?? 0,
           })),
         );
-        setDone(true);
+        setResults(res.results);
         router.refresh();
       } catch {
-        setDone(true);
+        setFailed(true);
       }
     });
 
