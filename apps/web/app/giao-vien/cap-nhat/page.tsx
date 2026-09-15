@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { Screen, TeacherNav } from '../../components';
 import { getApi, getViewer, teacherAuth } from '@/lib/server/api';
+import type { LessonChapter } from '../../ui';
 import { ContributionForm } from './form';
 
 export const dynamic = 'force-dynamic';
@@ -14,6 +15,15 @@ export default async function TeacherUpdates() {
     getApi().teacherListChildren(teacherAuth()),
     getApi().listSubjects(teacherAuth()),
   ]);
+
+  // "Bài đang dạy" / "Tiến độ chương trình" need a real SGK lesson picker
+  // (not free text) so the contribution actually carries taughtSkillIds —
+  // fetch the program for every grade among this teacher's accepted students.
+  const grades = [...new Set(children.map((c) => c.schoolGrade))];
+  const programs = await Promise.all(
+    grades.map(async (g) => [g, (await getApi().teacherGetCurriculumProgram(teacherAuth(), g)) as { chapters: LessonChapter[] }] as const),
+  );
+  const programsByGrade: Record<number, LessonChapter[]> = Object.fromEntries(programs.map(([g, p]) => [g, p.chapters]));
 
   return (
     <Screen nav={<TeacherNav active="updates" />}>
@@ -32,8 +42,10 @@ export default async function TeacherUpdates() {
             childId: c.childId,
             displayName: c.displayName,
             subjectId: c.subjectId,
+            schoolGrade: c.schoolGrade,
           }))}
           subjects={subjects.map((s) => ({ id: s.id, name: s.name }))}
+          programsByGrade={programsByGrade}
         />
       )}
     </Screen>

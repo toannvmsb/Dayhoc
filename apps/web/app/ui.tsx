@@ -145,7 +145,9 @@ function EyeIcon({ off }: { off: boolean }) {
 export interface LessonChapter {
   chapter: number;
   name: string;
-  lessons: { lessonId: string; name: string }[];
+  /** the API (getCurriculumProgram) always includes skillIds — typed here too so a
+   * picker can resolve lessonId → skill ids without a second round trip. */
+  lessons: { lessonId: string; name: string; skillIds?: string[] }[];
 }
 
 /** "Con đang học đến bài nào?" — native select, grouped by SGK chapter. */
@@ -153,21 +155,28 @@ export function LessonPicker({
   chapters,
   name = 'lessonId',
   defaultValue = '',
+  label = 'Con đang học đến bài nào?',
+  onChange,
 }: {
   chapters: LessonChapter[];
   name?: string;
   /** preselect the currently-resolved lesson when re-confirming, instead of a blank picker */
   defaultValue?: string;
+  label?: string;
+  /** fires with the chosen lesson (and its skillIds, if the caller wants them) — e.g. to mirror into a hidden taughtSkillIds field. */
+  onChange?: (lessonId: string, skillIds: string[]) => void;
 }) {
+  const byId = new Map(chapters.flatMap((ch) => ch.lessons.map((l) => [l.lessonId, l.skillIds ?? []] as const)));
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--c-text-label)' }}>
-        Con đang học đến bài nào? <span style={{ color: 'var(--c-attention-text)' }}>*</span>
+        {label} <span style={{ color: 'var(--c-attention-text)' }}>*</span>
       </span>
       <select
         name={name}
         required
         defaultValue={defaultValue}
+        onChange={onChange ? (e) => onChange(e.target.value, byId.get(e.target.value) ?? []) : undefined}
         style={{
           height: 48,
           borderRadius: 'var(--r-input)',

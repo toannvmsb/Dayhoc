@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { useFormState } from 'react-dom';
 import { teacherSubmitContributionAction } from '@/lib/server/actions';
-import { SubmitButton } from '../../ui';
+import { LessonPicker, SubmitButton, type LessonChapter } from '../../ui';
 
-type Student = { childId: string; displayName: string; subjectId: string | null };
+type Student = { childId: string; displayName: string; subjectId: string | null; schoolGrade: number };
 type Subject = { id: string; name: string };
 
 const TYPES = [
@@ -26,11 +26,24 @@ const sel: React.CSSProperties = {
   color: 'var(--c-text-heading)',
 };
 
-export function ContributionForm({ students, subjects }: { students: Student[]; subjects: Subject[] }) {
+export function ContributionForm({
+  students,
+  subjects,
+  programsByGrade,
+}: {
+  students: Student[];
+  subjects: Subject[];
+  /** SGK chapter/lesson list per grade — so "Bài đang dạy" / "Tiến độ chương
+   * trình" pick a real lesson instead of typing free text. */
+  programsByGrade: Record<number, LessonChapter[]>;
+}) {
   const [state, formAction] = useFormState(teacherSubmitContributionAction, {} as { error?: string; ok?: never });
   const [type, setType] = useState<string>('CURRENT_LESSON');
   const [childId, setChildId] = useState(students[0]?.childId ?? '');
+  const [taughtSkillIds, setTaughtSkillIds] = useState<string[]>([]);
   const selectedStudent = students.find((s) => s.childId === childId);
+  const needsLesson = type === 'CURRENT_LESSON' || type === 'CURRICULUM_PROGRESS';
+  const chapters = selectedStudent ? programsByGrade[selectedStudent.schoolGrade] ?? [] : [];
 
   return (
     <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -60,6 +73,22 @@ export function ContributionForm({ students, subjects }: { students: Student[]; 
           ))}
         </select>
       </label>
+
+      {needsLesson && (
+        chapters.length > 0 ? (
+          <>
+            <input type="hidden" name="taughtSkillIds" value={taughtSkillIds.join(',')} />
+            <LessonPicker
+              key={selectedStudent?.childId} // reset the picker when switching student/grade
+              chapters={chapters}
+              label={type === 'CURRENT_LESSON' ? 'Hôm nay lớp học đến bài nào?' : 'Lớp đang học đến bài nào (tiến độ chương trình)?'}
+              onChange={(_lessonId, skillIds) => setTaughtSkillIds(skillIds)}
+            />
+          </>
+        ) : (
+          <p className="muted" style={{ margin: 0 }}>Chưa có dữ liệu chương trình cho lớp này.</p>
+        )
+      )}
 
       {type === 'EXAM_NOTICE' && (
         <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

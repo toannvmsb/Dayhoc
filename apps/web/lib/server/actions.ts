@@ -451,7 +451,11 @@ export async function teacherSubmitContributionAction(
     | 'EXAM_NOTICE';
   const note = String(form.get('note') ?? '').trim();
   const examDate = String(form.get('examDate') ?? '').trim();
+  const taughtSkillIds = String(form.get('taughtSkillIds') ?? '').split(',').map((s) => s.trim()).filter(Boolean);
   if (!childId || !subjectId) return { error: 'Chọn học sinh và môn học.' };
+  if ((contributionType === 'CURRENT_LESSON' || contributionType === 'CURRICULUM_PROGRESS') && taughtSkillIds.length === 0) {
+    return { error: 'Chọn bài lớp đang học.' };
+  }
 
   const observedAt = new Date().toISOString();
   try {
@@ -459,6 +463,9 @@ export async function teacherSubmitContributionAction(
       subjectId,
       contributionType,
       observedAt,
+      ...((contributionType === 'CURRENT_LESSON' || contributionType === 'CURRICULUM_PROGRESS') && taughtSkillIds.length > 0
+        ? { taughtSkillIds }
+        : {}),
       ...(contributionType === 'HOMEWORK' && note
         ? { homeworkRefs: note.split(',').map((s) => s.trim()).filter(Boolean) }
         : {}),
