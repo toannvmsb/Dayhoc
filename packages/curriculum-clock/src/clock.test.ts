@@ -36,7 +36,7 @@ describe('CurriculumClockService (Pricing v1.1 §2)', () => {
 
   it('end of year clamps to the last chapter, never past it', () => {
     const ctx = clock.positionFor(G7, new Date('2027-06-15'));
-    expect(ctx!.effectiveSchoolWeek).toBeLessThanOrEqual(35);
+    expect(ctx!.effectiveSchoolWeek).toBeLessThanOrEqual(38); // teaching_weeks — hết kỳ 2 ~31/05
     expect(ctx!.chapterId).toBe(10);
   });
 

@@ -18,7 +18,7 @@
     "grade": 4,
     "academic_year": "2026-2027",
     "school_start_date": "2026-09-05",
-    "teaching_weeks": 35,
+    "teaching_weeks": 38,
     "pace_uncertainty_lessons": 2,
     "holidays": [
       {
@@ -36,12 +36,12 @@
       {
         "index": 1,
         "from_week": 1,
-        "to_week": 18
+        "to_week": 20
       },
       {
         "index": 2,
-        "from_week": 19,
-        "to_week": 35
+        "from_week": 21,
+        "to_week": 38
       }
     ],
     "pacing": [
@@ -74,7 +74,7 @@
         "chapter": 3,
         "name": "Số có nhiều chữ số",
         "from_week": 4,
-        "to_week": 6,
+        "to_week": 7,
         "lesson_ids": [
           "C.G4.3.1",
           "C.G4.3.2",
@@ -88,8 +88,8 @@
       {
         "chapter": 4,
         "name": "Một số đơn vị đo đại lượng",
-        "from_week": 7,
-        "to_week": 8,
+        "from_week": 8,
+        "to_week": 9,
         "lesson_ids": [
           "C.G4.4.1",
           "C.G4.4.2",
@@ -101,8 +101,8 @@
       {
         "chapter": 5,
         "name": "Phép cộng và phép trừ",
-        "from_week": 9,
-        "to_week": 10,
+        "from_week": 10,
+        "to_week": 11,
         "lesson_ids": [
           "C.G4.5.1",
           "C.G4.5.2",
@@ -114,8 +114,8 @@
       {
         "chapter": 6,
         "name": "Đường thẳng vuông góc / song song",
-        "from_week": 11,
-        "to_week": 13,
+        "from_week": 12,
+        "to_week": 14,
         "lesson_ids": [
           "C.G4.6.1",
           "C.G4.6.2",
@@ -128,8 +128,8 @@
       {
         "chapter": 7,
         "name": "Ôn tập học kì I",
-        "from_week": 14,
-        "to_week": 18,
+        "from_week": 15,
+        "to_week": 20,
         "lesson_ids": [
           "C.G4.7.1",
           "C.G4.7.2",
@@ -141,8 +141,8 @@
       {
         "chapter": 8,
         "name": "Phép nhân và phép chia",
-        "from_week": 19,
-        "to_week": 24,
+        "from_week": 21,
+        "to_week": 27,
         "lesson_ids": [
           "C.G4.8.1",
           "C.G4.8.2",
@@ -160,8 +160,8 @@
       {
         "chapter": 9,
         "name": "Thống kê, xác suất",
-        "from_week": 25,
-        "to_week": 26,
+        "from_week": 28,
+        "to_week": 29,
         "lesson_ids": [
           "C.G4.9.1",
           "C.G4.9.2",
@@ -172,8 +172,8 @@
       {
         "chapter": 10,
         "name": "Phân số",
-        "from_week": 27,
-        "to_week": 29,
+        "from_week": 30,
+        "to_week": 32,
         "lesson_ids": [
           "C.G4.10.1",
           "C.G4.10.2",
@@ -187,8 +187,8 @@
       {
         "chapter": 11,
         "name": "Phép cộng, phép trừ phân số",
-        "from_week": 30,
-        "to_week": 31,
+        "from_week": 33,
+        "to_week": 34,
         "lesson_ids": [
           "C.G4.11.1",
           "C.G4.11.2",
@@ -198,8 +198,8 @@
       {
         "chapter": 12,
         "name": "Phép nhân, phép chia phân số",
-        "from_week": 32,
-        "to_week": 33,
+        "from_week": 35,
+        "to_week": 36,
         "lesson_ids": [
           "C.G4.12.1",
           "C.G4.12.2",
@@ -210,8 +210,8 @@
       {
         "chapter": 13,
         "name": "Ôn tập cuối năm",
-        "from_week": 34,
-        "to_week": 35,
+        "from_week": 37,
+        "to_week": 38,
         "lesson_ids": [
           "C.G4.13.1",
           "C.G4.13.2",
@@ -243,7 +243,7 @@
     "grade": 7,
     "academic_year": "2026-2027",
     "school_start_date": "2026-09-05",
-    "teaching_weeks": 35,
+    "teaching_weeks": 38,
     "pace_uncertainty_lessons": 2,
     "holidays": [
       {
@@ -261,12 +261,12 @@
       {
         "index": 1,
         "from_week": 1,
-        "to_week": 18
+        "to_week": 20
       },
       {
         "index": 2,
-        "from_week": 19,
-        "to_week": 35
+        "from_week": 21,
+        "to_week": 38
       }
     ],
     "pacing": [
@@ -274,7 +274,7 @@
         "chapter": 1,
         "name": "Số hữu tỉ",
         "from_week": 1,
-        "to_week": 4,
+        "to_week": 5,
         "lesson_ids": [
           "C.G7.1.1",
           "C.G7.1.2",
@@ -285,8 +285,8 @@
       {
         "chapter": 2,
         "name": "Số thực",
-        "from_week": 5,
-        "to_week": 7,
+        "from_week": 6,
+        "to_week": 8,
         "lesson_ids": [
           "C.G7.2.5",
           "C.G7.2.6",
@@ -296,8 +296,8 @@
       {
         "chapter": 3,
         "name": "Góc và đường thẳng song song",
-        "from_week": 8,
-        "to_week": 11,
+        "from_week": 9,
+        "to_week": 12,
         "lesson_ids": [
           "C.G7.3.8",
           "C.G7.3.9",
@@ -308,8 +308,8 @@
       {
         "chapter": 4,
         "name": "Tam giác bằng nhau",
-        "from_week": 12,
-        "to_week": 16,
+        "from_week": 13,
+        "to_week": 18,
         "lesson_ids": [
           "C.G7.4.12",
           "C.G7.4.13",
@@ -321,8 +321,8 @@
       {
         "chapter": 5,
         "name": "Thu thập và biểu diễn dữ liệu",
-        "from_week": 17,
-        "to_week": 18,
+        "from_week": 19,
+        "to_week": 20,
         "lesson_ids": [
           "C.G7.5.17",
           "C.G7.5.18",
@@ -332,8 +332,8 @@
       {
         "chapter": 6,
         "name": "Tỉ lệ thức và đại lượng tỉ lệ",
-        "from_week": 19,
-        "to_week": 22,
+        "from_week": 21,
+        "to_week": 24,
         "lesson_ids": [
           "C.G7.6.20",
           "C.G7.6.21",
@@ -344,8 +344,8 @@
       {
         "chapter": 7,
         "name": "Biểu thức đại số và đa thức một biến",
-        "from_week": 23,
-        "to_week": 27,
+        "from_week": 25,
+        "to_week": 30,
         "lesson_ids": [
           "C.G7.7.24",
           "C.G7.7.25",
@@ -357,8 +357,8 @@
       {
         "chapter": 8,
         "name": "Biến cố và xác suất",
-        "from_week": 28,
-        "to_week": 29,
+        "from_week": 31,
+        "to_week": 32,
         "lesson_ids": [
           "C.G7.8.29",
           "C.G7.8.30"
@@ -367,8 +367,8 @@
       {
         "chapter": 9,
         "name": "Quan hệ giữa các yếu tố trong tam giác",
-        "from_week": 30,
-        "to_week": 34,
+        "from_week": 33,
+        "to_week": 37,
         "lesson_ids": [
           "C.G7.9.31",
           "C.G7.9.32",
@@ -380,8 +380,8 @@
       {
         "chapter": 10,
         "name": "Một số hình khối trong thực tiễn",
-        "from_week": 35,
-        "to_week": 35,
+        "from_week": 38,
+        "to_week": 38,
         "lesson_ids": [
           "C.G7.10.36",
           "C.G7.10.37"
