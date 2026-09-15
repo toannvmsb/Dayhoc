@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { Screen } from '../../../../components';
 import { getApi, getViewer, parentAuth } from '@/lib/server/api';
+import { TargetedPracticeButton } from './practice-button';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,10 +94,12 @@ export default async function GapDetail({
         </div>
       )}
 
+      <TargetedPracticeButton childId={params.childId} gapId={params.gapId} />
+
       <Link
         href={`/be/${params.childId}/day-con?gapId=${params.gapId}`}
         className="cta"
-        style={{ textDecoration: 'none' }}
+        style={{ textDecoration: 'none', background: 'none', border: '1px solid var(--c-border)', color: 'var(--c-text-heading)' }}
       >
         DạyZi hướng dẫn bạn dạy con phần này
       </Link>

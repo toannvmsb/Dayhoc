@@ -37,7 +37,7 @@ import { PgUploadAnalysisStore } from '@copilot/uploads/pg';
 import { curriculumLabel, getCurriculumCalendar, loadKnowledgeBase, type KnowledgeBase } from '@copilot/math-data';
 import { loadReferenceLibrary } from '@copilot/reference-library';
 import { buildDailyPlan, buildExerciseGenerationSpec } from '@copilot/planning';
-import { buildAssignmentsForPlan } from '@copilot/practice';
+import { buildAssignment, buildAssignmentsForPlan } from '@copilot/practice';
 import {
   assertChildSafe,
   buildParentGapDetail,
@@ -117,6 +117,7 @@ import {
 import {
   applyBillingEvent,
   asChildId,
+  asSkillId,
   entitlementsFor,
   freeSubscription,
   isEntitled,
@@ -2918,7 +2919,11 @@ export function createProductionApi(opts: ProductionApiOptions) {
      * reference-library path — LIVE AI generation stays OFF). Persists the plan +
      * the assignment + items.
      */
-    async createPracticeAssignment(auth: CallerAuth, childId: string, input: { minutes?: number } = {}) {
+    async createPracticeAssignment(
+      auth: CallerAuth,
+      childId: string,
+      input: { minutes?: number; skillId?: string; gapId?: string } = {},
+    ) {
       const ctx = await deriveContext(auth);
       if (ctx.workspace === 'STUDENT') {
         // a student may build their own short practice, but only within their own scope
@@ -2948,6 +2953,67 @@ export function createProductionApi(opts: ProductionApiOptions) {
       });
       const scene = await scoped._scene(childId);
       const twin = scene.twin;
+
+      // TARGETED request — "ôn ngay phần này" from a Gap Detail screen (doc:
+      // parent can request extra practice on a specific weak skill any day, not
+      // only the whole-day mix). One assignment, one skill, bypasses the daily
+      // planner entirely — buildAssignment already scales item count + difficulty
+      // ramp for us. `gapId` resolves to the gap's own skill (the normal case,
+      // from Gap Detail); `skillId` is a direct override.
+      const gapFromId = input.gapId ? scene.gaps.gaps.find((g) => g.id === input.gapId) : undefined;
+      const requestedSkillId = input.skillId ?? gapFromId?.targetSkillId;
+      if (requestedSkillId) {
+        const targetSkillId = asSkillId(requestedSkillId);
+        const gapForSkill = gapFromId ?? scene.gaps.gaps.find((g) => g.targetSkillId === targetSkillId || g.rootSkillId === targetSkillId);
+        const action: import('@copilot/domain').PlannedAction = {
+          kind: gapForSkill ? (gapForSkill.type === 'prerequisite_gap' ? 'review_prerequisite' : 'close_gap') : 'practice_current_skill',
+          mixBucket: 'gapRepair',
+          targetSkillId,
+          ...(gapForSkill ? { gapId: gapForSkill.id } : {}),
+          estimatedMinutes: input.minutes ?? 10,
+          roiPerMinute: 0.5,
+          parentFacingTitle: `Ôn tập — ${kb.skills.get(targetSkillId)?.name ?? targetSkillId}`,
+          childFacingTitle: kb.skills.get(targetSkillId)?.name ?? targetSkillId,
+          rationale: 'Bố mẹ yêu cầu ôn thêm phần này.',
+        };
+        const targeted = buildAssignment({ childId: asChildId(childId), action, twin, planDate: now().toISOString().slice(0, 10), at: now().toISOString(), newId: () => `${Date.now()}` });
+        if (!targeted || targeted.questionIds.length === 0) {
+          throw new NotFoundError('chưa có đủ câu hỏi để ôn phần này — thử lại sau');
+        }
+        const refLib2 = loadReferenceLibrary();
+        const byId2 = new Map(refLib2.map((q) => [q.id, q]));
+        const items = targeted.questionIds
+          .map((qid) => byId2.get(qid))
+          .filter((q): q is NonNullable<typeof q> => q !== undefined)
+          .map((q, i) => ({
+            orderIndex: i,
+            questionRef: q.id,
+            skillId: q.skillId as string,
+            problemTypeId: (q.problemTypeId as string | undefined) ?? null,
+            knowledgeLevel: kLevelNum(q.knowledgeLevel),
+            thinkingLevel: tLevelNum(q.thinkingLevel),
+            prompt: { text: q.prompt },
+            answerSpec: q.answerSpec,
+            hints: [...q.hints],
+          }));
+        const rowId = await withTransaction(pool, async (client) => {
+          const ls = new PgLearningStateStore(client);
+          const row = await ls.createAssignment({
+            childId,
+            source: 'LEGACY_PRACTICE',
+            assignedByUserId: ctx.userId,
+            assignedByRole: ctx.workspace === 'STUDENT' ? 'SYSTEM' : 'PARENT',
+            subjectId: null,
+            mode: 'GAP_REPAIR',
+            targetSkillIds: [targetSkillId] as unknown as string[],
+            items,
+          });
+          return row.id;
+        });
+        analytics.track({ category: 'practice', action: 'targeted_practice_requested', actorRef: actorRef(ctx.userId), metadata: { skillId: targetSkillId } });
+        return { planKind: 'targeted' as const, assignmentIds: [rowId] };
+      }
+
       const plan =
         scene.plan.kind === 'plan'
           ? scene.plan

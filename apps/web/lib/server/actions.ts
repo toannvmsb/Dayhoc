@@ -109,6 +109,18 @@ export async function createPracticeAction(childId: string, minutes: number): Pr
   revalidatePath(`/be/${childId}`);
 }
 
+/** "Giao con luyện tập phần này ngay" — from a Gap Detail screen (a specific
+ * weak skill), not the whole-day mix. Returns the new assignment id so the
+ * caller can jump straight into it. */
+export async function createTargetedPracticeAction(childId: string, gapId: string): Promise<{ assignmentId: string }> {
+  const res = await getApi().createPracticeAssignment(parentAuth(), childId, { gapId });
+  revalidatePath(`/be/${childId}/bai-tap`);
+  revalidatePath(`/be/${childId}`);
+  const assignmentId = res.assignmentIds[0];
+  if (!assignmentId) throw new Error('không tạo được bài ôn tập cho phần này');
+  return { assignmentId };
+}
+
 export async function submitPracticeAction(
   assignmentId: string,
   answers: ReadonlyArray<{ assignmentItemId: string; answer: string; hintsUsed?: number }>,
