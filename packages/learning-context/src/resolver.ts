@@ -328,6 +328,16 @@ export function resolveLearningContext(input: ResolveInput): ResolveResult {
         : 'A_recent_verified_beats_low_confidence_majority';
     }
 
+    // "Cập nhật hằng ngày": the parent/teacher's MOST RECENT explicit update is the
+    // truth about where the class is now. Summed scores would let older, repeated
+    // updates outvote it, so a fresh correction would appear to be ignored.
+    const latestExplicit = signals.filter((s) => s.isConfirmation).sort((a, b) => b.at - a.at)[0];
+    if (!guardrail && latestExplicit && latestExplicit.lessonId !== chosenLessonId) {
+      chosenLessonId = latestExplicit.lessonId;
+      chosen = byLesson.get(chosenLessonId)!;
+      guardrail = 'latest_explicit_update_wins';
+    }
+
     // soft conflict: a runner-up within 15% from a disjoint source set
     if (!guardrail && ranked[1]) {
       const [runnerId, runner] = ranked[1];

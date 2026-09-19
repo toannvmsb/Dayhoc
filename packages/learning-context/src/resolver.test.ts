@@ -221,6 +221,23 @@ describe('Context Resolver hard invariants (doc 13 §2 A–F)', () => {
     expect(observed.resolved.source).toBe('SCHOOLWORK_EVIDENCE');
   });
 
+  it('daily update — the parent\'s newest confirmation wins over older, repeated ones', () => {
+    const conf = (id: string, lessonId: string, daysAgo: number) => ({
+      id, childId, lessonId, source: 'PARENT_UPDATE' as const, confidence: 'STRONG' as const, confirmedBy: 'u',
+      confirmedAt: new Date(asOf.getTime() - daysAgo * 86_400_000).toISOString(),
+    });
+    const r = resolveLearningContext({
+      expected: clockAt(nodeOf(SK_CH6)),
+      contributions: [],
+      lessonConfirmations: [conf('a', nodeOf(SK_CH6), 6), conf('b', nodeOf(SK_CH6), 5), conf('c', nodeOf(SK_CH6), 4), conf('d', nodeOf(SK_CH7), 0.1)],
+      evidence: [],
+      knowledgeBase: kb,
+      asOf,
+    });
+    expect(r.resolved.lessonId).toBe(nodeOf(SK_CH7));
+    expect(r.resolved.guardrailApplied).toBe('latest_explicit_update_wins');
+  });
+
   it('I5 — an explicit contribution `confidence` tier is honoured (C → not VERIFIED)', () => {
     const tc = (over: Partial<TeacherContribution> = {}): TeacherContribution => ({
       id: 'tc1',
