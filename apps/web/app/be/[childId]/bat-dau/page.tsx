@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 import { getApi, getViewer, parentAuth } from '@/lib/server/api';
 import { daysAgoLabel } from '../../../components';
-import { ActionForm, Field, LessonPicker, type LessonChapter } from '../../../ui';
+import { ActionForm, LessonPicker, type LessonChapter } from '../../../ui';
 import { setLearningStartAction } from '@/lib/server/actions';
 
 export const dynamic = 'force-dynamic';
@@ -67,8 +67,6 @@ export default async function LearningStart({ params }: { params: { childId: str
           >
             <input type="hidden" name="childId" value={params.childId} />
             <LessonPicker chapters={program.chapters} defaultValue={currentLessonId} />
-            <Field name="schoolName" label="Tên trường (không bắt buộc)" placeholder="Tiểu học Nguyễn Du" />
-            <Field name="className" label="Tên lớp (không bắt buộc)" placeholder="4A2" />
           </ActionForm>
         )}
 
