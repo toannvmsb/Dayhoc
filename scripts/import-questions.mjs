@@ -12,7 +12,7 @@
 //   node scripts/import-questions.mjs <input.json> [--dry-run]
 //
 // --dry-run: chạy toàn bộ kiểm tra, báo sẽ thêm gì, nhưng KHÔNG ghi file.
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -59,15 +59,21 @@ for (const q of existingAuthored) {
 
 const errors = [];
 const toAdd = [];
+const semanticOut = {};
+let droppedPt = 0;
 raw.forEach((q, i) => {
   const rowLabel = `Câu ${i + 1} (${q.skillId ?? '?'})`;
   if (!q.skillId || !kb.skills.has(q.skillId)) {
     errors.push(`${rowLabel}: mã kỹ năng "${q.skillId}" không tồn tại trong knowledge base thật.`);
     return;
   }
-  if (q.problemTypeId && !kb.problemTypes.some((pt) => pt.id === q.problemTypeId)) {
-    errors.push(`${rowLabel}: mã dạng bài "${q.problemTypeId}" không tồn tại.`);
-    return;
+  // Mã dạng bài lạ = "archetype" của thư viện (không thuộc KB) → bỏ khỏi câu hỏi để
+  // không làm nhiễu problem-type mastery của Twin; vẫn giữ lại ở file semantic.
+  const { _semantic, ...clean } = q;
+  if (clean.problemTypeId && !kb.problemTypes.some((pt) => pt.id === clean.problemTypeId)) {
+    droppedPt += 1;
+    _semantic ? (_semantic.archetype ||= clean.problemTypeId) : null;
+    delete clean.problemTypeId;
   }
   const n = (nextNumForSkill.get(q.skillId) ?? 0) + 1;
   nextNumForSkill.set(q.skillId, n);
@@ -77,7 +83,8 @@ raw.forEach((q, i) => {
     return;
   }
   existingIds.add(id);
-  toAdd.push({ id, ...q });
+  toAdd.push({ id, ...clean });
+  if (_semantic) semanticOut[id] = _semantic;
 });
 
 if (errors.length > 0) {
@@ -91,8 +98,17 @@ if (toAdd.length === 0) fail('Không có câu hỏi hợp lệ nào để thêm.
 // --- ghép thử rồi validate bằng test thật của package (tránh lệch schema) ---
 const merged = [...existingAuthored, ...toAdd];
 const backup = readFileSync(QUESTIONS_PATH, 'utf8');
+const SEMANTIC_PATH = path.join(root, 'packages/reference-library/src/data/questions.semantic.json');
+let semanticBackup = null;
+try { semanticBackup = readFileSync(SEMANTIC_PATH, 'utf8'); } catch {}
+const semanticMerged = { ...(semanticBackup ? JSON.parse(semanticBackup) : {}), ...semanticOut };
+writeFileSync(SEMANTIC_PATH, JSON.stringify(semanticMerged) + '\n', 'utf8');
 writeFileSync(QUESTIONS_PATH, JSON.stringify(merged, null, 2) + '\n', 'utf8');
-const restore = () => writeFileSync(QUESTIONS_PATH, backup, 'utf8');
+const restore = () => {
+  writeFileSync(QUESTIONS_PATH, backup, 'utf8');
+  if (semanticBackup === null) unlinkSync(SEMANTIC_PATH);
+  else writeFileSync(SEMANTIC_PATH, semanticBackup, 'utf8');
+};
 
 const test = spawnSync('npx', ['vitest', 'run', 'packages/reference-library/src/library.test.ts'], {
   cwd: root,
@@ -108,8 +124,8 @@ if (test.status !== 0) {
 
 if (dryRun) {
   restore();
-  console.log(`✅ Hợp lệ — sẽ thêm ${toAdd.length} câu hỏi (CHƯA ghi vì có --dry-run):`);
-  for (const q of toAdd) console.log('  -', q.id);
+  console.log(`✅ Hợp lệ — sẽ thêm ${toAdd.length} câu hỏi (CHƯA ghi vì có --dry-run). Bỏ ${droppedPt} mã dạng bài không thuộc KB; ${Object.keys(semanticOut).length} câu có metadata chống lặp.`);
+  console.log('  ví dụ:', toAdd.slice(0, 5).map((q) => q.id).join(', '));
   process.exit(0);
 }
 
@@ -125,5 +141,4 @@ if (build.status !== 0) {
   console.error(build.stdout || build.stderr);
 }
 
-console.log(`✅ Đã thêm ${toAdd.length} câu hỏi vào ngân hàng câu hỏi:`);
-for (const q of toAdd) console.log('  -', q.id);
+console.log(`✅ Đã thêm ${toAdd.length} câu hỏi vào ngân hàng câu hỏi (+${Object.keys(semanticOut).length} metadata chống lặp).`);

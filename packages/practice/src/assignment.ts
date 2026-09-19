@@ -7,7 +7,8 @@ import {
   type Question,
 } from '@copilot/domain';
 import { loadReferenceLibrary } from '@copilot/reference-library';
-import { selectStretchSet } from './stretch-zone.js';
+import { selectStretchSet, DEFAULT_STRETCH_CONFIG } from './stretch-zone.js';
+import { eligiblePool, type DiversityContext } from './diversity.js';
 
 const MODE_BY_ACTION: Record<PlannedAction['kind'], Assignment['mode']> = {
   review_prerequisite: 'gap_repair',
@@ -30,6 +31,8 @@ export interface BuildAssignmentInput {
   readonly newId: () => string;
   readonly itemsPerSession?: number;
   readonly pool?: readonly Question[];
+  /** Per-child serve history → semantic anti-repeat (cooldowns, archetype rotation). */
+  readonly diversity?: DiversityContext;
 }
 
 /**
@@ -39,10 +42,10 @@ export interface BuildAssignmentInput {
  * target skill. Kept working only as migration compatibility.
  */
 export function buildAssignment(input: BuildAssignmentInput): Assignment | null {
-  const pool = (input.pool ?? loadReferenceLibrary()).filter(
+  const skillPool = (input.pool ?? loadReferenceLibrary()).filter(
     (q) => !input.action.targetSkillId || q.skillId === input.action.targetSkillId,
   );
-  if (pool.length === 0) return null;
+  if (skillPool.length === 0) return null;
 
   // item count scales with the minutes this action was actually given — was a
   // flat 4 (1 for thinking) regardless of estimatedMinutes, so a 20-minute
@@ -58,6 +61,7 @@ export function buildAssignment(input: BuildAssignmentInput): Assignment | null 
     (input.action.kind === 'thinking_challenge'
       ? 1 // one substantial reasoning problem by design (§35), not an item-count bug
       : Math.max(MIN_ITEMS_PER_ACTION, Math.round(input.action.estimatedMinutes / MINUTES_PER_ITEM)));
+  const pool = input.diversity ? eligiblePool(skillPool, input.diversity, count).pool : skillPool;
   const chosen =
     input.action.kind === 'thinking_challenge'
       ? pool
@@ -65,7 +69,7 @@ export function buildAssignment(input: BuildAssignmentInput): Assignment | null 
           .slice(0, 1)
           .concat(pool.slice(0, 1))
           .slice(0, 1)
-      : selectStretchSet(input.twin, pool, Math.min(count, pool.length));
+      : selectStretchSet(input.twin, pool, Math.min(count, pool.length), DEFAULT_STRETCH_CONFIG, input.diversity);
 
   const items = chosen.length > 0 ? chosen : pool.slice(0, 1);
 
@@ -86,10 +90,25 @@ export function buildAssignmentsForPlan(
   twin: ChildLearningTwin,
   at: string,
   newId: () => string,
+  diversity?: DiversityContext,
 ): Assignment[] {
-  return plan.orderedActions
-    .map((action) =>
-      buildAssignment({ childId: plan.childId, action, twin, planDate: plan.planDate, at, newId }),
-    )
-    .filter((a): a is Assignment => a !== null);
+  // questions picked for an earlier action of the same plan count as "served"
+  // for the next, so one day's worksheets never repeat a structure either
+  const served = [...(diversity?.recentServed ?? [])];
+  const out: Assignment[] = [];
+  for (const action of plan.orderedActions) {
+    const a = buildAssignment({
+      childId: plan.childId,
+      action,
+      twin,
+      planDate: plan.planDate,
+      at,
+      newId,
+      ...(diversity ? { diversity: { ...diversity, recentServed: served } } : {}),
+    });
+    if (!a) continue;
+    if (diversity) for (const id of a.questionIds) served.push({ questionId: id, servedAt: diversity.nowMs });
+    out.push(a);
+  }
+  return out;
 }

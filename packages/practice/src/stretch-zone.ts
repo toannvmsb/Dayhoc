@@ -1,4 +1,5 @@
 import { KNOWLEDGE_LEVELS, type ChildLearningTwin, type Question, type SkillId } from '@copilot/domain';
+import { pickDiverse, type DiversityContext } from './diversity.js';
 
 /**
  * Stretch-zone selection (Math Core §17): a practice set that is
@@ -23,6 +24,7 @@ export function selectStretchSet(
   pool: readonly Question[],
   count: number,
   config: StretchConfig = DEFAULT_STRETCH_CONFIG,
+  diversity?: DiversityContext,
 ): Question[] {
   const masteryOf = (id: SkillId): number => twin.skillMastery.get(id)?.mastery ?? 40;
 
@@ -42,12 +44,21 @@ export function selectStretchSet(
   const nComfort = Math.max(1, Math.round(count * config.solvableShare));
   const nStretch = Math.max(1, count - nComfort);
 
-  const chosen = [...take(comfortable, nComfort), ...take(stretch, nStretch)];
+  const kRank = (q: Question) => KNOWLEDGE_LEVELS.indexOf(q.knowledgeLevel);
+  // With a big pool the comfortable share aims at the HARDEST level the child can
+  // already do (not always the easiest), the stretch share at the NEXT level up;
+  // each share is re-sorted low → high so the worksheet still ramps.
+  const chosen = diversity
+    ? [
+        ...pickDiverse(comfortable, nComfort, diversity, (q) => -kRank(q)).sort(byKAsc),
+        ...pickDiverse(stretch, nStretch, diversity, kRank).sort(byKAsc),
+      ]
+    : [...take(comfortable, nComfort), ...take(stretch, nStretch)];
   // top up from whichever pool still has items if one ran short
   const remaining = count - chosen.length;
   if (remaining > 0) {
     const rest = graded.map((g) => g.q).filter((q) => !chosen.includes(q));
-    chosen.push(...take(rest, remaining));
+    chosen.push(...pickDiverse(rest, remaining, diversity, kRank));
   }
   return chosen.slice(0, count);
 }

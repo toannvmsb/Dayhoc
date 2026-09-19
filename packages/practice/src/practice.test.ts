@@ -8,7 +8,8 @@ import {
   type Question,
   type Submission,
 } from '@copilot/domain';
-import { examplesForSkill, loadReferenceLibrary } from '@copilot/reference-library';
+import { examplesForSkill, loadReferenceLibrary, semanticMetaFor } from '@copilot/reference-library';
+import { eligiblePool } from './diversity.js';
 import { buildAssignment } from './assignment.js';
 import { advanceHintLadder, currentHintText, initHintLadder } from './hint-ladder.js';
 import { selectStretchSet } from './stretch-zone.js';
@@ -56,7 +57,8 @@ describe('stretch-zone selection (Math Core §17)', () => {
       computedFromEvidenceCount: 0,
     } as unknown as ChildLearningTwin;
 
-    const pool = loadReferenceLibrary();
+    // real callers pass a pool already scoped to the target skill(s)
+    const pool = loadReferenceLibrary().filter((q) => q.skillId === 'M4.FRAC.COMMON_DENOM' || q.skillId === 'M4.ARITH.DISTRIBUTIVE');
     const set = selectStretchSet(twin, pool, 4);
     expect(set).toHaveLength(4);
     // at least one comfortable (common denom, mastery 80) and one stretch (distributive, mastery 30)
@@ -188,5 +190,52 @@ describe('submission → evidence (loop close, Math Core §29)', () => {
     expect(strong.reasoningQuality).toBe('strong');
     expect(strong.result.correct).toBe(true);
     expect(strong.result.score).toBe(1);
+  });
+});
+
+describe('semantic anti-repeat (question-library policy v1.0)', () => {
+  const skill = 'M4.ARITH.ADD_MULTI';
+  const pool = loadReferenceLibrary().filter((q) => q.skillId === skill);
+  const twin = { skillMastery: new Map(), problemTypeMastery: new Map(), thinkingProfile: new Map(), frontier: [], childId: asChildId('c'), computedAt: '', computedFromEvidenceCount: 0 } as unknown as ChildLearningTwin;
+  const action = { kind: 'practice_current_skill', mixBucket: 'currentSkill', targetSkillId: asSkillId(skill), estimatedMinutes: 10, roiPerMinute: 1, parentFacingTitle: 't', childFacingTitle: 't', rationale: 'r' } as never;
+  const NOW = Date.UTC(2027, 0, 20);
+  const build = (recentServed: { questionId: string; servedAt: number }[], seed = 'a') =>
+    buildAssignment({ childId: asChildId('c'), action, twin, planDate: '2027-01-20', at: '', newId: () => 'x', diversity: { recentServed, nowMs: NOW, seed } })!;
+
+  it('library has real semantic metadata to test against', () => {
+    expect(pool.length).toBeGreaterThanOrEqual(50);
+    expect(semanticMetaFor(pool[10]!.id)).toBeTruthy();
+  });
+
+  it('never repeats a templateSignature inside one worksheet', () => {
+    const a = build([]);
+    const sigs = a.questionIds.map((id) => semanticMetaFor(id)?.templateSignature);
+    expect(new Set(sigs).size).toBe(sigs.length);
+  });
+
+  it('never re-serves an exact row within 60 days, nor a structure within its cooldown', () => {
+    const first = build([]);
+    const served = first.questionIds.map((questionId) => ({ questionId, servedAt: NOW - 2 * 86_400_000 }));
+    const second = build(served, 'b');
+    const firstKeys = new Set(first.questionIds.map((id) => semanticMetaFor(id)?.selectionKey));
+    for (const id of second.questionIds) {
+      expect(first.questionIds).not.toContain(id);
+      expect(firstKeys.has(semanticMetaFor(id)?.selectionKey)).toBe(false);
+    }
+  });
+
+  it('targeted review may bypass cooldown (planner-marked)', () => {
+    const first = build([]);
+    const served = first.questionIds.map((questionId) => ({ questionId, servedAt: NOW - 86_400_000 }));
+    const r = eligiblePool(pool, { recentServed: served, nowMs: NOW, seed: 's', targetedReview: true }, 4);
+    expect(r.pool.length).toBe(pool.length);
+    expect(r.relaxed).toEqual(['TARGETED_REVIEW']);
+  });
+
+  it('a dry pool relaxes THẤP → VỪA → CAO before ever touching exact-row', () => {
+    const all = pool.map((q) => ({ questionId: q.id, servedAt: NOW - 86_400_000 }));
+    const r = eligiblePool(pool, { recentServed: all, nowMs: NOW, seed: 's' }, 4);
+    expect(r.relaxed[0]).toBe('COOLDOWN_RELAXED_THẤP');
+    expect(r.relaxed).toContain('EXACT_ROW_RELAXED'); // everything was served yesterday
   });
 });

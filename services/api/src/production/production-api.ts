@@ -37,7 +37,7 @@ import { PgUploadAnalysisStore } from '@copilot/uploads/pg';
 import { curriculumLabel, getCurriculumCalendar, loadKnowledgeBase, type KnowledgeBase } from '@copilot/math-data';
 import { loadReferenceLibrary } from '@copilot/reference-library';
 import { buildDailyPlan, buildExerciseGenerationSpec } from '@copilot/planning';
-import { buildAssignment, buildAssignmentsForPlan } from '@copilot/practice';
+import { buildAssignment, buildAssignmentsForPlan, eligiblePool, pickDiverse, type DiversityContext } from '@copilot/practice';
 import {
   assertChildSafe,
   buildParentGapDetail,
@@ -2954,6 +2954,21 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const scene = await scoped._scene(childId);
       const twin = scene.twin;
 
+      // Per-child serve history (60d) → semantic anti-repeat cooldowns. Read from
+      // assignment_items, so it is per child_ref by construction.
+      const served = await pool.query<{ question_ref: string; created_at: Date }>(
+        `SELECT ai.question_ref, a.created_at
+           FROM assignment_items ai JOIN assignments a ON a.id = ai.assignment_id
+          WHERE a.child_id = $1 AND ai.question_ref IS NOT NULL AND a.created_at > now() - interval '60 days'`,
+        [childId],
+      );
+      const makeDiversity = (targetedReview: boolean): DiversityContext => ({
+        recentServed: served.rows.map((r) => ({ questionId: r.question_ref, servedAt: new Date(r.created_at).getTime() })),
+        nowMs: now().getTime(),
+        seed: `${childId}|${now().toISOString().slice(0, 10)}`,
+        targetedReview,
+      });
+
       // TARGETED request — "ôn ngay phần này" from a Gap Detail screen (doc:
       // parent can request extra practice on a specific weak skill any day, not
       // only the whole-day mix). One assignment, one skill, bypasses the daily
@@ -2976,7 +2991,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
           childFacingTitle: kb.skills.get(targetSkillId)?.name ?? targetSkillId,
           rationale: 'Bố mẹ yêu cầu ôn thêm phần này.',
         };
-        const targeted = buildAssignment({ childId: asChildId(childId), action, twin, planDate: now().toISOString().slice(0, 10), at: now().toISOString(), newId: () => `${Date.now()}` });
+        const targeted = buildAssignment({ childId: asChildId(childId), action, twin, planDate: now().toISOString().slice(0, 10), at: now().toISOString(), newId: () => `${Date.now()}`, diversity: makeDiversity(false) });
         if (!targeted || targeted.questionIds.length === 0) {
           throw new NotFoundError('chưa có đủ câu hỏi để ôn phần này — thử lại sau');
         }
@@ -3035,7 +3050,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
 
       let legacy =
         plan.kind === 'plan'
-          ? buildAssignmentsForPlan(plan, twin, now().toISOString(), newId)
+          ? buildAssignmentsForPlan(plan, twin, now().toISOString(), newId, makeDiversity(false))
           : [];
 
       // ZERO-DATA fallback (Journey 1): the deterministic planner returns
@@ -3069,7 +3084,8 @@ export function createProductionApi(opts: ProductionApiOptions) {
           });
         }
         if (pool2.length > 0) {
-          const picked = pool2.slice(0, 4);
+          const div = makeDiversity(false);
+          const picked = pickDiverse(eligiblePool(pool2, div, 4).pool, 4, div, (q) => kLevelNum(q.knowledgeLevel));
           legacy = [
             {
               id: `asg_${newId()}`,

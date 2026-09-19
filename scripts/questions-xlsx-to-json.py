@@ -43,7 +43,7 @@ def norm(v):
     return str(v).strip()
 
 
-def build_answer_spec(kind, value, tolerance, options, row_no, errors):
+def build_answer_spec(kind, value, tolerance, options, row_no, errors, prompt_text=""):
     if kind == "reasoning":
         return {"kind": "reasoning"}
     if kind == "exact":
@@ -71,6 +71,8 @@ def build_answer_spec(kind, value, tolerance, options, row_no, errors):
                 return None
         return {"kind": "numeric", "value": num, "tolerance": tol}
     if kind == "fraction":
+        if value and "/" not in value and value.lstrip("-").isdigit():
+            value = value + "/1"  # số nguyên = phân số mẫu 1
         if not value or "/" not in value:
             errors.append(f"Dòng {row_no}: answerKind=fraction cần Đáp án đúng dạng tử/mẫu, ví dụ 3/4.")
             return None
@@ -89,6 +91,8 @@ def build_answer_spec(kind, value, tolerance, options, row_no, errors):
             errors.append(f"Dòng {row_no}: answerKind=choice cần Đáp án đúng.")
             return None
         opts = [o.strip() for o in (options or "").split(";") if o.strip()]
+        if len(opts) < 2 and value in ("<", ">", "="):
+            opts = ["<", ">", "="] if "=" in prompt_text else ["<", ">"]  # câu điền dấu: tự suy ra lựa chọn
         if len(opts) < 2:
             errors.append(f"Dòng {row_no}: answerKind=choice cần ít nhất 2 Các lựa chọn, cách nhau bằng ;")
             return None
@@ -121,6 +125,21 @@ def main():
     if missing_headers:
         print("File không đúng mẫu — thiếu cột:", ", ".join(missing_headers), file=sys.stderr)
         sys.exit(2)
+
+    semantic = {}
+    if "Semantic Audit" in wb.sheetnames:
+        sws = wb["Semantic Audit"]
+        sh = [norm(c.value) for c in sws[1]]
+        for srow in sws.iter_rows(min_row=2, values_only=True):
+            d = dict(zip(sh, srow))
+            if d.get("Row Câu hỏi") is not None:
+                semantic[int(d["Row Câu hỏi"])] = {
+                    "archetype": norm(d.get("problemTypeId")),
+                    "templateSignature": norm(d.get("templateSignature")),
+                    "similarityRisk": norm(d.get("similarityRisk")),
+                    "cooldownDays": int(d.get("recommendedCooldownDays") or 0),
+                    "selectionKey": norm(d.get("selectionKey")),
+                }
 
     errors = []
     items = []
@@ -162,7 +181,7 @@ def main():
             answer_spec = build_answer_spec(
                 kind, get("Đáp án đúng (answerValue)*"),
                 get("Dung sai (tolerance)"), get("Các lựa chọn (options, cách nhau bằng ;)"),
-                r_i, row_errors,
+                r_i, row_errors, prompt,
             )
 
         if row_errors:
@@ -180,6 +199,7 @@ def main():
             "hints": hints,
             "workedSolution": solution,
             "origin": "authored",
+            **({"_semantic": semantic[r_i]} if r_i in semantic else {}),
         })
 
     if errors:

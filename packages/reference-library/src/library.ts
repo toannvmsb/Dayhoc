@@ -12,6 +12,7 @@ import {
 } from '@copilot/domain';
 import authoredRaw from './data/questions.json' with { type: 'json' };
 import aiDraftRaw from './data/questions.ai-draft.json' with { type: 'json' };
+import semanticRaw from './data/questions.semantic.json' with { type: 'json' };
 
 /**
  * @copilot/reference-library — the repurposed question bank (doc 14 §1, C2).
@@ -132,4 +133,37 @@ export function calibrationRangeFor(
     tMin: THINKING_LEVELS[ts[0]!]!,
     tMax: THINKING_LEVELS[ts[ts.length - 1]!]!,
   };
+}
+
+/**
+ * Anti-repeat metadata per question (Semantic anti-repeat policy v1.0). Two
+ * questions sharing a `selectionKey` have the same mathematical structure and
+ * must not be served to one child within `cooldownDays`. Keyed by question id.
+ */
+export interface SemanticMeta {
+  readonly archetype: string;
+  readonly templateSignature: string;
+  readonly similarityRisk: string; // CAO | VỪA | THẤP
+  readonly cooldownDays: number;
+  readonly selectionKey: string;
+}
+
+const semanticSchema = z.record(
+  z.object({
+    archetype: z.string(),
+    templateSignature: z.string(),
+    similarityRisk: z.string(),
+    cooldownDays: z.number().int().min(0),
+    selectionKey: z.string(),
+  }),
+);
+let semanticCache: ReadonlyMap<string, SemanticMeta> | undefined;
+
+export function semanticMetaFor(questionId: string): SemanticMeta | undefined {
+  if (!semanticCache) {
+    const parsed = semanticSchema.safeParse(semanticRaw);
+    if (!parsed.success) throw new ReferenceLibraryError('questions.semantic.json failed validation');
+    semanticCache = new Map(Object.entries(parsed.data));
+  }
+  return semanticCache.get(questionId);
 }
