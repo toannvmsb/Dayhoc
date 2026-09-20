@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Screen, StudentNav } from '../../components';
+import { formatViDate } from '@/lib/format-date';
 import { getApi, getViewer, studentAuth } from '@/lib/server/api';
 import { StartPracticeButton } from './start-button';
 
@@ -43,7 +44,7 @@ export default async function StudentAssignments() {
           <span style={{ flex: 1, fontWeight: 700, color: 'var(--c-text-heading)' }}>
             Buổi luyện tập
             <span className="muted" style={{ display: 'block', fontWeight: 500 }}>
-              {a.targetSkillIds.length} kỹ năng · {STATUS_LABEL[a.status] ?? a.status}
+              {a.targetSkillIds.length} kỹ năng · {STATUS_LABEL[a.status] ?? a.status} · Tạo ngày {formatViDate(a.createdAt)}
             </span>
           </span>
           <span style={{ color: 'var(--c-primary)', fontWeight: 700 }}>Làm ›</span>
@@ -55,7 +56,7 @@ export default async function StudentAssignments() {
           <span className="overline">Đã hoàn thành</span>
           {done.map((a) => (
             <div key={a.id} style={{ fontSize: 13.5, color: 'var(--c-text-body)' }}>
-              Buổi luyện tập — {a.completedAt?.slice(0, 10) ?? 'xong'}
+              Buổi luyện tập · tạo {formatViDate(a.createdAt)} · xong {a.completedAt ? formatViDate(a.completedAt) : '—'}
             </div>
           ))}
         </div>
