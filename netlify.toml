@@ -1,0 +1,23 @@
+# DẠYZI — Netlify (test host). Next.js 14 runs through Netlify's built-in
+# Next runtime (serverless functions). No worker / queue is needed: practice
+# comes from the question library (PRACTICE_SOURCE=LIBRARY_FIRST, zero AI spend).
+#
+# Required site env vars (Site configuration → Environment variables):
+#   DATABASE_URL            Supabase pooler URI (Transaction pooler, port 6543 is best for serverless)
+#   SUPABASE_URL, SUPABASE_JWT_SECRET, SUPABASE_SERVICE_ROLE_KEY
+#   DZ_DB_POOL_MAX=2        keep each serverless instance's pool tiny
+#   PRACTICE_SOURCE=LIBRARY_FIRST   AI_GENERATION_MODE=OFF   AI_CROSSCHECK_MODE=OFF
+# See docs/implementation/71_NETLIFY_AND_LIBRARY_FIRST.md.
+
+[build]
+  base = "/"
+  command = "npm run build:netlify"
+  publish = "apps/web/.next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
+  NPM_FLAGS = "--no-audit --no-fund"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

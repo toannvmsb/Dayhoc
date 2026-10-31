@@ -990,6 +990,313 @@ export function createProductionApi(opts: ProductionApiOptions) {
     };
   };
 
+
+  // ---- PRACTICE SOURCE POLICY ("thư viện trước") ---------------------
+  // Free, deterministic worksheets from the 9,400-question reference library are
+  // the default. AI generation costs tokens, so it is no longer triggered just
+  // by opening "Hôm nay":
+  //   LIBRARY_FIRST (default) — library only, zero AI spend
+  //   AI_TOPUP                — library first; AI only when the library cannot
+  //                             fill the day, capped per child per 30 days
+  //   AI_FIRST                — legacy behaviour: queue one AI worksheet/day
+  type PracticeCtx = Awaited<ReturnType<typeof deriveContext>>;
+  type PracticeInput = { minutes?: number; skillId?: string; gapId?: string };
+
+  function practiceSourcePolicy(env: NodeJS.ProcessEnv = process.env): 'LIBRARY_FIRST' | 'AI_TOPUP' | 'AI_FIRST' {
+    const v = (env.PRACTICE_SOURCE ?? '').trim().toUpperCase();
+    return v === 'AI_FIRST' || v === 'AI_TOPUP' ? v : 'LIBRARY_FIRST';
+  }
+
+  async function createLibraryPractice(ctx: PracticeCtx, childId: string, input: PracticeInput) {
+  // reuse the tested scene (Curriculum Clock estimate + pace + twin + gaps +
+  // context + plan) — DB-backed via learningScene, computed for `minutes`.
+  const inputs = await resolveChildLearningInputs(pool, base.enrollments, childId, now());
+  const scoped = createApi({
+    allowLegacyInProduction: true,
+    knowledgeBase: kb,
+    ledger: base.ledger,
+    logger,
+    now,
+    childProfiles: {
+      [childId]: {
+        profile: inputs.profile,
+        gradeContext: inputs.gradeContext,
+        familyUserIds: [],
+        ...(inputs.enrollment ? { enrollment: inputs.enrollment } : {}),
+      },
+    },
+  });
+  const scene = await scoped._scene(childId);
+  const twin = scene.twin;
+
+  // Per-child serve history (60d) → semantic anti-repeat cooldowns. Read from
+  // assignment_items, so it is per child_ref by construction.
+  const served = await pool.query<{ question_ref: string; created_at: Date }>(
+    `SELECT ai.question_ref, a.created_at
+       FROM assignment_items ai JOIN assignments a ON a.id = ai.assignment_id
+      WHERE a.child_id = $1 AND ai.question_ref IS NOT NULL AND a.created_at > now() - interval '60 days'`,
+    [childId],
+  );
+  const makeDiversity = (targetedReview: boolean): DiversityContext => ({
+    recentServed: served.rows.map((r) => ({ questionId: r.question_ref, servedAt: new Date(r.created_at).getTime() })),
+    nowMs: now().getTime(),
+    seed: `${childId}|${now().toISOString().slice(0, 10)}`,
+    targetedReview,
+  });
+
+  // TARGETED request — "ôn ngay phần này" from a Gap Detail screen (doc:
+  // parent can request extra practice on a specific weak skill any day, not
+  // only the whole-day mix). One assignment, one skill, bypasses the daily
+  // planner entirely — buildAssignment already scales item count + difficulty
+  // ramp for us. `gapId` resolves to the gap's own skill (the normal case,
+  // from Gap Detail); `skillId` is a direct override.
+  const gapFromId = input.gapId ? scene.gaps.gaps.find((g) => g.id === input.gapId) : undefined;
+  const requestedSkillId = input.skillId ?? gapFromId?.targetSkillId;
+  if (requestedSkillId) {
+    const targetSkillId = asSkillId(requestedSkillId);
+    const gapForSkill = gapFromId ?? scene.gaps.gaps.find((g) => g.targetSkillId === targetSkillId || g.rootSkillId === targetSkillId);
+    const action: import('@copilot/domain').PlannedAction = {
+      kind: gapForSkill ? (gapForSkill.type === 'prerequisite_gap' ? 'review_prerequisite' : 'close_gap') : 'practice_current_skill',
+      mixBucket: 'gapRepair',
+      targetSkillId,
+      ...(gapForSkill ? { gapId: gapForSkill.id } : {}),
+      estimatedMinutes: input.minutes ?? 10,
+      roiPerMinute: 0.5,
+      parentFacingTitle: `Ôn tập — ${kb.skills.get(targetSkillId)?.name ?? targetSkillId}`,
+      childFacingTitle: kb.skills.get(targetSkillId)?.name ?? targetSkillId,
+      rationale: 'Bố mẹ yêu cầu ôn thêm phần này.',
+    };
+    const targeted = buildAssignment({ childId: asChildId(childId), action, twin, planDate: now().toISOString().slice(0, 10), at: now().toISOString(), newId: () => `${Date.now()}`, diversity: makeDiversity(false) });
+    if (!targeted || targeted.questionIds.length === 0) {
+      throw new NotFoundError('chưa có đủ câu hỏi để ôn phần này — thử lại sau');
+    }
+    const refLib2 = loadReferenceLibrary();
+    const byId2 = new Map(refLib2.map((q) => [q.id, q]));
+    const items = targeted.questionIds
+      .map((qid) => byId2.get(qid))
+      .filter((q): q is NonNullable<typeof q> => q !== undefined)
+      .map((q, i) => ({
+        orderIndex: i,
+        questionRef: q.id,
+        skillId: q.skillId as string,
+        problemTypeId: (q.problemTypeId as string | undefined) ?? null,
+        knowledgeLevel: kLevelNum(q.knowledgeLevel),
+        thinkingLevel: tLevelNum(q.thinkingLevel),
+        prompt: { text: q.prompt },
+        answerSpec: q.answerSpec,
+        hints: [...q.hints],
+      }));
+    const rowId = await withTransaction(pool, async (client) => {
+      const ls = new PgLearningStateStore(client);
+      const row = await ls.createAssignment({
+        childId,
+        source: 'LEGACY_PRACTICE',
+        assignedByUserId: ctx.userId,
+        assignedByRole: ctx.workspace === 'STUDENT' ? 'SYSTEM' : 'PARENT',
+        subjectId: null,
+        mode: 'GAP_REPAIR',
+        targetSkillIds: [targetSkillId] as unknown as string[],
+        items,
+      });
+      return row.id;
+    });
+    analytics.track({ category: 'practice', action: 'targeted_practice_requested', actorRef: actorRef(ctx.userId), metadata: { skillId: targetSkillId } });
+    return { planKind: 'targeted' as const, assignmentIds: [rowId], pickedItems: items.length };
+  }
+
+  const plan =
+    scene.plan.kind === 'plan'
+      ? scene.plan
+      : buildDailyPlan({
+          childId: asChildId(childId),
+          planDate: now().toISOString().slice(0, 10),
+          availableMinutes: input.minutes ?? 20,
+          twin,
+          gaps: scene.gaps,
+          context: scene.context,
+          knowledgeBase: kb,
+          asOf: now(),
+        });
+
+  let seq = 0;
+  const newId = () => `${Date.now()}-${(seq += 1)}`;
+  const refLib = loadReferenceLibrary();
+  const byId = new Map(refLib.map((q) => [q.id, q]));
+
+  let legacy =
+    plan.kind === 'plan'
+      ? buildAssignmentsForPlan(plan, twin, now().toISOString(), newId, makeDiversity(false))
+      : [];
+
+  // ZERO-DATA fallback (Journey 1): the deterministic planner returns
+  // `no_plan_needed` for a child it has no signal about. "Hôm nay dạy con gì?"
+  // must still have an answer — practice today's ESTIMATED current lesson.
+  if (legacy.length === 0) {
+    const resolved = scene.context.resolved;
+    const active =
+      resolved.activeSkillIds.length > 0
+        ? [...resolved.activeSkillIds]
+        : resolved.lessonId
+          ? [...kb.skills.entries()]
+              .filter(([, s]) => s.curriculumNodeId === resolved.lessonId)
+              .map(([id]) => id)
+          : [];
+    const lessonSkills = new Set(active.map(String));
+    let pool2 = refLib.filter((q) => lessonSkills.has(String(q.skillId)));
+    if (pool2.length === 0) {
+      // the estimated lesson has no authored practice content yet — fall back
+      // to conservative grade-level practice (K ≤ K3) for the child's grade.
+      pool2 = refLib.filter((q) => {
+        const sk = kb.skills.get(q.skillId);
+        return (
+          sk !== undefined &&
+          Number(sk.gradeContext) === Number(inputs.gradeContext) &&
+          (q.knowledgeLevel === 'K0' ||
+            q.knowledgeLevel === 'K1' ||
+            q.knowledgeLevel === 'K2' ||
+            q.knowledgeLevel === 'K3')
+        );
+      });
+    }
+    if (pool2.length > 0) {
+      const div = makeDiversity(false);
+      const picked = pickDiverse(eligiblePool(pool2, div, 4).pool, 4, div, (q) => kLevelNum(q.knowledgeLevel));
+      legacy = [
+        {
+          id: `asg_${newId()}`,
+          childId: asChildId(childId),
+          dailyPlanDate: now().toISOString().slice(0, 10),
+          mode: 'practice' as const,
+          targetSkillIds: [...new Set(picked.map((q) => String(q.skillId)))] as never,
+          questionIds: picked.map((q) => q.id),
+          createdAt: now().toISOString(),
+        },
+      ];
+    }
+  }
+
+  const created: string[] = [];
+  let pickedItems = 0;
+  await withTransaction(pool, async (client) => {
+    const ls = new PgLearningStateStore(client);
+    if (plan.kind === 'plan') {
+      await ls.savePlan({
+        id: cryptoRandom(),
+        childId,
+        planDate: plan.planDate,
+        availableMinutes: input.minutes ?? 20,
+        kind: 'plan',
+        mix: (plan.mix as Record<string, number>) ?? {},
+        plannerVersion: 'exercise-spec.v1',
+        createdAt: now().toISOString(),
+        items: plan.orderedActions.map((a, i) => ({
+          orderIndex: i,
+          actionKind: String((a as any).kind ?? 'school'),
+          skillId: ((a as any).targetSkillId as string | undefined) ?? null,
+          minutes: Number((a as any).minutes ?? 0),
+          payload: {},
+        })),
+      });
+    }
+    for (const a of legacy) {
+      const items = a.questionIds
+        .map((qid) => byId.get(qid))
+        .filter((q): q is NonNullable<typeof q> => q !== undefined)
+        .map((q, i) => ({
+          orderIndex: i,
+          questionRef: q.id,
+          skillId: q.skillId as string,
+          problemTypeId: (q.problemTypeId as string | undefined) ?? null,
+          knowledgeLevel: kLevelNum(q.knowledgeLevel),
+          thinkingLevel: tLevelNum(q.thinkingLevel),
+          prompt: { text: q.prompt },
+          answerSpec: q.answerSpec,
+          hints: [...q.hints],
+        }));
+      if (items.length === 0) continue;
+      pickedItems += items.length;
+      const row = await ls.createAssignment({
+        childId,
+        source: 'LEGACY_PRACTICE',
+        assignedByUserId: ctx.userId,
+        assignedByRole: ctx.workspace === 'STUDENT' ? 'SYSTEM' : 'PARENT',
+        subjectId: null,
+        mode: a.mode.toUpperCase(),
+        targetSkillIds: a.targetSkillIds as unknown as string[],
+        items,
+      });
+      created.push(row.id);
+    }
+  });
+  if (created.length > 0) {
+    analytics.track({
+      category: 'practice',
+      action: 'practice_started',
+      actorRef: actorRef(ctx.userId),
+      metadata: { assignmentCount: created.length },
+    });
+  }
+  return { planKind: plan.kind, assignmentIds: created, pickedItems };
+  }
+
+  async function withinAiMonthlyCap(childId: string): Promise<boolean> {
+    const cap = Number(process.env.PRACTICE_AI_MONTHLY_CAP ?? 3);
+    const r = await pool.query<{ n: number }>(
+      `SELECT count(*)::int AS n FROM worksheet_generation_runs
+        WHERE child_ref = $1 AND mode = 'LIVE' AND created_at > now() - interval '30 days'`,
+      [childRefOf(childId)],
+    );
+    return (r.rows[0]?.n ?? 0) < cap;
+  }
+
+  /** One free library worksheet per child per day (+ skip if 3 are still unopened). */
+  async function ensureDailyLibraryWorksheet(ctx: PracticeCtx, childId: string): Promise<{ created: boolean; short: boolean }> {
+    const day = now().toISOString().slice(0, 10);
+    const lockKey = `daily-lib:${childId}:${day}`;
+    const client = await pool.connect();
+    try {
+      const lock = await client.query<{ ok: boolean }>(`SELECT pg_try_advisory_lock(hashtext($1)) AS ok`, [lockKey]);
+      if (!lock.rows[0]?.ok) return { created: false, short: false };
+      try {
+        const r = await client.query<{ today: number; open: number }>(
+          `SELECT count(*) FILTER (WHERE (created_at AT TIME ZONE 'UTC')::date = (now() AT TIME ZONE 'UTC')::date)::int AS today,
+                  count(*) FILTER (WHERE status IN ('ASSIGNED','IN_PROGRESS'))::int AS open
+             FROM assignments WHERE child_id = $1 AND status <> 'CANCELLED'`,
+          [childId],
+        );
+        const row = r.rows[0];
+        if (!row || row.today > 0 || row.open >= 3) return { created: false, short: false };
+        const res = await createLibraryPractice(ctx, childId, { minutes: 20 });
+        return { created: res.assignmentIds.length > 0, short: res.assignmentIds.length === 0 || res.pickedItems < 4 };
+      } finally {
+        await client.query(`SELECT pg_advisory_unlock(hashtext($1))`, [lockKey]);
+      }
+    } finally {
+      client.release();
+    }
+  }
+
+  /** The single entry point the "Hôm nay" screens call to make sure today has practice. */
+  async function ensureTodayPractice(ctx: PracticeCtx, childId: string, opts: { enqueueAi?: boolean } = {}): Promise<void> {
+    const enqueueAi = opts.enqueueAi ?? true;
+    const served = await serveLiveWorksheetIfPending(ctx.userId, childId); // already-generated AI work is still free to hand out
+    if (served) return;
+    const policy = practiceSourcePolicy();
+    if (policy === 'AI_FIRST') {
+      if (enqueueAi) await maybeEnqueueLiveWorksheet(ctx.userId, childId);
+      return;
+    }
+    let short = false;
+    try {
+      short = (await ensureDailyLibraryWorksheet(ctx, childId)).short;
+    } catch (err) {
+      logger.warn('daily library worksheet failed', { error: err instanceof Error ? err.message : String(err) });
+    }
+    if (policy === 'AI_TOPUP' && enqueueAi && short && (await withinAiMonthlyCap(childId))) {
+      await maybeEnqueueLiveWorksheet(ctx.userId, childId);
+    }
+  }
+
   // ---- IDENTITY / WORKSPACE ---------------------------------------
 
   return {
@@ -1374,8 +1681,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
       void recordPilotActivityFor(ctx.userId, childId, 'PARENT', 'today_viewed');
       // doc 69 §5 — a LIVE-cohort family: serve a ready worksheet, else queue
       // today's (deterministic spec + one INSERT — fast, errors swallowed).
-      const served = await serveLiveWorksheetIfPending(ctx.userId, childId);
-      if (!served) await maybeEnqueueLiveWorksheet(ctx.userId, childId);
+      await ensureTodayPractice(ctx, childId);
       const { scoped } = await learningScene(childId);
       return scoped.childToday({ userId: 'preview', role: 'child', childScope: childId }, childId);
     },
@@ -1394,8 +1700,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
       if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
       await authorizeChild(ctx, childId, 'view_child');
       void recordPilotActivityFor(ctx.userId, childId, 'PARENT', 'today_viewed');
-      const served = await serveLiveWorksheetIfPending(ctx.userId, childId);
-      if (!served) await maybeEnqueueLiveWorksheet(ctx.userId, childId);
+      await ensureTodayPractice(ctx, childId);
       const s = await refreshLearningState(childId);
       analytics.track({ category: 'navigation', action: 'parent_home_viewed', actorRef: actorRef(ctx.userId) });
       return buildParentHome(projInput(s));
@@ -2189,7 +2494,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const childId = ctx.childScope;
       // doc 69 §5 — pick up a ready LIVE worksheet (real STUDENT "Hôm nay";
       // only the PARENT path above enqueues new generation).
-      await serveLiveWorksheetIfPending(ctx.userId, childId);
+      await ensureTodayPractice(ctx, childId, { enqueueAi: false });
       const { scoped } = await learningScene(childId);
       const preview = await scoped.childToday(
         { userId: ctx.userId, role: 'child', childScope: childId },
@@ -2933,233 +3238,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
         if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
       }
 
-      // reuse the tested scene (Curriculum Clock estimate + pace + twin + gaps +
-      // context + plan) — DB-backed via learningScene, computed for `minutes`.
-      const inputs = await resolveChildLearningInputs(pool, base.enrollments, childId, now());
-      const scoped = createApi({
-        allowLegacyInProduction: true,
-        knowledgeBase: kb,
-        ledger: base.ledger,
-        logger,
-        now,
-        childProfiles: {
-          [childId]: {
-            profile: inputs.profile,
-            gradeContext: inputs.gradeContext,
-            familyUserIds: [],
-            ...(inputs.enrollment ? { enrollment: inputs.enrollment } : {}),
-          },
-        },
-      });
-      const scene = await scoped._scene(childId);
-      const twin = scene.twin;
-
-      // Per-child serve history (60d) → semantic anti-repeat cooldowns. Read from
-      // assignment_items, so it is per child_ref by construction.
-      const served = await pool.query<{ question_ref: string; created_at: Date }>(
-        `SELECT ai.question_ref, a.created_at
-           FROM assignment_items ai JOIN assignments a ON a.id = ai.assignment_id
-          WHERE a.child_id = $1 AND ai.question_ref IS NOT NULL AND a.created_at > now() - interval '60 days'`,
-        [childId],
-      );
-      const makeDiversity = (targetedReview: boolean): DiversityContext => ({
-        recentServed: served.rows.map((r) => ({ questionId: r.question_ref, servedAt: new Date(r.created_at).getTime() })),
-        nowMs: now().getTime(),
-        seed: `${childId}|${now().toISOString().slice(0, 10)}`,
-        targetedReview,
-      });
-
-      // TARGETED request — "ôn ngay phần này" from a Gap Detail screen (doc:
-      // parent can request extra practice on a specific weak skill any day, not
-      // only the whole-day mix). One assignment, one skill, bypasses the daily
-      // planner entirely — buildAssignment already scales item count + difficulty
-      // ramp for us. `gapId` resolves to the gap's own skill (the normal case,
-      // from Gap Detail); `skillId` is a direct override.
-      const gapFromId = input.gapId ? scene.gaps.gaps.find((g) => g.id === input.gapId) : undefined;
-      const requestedSkillId = input.skillId ?? gapFromId?.targetSkillId;
-      if (requestedSkillId) {
-        const targetSkillId = asSkillId(requestedSkillId);
-        const gapForSkill = gapFromId ?? scene.gaps.gaps.find((g) => g.targetSkillId === targetSkillId || g.rootSkillId === targetSkillId);
-        const action: import('@copilot/domain').PlannedAction = {
-          kind: gapForSkill ? (gapForSkill.type === 'prerequisite_gap' ? 'review_prerequisite' : 'close_gap') : 'practice_current_skill',
-          mixBucket: 'gapRepair',
-          targetSkillId,
-          ...(gapForSkill ? { gapId: gapForSkill.id } : {}),
-          estimatedMinutes: input.minutes ?? 10,
-          roiPerMinute: 0.5,
-          parentFacingTitle: `Ôn tập — ${kb.skills.get(targetSkillId)?.name ?? targetSkillId}`,
-          childFacingTitle: kb.skills.get(targetSkillId)?.name ?? targetSkillId,
-          rationale: 'Bố mẹ yêu cầu ôn thêm phần này.',
-        };
-        const targeted = buildAssignment({ childId: asChildId(childId), action, twin, planDate: now().toISOString().slice(0, 10), at: now().toISOString(), newId: () => `${Date.now()}`, diversity: makeDiversity(false) });
-        if (!targeted || targeted.questionIds.length === 0) {
-          throw new NotFoundError('chưa có đủ câu hỏi để ôn phần này — thử lại sau');
-        }
-        const refLib2 = loadReferenceLibrary();
-        const byId2 = new Map(refLib2.map((q) => [q.id, q]));
-        const items = targeted.questionIds
-          .map((qid) => byId2.get(qid))
-          .filter((q): q is NonNullable<typeof q> => q !== undefined)
-          .map((q, i) => ({
-            orderIndex: i,
-            questionRef: q.id,
-            skillId: q.skillId as string,
-            problemTypeId: (q.problemTypeId as string | undefined) ?? null,
-            knowledgeLevel: kLevelNum(q.knowledgeLevel),
-            thinkingLevel: tLevelNum(q.thinkingLevel),
-            prompt: { text: q.prompt },
-            answerSpec: q.answerSpec,
-            hints: [...q.hints],
-          }));
-        const rowId = await withTransaction(pool, async (client) => {
-          const ls = new PgLearningStateStore(client);
-          const row = await ls.createAssignment({
-            childId,
-            source: 'LEGACY_PRACTICE',
-            assignedByUserId: ctx.userId,
-            assignedByRole: ctx.workspace === 'STUDENT' ? 'SYSTEM' : 'PARENT',
-            subjectId: null,
-            mode: 'GAP_REPAIR',
-            targetSkillIds: [targetSkillId] as unknown as string[],
-            items,
-          });
-          return row.id;
-        });
-        analytics.track({ category: 'practice', action: 'targeted_practice_requested', actorRef: actorRef(ctx.userId), metadata: { skillId: targetSkillId } });
-        return { planKind: 'targeted' as const, assignmentIds: [rowId] };
-      }
-
-      const plan =
-        scene.plan.kind === 'plan'
-          ? scene.plan
-          : buildDailyPlan({
-              childId: asChildId(childId),
-              planDate: now().toISOString().slice(0, 10),
-              availableMinutes: input.minutes ?? 20,
-              twin,
-              gaps: scene.gaps,
-              context: scene.context,
-              knowledgeBase: kb,
-              asOf: now(),
-            });
-
-      let seq = 0;
-      const newId = () => `${Date.now()}-${(seq += 1)}`;
-      const refLib = loadReferenceLibrary();
-      const byId = new Map(refLib.map((q) => [q.id, q]));
-
-      let legacy =
-        plan.kind === 'plan'
-          ? buildAssignmentsForPlan(plan, twin, now().toISOString(), newId, makeDiversity(false))
-          : [];
-
-      // ZERO-DATA fallback (Journey 1): the deterministic planner returns
-      // `no_plan_needed` for a child it has no signal about. "Hôm nay dạy con gì?"
-      // must still have an answer — practice today's ESTIMATED current lesson.
-      if (legacy.length === 0) {
-        const resolved = scene.context.resolved;
-        const active =
-          resolved.activeSkillIds.length > 0
-            ? [...resolved.activeSkillIds]
-            : resolved.lessonId
-              ? [...kb.skills.entries()]
-                  .filter(([, s]) => s.curriculumNodeId === resolved.lessonId)
-                  .map(([id]) => id)
-              : [];
-        const lessonSkills = new Set(active.map(String));
-        let pool2 = refLib.filter((q) => lessonSkills.has(String(q.skillId)));
-        if (pool2.length === 0) {
-          // the estimated lesson has no authored practice content yet — fall back
-          // to conservative grade-level practice (K ≤ K3) for the child's grade.
-          pool2 = refLib.filter((q) => {
-            const sk = kb.skills.get(q.skillId);
-            return (
-              sk !== undefined &&
-              Number(sk.gradeContext) === Number(inputs.gradeContext) &&
-              (q.knowledgeLevel === 'K0' ||
-                q.knowledgeLevel === 'K1' ||
-                q.knowledgeLevel === 'K2' ||
-                q.knowledgeLevel === 'K3')
-            );
-          });
-        }
-        if (pool2.length > 0) {
-          const div = makeDiversity(false);
-          const picked = pickDiverse(eligiblePool(pool2, div, 4).pool, 4, div, (q) => kLevelNum(q.knowledgeLevel));
-          legacy = [
-            {
-              id: `asg_${newId()}`,
-              childId: asChildId(childId),
-              dailyPlanDate: now().toISOString().slice(0, 10),
-              mode: 'practice' as const,
-              targetSkillIds: [...new Set(picked.map((q) => String(q.skillId)))] as never,
-              questionIds: picked.map((q) => q.id),
-              createdAt: now().toISOString(),
-            },
-          ];
-        }
-      }
-
-      const created: string[] = [];
-      await withTransaction(pool, async (client) => {
-        const ls = new PgLearningStateStore(client);
-        if (plan.kind === 'plan') {
-          await ls.savePlan({
-            id: cryptoRandom(),
-            childId,
-            planDate: plan.planDate,
-            availableMinutes: input.minutes ?? 20,
-            kind: 'plan',
-            mix: (plan.mix as Record<string, number>) ?? {},
-            plannerVersion: 'exercise-spec.v1',
-            createdAt: now().toISOString(),
-            items: plan.orderedActions.map((a, i) => ({
-              orderIndex: i,
-              actionKind: String((a as any).kind ?? 'school'),
-              skillId: ((a as any).targetSkillId as string | undefined) ?? null,
-              minutes: Number((a as any).minutes ?? 0),
-              payload: {},
-            })),
-          });
-        }
-        for (const a of legacy) {
-          const items = a.questionIds
-            .map((qid) => byId.get(qid))
-            .filter((q): q is NonNullable<typeof q> => q !== undefined)
-            .map((q, i) => ({
-              orderIndex: i,
-              questionRef: q.id,
-              skillId: q.skillId as string,
-              problemTypeId: (q.problemTypeId as string | undefined) ?? null,
-              knowledgeLevel: kLevelNum(q.knowledgeLevel),
-              thinkingLevel: tLevelNum(q.thinkingLevel),
-              prompt: { text: q.prompt },
-              answerSpec: q.answerSpec,
-              hints: [...q.hints],
-            }));
-          if (items.length === 0) continue;
-          const row = await ls.createAssignment({
-            childId,
-            source: 'LEGACY_PRACTICE',
-            assignedByUserId: ctx.userId,
-            assignedByRole: ctx.workspace === 'STUDENT' ? 'SYSTEM' : 'PARENT',
-            subjectId: null,
-            mode: a.mode.toUpperCase(),
-            targetSkillIds: a.targetSkillIds as unknown as string[],
-            items,
-          });
-          created.push(row.id);
-        }
-      });
-      if (created.length > 0) {
-        analytics.track({
-          category: 'practice',
-          action: 'practice_started',
-          actorRef: actorRef(ctx.userId),
-          metadata: { assignmentCount: created.length },
-        });
-      }
-      return { planKind: plan.kind, assignmentIds: created };
+      return createLibraryPractice(ctx, childId, input);
     },
 
     async getChildAssignments(auth: CallerAuth, childId: string) {

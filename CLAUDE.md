@@ -3,11 +3,11 @@
 > Bộ nhớ dự án cho các phiên Claude Code sau. Ngắn gọn, không copy nguyên spec.
 > Nguồn sự thật đầy đủ: `File du an/` (tài liệu LOCKED) + `docs/implementation/`.
 
-> **⚠ ARCHITECTURE MIGRATION đang chờ anh duyệt (2026-09-01).** Pricing/AI Cost/Routing
-> **v1.1** thay v1.0. Core change = **AI_GENERATION_FIRST** (không dùng Question Bank
-> tĩnh làm nguồn phát bài) + **Curriculum Clock** + **Learning Context Resolver**.
-> Đọc `docs/implementation/12`–`17`. **Chưa implement** — code hiện tại vẫn theo v1.0
-> cho tới khi anh APPROVE migration plan (`17_IMPLEMENTATION_MIGRATION_PLAN.md`).
+> **Cập nhật 2026-11-01 — LIBRARY_FIRST (thay AI_GENERATION_FIRST).** Nguồn bài mặc định = thư viện
+> 9.404 câu (`@copilot/reference-library`, chống lặp theo `questions.semantic.json`), **0 chi phí AI**.
+> AI chỉ là bổ sung (`PRACTICE_SOURCE=AI_TOPUP`, có trần/tháng) hoặc thử nghiệm (`AI_FIRST`).
+> Xem `docs/implementation/71_LIBRARY_FIRST_NETLIFY_AND_BACKLOG_V2.md` (kiến trúc + Netlify + backlog V2).
+> Doc 12–17 (Curriculum Clock, Context Resolver, ExerciseGenerationSpec) vẫn đúng cho phần AI bổ sung.
 
 ## Product mission
 AI copilot cho **BỐ MẸ** giúp con học Toán hiệu quả (tiểu học→THCS). App không dạy thay bố mẹ; app loại bỏ phần chuẩn bị/phân tích/soạn bài. Tối ưu **Parent Time → Child Progress** và **Verified Skills Mastered / Month**. Primary user = Parent; beneficiary = Child; contributor tùy chọn = Teacher.
@@ -42,7 +42,7 @@ Platforms: Web + iOS + Android. Pilot: Toán **lớp 4** + **lớp 7**. Bảy ca
 
 ## AI cost invariants (Pricing + AI Cost Guardrails **v1.1** — `docs/implementation/15_AI_COST_AND_MODEL_ROUTING.md`)
 > v1.0 doc `PRICING_AND_COST_GUARDRAILS.md` SUPERSEDED. Code chưa migrate — số v1.0 vẫn trong `@copilot/ai` cho tới khi anh duyệt.
-- **AI_GENERATION_FIRST**: bài tập AI sinh theo trạng thái từng học sinh. KHÔNG dùng Question Bank tĩnh làm nguồn phát bài (`docs/implementation/14`). Bank cũ → Reference/Grounding Library.
+- **LIBRARY_FIRST (từ 2026-11-01)**: bài phát cho con lấy từ thư viện (miễn phí, đáp án sẵn). AI chỉ bổ sung khi thư viện không đủ, có trần theo con/tháng. (Trước đây AI_GENERATION_FIRST — doc 14 — đã bị thay vì chi phí token.)
 - **Luna-first**: default `gpt-5.6-luna` (gồm worksheet batch generation). Advanced (Terra vs Sonnet) benchmark-gated. Sol = offline golden eval.
 - **Plan tier KHÔNG chọn model** — nhu cầu giáo dục + confidence + độ khó chọn. PRO làm K2/T2 → default; BASIC gặp T5/HSG hợp lệ → có thể escalate. Plan chỉ set **budget envelope**.
 - **Batch**: 1 `ExerciseGenerationSpec` → 1 lần gọi AI → N câu. KHÔNG 1 call/câu. Adaptive Next-Best-Question = event-driven.

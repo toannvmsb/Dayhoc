@@ -19,7 +19,10 @@ export function pool(): Pool {
     if (!connectionString) {
       throw new Error('DATABASE_URL is not set — the DạyZi web app needs Postgres (see LOCAL_DB.md)');
     }
-    globalThis.__dzPool = new Pool({ connectionString, max: 8 });
+    // serverless hosts (Netlify) run many short-lived instances — keep each tiny
+    // so the Supabase pooler is not exhausted (set DZ_DB_POOL_MAX=2 there).
+    const max = Math.max(1, Number(process.env.DZ_DB_POOL_MAX ?? 8) || 8);
+    globalThis.__dzPool = new Pool({ connectionString, max, idleTimeoutMillis: 10_000 });
   }
   return globalThis.__dzPool;
 }

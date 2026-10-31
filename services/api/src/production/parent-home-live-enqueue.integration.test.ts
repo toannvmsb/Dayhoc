@@ -31,6 +31,7 @@ describe.skipIf(!DATABASE_URL)('doc 70 — getParentHome / studentGetToday trigg
   const children: string[] = [];
   const families: string[] = [];
   const prevMode = process.env.AI_GENERATION_MODE;
+  const prevSource = process.env.PRACTICE_SOURCE;
 
   beforeAll(async () => {
     const { Pool } = await import('pg');
@@ -39,6 +40,7 @@ describe.skipIf(!DATABASE_URL)('doc 70 — getParentHome / studentGetToday trigg
     // resolveEffectiveGenerationMode reads AI_GENERATION_MODE off process.env —
     // set it for this process only, restored in afterAll.
     process.env.AI_GENERATION_MODE = 'LIVE';
+    process.env.PRACTICE_SOURCE = 'AI_FIRST'; // these tests exercise the legacy AI-first wiring explicitly
     const gen: ItemContentGenerator = createMockItemContentGenerator();
     api = createProductionApi({
       pool,
@@ -55,10 +57,14 @@ describe.skipIf(!DATABASE_URL)('doc 70 — getParentHome / studentGetToday trigg
 
   afterAll(async () => {
     process.env.AI_GENERATION_MODE = prevMode;
+    if (prevSource === undefined) delete process.env.PRACTICE_SOURCE;
+    else process.env.PRACTICE_SOURCE = prevSource;
     if (!pool) return;
     const c = await pool.connect();
     try {
       await c.query(`SET session_replication_role = replica`);
+      await c.query(`DELETE FROM assignment_items WHERE assignment_id IN (SELECT id FROM assignments WHERE child_id = ANY($1::uuid[]))`, [children]).catch(() => {});
+      await c.query(`DELETE FROM assignments WHERE child_id = ANY($1::uuid[])`, [children]).catch(() => {});
       await c.query(`DELETE FROM worksheet_jobs WHERE child_ref = ANY($1::text[])`, [children.map(childRefOf)]).catch(() => {});
       await c.query(`DELETE FROM internal_live_cohort WHERE family_ref = ANY($1::text[])`, [families.map(familyRef)]).catch(() => {});
       for (const t of ['consent_records', 'evidence', 'skill_states', 'knowledge_gaps', 'learning_state_snapshots', 'child_profiles']) {
@@ -119,4 +125,30 @@ describe.skipIf(!DATABASE_URL)('doc 70 — getParentHome / studentGetToday trigg
     const jobs = await pool.query<{ n: string }>(`SELECT count(*)::int n FROM worksheet_jobs WHERE child_ref = $1`, [childRefOf(child.childId)]);
     expect(Number(jobs.rows[0]!.n)).toBe(0);
   }, 20_000);
+
+  it('LIBRARY_FIRST (default): opening Hôm nay makes ONE free library worksheet and queues NO AI job, even for a LIVE cohort family', async () => {
+    const stamp = Date.now();
+    const parent = await reg(`phle-p3-${stamp}@x.com`);
+    const pAuth = { bearer: parent.bearer, workspace: 'PARENT' as const };
+    const child = await api.createChild(pAuth, { displayName: 'Bé Thư Viện', schoolGrade: 4 });
+    children.push(child.childId);
+    const famId = (await pool.query<{ family_id: string }>(`SELECT family_id FROM child_profiles WHERE id = $1`, [child.childId])).rows[0]!.family_id;
+    families.push(famId);
+    await addToInternalLiveCohort(pool, familyRef(famId), { wave: 2, note: 'library-first test', actorRef: 'test' });
+    await recordPilotConsent(pool, { childId: child.childId, grantedByUserId: parent.userId });
+
+    delete process.env.PRACTICE_SOURCE; // default policy
+    try {
+      await api.getParentHome(pAuth, child.childId);
+      await api.getParentHome(pAuth, child.childId); // idempotent per day
+    } finally {
+      process.env.PRACTICE_SOURCE = 'AI_FIRST';
+    }
+
+    const jobs = await pool.query<{ n: number }>(`SELECT count(*)::int n FROM worksheet_jobs WHERE child_ref = $1`, [childRefOf(child.childId)]);
+    expect(jobs.rows[0]!.n).toBe(0); // zero AI spend
+    const asg = await pool.query<{ source: string }>(`SELECT source FROM assignments WHERE child_id = $1`, [child.childId]);
+    expect(asg.rows.length).toBe(1);
+    expect(asg.rows[0]!.source).toBe('LEGACY_PRACTICE');
+  }, 30_000);
 });

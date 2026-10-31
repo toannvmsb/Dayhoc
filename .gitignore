@@ -76,3 +76,4 @@ GROUPC_XCHECK*.txt
 GROUPC_XCHECK*.jsonl
 D7_COHORT*.txt
 WAVE1_REPORT*.txt
+apps/web/.netlify/
