@@ -73,9 +73,9 @@ Railway cũ cũng đang chết vì lý do này.
 | "Hôm nay dạy con gì?" | ✅ | nay **tự có bài mỗi ngày từ thư viện** |
 | giao bài & xem kết quả | ✅ | con thấy đúng/sai từng câu; bố mẹ giao thêm theo điểm yếu |
 | **quản lý mục tiêu học** | ❌ | chưa có màn riêng (mới có "mức mục tiêu" trong báo cáo) → B2-03 |
-| quản lý privacy/consent | 🟡 | có xoá dữ liệu + consent pilot; chưa có màn quản lý consent đầy đủ |
+| quản lý privacy/consent | ✅ | màn consent + xuất dữ liệu + xoá (B3-03) |
 | **Student**: đăng nhập riêng, bài hôm nay/ôn tập/thử thách, hint, feedback | ✅ | username do bố mẹ đặt |
-| Student tham gia classroom | ❌ | theo policy; chưa làm → B3-02 |
+| Student tham gia classroom | ✅ | mã lớp + bố mẹ duyệt (B3-02) |
 | Student không thấy analytics của bố mẹ | ✅ | child-safe projection 3 lớp |
 | **Teacher**: hồ sơ độc lập, gắn trường/lớp/môn | ✅ | `/giao-vien/*` |
 | GV gửi/nhận yêu cầu kết nối | ✅ | |
@@ -97,19 +97,19 @@ Railway cũ cũng đang chết vì lý do này.
 * B1-02 Bổ sung câu **T4–T5/HSG** (hiện thư viện chỉ có ~3% ở mức K3/T4–K4/T4; 7 kỹ năng chưa có câu K1).
 * B1-03 90% câu ở mức rủi ro lặp CAO (cooldown 21 ngày) → thêm biến thể cấu trúc để vòng lặp dài hơn.
 * ✅ B1-04 Bài **ôn thi tháng/học kỳ** từ thư viện: nút "Giao đề ôn thử" ở trang kỳ thi → 1 bài `REVISION` ghép theo phạm vi thi, nhiều câu hơn ở kỹ năng ưu tiên cao, dễ→khó, 0 AI. Chưa có: bảng chấm điểm tự động theo đề thi thật, liên kết bài ↔ kỳ thi trong DB (cần migration `assignments.exam_id`).
-* B1-05 Lưu log chọn bài (`selection_reason`, `cooldown_override_reason`) vào DB theo Claude Instructions.
+* ✅ B1-05 Log chọn bài theo từng câu phát cho con + liên kết bài ôn thi ↔ kỳ thi (`assignments.exam_id`).
 
 **P2 — đúng mục tiêu "bố mẹ không phải làm gì nhiều"**
-* B2-01 Đọc ảnh bài tập nhà trường → suy ra bài/mức đang học (cần OCR thật; chạy thử với ảnh thật, đo chi phí/ảnh trước khi bật).
+* ✅ (code) B2-01 Đọc ảnh bài tập bằng AI thật: tắt mặc định (`DZ_LIVE_VISION=1` + `OPENAI_API_KEY`), cần consent `document_reading`, trần/ngày theo con & toàn hệ thống, kết quả AI được kiểm schema + allow-list kỹ năng, mọi lần gọi ghi `ai_usage_events`. **Còn:** chạy `node scripts/run-vision-benchmark.mjs --live --max=3` với key thật để đo chi phí/ảnh; nối `minimizeForProvider()` cho đường ảnh gốc.
 * ✅ B2-02 Số phút học/ngày do bố mẹ chọn (10–60′, màn `/be/:id/muc-tieu`) → độ dài bài tự tạo hằng ngày.
 * ✅ B2-03 Màn **mục tiêu học**: Giữ nhịp / Củng cố nền / Nâng cao-HSG (+ cờ "sắp thi") → đổi tỉ lệ bài vừa sức : thử thách (75:25 · 85:15 · 60:40). Lưu ở `child_profiles.goals` (không cần migration).
-* B2-04 Nhắc bố mẹ (thông báo/email) khi con chưa làm bài 2 ngày.
+* ✅ B2-04 Nhắc bố mẹ khi con chưa làm bài 2 ngày (banner trong app + email/push nếu đã cấu hình kênh; tối đa 3 lần/đợt, bố mẹ tắt được). Cần cron gọi `POST /admin/reminders/run` → B3-04.
 * ✅ B2-05 Ngày tính theo giờ Việt Nam (UTC+7) cho bài hằng ngày, bài miễn phí 1 lần/ngày, báo cáo tuần.
 
 **P3 — mở rộng**
 * B3-01 AI_TOPUP bật thử cho 1–2 gia đình sau khi có số đo chi phí/ngày thật.
-* B3-02 Student tham gia classroom (theo policy).
-* B3-03 Màn quản lý consent đầy đủ; xuất dữ liệu trẻ em.
+* ✅ B3-02 Học sinh nhập mã lớp của giáo viên → bố mẹ duyệt (mã không tự ghi danh).
+* ✅ B3-03 Màn quản lý consent + xuất dữ liệu của con (JSON).
 * B3-04 Cron an toàn/dọn dẹp trên Netlify Scheduled Functions (chỉ khi bật AI).
 * B3-05 App mobile (Expo) — để sau khi web ổn.
 
