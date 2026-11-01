@@ -94,6 +94,8 @@ export interface AssignmentRow {
   readonly dueDate: string | null;
   readonly createdAt: string;
   readonly completedAt: string | null;
+  /** The scheduled exam this "đề ôn thử" was built for (null for ordinary practice). */
+  readonly examId?: string | null;
 }
 
 export interface AssignmentItemRow {
@@ -108,6 +110,10 @@ export interface AssignmentItemRow {
   readonly prompt: unknown;
   readonly answerSpec: unknown;
   readonly hints: readonly unknown[];
+  /** Selection log (question-library policy): why this question was served. */
+  readonly selectionReason?: string | null;
+  /** Which anti-repeat cooldown was relaxed to serve it (null = none relaxed). */
+  readonly cooldownOverrideReason?: string | null;
 }
 
 export const ATTEMPT_STATUSES = ['IN_PROGRESS', 'SUBMITTED', 'ABANDONED'] as const;

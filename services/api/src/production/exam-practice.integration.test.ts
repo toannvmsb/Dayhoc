@@ -117,6 +117,86 @@ describe.skipIf(!DATABASE_URL)('exam practice from the library (B1-04)', () => {
     expect(long.pickedItems).toBeGreaterThan(short.pickedItems);
   });
 
+  it('links the assignment to its exam and lists it on the revision map', async () => {
+    const { auth, childId } = await setup('link');
+    const exam = await api.createExam(auth, childId, { examDate: '2027-03-12', subject: 'Toán' });
+    await api.confirmExamScope(auth, childId, exam.examId, scopeSkills);
+    expect((await api.getRevisionMap(auth, childId, exam.examId)).practice).toEqual([]);
+
+    const res = await api.createPracticeAssignment(auth, childId, { examId: exam.examId, minutes: 30 });
+    const row = await pool.query(`SELECT exam_id FROM assignments WHERE id = $1`, [res.assignmentIds[0]]);
+    expect(row.rows[0].exam_id).toBe(exam.examId);
+
+    const map = await api.getRevisionMap(auth, childId, exam.examId);
+    expect(map.practice).toHaveLength(1);
+    expect(map.practice[0]).toMatchObject({ assignmentId: res.assignmentIds[0], status: 'ASSIGNED', items: res.pickedItems });
+
+    const list = await api.getChildAssignments(auth, childId);
+    expect(list.find((a) => a.id === res.assignmentIds[0])).toMatchObject({ examId: exam.examId });
+
+    // ordinary practice is NOT linked to any exam
+    const plain = await api.createPracticeAssignment(auth, childId, { minutes: 20 });
+    const plainRow = await pool.query(`SELECT exam_id FROM assignments WHERE id = $1`, [plain.assignmentIds[0]]);
+    expect(plainRow.rows[0].exam_id).toBeNull();
+  });
+
+  it("deleting the exam keeps the child's practice (exam_id → NULL)", async () => {
+    const { auth, childId } = await setup('del');
+    const exam = await api.createExam(auth, childId, { examDate: '2027-03-12', subject: 'Toán' });
+    await api.confirmExamScope(auth, childId, exam.examId, scopeSkills);
+    const res = await api.createPracticeAssignment(auth, childId, { examId: exam.examId });
+    await pool.query(`DELETE FROM exam_results WHERE exam_id = $1`, [exam.examId]);
+    await pool.query(`DELETE FROM exams WHERE id = $1`, [exam.examId]);
+    const row = await pool.query(`SELECT exam_id FROM assignments WHERE id = $1`, [res.assignmentIds[0]]);
+    expect(row.rows).toHaveLength(1);
+    expect(row.rows[0].exam_id).toBeNull();
+  });
+
+  it('selection log (B1-05): every served question records why, and only the parent can read it', async () => {
+    const { auth, childId } = await setup('log');
+    const exam = await api.createExam(auth, childId, { examDate: '2027-03-12', subject: 'Toán' });
+    await api.confirmExamScope(auth, childId, exam.examId, scopeSkills);
+
+    // exam practice
+    const ex = await api.createPracticeAssignment(auth, childId, { examId: exam.examId, minutes: 30 });
+    const exLog = await api.getAssignmentSelectionLog(auth, ex.assignmentIds[0]!);
+    expect(exLog.examId).toBe(exam.examId);
+    expect(exLog.items.length).toBe(ex.pickedItems);
+    for (const it of exLog.items) expect(it.selectionReason).toMatch(/^EXAM_PREP:/);
+
+    // free daily worksheet
+    const daily = await api.createPracticeAssignment(auth, childId, { minutes: 20 });
+    const dLog = await api.getAssignmentSelectionLog(auth, daily.assignmentIds[0]!);
+    expect(dLog.items.length).toBeGreaterThan(0);
+    for (const it of dLog.items) expect(it.selectionReason).toMatch(/^(PLAN:|LESSON_FALLBACK|DAILY_PLAN)/);
+
+    // the log belongs to this family only
+    const other = await setup('logother');
+    await expect(api.getAssignmentSelectionLog(other.auth, daily.assignmentIds[0]!)).rejects.toThrow();
+  });
+
+  it('cooldown relaxation is logged: a pool that runs dry reports which cooldowns were relaxed', async () => {
+    // needs a REAL clock: the serve history is read with the DB's now(), so a fake future clock
+    // would make every earlier sheet look older than the cooldown window.
+    const live = createProductionApi({ pool, authAdapter: new InMemoryAuthAdapter(`cd${Date.now()}`), now: () => new Date() });
+    const me = await live.register({ email: `cd-${Date.now()}@x.com`, password: 'supersecret', intendedRole: 'PARENT', displayName: 'cd' });
+    users.push(me.userId);
+    const bearer = (await pool.query(`SELECT auth_user_id FROM users WHERE id = $1`, [me.userId])).rows[0].auth_user_id as string;
+    const auth = { bearer, workspace: 'PARENT' as const };
+    const child = await live.createChild(auth, { displayName: 'Bé cd', schoolGrade: 4 });
+    children.push(child.childId);
+    families.push((await pool.query<{ family_id: string }>(`SELECT family_id FROM child_profiles WHERE id = $1`, [child.childId])).rows[0]!.family_id);
+
+    // serve the same single skill over and over: ~24 items/sheet from a ~100-question pool → must relax by sheet 5
+    let relaxed = 0;
+    for (let i = 0; i < 6; i += 1) {
+      const r = await live.createPracticeAssignment(auth, child.childId, { skillId: scopeSkills[0]!, minutes: 60 });
+      const log = await live.getAssignmentSelectionLog(auth, r.assignmentIds[0]!);
+      relaxed += log.items.filter((it) => (it.cooldownOverrideReason ?? '').length > 0).length;
+    }
+    expect(relaxed).toBeGreaterThan(0);
+  });
+
   it("another family's parent cannot build practice from this child's exam", async () => {
     const a = await setup('ownerx');
     const b = await setup('other');

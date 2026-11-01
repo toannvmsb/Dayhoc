@@ -63,7 +63,8 @@ export function buildAssignment(input: BuildAssignmentInput): Assignment | null 
     (input.action.kind === 'thinking_challenge'
       ? 1 // one substantial reasoning problem by design (§35), not an item-count bug
       : Math.max(MIN_ITEMS_PER_ACTION, Math.round(input.action.estimatedMinutes / MINUTES_PER_ITEM)));
-  const pool = input.diversity ? eligiblePool(skillPool, input.diversity, count).pool : skillPool;
+  const eligible = input.diversity ? eligiblePool(skillPool, input.diversity, count) : null;
+  const pool = eligible ? eligible.pool : skillPool;
   const chosen =
     input.action.kind === 'thinking_challenge'
       ? pool
@@ -83,6 +84,11 @@ export function buildAssignment(input: BuildAssignmentInput): Assignment | null 
     targetSkillIds: input.action.targetSkillId ? [input.action.targetSkillId] : [],
     questionIds: items.map((q) => q.id),
     createdAt: input.at,
+    // mandatory selection log (question-library policy): why + which cooldowns were relaxed
+    selectionLog: {
+      reason: input.diversity?.targetedReview ? 'TARGETED_REVIEW' : `PLAN:${input.action.kind}`,
+      cooldownOverride: eligible?.relaxed ?? [],
+    },
   };
 }
 

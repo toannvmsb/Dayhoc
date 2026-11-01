@@ -92,6 +92,8 @@ export interface Assignment {
   readonly targetSkillIds: readonly SkillId[];
   readonly questionIds: readonly string[];
   readonly createdAt: string;
+  /** Why these questions were picked + any anti-repeat cooldown relaxed (persisted as the selection log). */
+  readonly selectionLog?: { readonly reason: string; readonly cooldownOverride: readonly string[] };
 }
 
 /** The six-rung hint ladder (Math Core §17). */

@@ -35,6 +35,7 @@ export interface NewAssignment {
   readonly mode?: string;
   readonly targetSkillIds: readonly string[];
   readonly dueDate?: string | null;
+  readonly examId?: string | null;
   readonly items: ReadonlyArray<Omit<AssignmentItemRow, 'id' | 'assignmentId'>>;
 }
 
@@ -152,6 +153,7 @@ export class InMemoryLearningStateStore implements LearningStateStore {
       dueDate: input.dueDate ?? null,
       createdAt: new Date().toISOString(),
       completedAt: null,
+      examId: input.examId ?? null,
     };
     this.#assignments.set(id, row);
     this.#assignmentItems.set(

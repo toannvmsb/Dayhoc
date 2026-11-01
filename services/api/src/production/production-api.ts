@@ -1104,6 +1104,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
     }
     const refLib2 = loadReferenceLibrary();
     const byId2 = new Map(refLib2.map((q) => [q.id, q]));
+    const targetedOverride = targeted.selectionLog?.cooldownOverride.join(',') || null;
     const items = targeted.questionIds
       .map((qid) => byId2.get(qid))
       .filter((q): q is NonNullable<typeof q> => q !== undefined)
@@ -1117,6 +1118,8 @@ export function createProductionApi(opts: ProductionApiOptions) {
         prompt: { text: q.prompt },
         answerSpec: q.answerSpec,
         hints: [...q.hints],
+        selectionReason: gapFromId ? 'PARENT_REQUEST:GAP_REPAIR' : 'PARENT_REQUEST:SKILL',
+        cooldownOverrideReason: targetedOverride,
       }));
     const rowId = await withTransaction(pool, async (client) => {
       const ls = new PgLearningStateStore(client);
@@ -1187,6 +1190,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
     const div = makeDiversity(false);
     const taken = new Set<string>();
     const examQs: Array<(typeof lib)[number]> = [];
+    const examLog = new Map<string, { reason: string; override: string | null }>();
     const byIdAll = new Map(lib.map((q) => [q.id, q]));
     for (const { it, n } of alloc) {
       const action: import('@copilot/domain').PlannedAction = {
@@ -1215,6 +1219,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
         if (q && !taken.has(qid)) {
           taken.add(qid);
           examQs.push(q);
+          examLog.set(qid, { reason: `EXAM_PREP:${it.band}`, override: a?.selectionLog?.cooldownOverride.join(',') || null });
         }
       }
     }
@@ -1231,6 +1236,8 @@ export function createProductionApi(opts: ProductionApiOptions) {
       prompt: { text: q.prompt },
       answerSpec: q.answerSpec,
       hints: [...q.hints],
+      selectionReason: examLog.get(q.id)?.reason ?? 'EXAM_PREP',
+      cooldownOverrideReason: examLog.get(q.id)?.override ?? null,
     }));
     const rowId = await withTransaction(pool, async (client) => {
       const ls = new PgLearningStateStore(client);
@@ -1240,6 +1247,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
         assignedByUserId: ctx.userId,
         assignedByRole: 'PARENT',
         subjectId: null,
+        examId: input.examId ?? null,
         mode: 'REVISION',
         targetSkillIds: [...new Set(examQs.map((q) => String(q.skillId)))] as unknown as string[],
         items,
@@ -1308,7 +1316,8 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const div = makeDiversity(false);
       // same pacing as buildAssignment (2.5 min / item), so the session length follows the chosen minutes
       const want = Math.min(20, Math.max(2, Math.round((input.minutes ?? prefs.dailyMinutes) / 2.5)));
-      const picked = pickDiverse(eligiblePool(pool2, div, want).pool, want, div, (q) => kLevelNum(q.knowledgeLevel));
+      const fallbackEligible = eligiblePool(pool2, div, want);
+      const picked = pickDiverse(fallbackEligible.pool, want, div, (q) => kLevelNum(q.knowledgeLevel));
       legacy = [
         {
           id: `asg_${newId()}`,
@@ -1318,6 +1327,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
           targetSkillIds: [...new Set(picked.map((q) => String(q.skillId)))] as never,
           questionIds: picked.map((q) => q.id),
           createdAt: now().toISOString(),
+          selectionLog: { reason: 'LESSON_FALLBACK', cooldownOverride: fallbackEligible.relaxed },
         },
       ];
     }
@@ -1360,6 +1370,8 @@ export function createProductionApi(opts: ProductionApiOptions) {
           prompt: { text: q.prompt },
           answerSpec: q.answerSpec,
           hints: [...q.hints],
+          selectionReason: a.selectionLog?.reason ?? 'DAILY_PLAN',
+          cooldownOverrideReason: a.selectionLog?.cooldownOverride.join(',') || null,
         }));
       if (items.length === 0) continue;
       pickedItems += items.length;
@@ -2034,8 +2046,24 @@ export function createProductionApi(opts: ProductionApiOptions) {
         knowledgeBase: kb,
         asOf: now(),
       });
+      const practice = (
+        await pool.query<{ id: string; status: string; created_at: Date; items: number }>(
+          `SELECT a.id, a.status, a.created_at,
+                  (SELECT count(*)::int FROM assignment_items ai WHERE ai.assignment_id = a.id) AS items
+             FROM assignments a
+            WHERE a.child_id = $1 AND a.exam_id = $2 AND a.status <> 'CANCELLED'
+            ORDER BY a.created_at DESC`,
+          [childId, examId],
+        )
+      ).rows.map((r) => ({
+        assignmentId: r.id,
+        status: r.status,
+        createdAt: new Date(r.created_at).toISOString(),
+        items: r.items,
+      }));
       return {
         examId,
+        practice, // "đề ôn thử" already built for this exam
         subject: row.subject,
         examDate: exam.examDate,
         dayCountdown: plan.dayCountdown,
@@ -3454,7 +3482,36 @@ export function createProductionApi(opts: ProductionApiOptions) {
         targetSkillIds: a.targetSkillIds,
         createdAt: a.createdAt,
         completedAt: a.completedAt,
+        // parent-facing only — a child's projection never carries exam bookkeeping
+        ...(ctx.workspace === 'PARENT' ? { examId: a.examId ?? null } : {}),
       }));
+    },
+
+    /**
+     * GET /assignments/:id/selection-log — PARENT only. The mandatory selection log of the question
+     * library policy (B1-05): for each served question, WHY it was picked and which anti-repeat
+     * cooldown (if any) had to be relaxed. Never exposed to the child projection.
+     */
+    async getAssignmentSelectionLog(auth: CallerAuth, assignmentId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      const full = await base.learningState.getAssignment(assignmentId);
+      if (!full) throw new NotFoundError('assignment');
+      await authorizeChild(ctx, full.assignment.childId, 'view_child');
+      return {
+        assignmentId,
+        mode: full.assignment.mode,
+        examId: full.assignment.examId ?? null,
+        items: full.items.map((it) => ({
+          orderIndex: it.orderIndex,
+          questionRef: it.questionRef,
+          skillId: it.skillId,
+          knowledgeLevel: it.knowledgeLevel,
+          thinkingLevel: it.thinkingLevel,
+          selectionReason: it.selectionReason ?? null,
+          cooldownOverrideReason: it.cooldownOverrideReason ?? null,
+        })),
+      };
     },
 
     async getAssignmentDetail(auth: CallerAuth, assignmentId: string) {

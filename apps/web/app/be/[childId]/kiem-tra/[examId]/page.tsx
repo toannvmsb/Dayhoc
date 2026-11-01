@@ -6,6 +6,12 @@ import { ExamPracticeButton, RecordResult, ScopeConfirm } from '../client';
 
 export const dynamic = 'force-dynamic';
 
+const PRACTICE_STATUS_LABEL: Record<string, string> = {
+  ASSIGNED: 'Chưa làm',
+  IN_PROGRESS: 'Đang làm',
+  COMPLETED: 'Đã làm xong',
+};
+
 const BAND_LABEL: Record<string, string> = {
   ưu_tiên_cao: 'Ưu tiên cao',
   nhắc_lại: 'Nhắc lại',
@@ -64,6 +70,26 @@ export default async function ExamDetail({
 
       {!diagnosis && map.items.length > 0 && (
         <ExamPracticeButton childId={params.childId} examId={params.examId} />
+      )}
+
+      {map.practice.length > 0 && (
+        <div className="card" style={{ gap: 8 }}>
+          <span className="overline">Đề ôn thử đã giao</span>
+          {map.practice.map((p, i) => (
+            <Link
+              key={p.assignmentId}
+              href={`/be/${params.childId}/bai-tap`}
+              style={{ display: 'flex', justifyContent: 'space-between', gap: 8, textDecoration: 'none', fontSize: 13.5 }}
+            >
+              <span style={{ color: 'var(--c-text-heading)' }}>
+                Đề {map.practice.length - i} · {p.items} câu · {new Date(p.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}
+              </span>
+              <b style={{ color: p.status === 'COMPLETED' ? 'var(--c-primary)' : 'var(--c-text-body)' }}>
+                {PRACTICE_STATUS_LABEL[p.status] ?? p.status}
+              </b>
+            </Link>
+          ))}
+        </div>
       )}
 
       {diagnosis ? (

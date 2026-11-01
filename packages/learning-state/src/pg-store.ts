@@ -167,25 +167,26 @@ export class PgLearningStateStore implements LearningStateStore {
   async createAssignment(input: NewAssignment): Promise<AssignmentRow> {
     const r = await this.pool.query(
       `INSERT INTO assignments (child_id, learning_plan_id, subject_id, assigned_by_user_id, assigned_by_role,
-         source, generation_spec_id, generated_exercise_set_id, mode, target_skill_ids, status, due_date)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,'ASSIGNED',$11) RETURNING *`,
+         source, generation_spec_id, generated_exercise_set_id, mode, target_skill_ids, status, due_date, exam_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,'ASSIGNED',$11,$12) RETURNING *`,
       [
         input.childId, input.learningPlanId ?? null, input.subjectId ?? null, input.assignedByUserId ?? null,
         input.assignedByRole ?? null, input.source, input.generationSpecId ?? null,
         input.generatedExerciseSetId ?? null, input.mode ?? 'WORKSHEET', JSON.stringify(input.targetSkillIds),
-        input.dueDate ?? null,
+        input.dueDate ?? null, input.examId ?? null,
       ],
     );
     const a = r.rows[0] as any;
     for (const [i, it] of input.items.entries()) {
       await this.pool.query(
         `INSERT INTO assignment_items (assignment_id, order_index, question_ref, skill_id, problem_type_id,
-           knowledge_level, thinking_level, prompt, answer_spec, hints)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9::jsonb,$10::jsonb)`,
+           knowledge_level, thinking_level, prompt, answer_spec, hints, selection_reason, cooldown_override_reason)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9::jsonb,$10::jsonb,$11,$12)`,
         [
           a.id, it.orderIndex ?? i, it.questionRef ?? null, it.skillId ?? null, it.problemTypeId ?? null,
           it.knowledgeLevel ?? null, it.thinkingLevel ?? null, JSON.stringify(it.prompt),
           JSON.stringify(it.answerSpec), JSON.stringify(it.hints ?? []),
+          it.selectionReason ?? null, it.cooldownOverrideReason ?? null,
         ],
       );
     }
@@ -209,6 +210,8 @@ export class PgLearningStateStore implements LearningStateStore {
         prompt: x.prompt,
         answerSpec: x.answer_spec,
         hints: Array.isArray(x.hints) ? x.hints : [],
+        selectionReason: x.selection_reason ?? null,
+        cooldownOverrideReason: x.cooldown_override_reason ?? null,
       })),
     };
   }
@@ -299,6 +302,7 @@ function rowToAssignment(x: any): AssignmentRow {
     dueDate: dateN(x.due_date),
     createdAt: iso(x.created_at),
     completedAt: isoN(x.completed_at),
+    examId: x.exam_id ?? null,
   };
 }
 function rowToAttempt(x: any): AttemptRow {
