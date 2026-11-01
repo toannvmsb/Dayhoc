@@ -4012,6 +4012,20 @@ export function createProductionApi(opts: ProductionApiOptions) {
       return out;
     },
 
+    /**
+     * Trusted-caller ONLY (cron route after CRON_SECRET check). doc 69 §4: scan the recent LIVE window and flip the
+     * DB kill switch on any CRITICAL signal — no human approval, no redeploy. Cheap no-op while AI is off.
+     */
+    async runSafetyAutoStop() {
+      const pre = await resolveKillSwitch(pool, process.env);
+      if (pre.active) return { tripped: false as const, killSwitch: 'already-active' as const, source: pre.source };
+      const windowMin = Number(process.env.PILOT_SAFETY_WINDOW_MIN ?? 60);
+      const sinceIso = new Date(now().getTime() - (Number.isFinite(windowMin) && windowMin > 0 ? windowMin : 60) * 60_000).toISOString();
+      const res = await enforceSafetyAutoStop(pool, { sinceIso });
+      if (res.tripped) logger.error('CRITICAL — LIVE generation auto-stopped (kill switch ACTIVE)', { reasons: res.scan.criticalReasons });
+      return { tripped: res.tripped, killSwitch: res.tripped ? ('active' as const) : ('off' as const) };
+    },
+
     // ---- doc 70: SMALL FAMILY PILOT --------------------------------------
 
     /** ADMIN — add a family to the PILOT cohort (LIVE + consent-required). */

@@ -117,6 +117,11 @@ describe.skipIf(!DATABASE_URL)('raw-photo retention + scheduled jobs', () => {
     await expect(api.runUploadAnalysis(auth, childId, u.uploadId)).rejects.toThrow(/đã được xoá/);
   });
 
+  it('runSafetyAutoStop is a quiet no-op when there is nothing unsafe', async () => {
+    const r = await api.runSafetyAutoStop();
+    expect(r.tripped).toBe(false);
+  });
+
   it('runScheduledJobs runs every job and reports each result', async () => {
     const r = await api.runScheduledJobs();
     expect(Object.keys(r)).toEqual(expect.arrayContaining(['ranAt', 'inactivityReminders', 'uploadRetention', 'internalLiveMaintenance']));
