@@ -59,6 +59,7 @@ import { buildLearningTwin } from '@copilot/learning-twin';
 import type { AssessmentQuestionOutcome, Exam } from '@copilot/domain';
 import { createHash } from 'node:crypto';
 import { resolveWorksheetGeneration } from './worksheet-generation.js';
+import { vnDay, vnMostRecentMonday } from './vn-time.js';
 import {
   resolveEffectiveGenerationMode,
   internalLiveBudgetGate,
@@ -450,7 +451,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
         mode = 'SHADOW';
       }
       const cref = childRefOf(childId);
-      const day = now().toISOString().slice(0, 10);
+      const day = vnDay(now());
       const { scoped, inputs } = await learningScene(childId);
       const s = await scoped._scene(childId);
       // "Hôm nay dạy con gì?" always has an answer: generate for the resolved
@@ -667,13 +668,10 @@ export function createProductionApi(opts: ProductionApiOptions) {
   const GAPS_STATE_VERSION = 'gaps.v2';
   const CONTEXT_STATE_VERSION = 'context.v2';
 
-  /** The most recent Monday on/before `d`, as YYYY-MM-DD (UTC) — the weekly
+  /** The most recent Monday on/before `d`, as YYYY-MM-DD (Vietnam calendar) — the weekly
    * report's `weekOf` boundary. */
   function mostRecentMonday(d: Date): string {
-    const dayOfWeek = d.getUTCDay(); // 0=Sun..6=Sat
-    const daysSinceMonday = (dayOfWeek + 6) % 7;
-    const monday = new Date(d.getTime() - daysSinceMonday * 86_400_000);
-    return monday.toISOString().slice(0, 10);
+    return vnMostRecentMonday(d);
   }
 
   function twinBlob(twin: import('@copilot/domain').ChildLearningTwin) {
@@ -1040,7 +1038,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
   const makeDiversity = (targetedReview: boolean): DiversityContext => ({
     recentServed: served.rows.map((r) => ({ questionId: r.question_ref, servedAt: new Date(r.created_at).getTime() })),
     nowMs: now().getTime(),
-    seed: `${childId}|${now().toISOString().slice(0, 10)}`,
+    seed: `${childId}|${vnDay(now())}`,
     targetedReview,
   });
 
@@ -1066,7 +1064,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
       childFacingTitle: kb.skills.get(targetSkillId)?.name ?? targetSkillId,
       rationale: 'Bố mẹ yêu cầu ôn thêm phần này.',
     };
-    const targeted = buildAssignment({ childId: asChildId(childId), action, twin, planDate: now().toISOString().slice(0, 10), at: now().toISOString(), newId: () => `${Date.now()}`, diversity: makeDiversity(false) });
+    const targeted = buildAssignment({ childId: asChildId(childId), action, twin, planDate: vnDay(now()), at: now().toISOString(), newId: () => `${Date.now()}`, diversity: makeDiversity(false) });
     if (!targeted || targeted.questionIds.length === 0) {
       throw new NotFoundError('chưa có đủ câu hỏi để ôn phần này — thử lại sau');
     }
@@ -1109,7 +1107,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
       ? scene.plan
       : buildDailyPlan({
           childId: asChildId(childId),
-          planDate: now().toISOString().slice(0, 10),
+          planDate: vnDay(now()),
           availableMinutes: input.minutes ?? 20,
           twin,
           gaps: scene.gaps,
@@ -1165,7 +1163,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
         {
           id: `asg_${newId()}`,
           childId: asChildId(childId),
-          dailyPlanDate: now().toISOString().slice(0, 10),
+          dailyPlanDate: vnDay(now()),
           mode: 'practice' as const,
           targetSkillIds: [...new Set(picked.map((q) => String(q.skillId)))] as never,
           questionIds: picked.map((q) => q.id),
@@ -1251,7 +1249,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
 
   /** One free library worksheet per child per day (+ skip if 3 are still unopened). */
   async function ensureDailyLibraryWorksheet(ctx: PracticeCtx, childId: string): Promise<{ created: boolean; short: boolean }> {
-    const day = now().toISOString().slice(0, 10);
+    const day = vnDay(now());
     const lockKey = `daily-lib:${childId}:${day}`;
     const client = await pool.connect();
     try {
@@ -1259,7 +1257,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
       if (!lock.rows[0]?.ok) return { created: false, short: false };
       try {
         const r = await client.query<{ today: number; open: number }>(
-          `SELECT count(*) FILTER (WHERE (created_at AT TIME ZONE 'UTC')::date = (now() AT TIME ZONE 'UTC')::date)::int AS today,
+          `SELECT count(*) FILTER (WHERE (created_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date = (now() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date)::int AS today,
                   count(*) FILTER (WHERE status IN ('ASSIGNED','IN_PROGRESS'))::int AS open
              FROM assignments WHERE child_id = $1 AND status <> 'CANCELLED'`,
           [childId],
@@ -2513,10 +2511,10 @@ export function createProductionApi(opts: ProductionApiOptions) {
         CHALLENGE: 'Thử thách',
         DIAGNOSTIC: 'Bài kiểm tra nhỏ',
       };
-      const today = now().toISOString().slice(0, 10);
+      const today = vnDay(now());
       const all = await base.learningState.listAssignmentsForChild(childId);
       const todays = all.filter(
-        (a) => a.createdAt.slice(0, 10) === today && a.status !== 'CANCELLED',
+        (a) => vnDay(new Date(a.createdAt)) === today && a.status !== 'CANCELLED',
       );
       const open = todays.filter((a) => a.status !== 'COMPLETED');
       const doneCount = todays.length - open.length;
