@@ -85,6 +85,7 @@ export const NOTIFICATION_TYPES = [
   'teacher_updated',
   'child_finished_tasks',
   'relationship_request_received',
+  'practice_reminder',
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 

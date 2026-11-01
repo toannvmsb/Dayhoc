@@ -112,7 +112,8 @@ export async function setPreferencesAction(_prev: FormState, form: FormData): Pr
     return { error: 'Chọn mục tiêu và số phút học mỗi ngày.' };
   }
   try {
-    await getApi().setChildPreferences(parentAuth(), childId, { dailyMinutes, goal, examPrep });
+    const reminders = form.get('reminders') === 'on';
+    await getApi().setChildPreferences(parentAuth(), childId, { dailyMinutes, goal, examPrep, reminders });
   } catch (e) {
     return { error: friendly(e) };
   }

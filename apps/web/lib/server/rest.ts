@@ -130,7 +130,9 @@ const ROUTES: Record<string, Handler> = {
       dailyMinutes: Number(c.body.dailyMinutes),
       goal: String(c.body.goal ?? ''),
       examPrep: Boolean(c.body.examPrep),
+      ...(c.body.reminders !== undefined ? { reminders: Boolean(c.body.reminders) } : {}),
     }),
+  'GET /children/:id/inactivity': async (c) => getApi().getInactivityStatus(auth(c, 'PARENT'), c.params[0]!),
 
   // ---- consent centre + data export (backlog B3-03) ----
   'GET /children/:id/consents': async (c) => getApi().getConsentCenter(auth(c, 'PARENT'), c.params[0]!),
@@ -398,6 +400,8 @@ const ROUTES: Record<string, Handler> = {
     getApi().internalLiveQaList(await adminCtx(c), c.query.get('limit') ? Number(c.query.get('limit')) : undefined),
   'GET /admin/internal-live/qa/:id': async (c) => getApi().internalLiveQaRead(await adminCtx(c), c.params[0]!),
   'POST /admin/internal-live/maintenance': async (c) => getApi().internalLiveMaintenance(await adminCtx(c)),
+  // cron target for the "con chưa làm bài 2 ngày" nudges (backlog B2-04); idempotent per Vietnam day
+  'POST /admin/reminders/run': async (c) => getApi().runInactivityReminders(await adminCtx(c)),
 
   // ---- doc 70: SMALL FAMILY PILOT ----
   // ADMIN — pilot cohort + funnel + feedback

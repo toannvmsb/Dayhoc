@@ -70,6 +70,16 @@ export default async function LearningGoals({ params }: { params: { childId: str
           </span>
         </label>
 
+        <label style={optionStyle}>
+          <input type="checkbox" name="reminders" defaultChecked={prefs.reminders} style={{ marginTop: 3 }} />
+          <span>
+            <b style={{ color: 'var(--c-text-heading)', fontSize: 14 }}>Nhắc bố mẹ khi con chưa làm bài 2 ngày</b>
+            <span className="muted" style={{ display: 'block', fontSize: 12.5, lineHeight: 1.5 }}>
+              DạyZi gửi tối đa 3 lời nhắc, cách nhau ít nhất 3 ngày, rồi dừng nếu con vẫn chưa quay lại.
+            </span>
+          </span>
+        </label>
+
         <fieldset style={{ border: 0, padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <legend className="overline" style={{ marginBottom: 6 }}>Số phút học mỗi ngày</legend>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>

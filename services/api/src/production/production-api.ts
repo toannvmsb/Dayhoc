@@ -112,6 +112,7 @@ import {
   type FeedbackVerdict,
 } from './pilot.js';
 import { insertAiUsageEvent } from './pg-ai-usage.js';
+import { getInactivityStatus as getInactivityStatusRow, runInactivityReminders as runInactivityRemindersRow } from './reminders.js';
 import {
   consentKindOf,
   exportChildData as exportChildDataRow,
@@ -2556,6 +2557,9 @@ export function createProductionApi(opts: ProductionApiOptions) {
         minuteOptions: [...DAILY_MINUTES_OPTIONS],
         goal: primaryGoal(p.goals),
         examPrep: p.goals.includes('EXAM_PREP'),
+        reminders: (
+          (await pool.query<{ reminders_enabled: boolean }>(`SELECT reminders_enabled FROM child_profiles WHERE id = $1`, [childId])).rows[0]
+        )?.reminders_enabled ?? true,
         goalOptions: LEARNING_GOALS.filter((g) => g !== 'EXAM_PREP').map((g) => ({
           code: g,
           label: LEARNING_GOAL_INFO[g].label,
@@ -2568,7 +2572,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
     async setChildPreferences(
       auth: CallerAuth,
       childId: string,
-      input: { dailyMinutes: number; goal: string; examPrep?: boolean },
+      input: { dailyMinutes: number; goal: string; examPrep?: boolean; reminders?: boolean },
     ) {
       const ctx = await deriveContext(auth);
       if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
@@ -2585,6 +2589,9 @@ export function createProductionApi(opts: ProductionApiOptions) {
         `UPDATE child_profiles SET goals = $2::jsonb, available_time_profile = $3 WHERE id = $1`,
         [childId, JSON.stringify(goals), minutes],
       );
+      if (input.reminders !== undefined) {
+        await pool.query(`UPDATE child_profiles SET reminders_enabled = $2 WHERE id = $1`, [childId, Boolean(input.reminders)]);
+      }
       logger.info('child preferences set', { actor: actorRef(ctx.userId), goal: input.goal, minutes });
       return { dailyMinutes: minutes, goal: input.goal, examPrep: Boolean(input.examPrep) };
     },
@@ -3204,6 +3211,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
         const pilotPurged = await purgePilotForChild(client, wsRef);
         logger.info('deletion: internal-live + pilot purged', { child: wsRef, servingPurged, qaPurged, pilotPurged });
         await del('generation_specs', `DELETE FROM generation_specs WHERE child_id = $1`, [childId]);
+        await del('reminder_log', `DELETE FROM reminder_log WHERE child_id = $1`, [childId]);
         await del('exam_results', `DELETE FROM exam_results WHERE child_id = $1`, [childId]);
         await del('exams', `DELETE FROM exams WHERE child_id = $1`, [childId]);
         await del('upload_analysis', `DELETE FROM upload_analysis WHERE child_id = $1`, [childId]);
@@ -3946,6 +3954,24 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const ctx = await deriveContext(auth);
       await authorizeChild(ctx, childId, 'view_child');
       return { hasConsent: await hasPilotConsent(pool, childId) };
+    },
+
+    // ---- B2-04: inactivity reminders ---------------------------------
+
+    /** GET /children/:childId/inactivity — drives the "con chưa làm bài" banner on the parent's home. */
+    async getInactivityStatus(auth: CallerAuth, childId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'view_child');
+      return getInactivityStatusRow(pool, childId, now());
+    },
+
+    /** ADMIN / cron — send the inactivity nudges that are due (idempotent per Vietnam day). */
+    async runInactivityReminders(ctx: WorkspaceRequestContext) {
+      if (ctx.workspace !== 'ADMIN') throw new AuthzError('admin only');
+      const result = await runInactivityRemindersRow(pool, notifications, now());
+      logger.info('inactivity reminders run', { actor: actorRef(ctx.userId), ...result });
+      return result;
     },
 
     // ---- B3-03: consent management + data export --------------------

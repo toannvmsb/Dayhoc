@@ -16,6 +16,7 @@ const TEMPLATE: Record<NotificationType, { title: string; body: string }> = {
   teacher_updated: { title: 'Giáo viên vừa cập nhật', body: 'Có nội dung mới con đã học trên lớp.' },
   child_finished_tasks: { title: 'Con đã hoàn thành bài hôm nay', body: 'Con vừa xong các việc được giao.' },
   relationship_request_received: { title: 'Có yêu cầu kết nối mới', body: 'Một giáo viên/phụ huynh muốn kết nối với hồ sơ của con.' },
+  practice_reminder: { title: 'Con chưa luyện tập mấy hôm nay', body: 'Chỉ cần vài phút hôm nay là con giữ được nhịp học.' },
 };
 
 export function makeNotification(

@@ -22,6 +22,10 @@ export default async function ParentHome({ params }: { params: { childId: string
   } catch {
     notFound();
   }
+  // the banner is a courtesy: never let it break the home screen
+  const idle = await getApi()
+    .getInactivityStatus(parentAuth(), params.childId)
+    .catch(() => null);
 
   return (
     <Screen nav={<ParentNav childId={params.childId} active="home" />}>
@@ -31,6 +35,22 @@ export default async function ParentHome({ params }: { params: { childId: string
           {home.child.displayName} · Lớp {home.child.schoolGrade} ›
         </Link>
       </header>
+
+      {idle?.needsNudge && idle.inactiveDays !== null ? (
+        <Link
+          href={`/be/${params.childId}/bai-tap`}
+          className="card card--attention"
+          data-testid="idle-banner"
+          style={{ textDecoration: 'none', gap: 2 }}
+        >
+          <b style={{ color: 'var(--c-attention-text)', fontSize: 13.5 }}>
+            {home.child.displayName} chưa làm bài {idle.inactiveDays} ngày rồi
+          </b>
+          <span style={{ fontSize: 12.5, color: 'var(--c-attention-body)' }}>
+            Vài phút hôm nay là con giữ được nhịp học — mở bài hôm nay ›
+          </span>
+        </Link>
+      ) : null}
 
       <LearningContextCard ctx={home.learningContext} childId={params.childId} />
       <TodayPlanCard plan={home.todayPlan} />
