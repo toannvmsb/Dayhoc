@@ -9,6 +9,7 @@
 //   node scripts/pilot-admin.mjs consent      parent@example.com          # all that parent's children
 //   node scripts/pilot-admin.mjs requeue      parent@example.com          # after granting consent post-hoc
 //   node scripts/pilot-admin.mjs list
+//   node scripts/pilot-admin.mjs users                                    # read-only: who has signed up in THIS database
 //   node scripts/pilot-admin.mjs safety                                   # read-only scan
 //   node scripts/pilot-admin.mjs kill on  "reason"       |  kill off
 import { readFileSync } from 'node:fs';
@@ -108,6 +109,15 @@ try {
         const del = await pool.query(`DELETE FROM worksheet_jobs WHERE child_ref = $1`, [ref]);
         console.log(`- ${k.display_name}: cleared ${del.rowCount} job row(s) — next "Hôm nay" open enqueues fresh today`);
       }
+      break;
+    }
+    case 'users': {
+      const r = await pool.query(
+        `SELECT u.primary_email AS email, u.display_name, u.created_at,
+                (SELECT count(*) FROM parent_child_relationships r WHERE r.parent_user_id = u.id AND r.status = 'ACTIVE') AS children
+           FROM users u ORDER BY u.created_at DESC LIMIT 30`);
+      console.log(`${r.rowCount} user(s) (latest 30):`);
+      for (const u of r.rows) console.log(`- ${u.email ?? '(no email)'} | ${u.display_name ?? ''} | children: ${u.children} | ${new Date(u.created_at).toISOString().slice(0, 10)}`);
       break;
     }
     case 'list': {
