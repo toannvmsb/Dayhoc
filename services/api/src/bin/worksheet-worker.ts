@@ -20,6 +20,38 @@ import { Pool } from 'pg';
 import { loadKnowledgeBase } from '@copilot/math-data';
 import { createWorksheetJobWorker } from '../production/worksheet-generation.js';
 
+/** PEM from an env var, however it was pasted (same rule as the web app's `normalizePem`). */
+function caFromEnv(raw: string | undefined): string | undefined {
+  const blocks = [...(raw ?? '').matchAll(/-----BEGIN CERTIFICATE-----([\s\S]*?)-----END CERTIFICATE-----/g)];
+  if (blocks.length === 0) return undefined;
+  return blocks
+    .map((m) => {
+      const body = (m[1] ?? '').replace(/\\n|\s+/g, '');
+      const lines = body.match(/.{1,64}/g) ?? [];
+      return `-----BEGIN CERTIFICATE-----\n${lines.join('\n')}\n-----END CERTIFICATE-----\n`;
+    })
+    .join('');
+}
+
+/** `sslmode` in the URL would override the `ssl` option below, so drop it whenever we set one explicitly. */
+function sslConnectionString(url: string): string {
+  if (!caFromEnv(process.env.DB_SSL_CA) && !url.includes('supabase')) return url;
+  const u = new URL(url);
+  u.searchParams.delete('sslmode');
+  return u.toString();
+}
+
+/** Hosted Postgres: verify against DB_SSL_CA when given; otherwise encrypt without verification (as scripts/pilot-*.mjs do). */
+function poolSsl(url: string): { ssl?: { ca?: string; rejectUnauthorized: boolean } } {
+  const ca = caFromEnv(process.env.DB_SSL_CA);
+  if (ca) return { ssl: { ca, rejectUnauthorized: true } };
+  if (url.includes('supabase')) {
+    console.error('[worksheet-worker] DB_SSL_CA not set — TLS to the database is encrypted but not verified');
+    return { ssl: { rejectUnauthorized: false } };
+  }
+  return {};
+}
+
 async function main(): Promise<void> {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
@@ -27,7 +59,8 @@ async function main(): Promise<void> {
     process.exit(2);
   }
   const pool = new Pool({
-    connectionString,
+    connectionString: sslConnectionString(connectionString),
+    ...poolSsl(connectionString),
     max: Number(process.env.WORKER_PG_MAX ?? 4),
     keepAlive: true,
     idleTimeoutMillis: 20_000,

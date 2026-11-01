@@ -55,6 +55,17 @@ INTERNAL_LIVE_XCHECK_DAILY_CAP_USD=0.50
 Lệnh chạy: `npm run worker:worksheet`. Log đúng: `[worksheet-worker] started (workerId=…)`.
 Mã thoát **3** = cấu hình thiếu/sai (xem dòng lỗi ngay trước đó).
 
+**Chạy thử trên máy anh (PowerShell, trước khi thuê host):** worker không tự đọc `.env`, và `DATABASE_URL` trong `.env` đang trỏ DB local, nên phải trỏ nó sang DB pilot:
+
+```powershell
+$env:DATABASE_URL = (Select-String -Path .env -Pattern '^PILOT_DATABASE_URL=(.*)$').Matches[0].Groups[1].Value
+$env:AI_GENERATION_MODE = 'SHADOW'
+$env:WORKSHEET_QUEUE = 'durable'
+node --env-file=.env services/api/dist/bin/worksheet-worker.js
+```
+
+(`--env-file` không ghi đè biến đã đặt trong phiên, nên các dòng trên thắng `.env`.) Dừng bằng Ctrl+C. Máy tắt thì worker dừng — chỉ để thử, chạy thật cần host.
+
 Chỉ cần dịch vụ **worker**; cron của Render không cần nữa vì safety và dọn dẹp đã chạy trên Netlify (mục 4).
 
 ## 4. Netlify (web)
