@@ -87,24 +87,24 @@ Railway cũ cũng đang chết vì lý do này.
 ## 5. Backlog V2 (xếp theo ưu tiên)
 
 **P0 — chặn việc test**
-* B0-01 Khôi phục Supabase (pilot) → deploy Netlify bằng `netlify.toml` (anh làm bước đăng nhập/đặt biến).
-* B0-02 Push commit này lên GitHub (cần anh chạy `git push`) để Netlify build từ repo.
-* B0-03 Sửa test `worksheet-job-queue.integration` đang vi phạm check `mode IN ('SHADOW','LIVE')` (cũ, không liên quan thay đổi này).
+* ✅ B0-01 Supabase staging đã khôi phục; site Netlify `daykenhoc` chạy, `/api/v1/ready` = up (2026-11-01). Kết nối DB giữ kiểm tra TLS qua biến `DB_SSL_CA`.
+* ✅ B0-02 Push + Netlify build từ repo (Git-based deploy).
+* ✅ B0-03 Test `worksheet-job-queue.integration` (bounded retry) không còn enqueue mode `OFF` sai ràng buộc.
 
 **P1 — chất lượng nội dung (thư viện là nguồn chính)**
 * B1-01 Rà chất lượng mẫu: lấy ngẫu nhiên ~30 câu/kỹ năng để giáo viên kiểm (đúng đáp án, đúng lớp).
   Hiện toàn bộ 9.400 câu ghi `origin: authored`; nếu do máy sinh thì đánh dấu lại.
 * B1-02 Bổ sung câu **T4–T5/HSG** (hiện thư viện chỉ có ~3% ở mức K3/T4–K4/T4; 7 kỹ năng chưa có câu K1).
 * B1-03 90% câu ở mức rủi ro lặp CAO (cooldown 21 ngày) → thêm biến thể cấu trúc để vòng lặp dài hơn.
-* B1-04 Bài **ôn thi tháng/học kỳ** từ thư viện: ghép theo phạm vi thi + tỉ lệ K/T (nay mới có kế hoạch ôn, chưa có đề).
+* ✅ B1-04 Bài **ôn thi tháng/học kỳ** từ thư viện: nút "Giao đề ôn thử" ở trang kỳ thi → 1 bài `REVISION` ghép theo phạm vi thi, nhiều câu hơn ở kỹ năng ưu tiên cao, dễ→khó, 0 AI. Chưa có: bảng chấm điểm tự động theo đề thi thật, liên kết bài ↔ kỳ thi trong DB (cần migration `assignments.exam_id`).
 * B1-05 Lưu log chọn bài (`selection_reason`, `cooldown_override_reason`) vào DB theo Claude Instructions.
 
 **P2 — đúng mục tiêu "bố mẹ không phải làm gì nhiều"**
 * B2-01 Đọc ảnh bài tập nhà trường → suy ra bài/mức đang học (cần OCR thật; chạy thử với ảnh thật, đo chi phí/ảnh trước khi bật).
-* B2-02 Ngân sách phút học/ngày do bố mẹ chọn (nay cố định 20′ cho bài tự tạo).
-* B2-03 Màn **mục tiêu học** (VD: "ôn thi HK1", "thi HSG") → ảnh hưởng tỉ lệ bài cơ bản/nâng cao.
+* ✅ B2-02 Số phút học/ngày do bố mẹ chọn (10–60′, màn `/be/:id/muc-tieu`) → độ dài bài tự tạo hằng ngày.
+* ✅ B2-03 Màn **mục tiêu học**: Giữ nhịp / Củng cố nền / Nâng cao-HSG (+ cờ "sắp thi") → đổi tỉ lệ bài vừa sức : thử thách (75:25 · 85:15 · 60:40). Lưu ở `child_profiles.goals` (không cần migration).
 * B2-04 Nhắc bố mẹ (thông báo/email) khi con chưa làm bài 2 ngày.
-* B2-05 Ngày tính theo giờ Việt Nam (nay biên ngày theo UTC, lệch 7 giờ).
+* ✅ B2-05 Ngày tính theo giờ Việt Nam (UTC+7) cho bài hằng ngày, bài miễn phí 1 lần/ngày, báo cáo tuần.
 
 **P3 — mở rộng**
 * B3-01 AI_TOPUP bật thử cho 1–2 gia đình sau khi có số đo chi phí/ngày thật.
