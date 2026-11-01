@@ -153,7 +153,7 @@ function core(prompt) {
     const pairs = [...m[1].matchAll(/([A-Z])=(\d+)/g)].map((x) => [x[1], Number(x[2])]).sort((a, b) => b[1] - a[1]);
     if (pairs.length > 1 && pairs[0][1] !== pairs[1][1]) return txt(pairs[0][0], m[0]);
   }
-  if ((m = /ghi\s+\d+\s+giá trị liên tiếp:\s*([\d, ]+)\.\s*Giá trị cuối hơn giá trị đầu/.exec(p))) { const xs = nums(m[1]); return { ...val(R(xs.at(-1) - xs[0]), m[0]), signed: true }; }
+  if ((m = /ghi\s+\d+\s+giá trị liên tiếp:\s*([\d, ]+)\.\s*Giá trị cuối (hơn|trừ) giá trị đầu/.exec(p))) { const xs = nums(m[1]); return { ...val(R(xs.at(-1) - xs[0]), m[0]), signed: m[2] === 'hơn' }; }
   if ((m = /(\d+)\s+kết quả thuận lợi trong\s+(\d+)\s+kết quả đồng khả năng/.exec(p))) return val(R(m[1], m[2]), m[0]);
   if ((m = /Dữ liệu phân loại gồm:\s*([A-Z, ]+)\. Có bao nhiêu phần tử thuộc nhóm\s+([A-Z])/.exec(p))) return val(R(m[1].split(',').map((x) => x.trim()).filter((x) => x === m[2]).length), m[0]);
   if ((m = /Quy đồng mẫu số hai phân số\s+(\d+)\/(\d+)\s+và\s+(\d+)\/(\d+)/.exec(p))) {

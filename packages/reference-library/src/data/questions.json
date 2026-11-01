@@ -133553,7 +133553,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K1",
     "thinkingLevel": "T1",
-    "prompt": "Với bài toán Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 41, 24, 47, 43, 16. Giá trị cuối hơn giá trị đầu bao nhiêu?, có khẳng định “Đáp án là -23”. Hãy kiểm tra.",
+    "prompt": "Với bài toán Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 41, 24, 47, 43, 16. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.), có khẳng định “Đáp án là -23”. Hãy kiểm tra.",
     "answerSpec": {
       "kind": "choice",
       "correct": "Sai",
@@ -133600,7 +133600,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K1",
     "thinkingLevel": "T1",
-    "prompt": "Điền giá trị còn thiếu trong bài sau: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 31, 48, 42, 29, 26. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Điền giá trị còn thiếu trong bài sau: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 31, 48, 42, 29, 26. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "numeric",
       "value": -5,
@@ -133696,7 +133696,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K1",
     "thinkingLevel": "T1",
-    "prompt": "Sau khi thực hiện đúng các bước, điền đáp án: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 42, 24, 37, 11, 22. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Sau khi thực hiện đúng các bước, điền đáp án: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 42, 24, 37, 11, 22. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "numeric",
       "value": -20,
@@ -133745,7 +133745,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K1",
     "thinkingLevel": "T1",
-    "prompt": "Kiểm tra khẳng định sau bằng phép tính/tính chất: “Đáp án là -8”. Bài gốc: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 42, 39, 46, 48, 33. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Kiểm tra khẳng định sau bằng phép tính/tính chất: “Đáp án là -8”. Bài gốc: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 42, 39, 46, 48, 33. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "choice",
       "correct": "Sai",
@@ -133770,7 +133770,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T2",
-    "prompt": "Thực hiện yêu cầu sau: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 20, 20, 20, 25, 14. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Thực hiện yêu cầu sau: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 20, 20, 20, 25, 14. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "numeric",
       "value": -6,
@@ -133841,7 +133841,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K1",
     "thinkingLevel": "T1",
-    "prompt": "Dùng cách kiểm tra độc lập để đánh giá khẳng định “Đáp án là -1” trong bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 14, 13, 22, 11, 12. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Dùng cách kiểm tra độc lập để đánh giá khẳng định “Đáp án là -1” trong bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 14, 13, 22, 11, 12. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "choice",
       "correct": "Sai",
@@ -133962,7 +133962,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T2",
-    "prompt": "Làm bài và ghi đáp án cuối cùng: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 35, 44, 29, 17, 23. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Làm bài và ghi đáp án cuối cùng: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 35, 44, 29, 17, 23. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "numeric",
       "value": -12,
@@ -133984,7 +133984,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K1",
     "thinkingLevel": "T1",
-    "prompt": "Điền đáp án còn thiếu sau khi giải: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 35, 35, 43, 33, 15. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Điền đáp án còn thiếu sau khi giải: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 35, 35, 43, 33, 15. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "numeric",
       "value": -20,
@@ -134006,7 +134006,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K1",
     "thinkingLevel": "T1",
-    "prompt": "Tự giải rồi chọn phương án đúng: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 41, 41, 32, 12, 28. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Tự giải rồi chọn phương án đúng: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 41, 41, 32, 12, 28. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "choice",
       "correct": "-13",
@@ -134033,7 +134033,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K1",
     "thinkingLevel": "T1",
-    "prompt": "Với bài toán Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 46, 24, 32, 10, 26. Giá trị cuối hơn giá trị đầu bao nhiêu?, có khẳng định “Đáp án là -18”. Hãy kiểm tra.",
+    "prompt": "Với bài toán Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 46, 24, 32, 10, 26. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.), có khẳng định “Đáp án là -18”. Hãy kiểm tra.",
     "answerSpec": {
       "kind": "choice",
       "correct": "Sai",
@@ -134058,7 +134058,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T2",
-    "prompt": "Hoàn thành bài sau: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 50, 17, 18, 28, 19. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Hoàn thành bài sau: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 50, 17, 18, 28, 19. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "numeric",
       "value": -31,
@@ -134102,7 +134102,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T2",
-    "prompt": "Chọn đáp án đúng cho bài toán: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 43, 41, 23, 48, 41. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Chọn đáp án đúng cho bài toán: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 43, 41, 23, 48, 41. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "choice",
       "correct": "-2",
@@ -134129,7 +134129,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K1",
     "thinkingLevel": "T1",
-    "prompt": "Một bạn đưa ra kết luận: “Đáp án là -5”. Hãy xác định Đúng hay Sai cho bài: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 37, 37, 24, 34, 31. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Một bạn đưa ra kết luận: “Đáp án là -5”. Hãy xác định Đúng hay Sai cho bài: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 37, 37, 24, 34, 31. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "choice",
       "correct": "Sai",
@@ -134176,7 +134176,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K1",
     "thinkingLevel": "T1",
-    "prompt": "Sau khi thực hiện đúng các bước, điền đáp án: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 50, 30, 42, 28, 34. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Sau khi thực hiện đúng các bước, điền đáp án: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 50, 30, 42, 28, 34. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "numeric",
       "value": -16,
@@ -134198,7 +134198,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T2",
-    "prompt": "Làm bài và ghi đáp án cuối cùng: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 20, 41, 38, 49, 18. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Làm bài và ghi đáp án cuối cùng: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 20, 41, 38, 49, 18. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "numeric",
       "value": -2,
@@ -134269,7 +134269,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K3",
     "thinkingLevel": "T3",
-    "prompt": "Phát hiện lỗi: với bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 26, 27, 34, 31, 17. Giá trị cuối hơn giá trị đầu bao nhiêu?, một kết quả được ghi là -8. Hãy kiểm tra và giải thích.",
+    "prompt": "Phát hiện lỗi: với bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 26, 27, 34, 31, 17. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.), một kết quả được ghi là -8. Hãy kiểm tra và giải thích.",
     "answerSpec": {
       "kind": "reasoning"
     },
@@ -134338,7 +134338,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T2",
-    "prompt": "Trong một phiếu luyện tập, yêu cầu là: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 44, 24, 41, 33, 10. Giá trị cuối hơn giá trị đầu bao nhiêu? Hãy xác định dữ kiện và giải.",
+    "prompt": "Trong một phiếu luyện tập, yêu cầu là: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 44, 24, 41, 33, 10. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.) Hãy xác định dữ kiện và giải.",
     "answerSpec": {
       "kind": "numeric",
       "value": -34,
@@ -134402,7 +134402,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T2",
-    "prompt": "Khoanh vào đáp án đúng sau khi tính: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 21, 15, 47, 16, 16. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Khoanh vào đáp án đúng sau khi tính: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 21, 15, 47, 16, 16. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "choice",
       "correct": "-5",
@@ -134471,7 +134471,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T2",
-    "prompt": "Thực hiện yêu cầu sau: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 16, 45, 25, 33, 13. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Thực hiện yêu cầu sau: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 16, 45, 25, 33, 13. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "numeric",
       "value": -3,
@@ -134493,7 +134493,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K1",
     "thinkingLevel": "T1",
-    "prompt": "Phương án nào là kết quả đúng của bài sau? Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 47, 38, 48, 19, 23. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Phương án nào là kết quả đúng của bài sau? Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 47, 38, 48, 19, 23. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "choice",
       "correct": "-24",
@@ -134542,7 +134542,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K3",
     "thinkingLevel": "T3",
-    "prompt": "Đánh giá lời giải sai: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 36, 16, 38, 32, 15. Giá trị cuối hơn giá trị đầu bao nhiêu?. Kết quả nháp là -19. Hãy sửa bằng lập luận đúng.",
+    "prompt": "Đánh giá lời giải sai: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 36, 16, 38, 32, 15. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.). Kết quả nháp là -19. Hãy sửa bằng lập luận đúng.",
     "answerSpec": {
       "kind": "reasoning"
     },
@@ -134562,7 +134562,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K1",
     "thinkingLevel": "T1",
-    "prompt": "Giải bài toán sau: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 38, 19, 18, 27, 36. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Giải bài toán sau: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 38, 19, 18, 27, 36. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "numeric",
       "value": -2,
@@ -134611,7 +134611,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T2",
-    "prompt": "Một tình huống thực hành đưa ra yêu cầu sau: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 45, 35, 37, 50, 24. Giá trị cuối hơn giá trị đầu bao nhiêu? Hãy chuyển về dạng toán quen thuộc rồi giải.",
+    "prompt": "Một tình huống thực hành đưa ra yêu cầu sau: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 45, 35, 37, 50, 24. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.) Hãy chuyển về dạng toán quen thuộc rồi giải.",
     "answerSpec": {
       "kind": "numeric",
       "value": -21,
@@ -134633,7 +134633,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K3",
     "thinkingLevel": "T3",
-    "prompt": "Một lời giải nháp của bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 45, 20, 33, 38, 41. Giá trị cuối hơn giá trị đầu bao nhiêu? cho kết quả -3. Hãy xác định bước cần sửa và hoàn thiện lời giải.",
+    "prompt": "Một lời giải nháp của bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 45, 20, 33, 38, 41. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.) cho kết quả -3. Hãy xác định bước cần sửa và hoàn thiện lời giải.",
     "answerSpec": {
       "kind": "reasoning"
     },
@@ -134675,7 +134675,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T2",
-    "prompt": "Chọn đáp án đúng cho bài toán: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 42, 34, 48, 25, 36. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Chọn đáp án đúng cho bài toán: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 42, 34, 48, 25, 36. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "choice",
       "correct": "-6",
@@ -134724,7 +134724,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K3",
     "thinkingLevel": "T3",
-    "prompt": "Phát hiện lỗi: với bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 35, 28, 50, 13, 29. Giá trị cuối hơn giá trị đầu bao nhiêu?, một kết quả được ghi là -5. Hãy kiểm tra và giải thích.",
+    "prompt": "Phát hiện lỗi: với bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 35, 28, 50, 13, 29. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.), một kết quả được ghi là -5. Hãy kiểm tra và giải thích.",
     "answerSpec": {
       "kind": "reasoning"
     },
@@ -134744,7 +134744,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T2",
-    "prompt": "Hoàn thành bài sau: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 38, 17, 21, 43, 34. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Hoàn thành bài sau: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 38, 17, 21, 43, 34. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "numeric",
       "value": -4,
@@ -134793,7 +134793,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T2",
-    "prompt": "Trong một phiếu luyện tập, yêu cầu là: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 18, 43, 36, 47, 12. Giá trị cuối hơn giá trị đầu bao nhiêu? Hãy xác định dữ kiện và giải.",
+    "prompt": "Trong một phiếu luyện tập, yêu cầu là: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 18, 43, 36, 47, 12. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.) Hãy xác định dữ kiện và giải.",
     "answerSpec": {
       "kind": "numeric",
       "value": -6,
@@ -134815,7 +134815,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K3",
     "thinkingLevel": "T3",
-    "prompt": "Khi giải Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 24, 31, 17, 12, 11. Giá trị cuối hơn giá trị đầu bao nhiêu?, có lời giải đưa ra đáp án -12. Hãy tìm lỗi và sửa lại.",
+    "prompt": "Khi giải Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 24, 31, 17, 12, 11. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.), có lời giải đưa ra đáp án -12. Hãy tìm lỗi và sửa lại.",
     "answerSpec": {
       "kind": "reasoning"
     },
@@ -134835,7 +134835,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T2",
-    "prompt": "Tính/giải theo đúng kiến thức đã học: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 28, 18, 48, 40, 15. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Tính/giải theo đúng kiến thức đã học: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 28, 18, 48, 40, 15. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "numeric",
       "value": -13,
@@ -134857,7 +134857,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T2",
-    "prompt": "Khoanh vào đáp án đúng sau khi tính: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 34, 50, 45, 22, 27. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Khoanh vào đáp án đúng sau khi tính: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 34, 50, 45, 22, 27. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "choice",
       "correct": "-7",
@@ -134884,7 +134884,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T2",
-    "prompt": "Trong hoạt động ôn tập, bài toán cần xử lý là: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 21, 17, 10, 39, 20. Giá trị cuối hơn giá trị đầu bao nhiêu? Hãy giải theo cách ngắn gọn, chính xác.",
+    "prompt": "Trong hoạt động ôn tập, bài toán cần xử lý là: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 21, 17, 10, 39, 20. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.) Hãy giải theo cách ngắn gọn, chính xác.",
     "answerSpec": {
       "kind": "numeric",
       "value": -1,
@@ -134926,7 +134926,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T2",
-    "prompt": "Thực hiện yêu cầu sau: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 39, 28, 49, 29, 37. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Thực hiện yêu cầu sau: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 39, 28, 49, 29, 37. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "numeric",
       "value": -2,
@@ -134988,7 +134988,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K3",
     "thinkingLevel": "T3",
-    "prompt": "Dùng định nghĩa hoặc phép toán ngược để xác minh kết quả -12 cho bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 34, 23, 19, 44, 22. Giá trị cuối hơn giá trị đầu bao nhiêu?.",
+    "prompt": "Dùng định nghĩa hoặc phép toán ngược để xác minh kết quả -12 cho bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 34, 23, 19, 44, 22. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.).",
     "answerSpec": {
       "kind": "reasoning"
     },
@@ -135008,7 +135008,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T2",
-    "prompt": "Chọn đáp án đúng cho bài toán: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 29, 17, 33, 14, 18. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Chọn đáp án đúng cho bài toán: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 29, 17, 33, 14, 18. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "choice",
       "correct": "-11",
@@ -135055,7 +135055,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K3",
     "thinkingLevel": "T3",
-    "prompt": "Trình bày lời giải có giải thích cho bài: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 41, 36, 20, 19, 31. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Trình bày lời giải có giải thích cho bài: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 41, 36, 20, 19, 31. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "reasoning"
     },
@@ -135075,7 +135075,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K3",
     "thinkingLevel": "T3",
-    "prompt": "Hãy chứng minh kết quả -7 phù hợp với dữ kiện của bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 37, 40, 15, 28, 30. Giá trị cuối hơn giá trị đầu bao nhiêu? bằng cách kiểm tra ngược.",
+    "prompt": "Hãy chứng minh kết quả -7 phù hợp với dữ kiện của bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 37, 40, 15, 28, 30. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.) bằng cách kiểm tra ngược.",
     "answerSpec": {
       "kind": "reasoning"
     },
@@ -135095,7 +135095,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T2",
-    "prompt": "Chọn kết quả chính xác nhất: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 21, 43, 37, 12, 20. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Chọn kết quả chính xác nhất: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 21, 43, 37, 12, 20. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "choice",
       "correct": "-1",
@@ -135122,7 +135122,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K3",
     "thinkingLevel": "T3",
-    "prompt": "Một bạn làm bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 34, 39, 17, 24, 17. Giá trị cuối hơn giá trị đầu bao nhiêu? nhưng kết luận -16. Hãy chỉ ra vì sao kết luận đó chưa đúng và nêu kết quả đúng.",
+    "prompt": "Một bạn làm bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 34, 39, 17, 24, 17. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.) nhưng kết luận -16. Hãy chỉ ra vì sao kết luận đó chưa đúng và nêu kết quả đúng.",
     "answerSpec": {
       "kind": "reasoning"
     },
@@ -135142,7 +135142,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K3",
     "thinkingLevel": "T3",
-    "prompt": "Không chỉ ghi đáp án: hãy giải và nêu tính chất/quy tắc đã dùng trong bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 49, 21, 29, 46, 25. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Không chỉ ghi đáp án: hãy giải và nêu tính chất/quy tắc đã dùng trong bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 49, 21, 29, 46, 25. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "reasoning"
     },
@@ -135162,7 +135162,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K3",
     "thinkingLevel": "T3",
-    "prompt": "Từ kết quả -16, hãy suy ngược để kiểm tra bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 48, 34, 24, 10, 32. Giá trị cuối hơn giá trị đầu bao nhiêu?.",
+    "prompt": "Từ kết quả -16, hãy suy ngược để kiểm tra bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 48, 34, 24, 10, 32. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.).",
     "answerSpec": {
       "kind": "reasoning"
     },
@@ -135182,7 +135182,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T2",
-    "prompt": "Khoanh vào đáp án đúng sau khi tính: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 48, 19, 27, 34, 31. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Khoanh vào đáp án đúng sau khi tính: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 48, 19, 27, 34, 31. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "choice",
       "correct": "-17",
@@ -135229,7 +135229,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K3",
     "thinkingLevel": "T3",
-    "prompt": "Giải bài sau và giải thích rõ vì sao cách làm của con đúng: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 36, 17, 33, 36, 21. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Giải bài sau và giải thích rõ vì sao cách làm của con đúng: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 36, 17, 33, 36, 21. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "reasoning"
     },
@@ -135269,7 +135269,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K1",
     "thinkingLevel": "T1",
-    "prompt": "Phương án nào là kết quả đúng của bài sau? Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 47, 21, 15, 26, 22. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Phương án nào là kết quả đúng của bài sau? Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 47, 21, 15, 26, 22. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "choice",
       "correct": "-25",
@@ -135316,7 +135316,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K3",
     "thinkingLevel": "T3",
-    "prompt": "Hãy giải bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 23, 38, 37, 45, 15. Giá trị cuối hơn giá trị đầu bao nhiêu? và giải thích cách tự kiểm tra kết quả.",
+    "prompt": "Hãy giải bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 23, 38, 37, 45, 15. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.) và giải thích cách tự kiểm tra kết quả.",
     "answerSpec": {
       "kind": "reasoning"
     },
@@ -135383,7 +135383,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K3",
     "thinkingLevel": "T3",
-    "prompt": "Phát hiện lỗi: với bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 42, 44, 49, 38, 23. Giá trị cuối hơn giá trị đầu bao nhiêu?, một kết quả được ghi là -18. Hãy kiểm tra và giải thích.",
+    "prompt": "Phát hiện lỗi: với bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 42, 44, 49, 38, 23. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.), một kết quả được ghi là -18. Hãy kiểm tra và giải thích.",
     "answerSpec": {
       "kind": "reasoning"
     },
@@ -135403,7 +135403,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K3",
     "thinkingLevel": "T3",
-    "prompt": "Giải Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 47, 27, 23, 15, 20. Giá trị cuối hơn giá trị đầu bao nhiêu? rồi mô tả ngắn gọn các bước suy luận quan trọng.",
+    "prompt": "Giải Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 47, 27, 23, 15, 20. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.) rồi mô tả ngắn gọn các bước suy luận quan trọng.",
     "answerSpec": {
       "kind": "reasoning"
     },
@@ -135423,7 +135423,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K3",
     "thinkingLevel": "T3",
-    "prompt": "Dùng định nghĩa hoặc phép toán ngược để xác minh kết quả -12 cho bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 41, 20, 41, 42, 29. Giá trị cuối hơn giá trị đầu bao nhiêu?.",
+    "prompt": "Dùng định nghĩa hoặc phép toán ngược để xác minh kết quả -12 cho bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 41, 20, 41, 42, 29. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.).",
     "answerSpec": {
       "kind": "reasoning"
     },
@@ -135490,7 +135490,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K3",
     "thinkingLevel": "T3",
-    "prompt": "Trình bày lời giải có giải thích cho bài: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 43, 44, 21, 12, 10. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Trình bày lời giải có giải thích cho bài: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 43, 44, 21, 12, 10. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "reasoning"
     },
@@ -135530,7 +135530,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K2",
     "thinkingLevel": "T2",
-    "prompt": "Chọn kết quả chính xác nhất: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 36, 36, 31, 50, 13. Giá trị cuối hơn giá trị đầu bao nhiêu?",
+    "prompt": "Chọn kết quả chính xác nhất: Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 36, 36, 31, 50, 13. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.)",
     "answerSpec": {
       "kind": "choice",
       "correct": "-23",
@@ -135557,7 +135557,7 @@
     "skillId": "M7.DATA.LINE_CHART",
     "knowledgeLevel": "K3",
     "thinkingLevel": "T3",
-    "prompt": "Một bạn làm bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 49, 45, 13, 17, 44. Giá trị cuối hơn giá trị đầu bao nhiêu? nhưng kết luận -4. Hãy chỉ ra vì sao kết luận đó chưa đúng và nêu kết quả đúng.",
+    "prompt": "Một bạn làm bài Biểu đồ đoạn thẳng ghi 5 giá trị liên tiếp: 49, 45, 13, 17, 44. Giá trị cuối trừ giá trị đầu bằng bao nhiêu? (Kết quả âm nếu giá trị giảm.) nhưng kết luận -4. Hãy chỉ ra vì sao kết luận đó chưa đúng và nêu kết quả đúng.",
     "answerSpec": {
       "kind": "reasoning"
     },
