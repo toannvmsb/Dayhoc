@@ -122,10 +122,14 @@ import {
   teacherListClasses as teacherListClassesRow,
   teacherRevokeJoinCode as teacherRevokeJoinCodeRow,
 } from './class-join.js';
+import { visionLimitsFromEnv, visionUsageEvent } from './vision-cost.js';
 import { getInactivityStatus as getInactivityStatusRow, runInactivityReminders as runInactivityRemindersRow } from './reminders.js';
 import {
+  CONSENT_CATALOG,
   consentKindOf,
   exportChildData as exportChildDataRow,
+  hasConsent as hasConsentRow,
+  writeConsent as writeConsentRow,
   getConsentCenter as getConsentCenterRow,
 } from './consent-center.js';
 import {
@@ -339,7 +343,16 @@ export function createProductionApi(opts: ProductionApiOptions) {
   const uploadStorage =
     opts.uploadStorage ?? resolveUploadStorageAdapter(process.env).adapter;
   const documentVision =
-    opts.documentVision ?? resolveDocumentVisionAdapter(process.env).adapter;
+    opts.documentVision ??
+    resolveDocumentVisionAdapter(process.env, {
+      // every live call goes to the AICostLedger, even when its output was rejected (it is still billed)
+      onUsage: (usage, usageCtx) => {
+        insertAiUsageEvent(pool, visionUsageEvent(usage, usageCtx, now())).catch((e) =>
+          logger.warn('ai_usage_events insert failed (vision)', { error: e instanceof Error ? e.message : String(e) }),
+        );
+      },
+    }).adapter;
+  const visionLimits = visionLimitsFromEnv(process.env);
   const uploadStore = new PgUploadAnalysisStore(pool);
   const uploadIngestion = new UploadIngestionService({
     storage: uploadStorage,
@@ -1035,6 +1048,30 @@ export function createProductionApi(opts: ProductionApiOptions) {
 
   const DAILY_MINUTES_OPTIONS = [10, 15, 20, 30, 45, 60] as const;
   const DEFAULT_DAILY_MINUTES = 20;
+
+  /**
+   * A paid, cross-border photo read happens only with the guardian's recorded consent and under
+   * daily ceilings (per child and global), so neither a bug nor an abusive client can run up the bill.
+   */
+  async function assertLiveVisionAllowed(childId: string): Promise<void> {
+    const reading = CONSENT_CATALOG.find((c) => c.kind === 'document_reading')!;
+    if (!(await hasConsentRow(pool, childId, reading))) {
+      throw new ForbiddenError(
+        'Cần bố mẹ đồng ý cho DạyZi dùng AI đọc ảnh bài tập (Cài đặt › Quyền riêng tư & đồng ý) trước khi đọc ảnh.',
+      );
+    }
+    const counts = (
+      await pool.query<{ child_n: string; all_n: string }>(
+        `SELECT count(*) FILTER (WHERE child_ref = $1) AS child_n, count(*) AS all_n
+           FROM ai_usage_events
+          WHERE operation_type = 'vision_extraction' AND provider <> 'mock' AND created_at > now() - interval '1 day'`,
+        [actorRef(childId)],
+      )
+    ).rows[0]!;
+    if (Number(counts.child_n) >= visionLimits.perChild || Number(counts.all_n) >= visionLimits.global) {
+      throw new ForbiddenError('Hôm nay đã đọc đủ số ảnh cho phép. Bố mẹ thử lại vào ngày mai nhé.');
+    }
+  }
 
   /** Recent wrong join-code guesses per child (best-effort in-process throttle). */
   const joinFailures = new Map<string, number[]>();
@@ -3426,10 +3463,12 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const grade = (
         await pool.query(`SELECT school_grade FROM child_profiles WHERE id = $1`, [childId])
       ).rows[0] as { school_grade: number } | undefined;
+      if (documentVision.provider !== 'mock') await assertLiveVisionAllowed(childId);
       const analysis = await uploadIngestion.runAnalysis({
         uploadId,
         childGrade: grade?.school_grade ?? 4,
         knownSkillIds: gradeBandSkillIds(grade?.school_grade ?? 4),
+        usageContext: { userRef: actorRef(ctx.userId), childRef: actorRef(childId) },
       });
       return uploadAnalysisDto(analysis, kb);
     },
@@ -4073,12 +4112,11 @@ export function createProductionApi(opts: ProductionApiOptions) {
       if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
       await authorizeChild(ctx, childId, 'manage_child');
       await authorizeChild(ctx, childId, 'grant_permission');
-      if (!consentKindOf(kind)) throw new NotFoundError('consent kind');
-      const active = await hasPilotConsent(pool, childId);
-      if (granted && !active) {
-        await recordPilotConsentRow(pool, { childId, grantedByUserId: ctx.userId, method: 'consent_center' });
-      } else if (!granted && active) {
-        await withdrawPilotConsentRow(pool, childId, ctx.userId);
+      const def = consentKindOf(kind);
+      if (!def) throw new NotFoundError('consent kind');
+      const active = await hasConsentRow(pool, childId, def);
+      if (granted !== active) {
+        await writeConsentRow(pool, { childId, userId: ctx.userId, kind: def, granted, method: 'consent_center' });
       }
       return getConsentCenterRow(pool, childId);
     },

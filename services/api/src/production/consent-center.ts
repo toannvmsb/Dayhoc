@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
 import { PILOT_CONSENT, hasPilotConsent } from './pilot.js';
 
@@ -20,6 +21,9 @@ export interface ConsentKind {
   readonly ifOff: string;
   readonly dataCategories: readonly string[];
   readonly crossBorder: boolean;
+  readonly destinationRegion: string;
+  readonly policyVersion: string;
+  readonly consentTextVersion: string;
 }
 
 /**
@@ -39,6 +43,26 @@ export const CONSENT_CATALOG: readonly ConsentKind[] = [
       'Bài hằng ngày vẫn lấy từ thư viện câu hỏi có sẵn (miễn phí). Chỉ phần bài do AI soạn thêm bị tắt cho con.',
     dataCategories: PILOT_CONSENT.dataCategories,
     crossBorder: true,
+    destinationRegion: 'us',
+    policyVersion: PILOT_CONSENT.policyVersion,
+    consentTextVersion: PILOT_CONSENT.consentTextVersion,
+  },
+  {
+    kind: 'document_reading',
+    purpose: 'document_photo_reading',
+    processor: 'openai',
+    title: 'Dùng AI đọc ảnh bài tập của con',
+    summary:
+      'Khi bố mẹ tải ảnh vở/bài kiểm tra, DạyZi gửi ảnh đó cho dịch vụ AI để đọc đề và đáp án. ' +
+      'Ảnh được gửi ra máy chủ ở nước ngoài, chỉ để đọc một lần; nhà cung cấp không được dùng ảnh để huấn luyện mô hình. ' +
+      'Bố mẹ luôn xem và xác nhận kết quả trước khi DạyZi ghi vào hồ sơ của con.',
+    ifOff:
+      'Vẫn tải ảnh lên được, nhưng DạyZi không tự đọc ảnh. Bố mẹ có thể nhập kết quả bài làm bằng tay.',
+    dataCategories: ['raw_schoolwork'],
+    crossBorder: true,
+    destinationRegion: 'us',
+    policyVersion: 'doc-reading-2026-11',
+    consentTextVersion: 'doc-reading-consent-2026-11',
   },
 ];
 
@@ -110,6 +134,37 @@ export async function getConsentCenter(pool: Pool, childId: string): Promise<Con
     });
   }
   return { consents, history, dataNotes: DATA_NOTES };
+}
+
+/** True iff the newest ledger row for this consent kind is a grant (a withdrawal is a newer row). */
+export async function hasConsent(pool: Pool, childId: string, kind: ConsentKind): Promise<boolean> {
+  const { rows } = await pool.query<{ withdrawn_at: Date | null }>(
+    `SELECT withdrawn_at FROM consent_records
+      WHERE child_id = $1 AND purpose = $2 AND processor = $3
+      ORDER BY accepted_at DESC, id DESC LIMIT 1`,
+    [childId, kind.purpose, kind.processor],
+  );
+  return rows.length > 0 && rows[0]!.withdrawn_at === null;
+}
+
+/** Append a grant or a withdrawal. Callers check `hasConsent` first so repeats write nothing. */
+export async function writeConsent(
+  pool: Pool,
+  input: { childId: string; userId: string; kind: ConsentKind; granted: boolean; method: string },
+): Promise<void> {
+  const k = input.kind;
+  await pool.query(
+    `INSERT INTO consent_records
+       (id, child_id, granted_by, relationship, data_categories, purpose, processor,
+        cross_border, destination_region, policy_version, consent_text_version, method, accepted_at, withdrawn_at)
+     VALUES ($1,$2,$3,'parent',$4::jsonb,$5,$6,$7,$8,$9,$10,$11, now(), $12)`,
+    [
+      randomUUID(), input.childId, input.userId, JSON.stringify(k.dataCategories), k.purpose, k.processor,
+      k.crossBorder, k.destinationRegion, k.policyVersion, k.consentTextVersion,
+      input.granted ? input.method : `${input.method}_withdrawal`,
+      input.granted ? null : new Date(),
+    ],
+  );
 }
 
 export { hasPilotConsent };

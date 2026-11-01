@@ -335,9 +335,16 @@ export async function createUploadAction(
       mimeType: file.type || 'application/octet-stream',
       contentBase64,
     });
-    // kick off the (mock, free) analysis immediately
-    await getApi().runUploadAnalysis(parentAuth(), childId, res.uploadId).catch(() => undefined);
+    // kick off the analysis immediately (free mock by default; a paid live read needs the guardian's consent)
+    const readError = await getApi()
+      .runUploadAnalysis(parentAuth(), childId, res.uploadId)
+      .then(() => null)
+      .catch((e: unknown) => (e instanceof Error ? e.message : ''));
     revalidatePath(`/be/${childId}/tai-lieu`);
+    if (readError && /đồng ý|đủ số ảnh/.test(readError)) {
+      // the photo is saved, but it cannot be read yet — say why instead of showing "reading…" forever
+      return { error: `Đã lưu ảnh nhưng chưa đọc được. ${readError}` };
+    }
     return { uploadId: res.uploadId };
   } catch (e) {
     return { error: friendly(e) };

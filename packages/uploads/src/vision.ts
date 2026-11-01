@@ -8,7 +8,28 @@ export interface VisionAnalyzeInput {
   readonly kindHint: UploadKind;
   /** Skill IDs the mapper is allowed to propose (the child's grade band). */
   readonly knownSkillIds: readonly string[];
+  /** Pseudonymous refs for the AI cost ledger; the adapter never sees a raw id. */
+  readonly usageContext?: VisionUsageContext;
 }
+
+export interface VisionUsageContext {
+  readonly userRef: string;
+  readonly childRef: string | null;
+}
+
+/** What one live vision call consumed — reported even when its output is rejected. */
+export interface VisionUsage {
+  readonly provider: string;
+  readonly model: string;
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  readonly latencyMs: number;
+  readonly imageCount: number;
+  /** false when the response failed schema validation (still billed). */
+  readonly schemaValid: boolean;
+}
+
+export type VisionUsageSink = (usage: VisionUsage, context: VisionUsageContext | undefined) => void;
 
 /**
  * Document-vision port: turn an uploaded page into a structured, skill-mapped
@@ -133,6 +154,10 @@ export interface OpenAiVisionConfig {
   readonly apiKey: string;
   readonly model?: string;
   readonly fetchImpl?: typeof fetch;
+  /** Called after every live call (success or rejected output) so cost is never lost. */
+  readonly onUsage?: VisionUsageSink;
+  /** Per-call timeout; a hung provider must not hold a request open. Default 60 s. */
+  readonly timeoutMs?: number;
 }
 
 /**
@@ -163,27 +188,122 @@ const VISION_SYSTEM_PROMPT = `Read this photo of a Vietnamese primary/lower-seco
 }
 Only include an exercise/question as an "item" — never the page header, "kiến thức cần nhớ" reference boxes, or decorative text. Only propose "skillId" values from the allowed list given by the caller; if none fit confidently, return an empty skillCandidates array rather than guessing. No prose outside the JSON object.`;
 
+// ---------------------------------------------------------------------------
+// output validation — AI output is never trusted (CLAUDE.md: schema + confidence + fallback)
+// ---------------------------------------------------------------------------
+
+export const MAX_EXTRACTED_ITEMS = 60;
+const MAX_CANDIDATES_PER_ITEM = 3;
+const MAX_PROMPT_CHARS = 2000;
+const MAX_ANSWER_CHARS = 500;
+const MAX_NOTE_CHARS = 1000;
+const DOCUMENT_TYPES: readonly DocumentType[] = ['WORKSHEET', 'GRADED_TEST', 'HOMEWORK', 'TEACHER_NOTE', 'UNKNOWN'];
+
+/** The model's answer could not be turned into a valid extraction. Billed, but never shown or stored as evidence. */
+export class VisionOutputError extends Error {
+  readonly code = 'VISION_OUTPUT_INVALID';
+  constructor(detail: string) {
+    super(`the vision model returned an unusable result (${detail})`);
+    this.name = 'VisionOutputError';
+  }
+}
+
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+const clamp01 = (n: number): number => Math.min(1, Math.max(0, n));
+
+function cleanText(v: unknown, max: number): string | null {
+  if (typeof v === 'number' && Number.isFinite(v)) return String(v);
+  if (typeof v !== 'string') return null;
+  const t = v.trim();
+  return t === '' ? null : t.slice(0, max);
+}
+
+function cleanDate(v: unknown): string | null {
+  if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+  const t = Date.parse(`${v}T00:00:00Z`);
+  if (!Number.isFinite(t)) return null;
+  const year = Number(v.slice(0, 4));
+  return year >= 2000 && t <= Date.now() + 2 * 86_400_000 ? v : null;
+}
+
 /**
- * Live OpenAI vision adapter. Present for completeness; it is only ever
- * constructed when a key exists AND `DZ_LIVE_VISION=1`. It is never the default,
- * so no upload triggers a paid call unless an operator opts in.
- *
- * KNOWN GAP, not yet fixed: the response below is `JSON.parse`d and cast
- * straight to `Partial<DocumentExtraction>` with NO schema validation —
- * unlike every other AI-output boundary in this codebase (e.g.
- * `generatedExerciseSchema` for exercise generation), which CLAUDE.md's
- * "AI chỉ hỗ trợ... luôn qua JSON schema validation" invariant requires. A
- * malformed or partial model response is not currently caught before it
- * reaches the parent-review screen. Do not flip `DZ_LIVE_VISION=1` in a
- * context anyone relies on before adding that validation.
+ * Turn the raw model JSON into a `DocumentExtraction`, or throw `VisionOutputError`.
+ *  - the wrong top-level shape (e.g. `questions` instead of `items`) is an error, never an empty success;
+ *  - skill ids outside the caller's allow-list are dropped (the model cannot invent skill ids);
+ *  - the model never sets `problemTypeId`; confidences are clamped; sizes are capped;
+ *  - items without a readable prompt are dropped, and if most of the page is garbage the call fails.
+ */
+export function parseVisionOutput(raw: unknown, allowedSkillIds: readonly string[]): DocumentExtraction {
+  if (!isRecord(raw)) throw new VisionOutputError('not a JSON object');
+  const rawList = raw['items'];
+  if (!Array.isArray(rawList)) throw new VisionOutputError('missing "items" array');
+
+  const allowed = new Set(allowedSkillIds);
+  const documentType = DOCUMENT_TYPES.includes(raw['documentType'] as DocumentType) ? (raw['documentType'] as DocumentType) : 'UNKNOWN';
+
+  const rawItems: unknown[] = rawList.slice(0, MAX_EXTRACTED_ITEMS);
+  const items: ExtractedItem[] = [];
+  for (const r of rawItems) {
+    if (!isRecord(r)) continue;
+    const prompt = cleanText(r['prompt'], MAX_PROMPT_CHARS);
+    if (prompt === null) continue;
+    const seen = new Set<string>();
+    const candidates: { skillId: string; confidence: number }[] = [];
+    const rawCandidates = r['skillCandidates'];
+    if (Array.isArray(rawCandidates)) {
+      for (const c of rawCandidates as unknown[]) {
+        if (!isRecord(c)) continue;
+        const skillId = c['skillId'];
+        if (typeof skillId !== 'string' || !allowed.has(skillId) || seen.has(skillId)) continue;
+        const conf = c['confidence'];
+        seen.add(skillId);
+        candidates.push({ skillId, confidence: typeof conf === 'number' && Number.isFinite(conf) ? clamp01(conf) : 0 });
+      }
+    }
+    candidates.sort((a, b) => b.confidence - a.confidence);
+    items.push({
+      index: items.length,
+      prompt,
+      childAnswer: cleanText(r['childAnswer'], MAX_ANSWER_CHARS),
+      markedCorrect: typeof r['markedCorrect'] === 'boolean' ? r['markedCorrect'] : null,
+      skillCandidates: candidates.slice(0, MAX_CANDIDATES_PER_ITEM),
+      problemTypeId: null,
+    });
+  }
+  if (rawItems.length > 0 && items.length * 2 < rawItems.length) {
+    throw new VisionOutputError(`only ${items.length} of ${rawItems.length} items were readable`);
+  }
+
+  const statedRaw = raw['overallConfidence'];
+  const stated = typeof statedRaw === 'number' && Number.isFinite(statedRaw) ? clamp01(statedRaw) : 0.4;
+  return {
+    documentType,
+    observedOn: cleanDate(raw['observedOn']),
+    items,
+    teacherNote: cleanText(raw['teacherNote'], MAX_NOTE_CHARS),
+    // never claim more certainty than the page supports: an empty result is low-confidence by definition
+    overallConfidence: items.length === 0 && documentType !== 'TEACHER_NOTE' ? Math.min(stated, 0.3) : stated,
+  };
+}
+
+export const LIVE_VISION_MIME_TYPES: readonly string[] = ['image/jpeg', 'image/png', 'image/webp'];
+
+/**
+ * Live OpenAI vision adapter. Only ever constructed when a key exists AND `DZ_LIVE_VISION=1`; it is
+ * never the default, so no upload triggers a paid call unless an operator opts in. Output goes through
+ * `parseVisionOutput`; a rejected result throws `VisionOutputError` (the pipeline marks the upload
+ * FAILED and the parent can retry) — it never reaches the review screen. Every call reports its token
+ * usage through `onUsage`, including calls whose output was rejected, so the cost ledger is complete.
  */
 export class OpenAiVisionAdapter implements DocumentVisionAdapter {
   readonly name = 'openai';
-  readonly extractionVersion = 'openai-vision.v1';
+  readonly extractionVersion = 'openai-vision.v2';
   readonly provider = 'openai';
   readonly model: string;
   readonly #apiKey: string;
   readonly #fetch: typeof fetch;
+  readonly #onUsage: VisionUsageSink | undefined;
+  readonly #timeoutMs: number;
 
   constructor(cfg: OpenAiVisionConfig) {
     if (!cfg.apiKey) throw new VisionCredentialsRequiredError();
@@ -194,40 +314,84 @@ export class OpenAiVisionAdapter implements DocumentVisionAdapter {
     // low-cost model instead; override via `OPENAI_VISION_MODEL` or `cfg.model`.
     this.model = cfg.model ?? 'gpt-4o-mini';
     this.#fetch = cfg.fetchImpl ?? globalThis.fetch;
+    this.#onUsage = cfg.onUsage;
+    this.#timeoutMs = cfg.timeoutMs ?? 60_000;
   }
 
   async analyze(input: VisionAnalyzeInput): Promise<DocumentExtraction> {
-    // Intentionally minimal — this path is not exercised in dev/test/CI.
+    if (!LIVE_VISION_MIME_TYPES.includes(input.mimeType)) {
+      throw new VisionOutputError(`unsupported image type ${input.mimeType}`);
+    }
+    const started = Date.now();
     const b64 = Buffer.from(input.bytes).toString('base64');
-    const res = await this.#fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { authorization: `Bearer ${this.#apiKey}`, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        model: this.model,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: VISION_SYSTEM_PROMPT },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: `grade=${input.childGrade}; allowed skillIds=${input.knownSkillIds.join(',')}` },
-              { type: 'image_url', image_url: { url: `data:${input.mimeType};base64,${b64}` } },
-            ],
-          },
-        ],
-      }),
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.#timeoutMs);
+    let res: Response;
+    try {
+      res = await this.#fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: { authorization: `Bearer ${this.#apiKey}`, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          model: this.model,
+          response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: VISION_SYSTEM_PROMPT },
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: `grade=${input.childGrade}; allowed skillIds=${input.knownSkillIds.join(',')}` },
+                { type: 'image_url', image_url: { url: `data:${input.mimeType};base64,${b64}` } },
+              ],
+            },
+          ],
+        }),
+      });
+    } catch (err) {
+      throw new Error(
+        controller.signal.aborted ? 'openai vision timed out' : `openai vision request failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    } finally {
+      clearTimeout(timer);
+    }
     if (!res.ok) throw new Error(`openai vision failed: ${res.status}`);
-    const body = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-    const raw = body.choices?.[0]?.message?.content ?? '{}';
-    const parsed = JSON.parse(raw) as Partial<DocumentExtraction>;
-    return {
-      documentType: parsed.documentType ?? 'UNKNOWN',
-      observedOn: parsed.observedOn ?? null,
-      items: parsed.items ?? [],
-      teacherNote: parsed.teacherNote ?? null,
-      overallConfidence: parsed.overallConfidence ?? 0.4,
+
+    const body = (await res.json()) as {
+      choices?: { message?: { content?: string } }[];
+      usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
+    const report = (schemaValid: boolean): void => {
+      this.#onUsage?.(
+        {
+          provider: this.provider,
+          model: this.model,
+          inputTokens: body.usage?.prompt_tokens ?? 0,
+          outputTokens: body.usage?.completion_tokens ?? 0,
+          latencyMs: Date.now() - started,
+          imageCount: 1,
+          schemaValid,
+        },
+        input.usageContext,
+      );
+    };
+
+    let extraction: DocumentExtraction;
+    try {
+      const content = body.choices?.[0]?.message?.content;
+      if (typeof content !== 'string') throw new VisionOutputError('empty response');
+      let json: unknown;
+      try {
+        json = JSON.parse(content);
+      } catch {
+        throw new VisionOutputError('response is not valid JSON');
+      }
+      extraction = parseVisionOutput(json, input.knownSkillIds);
+    } catch (err) {
+      report(false);
+      throw err;
+    }
+    report(true);
+    return extraction;
   }
 }
 
@@ -242,13 +406,20 @@ export interface VisionEnv {
  * is chosen only when an operator sets `DZ_LIVE_VISION=1` and a key is present —
  * an upload never spends money by accident.
  */
-export function resolveDocumentVisionAdapter(env: VisionEnv): {
+export function resolveDocumentVisionAdapter(
+  env: VisionEnv,
+  hooks: { onUsage?: VisionUsageSink } = {},
+): {
   adapter: DocumentVisionAdapter;
   kind: 'mock' | 'openai';
 } {
   if (env.DZ_LIVE_VISION === '1' && env.OPENAI_API_KEY) {
     return {
-      adapter: new OpenAiVisionAdapter({ apiKey: env.OPENAI_API_KEY, ...(env.OPENAI_VISION_MODEL ? { model: env.OPENAI_VISION_MODEL } : {}) }),
+      adapter: new OpenAiVisionAdapter({
+        apiKey: env.OPENAI_API_KEY,
+        ...(env.OPENAI_VISION_MODEL ? { model: env.OPENAI_VISION_MODEL } : {}),
+        ...(hooks.onUsage ? { onUsage: hooks.onUsage } : {}),
+      }),
       kind: 'openai',
     };
   }

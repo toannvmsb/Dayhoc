@@ -11,7 +11,7 @@ import {
 } from '@copilot/domain';
 import type { Logger } from '@copilot/observability';
 import type { AnalysisPatch, UploadAnalysisStore } from './analysis-store.js';
-import type { DocumentVisionAdapter } from './vision.js';
+import type { DocumentVisionAdapter, VisionUsageContext } from './vision.js';
 import type { UploadStorageAdapter } from './storage.js';
 
 export class UploadStateError extends Error {
@@ -167,6 +167,8 @@ export class UploadIngestionService {
     uploadId: string;
     childGrade: number;
     knownSkillIds: readonly string[];
+    /** Pseudonymous refs so a live vision call can be written to the AI cost ledger. */
+    usageContext?: VisionUsageContext;
   }): Promise<UploadAnalysisRecord> {
     const upload = await this.#store.getUpload(input.uploadId);
     if (!upload) throw new Error(`upload ${input.uploadId} not found`);
@@ -188,6 +190,7 @@ export class UploadIngestionService {
         childGrade: input.childGrade,
         kindHint: upload.kind,
         knownSkillIds: input.knownSkillIds,
+        ...(input.usageContext ? { usageContext: input.usageContext } : {}),
       });
       analysis = await this.#advance(analysis, 'MAPPED', {
         extraction,
