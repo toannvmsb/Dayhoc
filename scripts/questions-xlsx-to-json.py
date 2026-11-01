@@ -32,6 +32,7 @@ HINT_COLS = [
     "Gợi ý 1 — Định hướng*", "Gợi ý 2 — Thu hẹp*", "Gợi ý 3 — Nêu phương pháp*",
     "Gợi ý 4 — Ví dụ dễ hơn*", "Gợi ý 5 — Gần xong*", "Gợi ý 6 — Lời giải đầy đủ*",
 ]
+APPROVAL_COL = "Duyệt (Y/N)"
 VALID_K = {"K0", "K1", "K2", "K3", "K4", "K5"}
 VALID_T = {"T1", "T2", "T3", "T4", "T5"}
 VALID_KIND = {"exact", "numeric", "fraction", "choice", "reasoning"}
@@ -143,6 +144,7 @@ def main():
 
     errors = []
     items = []
+    skipped_unapproved = 0
     for r_i, row in enumerate(ws.iter_rows(min_row=2), start=2):
         vals = [norm(c.value) for c in row]
         get = lambda header: vals[col[header]] if col[header] < len(vals) else ""
@@ -151,6 +153,11 @@ def main():
         prompt = get(REQUIRED_COLS["prompt"])
         # a fully blank row = end of anh's real content, skip silently
         if not skill_id and not prompt:
+            continue
+
+        # File duyệt có cột "Duyệt (Y/N)": chỉ nhập dòng được đánh Y (trống hoặc N = chưa/không duyệt).
+        if APPROVAL_COL in col and get(APPROVAL_COL).strip().upper() != "Y":
+            skipped_unapproved += 1
             continue
 
         row_errors = []
@@ -210,6 +217,8 @@ def main():
             sys.exit(1)
         print(f"\n({len(items)} dòng hợp lệ vẫn được xuất ra bên dưới; sửa lỗi rồi chạy lại để lấy đủ.)")
 
+    if skipped_unapproved:
+        print(f"(Bỏ qua {skipped_unapproved} dòng chưa đánh Y ở cột \"{APPROVAL_COL}\".)")
     out_path = args.out or (args.xlsx.rsplit(".", 1)[0] + ".raw.json")
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(items, f, ensure_ascii=False, indent=2)
