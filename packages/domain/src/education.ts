@@ -97,6 +97,7 @@ export const ENROLLMENT_SOURCES = [
   'SCHOOL',
   'SYSTEM_PROPOSED',
   'SYSTEM_SUGGESTED',
+  'STUDENT_JOIN_CODE',
 ] as const;
 export type EnrollmentSource = (typeof ENROLLMENT_SOURCES)[number];
 

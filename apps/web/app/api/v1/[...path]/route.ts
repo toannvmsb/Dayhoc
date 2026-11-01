@@ -33,6 +33,18 @@ function hash8(s: string): string {
   return (h >>> 0).toString(16).padStart(8, '0');
 }
 
+/** ClassJoinError carries its own meaning (backlog B3-02); everything else is classified by message. */
+function joinErrorStatus(err: unknown): number | null {
+  if (!(err instanceof Error) || err.name !== 'ClassJoinError') return null;
+  switch ((err as { code?: string }).code) {
+    case 'NOT_YOUR_CLASS': return 403;
+    case 'NOT_FOUND': return 404;
+    case 'ALREADY_DECIDED': return 409;
+    case 'TOO_MANY_ATTEMPTS': return 429;
+    default: return 400;
+  }
+}
+
 function mapStatus(msg: string): number {
   if (/forbidden|not permitted|workspace|denied|NOT_AUTHORIZED|only the family/i.test(msg)) return 403;
   if (/unauthenticated|invalid or expired|missing bearer/i.test(msg)) return 401;
@@ -83,7 +95,7 @@ async function handle(req: Request, ctx: { params: { path?: string[] } }): Promi
     return NextResponse.json(result ?? null, { headers: { 'x-request-id': reqId } });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    status = err instanceof RestError ? err.status : mapStatus(msg);
+    status = err instanceof RestError ? err.status : joinErrorStatus(err) ?? mapStatus(msg);
     errCode = err instanceof RestError ? 'REST' : (err as { code?: string }).code ?? 'ERR';
     // client message: the domain message for 4xx (already user-safe Vietnamese),
     // a generic line for 5xx. Never a stack trace.

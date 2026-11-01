@@ -26,6 +26,10 @@ export default async function ParentHome({ params }: { params: { childId: string
   const idle = await getApi()
     .getInactivityStatus(parentAuth(), params.childId)
     .catch(() => null);
+  const joinRequests = await getApi()
+    .listClassJoinRequests(parentAuth(), params.childId)
+    .then((r) => r.requests)
+    .catch(() => []);
 
   return (
     <Screen nav={<ParentNav childId={params.childId} active="home" />}>
@@ -35,6 +39,20 @@ export default async function ParentHome({ params }: { params: { childId: string
           {home.child.displayName} · Lớp {home.child.schoolGrade} ›
         </Link>
       </header>
+
+      {joinRequests.length > 0 ? (
+        <Link
+          href={`/be/${params.childId}/truong-lop`}
+          className="card card--attention"
+          data-testid="join-banner"
+          style={{ textDecoration: 'none', gap: 2 }}
+        >
+          <b style={{ color: 'var(--c-attention-text)', fontSize: 13.5 }}>
+            {home.child.displayName} xin vào {joinRequests[0]!.classLabel}
+          </b>
+          <span style={{ fontSize: 12.5, color: 'var(--c-attention-body)' }}>Bố mẹ xem và đồng ý hoặc từ chối ›</span>
+        </Link>
+      ) : null}
 
       {idle?.needsNudge && idle.inactiveDays !== null ? (
         <Link

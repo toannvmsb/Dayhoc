@@ -76,6 +76,10 @@ export default async function StudentToday() {
             Đã xong {today.doneCount}/{today.totalCount} việc hôm nay
           </p>
         )}
+
+        <Link href="/hoc-sinh/vao-lop" className="muted" style={{ textAlign: 'center', fontSize: 13 }}>
+          Có mã lớp từ thầy/cô? Vào lớp ›
+        </Link>
       </div>
     </Screen>
   );

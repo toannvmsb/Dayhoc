@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { Screen } from '../../../components';
 import { getApi, getViewer, parentAuth } from '@/lib/server/api';
 import { SchoolClassManager } from './client';
+import { decideClassJoinAction } from '@/lib/server/actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,11 +20,13 @@ export default async function SchoolClass({ params }: { params: { childId: strin
   let child;
   let enrollments;
   let years;
+  let joinRequests;
   try {
-    [child, enrollments, years] = await Promise.all([
+    [child, enrollments, years, joinRequests] = await Promise.all([
       getApi().getChild(parentAuth(), params.childId),
       getApi().listEnrollments(parentAuth(), params.childId),
       getApi().listAcademicYears(parentAuth()),
+      getApi().listClassJoinRequests(parentAuth(), params.childId),
     ]);
   } catch {
     notFound();
@@ -32,7 +35,10 @@ export default async function SchoolClass({ params }: { params: { childId: strin
   const grade = 'schoolGrade' in child ? (child.schoolGrade as number) : 4;
   const activeYear = years.find((y) => y.status === 'ACTIVE') ?? years[0];
   const schoolRows = (enrollments.school ?? []) as unknown as Array<Record<string, unknown>>;
-  const classRows = (enrollments.class ?? []) as unknown as Array<Record<string, unknown>>;
+  // a pending join request is decided in its own card below, not listed as a class yet
+  const classRows = ((enrollments.class ?? []) as unknown as Array<Record<string, unknown>>).filter(
+    (c) => String(c.status ?? '') !== 'PROPOSED',
+  );
 
   return (
     <Screen nav={null}>
@@ -42,6 +48,36 @@ export default async function SchoolClass({ params }: { params: { childId: strin
         Không bắt buộc. Khai báo trường/lớp giúp DạyZi ước lượng con đang học đến bài nào
         theo lịch năm học.
       </p>
+
+      {joinRequests.requests.map((r) => (
+        <div key={r.enrollmentId} className="card card--attention" data-testid="join-request" style={{ gap: 8 }}>
+          <span className="overline">Con xin vào lớp</span>
+          <b style={{ color: 'var(--c-text-heading)', fontSize: 14 }}>{r.classLabel}</b>
+          <span style={{ fontSize: 12.5, color: 'var(--c-attention-body)', lineHeight: 1.5 }}>
+            Con nhập mã lớp{r.teacherName ? ` của ${r.teacherName}` : ''}. Nếu bố mẹ đồng ý, con được gắn vào lớp này
+            ở chế độ riêng tư — giáo viên chưa nhận được dữ liệu học tập nào của con.
+          </span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[
+              { approve: '1', label: 'Đồng ý' },
+              { approve: '0', label: 'Từ chối' },
+            ].map((b) => (
+              <form key={b.approve} action={decideClassJoinAction} style={{ flex: 1 }}>
+                <input type="hidden" name="childId" value={params.childId} />
+                <input type="hidden" name="enrollmentId" value={r.enrollmentId} />
+                <input type="hidden" name="approve" value={b.approve} />
+                <button
+                  type="submit"
+                  className="cta"
+                  style={{ height: 40, fontSize: 13.5, ...(b.approve === '0' ? { background: 'var(--c-attention-text)' } : {}) }}
+                >
+                  {b.label}
+                </button>
+              </form>
+            ))}
+          </div>
+        </div>
+      ))}
 
       {schoolRows.length > 0 && (
         <div className="card">

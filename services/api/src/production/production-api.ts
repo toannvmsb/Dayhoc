@@ -112,6 +112,16 @@ import {
   type FeedbackVerdict,
 } from './pilot.js';
 import { insertAiUsageEvent } from './pg-ai-usage.js';
+import {
+  ClassJoinError,
+  parentDecideJoinRequest as parentDecideJoinRequestRow,
+  parentListJoinRequests as parentListJoinRequestsRow,
+  studentRedeemCode as studentRedeemCodeRow,
+  teacherClaimClass as teacherClaimClassRow,
+  teacherCreateJoinCode as teacherCreateJoinCodeRow,
+  teacherListClasses as teacherListClassesRow,
+  teacherRevokeJoinCode as teacherRevokeJoinCodeRow,
+} from './class-join.js';
 import { getInactivityStatus as getInactivityStatusRow, runInactivityReminders as runInactivityRemindersRow } from './reminders.js';
 import {
   consentKindOf,
@@ -1025,6 +1035,9 @@ export function createProductionApi(opts: ProductionApiOptions) {
 
   const DAILY_MINUTES_OPTIONS = [10, 15, 20, 30, 45, 60] as const;
   const DEFAULT_DAILY_MINUTES = 20;
+
+  /** Recent wrong join-code guesses per child (best-effort in-process throttle). */
+  const joinFailures = new Map<string, number[]>();
 
   /** Parent-chosen daily minutes + learning goals (child_profiles.available_time_profile / goals). */
   async function readChildPrefs(childId: string) {
@@ -2456,6 +2469,73 @@ export function createProductionApi(opts: ProductionApiOptions) {
     },
 
     // ---- TEACHER ---------------------------------------------
+
+    // ---- B3-02: classroom join codes ---------------------------------
+
+    /** TEACHER — classes this teacher is assigned to, with the live join code and aggregate counts. */
+    async teacherListClasses(auth: CallerAuth) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'TEACHER') throw new ForbiddenError('TEACHER workspace required');
+      return { classes: await teacherListClassesRow(pool, ctx.userId, now()) };
+    },
+
+    /** TEACHER — declare "I teach this class" (self-declared; parents still approve every student). */
+    async teacherClaimClass(auth: CallerAuth, classroomId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'TEACHER') throw new ForbiddenError('TEACHER workspace required');
+      return teacherClaimClassRow(pool, ctx.userId, classroomId);
+    },
+
+    /** TEACHER — mint (and retire the previous) join code for a class they teach. */
+    async teacherCreateJoinCode(auth: CallerAuth, classroomId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'TEACHER') throw new ForbiddenError('TEACHER workspace required');
+      return teacherCreateJoinCodeRow(pool, ctx.userId, classroomId, now());
+    },
+
+    async teacherRevokeJoinCode(auth: CallerAuth, classroomId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'TEACHER') throw new ForbiddenError('TEACHER workspace required');
+      await teacherRevokeJoinCodeRow(pool, ctx.userId, classroomId, now());
+      return { ok: true };
+    },
+
+    /**
+     * STUDENT — type the code from the teacher. Creates a PROPOSED enrolment only; the guardian decides.
+     * Wrong guesses are throttled per child (best-effort, in-process) so a code cannot be brute-forced.
+     */
+    async studentJoinClass(auth: CallerAuth, code: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'STUDENT' || !ctx.childScope) throw new ForbiddenError('STUDENT workspace required');
+      const childId = ctx.childScope;
+      const nowMs = now().getTime();
+      const recent = (joinFailures.get(childId) ?? []).filter((t) => nowMs - t < 3_600_000);
+      if (recent.length >= 8) {
+        throw new ClassJoinError('TOO_MANY_ATTEMPTS', 'Bạn nhập sai mã nhiều lần. Thử lại sau một lúc nhé.');
+      }
+      try {
+        return await studentRedeemCodeRow(pool, childId, code, now());
+      } catch (e) {
+        if (e instanceof ClassJoinError && e.code === 'INVALID_CODE') joinFailures.set(childId, [...recent, nowMs]);
+        throw e;
+      }
+    },
+
+    /** PARENT — pending "my child wants to join this class" requests. */
+    async listClassJoinRequests(auth: CallerAuth, childId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'view_child');
+      return { requests: await parentListJoinRequestsRow(pool, childId) };
+    },
+
+    /** PARENT — approve or reject. Approving keeps privacy at PRIVATE_LEARNING (sharing is a separate choice). */
+    async decideClassJoinRequest(auth: CallerAuth, childId: string, enrollmentId: string, approve: boolean) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'manage_child');
+      return parentDecideJoinRequestRow(pool, childId, enrollmentId, approve, now());
+    },
 
     async teacherListChildren(auth: CallerAuth) {
       const ctx = await deriveContext(auth);

@@ -568,8 +568,83 @@ export async function redeemInviteCodeAction(_prev: FormState, form: FormData): 
   return {};
 }
 
+// ---- classroom join codes (backlog B3-02) ----
+
+export interface JoinClassState {
+  readonly error?: string;
+  readonly message?: string;
+}
+
+/** Student types the code from the teacher; the guardian still has to approve. */
+export async function studentJoinClassAction(_prev: JoinClassState, form: FormData): Promise<JoinClassState> {
+  const code = String(form.get('code') ?? '').trim();
+  if (!code) return { error: 'Nhập mã lớp thầy/cô đã đưa nhé.' };
+  try {
+    const r = await getApi().studentJoinClass(studentAuth(), code);
+    if (r.status === 'ALREADY_MEMBER') return { message: `Con đã ở trong ${r.classLabel} rồi.` };
+    if (r.status === 'ALREADY_PENDING') return { message: `Đã gửi cho bố mẹ rồi. Chờ bố mẹ đồng ý để vào ${r.classLabel} nhé.` };
+    return { message: `Đã gửi cho bố mẹ! Khi bố mẹ đồng ý, con sẽ vào ${r.classLabel}.` };
+  } catch (e) {
+    return { error: friendly(e) };
+  }
+}
+
+/** Parent approves / rejects a child's request to join a class. */
+export async function decideClassJoinAction(form: FormData): Promise<void> {
+  const childId = String(form.get('childId') ?? '');
+  const enrollmentId = String(form.get('enrollmentId') ?? '');
+  const approve = String(form.get('approve') ?? '') === '1';
+  if (!childId || !enrollmentId) return;
+  await getApi().decideClassJoinRequest(parentAuth(), childId, enrollmentId, approve);
+  revalidatePath(`/be/${childId}`);
+  revalidatePath(`/be/${childId}/truong-lop`);
+}
+
+export async function teacherCreateJoinCodeAction(form: FormData): Promise<void> {
+  const classroomId = String(form.get('classroomId') ?? '');
+  if (!classroomId) return;
+  await getApi().teacherCreateJoinCode(teacherAuth(), classroomId);
+  revalidatePath('/giao-vien/lop-hoc');
+}
+
+export async function teacherRevokeJoinCodeAction(form: FormData): Promise<void> {
+  const classroomId = String(form.get('classroomId') ?? '');
+  if (!classroomId) return;
+  await getApi().teacherRevokeJoinCode(teacherAuth(), classroomId);
+  revalidatePath('/giao-vien/lop-hoc');
+}
+
+export async function teacherClaimClassAction(classroomId: string): Promise<void> {
+  await getApi().teacherClaimClass(teacherAuth(), classroomId);
+  revalidatePath('/giao-vien/lop-hoc');
+}
+
+export async function teacherSearchSchoolsAction(
+  nameFragment: string,
+): Promise<{ id: string; officialName: string; province: string | null; district: string | null }[]> {
+  if (nameFragment.trim().length < 2) return [];
+  const rows = await getApi().searchSchools(teacherAuth(), { nameFragment: nameFragment.trim() });
+  return rows.map((s) => ({
+    id: String(s.id),
+    officialName: s.officialName,
+    province: s.province ?? null,
+    district: s.district ?? null,
+  }));
+}
+
+export async function teacherListClassroomsAction(
+  schoolId: string,
+): Promise<{ id: string; label: string }[]> {
+  const years = await getApi().listAcademicYears(teacherAuth());
+  const year = years.find((y) => y.status === 'ACTIVE') ?? years[0];
+  if (!year) return [];
+  const rows = await getApi().listClasses(teacherAuth(), schoolId, String(year.id));
+  return rows.map((c) => ({ id: String(c.id), label: `Lớp ${c.displayName ?? c.className} (khối ${c.grade})` }));
+}
+
 function friendly(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
+  if (e instanceof Error && e.name === 'ClassJoinError') return msg;
   if (/already exists|duplicate/i.test(msg)) return 'Email này đã được đăng ký.';
   if (/NO_SESSION/.test(msg)) return 'Phiên đăng nhập đã hết hạn.';
   if (/password too short/i.test(msg)) return 'Mật khẩu tối thiểu 8 ký tự.';

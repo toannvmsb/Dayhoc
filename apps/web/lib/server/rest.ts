@@ -140,6 +140,18 @@ const ROUTES: Record<string, Handler> = {
     getApi().setConsent(auth(c, 'PARENT'), c.params[0]!, c.params[1]!, Boolean(c.body.granted)),
   'GET /children/:id/export': async (c) => getApi().exportChildData(auth(c, 'PARENT'), c.params[0]!),
 
+  // ---- classroom join codes (backlog B3-02) ----
+  'POST /student/join-class': async (c) => getApi().studentJoinClass(auth(c, 'STUDENT'), String(c.body.code ?? '')),
+  'GET /children/:id/class-join-requests': async (c) => getApi().listClassJoinRequests(auth(c, 'PARENT'), c.params[0]!),
+  'POST /children/:id/class-join-requests/:requestId': async (c) =>
+    getApi().decideClassJoinRequest(auth(c, 'PARENT'), c.params[0]!, uuid(c.params[1], 'yêu cầu'), Boolean(c.body.approve)),
+  'GET /teacher/classes': async (c) => getApi().teacherListClasses(auth(c, 'TEACHER')),
+  'POST /teacher/classes/:classroomId/claim': async (c) => getApi().teacherClaimClass(auth(c, 'TEACHER'), uuid(c.params[0], 'lớp')),
+  'POST /teacher/classes/:classroomId/join-code': async (c) =>
+    getApi().teacherCreateJoinCode(auth(c, 'TEACHER'), uuid(c.params[0], 'lớp')),
+  'DELETE /teacher/classes/:classroomId/join-code': async (c) =>
+    getApi().teacherRevokeJoinCode(auth(c, 'TEACHER'), uuid(c.params[0], 'lớp')),
+
   // ---- school / class directory (M3) ----
   'GET /schools': async (c) =>
     getApi().searchSchools(auth(c, 'PARENT'), {
