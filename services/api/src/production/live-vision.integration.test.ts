@@ -3,6 +3,8 @@ import { InMemoryAuthAdapter } from '@copilot/identity';
 import { InMemoryUploadStorageAdapter } from '@copilot/uploads';
 import { createProductionApi } from './production-api.js';
 import { visionUsageEvent, visionLimitsFromEnv } from './vision-cost.js';
+import { minimizeForProvider } from '@copilot/ai';
+import { OPENAI_VISION_COMPLIANCE, assertVisionProviderCompliant } from './vision-compliance.js';
 
 /**
  * Backlog B2-01 — the LIVE document-vision path, with `fetch` stubbed: no network, no key, no cost.
@@ -183,6 +185,28 @@ describe.skipIf(!DATABASE_URL)('live vision through the API (fetch stubbed)', ()
     expect(Number(rows[0].actual_cost_usd)).toBeGreaterThan(0);
     // the parent-facing DTO exposes no usage / cost
     expect(JSON.stringify(a)).not.toMatch(/inputTokens|usage|cost/i);
+  });
+
+  it('the request to the provider carries the photo and nothing that identifies the child or family', async () => {
+    fetchMock.mockReset();
+    const { auth, childId } = await newChild('privacy');
+    await api.setConsent(auth, childId, 'document_reading', true);
+    fetchMock.mockResolvedValue(goodBody('M4.FRAC.ADD'));
+    const { uploadId } = await upload(auth, childId, 'privacy');
+    await api.runUploadAnalysis(auth, childId, uploadId);
+    const [, init] = fetchMock.mock.calls[0]!;
+    const body = String((init as { body: string }).body);
+    expect(body).not.toContain(childId);
+    expect(body).not.toContain(uploadId);
+    expect(body).not.toMatch(/Bé privacy|@x\.com|privacy\.jpg/);
+    expect(body).toMatch(/data:image\/jpeg;base64/);
+  });
+
+  it('a provider without a compliance record, or one that trains on data, is refused before any call', () => {
+    expect(() => assertVisionProviderCompliant('some-other-ocr', 'child-1')).toThrow(/no compliance record/);
+    expect(assertVisionProviderCompliant('openai', 'child-1')).toMatch(/^[0-9a-f]{16}$/);
+    expect(() => minimizeForProvider({ payload: {}, categories: ['raw_schoolwork'], provider: { ...OPENAI_VISION_COMPLIANCE, trainingAllowed: true }, childId: 'c' })).toThrow(/trainingAllowed/);
+    expect(() => minimizeForProvider({ payload: {}, categories: ['profile_context'], provider: OPENAI_VISION_COMPLIANCE, childId: 'c' })).toThrow(/exceed/);
   });
 
   it('a malformed model answer FAILS the upload, never reaches review, and is still billed in the ledger', async () => {

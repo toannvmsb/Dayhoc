@@ -92,15 +92,14 @@ Railway cũ cũng đang chết vì lý do này.
 * ✅ B0-03 Test `worksheet-job-queue.integration` (bounded retry) không còn enqueue mode `OFF` sai ràng buộc.
 
 **P1 — chất lượng nội dung (thư viện là nguồn chính)**
-* B1-01 Rà chất lượng mẫu: lấy ngẫu nhiên ~30 câu/kỹ năng để giáo viên kiểm (đúng đáp án, đúng lớp).
-  Hiện toàn bộ 9.400 câu ghi `origin: authored`; nếu do máy sinh thì đánh dấu lại.
+* ✅ (máy) / ⏳ (người) B1-01 `node scripts/audit-question-library.mjs` tính lại 34% câu bằng số học chính xác (0 sai), kiểm cấu trúc, xuất `docs/implementation/data/B1-01_review_sample.csv` (30 câu/kỹ năng, ưu tiên câu máy chưa kiểm được) cho giáo viên rà; báo cáo `B1-01_library_audit.md`. Đã lọc nhãn khuôn mẫu (“[Phiên bản N]”, “(Tình huống 1-Thấp)”…) khỏi đề hiện cho con (~3.700 câu). **Còn:** giáo viên điền Y/N; quyết định có đánh dấu lại `origin` (các câu dựng từ khuôn mẫu nhưng ghi `authored`); 28 câu “Giá trị cuối hơn giá trị đầu” có đáp án âm.
 * B1-02 Bổ sung câu **T4–T5/HSG** (hiện thư viện chỉ có ~3% ở mức K3/T4–K4/T4; 7 kỹ năng chưa có câu K1).
 * B1-03 90% câu ở mức rủi ro lặp CAO (cooldown 21 ngày) → thêm biến thể cấu trúc để vòng lặp dài hơn.
 * ✅ B1-04 Bài **ôn thi tháng/học kỳ** từ thư viện: nút "Giao đề ôn thử" ở trang kỳ thi → 1 bài `REVISION` ghép theo phạm vi thi, nhiều câu hơn ở kỹ năng ưu tiên cao, dễ→khó, 0 AI. Chưa có: bảng chấm điểm tự động theo đề thi thật, liên kết bài ↔ kỳ thi trong DB (cần migration `assignments.exam_id`).
 * ✅ B1-05 Log chọn bài theo từng câu phát cho con + liên kết bài ôn thi ↔ kỳ thi (`assignments.exam_id`).
 
 **P2 — đúng mục tiêu "bố mẹ không phải làm gì nhiều"**
-* ✅ (code) B2-01 Đọc ảnh bài tập bằng AI thật: tắt mặc định (`DZ_LIVE_VISION=1` + `OPENAI_API_KEY`), cần consent `document_reading`, trần/ngày theo con & toàn hệ thống, kết quả AI được kiểm schema + allow-list kỹ năng, mọi lần gọi ghi `ai_usage_events`. **Còn:** chạy `node scripts/run-vision-benchmark.mjs --live --max=3` với key thật để đo chi phí/ảnh; nối `minimizeForProvider()` cho đường ảnh gốc.
+* ✅ (code) B2-01 Đọc ảnh bài tập bằng AI thật: tắt mặc định (`DZ_LIVE_VISION=1` + `OPENAI_API_KEY`), cần consent `document_reading`, trần/ngày theo con & toàn hệ thống, kết quả AI được kiểm schema + allow-list kỹ năng, mọi lần gọi ghi `ai_usage_events`. **Còn:** chạy `node scripts/run-vision-benchmark.mjs --live --max=3` với key thật để đo chi phí/ảnh; đường gửi ảnh đã qua `minimizeForProvider()` + hồ sơ tuân thủ nhà cung cấp (`vision-compliance.ts`, `dpaStatus: 'pending'` — anh cập nhật khi ký DPA).
 * ✅ B2-02 Số phút học/ngày do bố mẹ chọn (10–60′, màn `/be/:id/muc-tieu`) → độ dài bài tự tạo hằng ngày.
 * ✅ B2-03 Màn **mục tiêu học**: Giữ nhịp / Củng cố nền / Nâng cao-HSG (+ cờ "sắp thi") → đổi tỉ lệ bài vừa sức : thử thách (75:25 · 85:15 · 60:40). Lưu ở `child_profiles.goals` (không cần migration).
 * ✅ B2-04 Nhắc bố mẹ khi con chưa làm bài 2 ngày (banner trong app + email/push nếu đã cấu hình kênh; tối đa 3 lần/đợt, bố mẹ tắt được). Cần cron gọi `POST /admin/reminders/run` → B3-04.
@@ -110,7 +109,7 @@ Railway cũ cũng đang chết vì lý do này.
 * B3-01 AI_TOPUP bật thử cho 1–2 gia đình sau khi có số đo chi phí/ngày thật.
 * ✅ B3-02 Học sinh nhập mã lớp của giáo viên → bố mẹ duyệt (mã không tự ghi danh).
 * ✅ B3-03 Màn quản lý consent + xuất dữ liệu của con (JSON).
-* B3-04 Cron an toàn/dọn dẹp trên Netlify Scheduled Functions (chỉ khi bật AI).
+* ✅ B3-04 `netlify/functions/daily-cron.mjs` (01:00 UTC) → `POST /api/cron/daily` (404 nếu chưa đặt `CRON_SECRET` ≥ 24 ký tự): nhắc bố mẹ, **xoá ảnh gốc quá 30 ngày** (`UPLOAD_RETENTION_DAYS`, lời hứa trong màn consent), dọn QA/serving. Migration `1759276800000_upload_bytes_retention`.
 * B3-05 App mobile (Expo) — để sau khi web ổn.
 
 ## 6. Số liệu chi phí (để ra quyết định)

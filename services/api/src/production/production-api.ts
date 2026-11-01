@@ -123,6 +123,7 @@ import {
   teacherRevokeJoinCode as teacherRevokeJoinCodeRow,
 } from './class-join.js';
 import { visionLimitsFromEnv, visionUsageEvent } from './vision-cost.js';
+import { assertVisionProviderCompliant } from './vision-compliance.js';
 import { purgeExpiredUploadBytes, uploadRetentionDays } from './upload-retention.js';
 import { getInactivityStatus as getInactivityStatusRow, runInactivityReminders as runInactivityRemindersRow } from './reminders.js';
 import {
@@ -1055,6 +1056,11 @@ export function createProductionApi(opts: ProductionApiOptions) {
    * daily ceilings (per child and global), so neither a bug nor an abusive client can run up the bill.
    */
   async function assertLiveVisionAllowed(childId: string): Promise<void> {
+    try {
+      assertVisionProviderCompliant(documentVision.provider, childId);
+    } catch (e) {
+      throw new ForbiddenError(e instanceof Error ? e.message : 'provider not permitted for child data');
+    }
     const reading = CONSENT_CATALOG.find((c) => c.kind === 'document_reading')!;
     if (!(await hasConsentRow(pool, childId, reading))) {
       throw new ForbiddenError(
