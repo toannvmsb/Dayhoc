@@ -43,11 +43,11 @@ describe.skipIf(!DATABASE_URL)('doc 67 §D2 — durable worksheet job queue', ()
 
   const spec = (n: number): ExerciseGenerationSpec => makeSpec({ generationSpecId: `jobq-${n}` });
 
-  const mkWorker = (workerId: string, onRun?: () => void) =>
+  const mkWorker = (workerId: string, onRun?: () => void, knowledgeBase: typeof kb = kb) =>
     new WorksheetJobWorker({
       pool,
       workerId,
-      knowledgeBase: kb,
+      knowledgeBase,
       referenceLibrary: lib,
       leaseMs: 5_000,
       backoffMs: 0, // tests drain synchronously; backoff matters only in start()
@@ -113,11 +113,12 @@ describe.skipIf(!DATABASE_URL)('doc 67 §D2 — durable worksheet job queue', ()
 
   it('bounded retry: a job that always no-runs ends FAILED after max_attempts, not looping', async () => {
     const q = new PgWorksheetJobQueue(pool);
-    // OFF mode → runWorksheetShadow returns {ran:false} every time → retryable no-run
-    await q.enqueueDurable({ mode: 'OFF', spec: spec(30) });
+    // 'OFF' is not a valid persisted job mode (CHECK mode IN SHADOW/LIVE), so force the retryable
+    // no-run another way: a broken knowledge base makes the orchestrator throw every attempt.
+    await q.enqueueDurable({ mode: 'SHADOW', spec: spec(30) });
     await pool.query(`UPDATE worksheet_jobs SET max_attempts=2 WHERE generation_spec_id='jobq-30'`);
 
-    const processed = await mkWorker('wRetry').runToIdle(50);
+    const processed = await mkWorker('wRetry', undefined, {} as typeof kb).runToIdle(50);
     expect(processed).toBeLessThanOrEqual(3); // 2 attempts + a final idle poll, not infinite
     const row = await pool.query<{ state: string; attempts: number }>(
       `SELECT state, attempts FROM worksheet_jobs WHERE generation_spec_id='jobq-30'`,
