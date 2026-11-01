@@ -7,7 +7,7 @@ import {
   type Question,
 } from '@copilot/domain';
 import { loadReferenceLibrary } from '@copilot/reference-library';
-import { selectStretchSet, DEFAULT_STRETCH_CONFIG } from './stretch-zone.js';
+import { selectStretchSet, DEFAULT_STRETCH_CONFIG, type StretchConfig } from './stretch-zone.js';
 import { eligiblePool, type DiversityContext } from './diversity.js';
 
 const MODE_BY_ACTION: Record<PlannedAction['kind'], Assignment['mode']> = {
@@ -33,6 +33,8 @@ export interface BuildAssignmentInput {
   readonly pool?: readonly Question[];
   /** Per-child serve history → semantic anti-repeat (cooldowns, archetype rotation). */
   readonly diversity?: DiversityContext;
+  /** Comfortable/stretch mix (from the parent's learning goal). Default §17 75/25. */
+  readonly stretch?: StretchConfig;
 }
 
 /**
@@ -69,7 +71,7 @@ export function buildAssignment(input: BuildAssignmentInput): Assignment | null 
           .slice(0, 1)
           .concat(pool.slice(0, 1))
           .slice(0, 1)
-      : selectStretchSet(input.twin, pool, Math.min(count, pool.length), DEFAULT_STRETCH_CONFIG, input.diversity);
+      : selectStretchSet(input.twin, pool, Math.min(count, pool.length), input.stretch ?? DEFAULT_STRETCH_CONFIG, input.diversity);
 
   const items = chosen.length > 0 ? chosen : pool.slice(0, 1);
 
@@ -91,6 +93,7 @@ export function buildAssignmentsForPlan(
   at: string,
   newId: () => string,
   diversity?: DiversityContext,
+  stretch?: StretchConfig,
 ): Assignment[] {
   // questions picked for an earlier action of the same plan count as "served"
   // for the next, so one day's worksheets never repeat a structure either
@@ -105,6 +108,7 @@ export function buildAssignmentsForPlan(
       at,
       newId,
       ...(diversity ? { diversity: { ...diversity, recentServed: served } } : {}),
+      ...(stretch ? { stretch } : {}),
     });
     if (!a) continue;
     if (diversity) for (const id of a.questionIds) served.push({ questionId: id, servedAt: diversity.nowMs });

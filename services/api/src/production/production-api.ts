@@ -37,7 +37,19 @@ import { PgUploadAnalysisStore } from '@copilot/uploads/pg';
 import { curriculumLabel, getCurriculumCalendar, loadKnowledgeBase, type KnowledgeBase } from '@copilot/math-data';
 import { loadReferenceLibrary } from '@copilot/reference-library';
 import { buildDailyPlan, buildExerciseGenerationSpec } from '@copilot/planning';
-import { buildAssignment, buildAssignmentsForPlan, eligiblePool, pickDiverse, type DiversityContext } from '@copilot/practice';
+import {
+  buildAssignment,
+  buildAssignmentsForPlan,
+  eligiblePool,
+  pickDiverse,
+  parseStoredGoals,
+  stretchConfigForGoals,
+  isLearningGoal,
+  primaryGoal,
+  LEARNING_GOAL_INFO,
+  LEARNING_GOALS,
+  type DiversityContext,
+} from '@copilot/practice';
 import {
   assertChildSafe,
   buildParentGapDetail,
@@ -1005,6 +1017,25 @@ export function createProductionApi(opts: ProductionApiOptions) {
     return v === 'AI_FIRST' || v === 'AI_TOPUP' ? v : 'LIBRARY_FIRST';
   }
 
+  const DAILY_MINUTES_OPTIONS = [10, 15, 20, 30, 45, 60] as const;
+  const DEFAULT_DAILY_MINUTES = 20;
+
+  /** Parent-chosen daily minutes + learning goals (child_profiles.available_time_profile / goals). */
+  async function readChildPrefs(childId: string) {
+    const row = (
+      await pool.query<{ goals: unknown; available_time_profile: number | null }>(
+        `SELECT goals, available_time_profile FROM child_profiles WHERE id = $1`,
+        [childId],
+      )
+    ).rows[0];
+    const stored = row?.available_time_profile ?? null;
+    return {
+      goals: parseStoredGoals(row?.goals),
+      dailyMinutes:
+        stored !== null && (DAILY_MINUTES_OPTIONS as readonly number[]).includes(stored) ? stored : DEFAULT_DAILY_MINUTES,
+    };
+  }
+
   async function createLibraryPractice(ctx: PracticeCtx, childId: string, input: PracticeInput) {
   // reuse the tested scene (Curriculum Clock estimate + pace + twin + gaps +
   // context + plan) — DB-backed via learningScene, computed for `minutes`.
@@ -1026,6 +1057,9 @@ export function createProductionApi(opts: ProductionApiOptions) {
   });
   const scene = await scoped._scene(childId);
   const twin = scene.twin;
+  // parent-chosen daily minutes + learning goal (child_profiles) → default session length / difficulty mix
+  const prefs = await readChildPrefs(childId);
+  const stretch = stretchConfigForGoals(prefs.goals);
 
   // Per-child serve history (60d) → semantic anti-repeat cooldowns. Read from
   // assignment_items, so it is per child_ref by construction.
@@ -1064,7 +1098,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
       childFacingTitle: kb.skills.get(targetSkillId)?.name ?? targetSkillId,
       rationale: 'Bố mẹ yêu cầu ôn thêm phần này.',
     };
-    const targeted = buildAssignment({ childId: asChildId(childId), action, twin, planDate: vnDay(now()), at: now().toISOString(), newId: () => `${Date.now()}`, diversity: makeDiversity(false) });
+    const targeted = buildAssignment({ childId: asChildId(childId), action, twin, planDate: vnDay(now()), at: now().toISOString(), newId: () => `${Date.now()}`, diversity: makeDiversity(false), stretch });
     if (!targeted || targeted.questionIds.length === 0) {
       throw new NotFoundError('chưa có đủ câu hỏi để ôn phần này — thử lại sau');
     }
@@ -1108,7 +1142,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
       : buildDailyPlan({
           childId: asChildId(childId),
           planDate: vnDay(now()),
-          availableMinutes: input.minutes ?? 20,
+          availableMinutes: input.minutes ?? prefs.dailyMinutes,
           twin,
           gaps: scene.gaps,
           context: scene.context,
@@ -1123,7 +1157,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
 
   let legacy =
     plan.kind === 'plan'
-      ? buildAssignmentsForPlan(plan, twin, now().toISOString(), newId, makeDiversity(false))
+      ? buildAssignmentsForPlan(plan, twin, now().toISOString(), newId, makeDiversity(false), stretch)
       : [];
 
   // ZERO-DATA fallback (Journey 1): the deterministic planner returns
@@ -1158,7 +1192,9 @@ export function createProductionApi(opts: ProductionApiOptions) {
     }
     if (pool2.length > 0) {
       const div = makeDiversity(false);
-      const picked = pickDiverse(eligiblePool(pool2, div, 4).pool, 4, div, (q) => kLevelNum(q.knowledgeLevel));
+      // same pacing as buildAssignment (2.5 min / item), so the session length follows the chosen minutes
+      const want = Math.min(20, Math.max(2, Math.round((input.minutes ?? prefs.dailyMinutes) / 2.5)));
+      const picked = pickDiverse(eligiblePool(pool2, div, want).pool, want, div, (q) => kLevelNum(q.knowledgeLevel));
       legacy = [
         {
           id: `asg_${newId()}`,
@@ -1182,7 +1218,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
         id: cryptoRandom(),
         childId,
         planDate: plan.planDate,
-        availableMinutes: input.minutes ?? 20,
+        availableMinutes: input.minutes ?? prefs.dailyMinutes,
         kind: 'plan',
         mix: (plan.mix as Record<string, number>) ?? {},
         plannerVersion: 'exercise-spec.v1',
@@ -1264,7 +1300,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
         );
         const row = r.rows[0];
         if (!row || row.today > 0 || row.open >= 3) return { created: false, short: false };
-        const res = await createLibraryPractice(ctx, childId, { minutes: 20 });
+        const res = await createLibraryPractice(ctx, childId, {});
         return { created: res.assignmentIds.length > 0, short: res.assignmentIds.length === 0 || res.pickedItems < 4 };
       } finally {
         await client.query(`SELECT pg_advisory_unlock(hashtext($1))`, [lockKey]);
@@ -2357,6 +2393,53 @@ export function createProductionApi(opts: ProductionApiOptions) {
       });
       logger.info('learning start set', { actor: actorRef(ctx.userId), lessonId: input.lessonId });
       return { resolved: res.resolved, expected: res.expected };
+    },
+
+    /**
+     * GET /children/:childId/preferences — the parent's learning goal + daily study minutes
+     * (spec §1 "quản lý mục tiêu học", backlog B2-02/B2-03).
+     */
+    async getChildPreferences(auth: CallerAuth, childId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'view_child');
+      const p = await readChildPrefs(childId);
+      return {
+        dailyMinutes: p.dailyMinutes,
+        minuteOptions: [...DAILY_MINUTES_OPTIONS],
+        goal: primaryGoal(p.goals),
+        examPrep: p.goals.includes('EXAM_PREP'),
+        goalOptions: LEARNING_GOALS.filter((g) => g !== 'EXAM_PREP').map((g) => ({
+          code: g,
+          label: LEARNING_GOAL_INFO[g].label,
+          hint: LEARNING_GOAL_INFO[g].hint,
+        })),
+      };
+    },
+
+    /** PUT /children/:childId/preferences */
+    async setChildPreferences(
+      auth: CallerAuth,
+      childId: string,
+      input: { dailyMinutes: number; goal: string; examPrep?: boolean },
+    ) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'manage_child');
+      const minutes = Number(input.dailyMinutes);
+      if (!(DAILY_MINUTES_OPTIONS as readonly number[]).includes(minutes)) {
+        throw new ForbiddenError(`số phút mỗi ngày phải là một trong ${DAILY_MINUTES_OPTIONS.join(', ')}`);
+      }
+      if (!isLearningGoal(input.goal) || input.goal === 'EXAM_PREP') {
+        throw new ForbiddenError('mục tiêu học không hợp lệ');
+      }
+      const goals = [input.goal, ...(input.examPrep ? ['EXAM_PREP'] : [])];
+      await pool.query(
+        `UPDATE child_profiles SET goals = $2::jsonb, available_time_profile = $3 WHERE id = $1`,
+        [childId, JSON.stringify(goals), minutes],
+      );
+      logger.info('child preferences set', { actor: actorRef(ctx.userId), goal: input.goal, minutes });
+      return { dailyMinutes: minutes, goal: input.goal, examPrep: Boolean(input.examPrep) };
     },
 
     /**

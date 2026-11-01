@@ -17,3 +17,4 @@ export * from './diversity.js';
 export * from './assignment.js';
 export * from './submission.js';
 export * from './offline-queue.js';
+export * from './goals.js';
