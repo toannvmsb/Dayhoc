@@ -132,6 +132,12 @@ const ROUTES: Record<string, Handler> = {
       examPrep: Boolean(c.body.examPrep),
     }),
 
+  // ---- consent centre + data export (backlog B3-03) ----
+  'GET /children/:id/consents': async (c) => getApi().getConsentCenter(auth(c, 'PARENT'), c.params[0]!),
+  'PUT /children/:id/consents/:kind': async (c) =>
+    getApi().setConsent(auth(c, 'PARENT'), c.params[0]!, c.params[1]!, Boolean(c.body.granted)),
+  'GET /children/:id/export': async (c) => getApi().exportChildData(auth(c, 'PARENT'), c.params[0]!),
+
   // ---- school / class directory (M3) ----
   'GET /schools': async (c) =>
     getApi().searchSchools(auth(c, 'PARENT'), {

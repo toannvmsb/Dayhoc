@@ -94,6 +94,11 @@ export default async function ChildSettings({ params }: { params: { childId: str
       />
       <Row href={`/be/${params.childId}/ket-noi`} title="Quyền chia sẻ" sub="Bật/tắt từng quyền cho từng giáo viên" />
 
+      <Row
+        href={`/be/${params.childId}/cai-dat/quyen-rieng-tu`}
+        title="Quyền riêng tư & đồng ý"
+        sub="Bật/tắt AI soạn bài, xem lịch sử đồng ý, tải dữ liệu của con"
+      />
       <div className="card" style={{ gap: 4 }}>
         <span className="overline">Quyền riêng tư & dữ liệu</span>
         <span style={{ fontSize: 12.5, color: 'var(--c-text-body)', lineHeight: 1.55 }}>

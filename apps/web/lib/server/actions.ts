@@ -121,6 +121,16 @@ export async function setPreferencesAction(_prev: FormState, form: FormData): Pr
   redirect(`/be/${childId}/cai-dat`);
 }
 
+/** Consent centre toggle (backlog B3-03). */
+export async function setConsentAction(form: FormData): Promise<void> {
+  const childId = String(form.get('childId') ?? '');
+  const kind = String(form.get('kind') ?? '');
+  const granted = String(form.get('granted') ?? '') === '1';
+  if (!childId || !kind) return;
+  await getApi().setConsent(parentAuth(), childId, kind, granted);
+  revalidatePath(`/be/${childId}/cai-dat/quyen-rieng-tu`);
+}
+
 /** "Giao bài ôn thi" — a mock test built from the library for one scheduled exam (backlog B1-04). */
 export async function createExamPracticeAction(
   childId: string,

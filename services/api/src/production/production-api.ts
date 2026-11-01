@@ -113,6 +113,11 @@ import {
 } from './pilot.js';
 import { insertAiUsageEvent } from './pg-ai-usage.js';
 import {
+  consentKindOf,
+  exportChildData as exportChildDataRow,
+  getConsentCenter as getConsentCenterRow,
+} from './consent-center.js';
+import {
   purgeReviewSnapshots,
   shadowRollup,
   failureBreakdown,
@@ -3941,6 +3946,52 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const ctx = await deriveContext(auth);
       await authorizeChild(ctx, childId, 'view_child');
       return { hasConsent: await hasPilotConsent(pool, childId) };
+    },
+
+    // ---- B3-03: consent management + data export --------------------
+
+    /** GET /children/:childId/consents — current state per consent kind + the audit timeline. */
+    async getConsentCenter(auth: CallerAuth, childId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'view_child');
+      return getConsentCenterRow(pool, childId);
+    },
+
+    /**
+     * PUT /children/:childId/consents/:kind — grant or withdraw. Idempotent (re-granting an active
+     * consent writes nothing, so the ledger holds real decisions, not clicks). Needs the privacy permission.
+     */
+    async setConsent(auth: CallerAuth, childId: string, kind: string, granted: boolean) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'manage_child');
+      await authorizeChild(ctx, childId, 'grant_permission');
+      if (!consentKindOf(kind)) throw new NotFoundError('consent kind');
+      const active = await hasPilotConsent(pool, childId);
+      if (granted && !active) {
+        await recordPilotConsentRow(pool, { childId, grantedByUserId: ctx.userId, method: 'consent_center' });
+      } else if (!granted && active) {
+        await withdrawPilotConsentRow(pool, childId, ctx.userId);
+      }
+      return getConsentCenterRow(pool, childId);
+    },
+
+    /**
+     * GET /children/:childId/export — the parent's right of access. Logs a fulfilled `rights_requests`
+     * row (append-only) so the export itself is auditable.
+     */
+    async exportChildData(auth: CallerAuth, childId: string) {
+      const ctx = await deriveContext(auth);
+      if (ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
+      await authorizeChild(ctx, childId, 'manage_child');
+      await authorizeChild(ctx, childId, 'grant_permission');
+      const bundle = await exportChildDataRow(pool, childId, now());
+      await pool.query(
+        `INSERT INTO rights_requests (child_id, requested_by, kind, fulfilled_at) VALUES ($1, $2, 'export', now())`,
+        [childId, ctx.userId],
+      );
+      return bundle;
     },
 
     /** PARENT — lightweight feedback on today's worksheet / plan (doc 70 §5).
