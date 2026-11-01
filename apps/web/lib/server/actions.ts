@@ -103,6 +103,24 @@ export async function setLearningStartAction(_prev: FormState, form: FormData): 
   redirect(`/be/${childId}`);
 }
 
+export async function setPreferencesAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const childId = String(form.get('childId') ?? '');
+  const goal = String(form.get('goal') ?? '');
+  const dailyMinutes = Number(form.get('dailyMinutes'));
+  const examPrep = form.get('examPrep') === 'on';
+  if (!childId || !goal || !Number.isFinite(dailyMinutes)) {
+    return { error: 'Chọn mục tiêu và số phút học mỗi ngày.' };
+  }
+  try {
+    await getApi().setChildPreferences(parentAuth(), childId, { dailyMinutes, goal, examPrep });
+  } catch (e) {
+    return { error: friendly(e) };
+  }
+  revalidatePath(`/be/${childId}`);
+  revalidatePath(`/be/${childId}/bai-tap`);
+  redirect(`/be/${childId}/cai-dat`);
+}
+
 export async function createPracticeAction(childId: string, minutes: number): Promise<void> {
   await getApi().createPracticeAssignment(parentAuth(), childId, { minutes });
   revalidatePath(`/be/${childId}/bai-tap`);

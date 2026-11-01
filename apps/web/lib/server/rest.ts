@@ -123,6 +123,15 @@ const ROUTES: Record<string, Handler> = {
     });
   },
 
+  // ---- learning goal + daily minutes (backlog B2-02/B2-03) ----
+  'GET /children/:id/preferences': async (c) => getApi().getChildPreferences(auth(c, 'PARENT'), c.params[0]!),
+  'PUT /children/:id/preferences': async (c) =>
+    getApi().setChildPreferences(auth(c, 'PARENT'), c.params[0]!, {
+      dailyMinutes: Number(c.body.dailyMinutes),
+      goal: String(c.body.goal ?? ''),
+      examPrep: Boolean(c.body.examPrep),
+    }),
+
   // ---- school / class directory (M3) ----
   'GET /schools': async (c) =>
     getApi().searchSchools(auth(c, 'PARENT'), {

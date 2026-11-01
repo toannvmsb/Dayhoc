@@ -76,6 +76,11 @@ export default async function ChildSettings({ params }: { params: { childId: str
       </div>
 
       <Row href={`/be/${params.childId}/ho-so`} title="Hồ sơ con" sub={`${name} · lớp ${'schoolGrade' in child ? child.schoolGrade : '—'}`} />
+      <Row
+        href={`/be/${params.childId}/muc-tieu`}
+        title="Mục tiêu học"
+        sub="Chọn mục tiêu và số phút học mỗi ngày — DạyZi ra bài theo đó"
+      />
       <Row href={`/be/${params.childId}/truong-lop`} title="Trường & lớp" sub="Khai báo trường/lớp, chế độ chia sẻ" />
       <Row
         href={`/be/${params.childId}/ho-so`}
