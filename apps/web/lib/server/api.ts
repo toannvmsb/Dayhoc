@@ -22,7 +22,22 @@ export function pool(): Pool {
     // serverless hosts (Netlify) run many short-lived instances — keep each tiny
     // so the Supabase pooler is not exhausted (set DZ_DB_POOL_MAX=2 there).
     const max = Math.max(1, Number(process.env.DZ_DB_POOL_MAX ?? 8) || 8);
-    globalThis.__dzPool = new Pool({ connectionString, max, idleTimeoutMillis: 10_000 });
+    // Hosted Postgres (Supabase pooler) is signed by a CA that is not in the Node trust store.
+    // Provide it as PEM in DB_SSL_CA (Supabase → Database → SSL) — verification stays ON.
+    // `sslmode` is stripped from the URL because pg lets URL params override the `ssl` option.
+    const ca = process.env.DB_SSL_CA?.replace(/\\n/g, '\n');
+    let url = connectionString;
+    if (ca) {
+      const u = new URL(connectionString);
+      u.searchParams.delete('sslmode');
+      url = u.toString();
+    }
+    globalThis.__dzPool = new Pool({
+      connectionString: url,
+      max,
+      idleTimeoutMillis: 10_000,
+      ...(ca ? { ssl: { ca, rejectUnauthorized: true } } : {}),
+    });
   }
   return globalThis.__dzPool;
 }
