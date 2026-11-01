@@ -123,6 +123,7 @@ import {
   teacherRevokeJoinCode as teacherRevokeJoinCodeRow,
 } from './class-join.js';
 import { visionLimitsFromEnv, visionUsageEvent } from './vision-cost.js';
+import { purgeExpiredUploadBytes, uploadRetentionDays } from './upload-retention.js';
 import { getInactivityStatus as getInactivityStatusRow, runInactivityReminders as runInactivityRemindersRow } from './reminders.js';
 import {
   CONSENT_CATALOG,
@@ -3460,6 +3461,10 @@ export function createProductionApi(opts: ProductionApiOptions) {
       await authorizeChild(ctx, childId, 'manage_child');
       const upload = await uploadStore.getUpload(uploadId);
       if (!upload || upload.childId !== childId) throw new NotFoundError('upload');
+      const purged = (
+        await pool.query(`SELECT 1 FROM upload_analysis WHERE upload_id = $1 AND bytes_purged_at IS NOT NULL`, [uploadId])
+      ).rowCount;
+      if (purged) throw new ForbiddenError('Ảnh gốc đã được xoá sau thời hạn lưu trữ nên không đọc lại được. Bố mẹ tải ảnh lên lại nhé.');
       const grade = (
         await pool.query(`SELECT school_grade FROM child_profiles WHERE id = $1`, [childId])
       ).rows[0] as { school_grade: number } | undefined;
@@ -3566,8 +3571,10 @@ export function createProductionApi(opts: ProductionApiOptions) {
       });
       try {
         await uploadStorage.remove(upload.storageKey);
+        await pool.query(`UPDATE upload_analysis SET bytes_purged_at = $2 WHERE id = $1`, [analysis.id, now()]);
       } catch {
-        // best-effort — the row is already hidden from the parent's list either way
+        // best-effort — the row is already hidden from the parent's list either way, and the
+        // daily retention sweep removes the object later if this attempt failed
       }
       return { ok: true as const };
     },
@@ -3971,6 +3978,32 @@ export function createProductionApi(opts: ProductionApiOptions) {
       const qaPurged = await purgeExpiredQaSamples(pool);
       const servingPurged = await purgeStaleServingIntents(pool);
       return { qaSnapshotsPurged: qaPurged, servingIntentsExpired: servingPurged };
+    },
+
+    /**
+     * Trusted-caller ONLY (the cron route that has verified `CRON_SECRET`; never expose as a role-gated
+     * REST method). Runs every idempotent daily job; one failing job never stops the others.
+     */
+    async runScheduledJobs() {
+      const out: Record<string, unknown> = { ranAt: now().toISOString() };
+      const step = async (name: string, fn: () => Promise<unknown>) => {
+        try {
+          out[name] = await fn();
+        } catch (e) {
+          out[name] = { error: e instanceof Error ? e.message : String(e) };
+          logger.warn('scheduled job failed', { job: name, error: out[name] });
+        }
+      };
+      await step('inactivityReminders', () => runInactivityRemindersRow(pool, notifications, now()));
+      await step('uploadRetention', () =>
+        purgeExpiredUploadBytes(pool, uploadStorage, now(), uploadRetentionDays(process.env)),
+      );
+      await step('internalLiveMaintenance', async () => ({
+        qaSnapshotsPurged: await purgeExpiredQaSamples(pool),
+        servingIntentsExpired: await purgeStaleServingIntents(pool),
+      }));
+      logger.info('scheduled jobs run', out);
+      return out;
     },
 
     // ---- doc 70: SMALL FAMILY PILOT --------------------------------------
