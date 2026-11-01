@@ -13,6 +13,23 @@ declare global {
   var __dzApi: ReturnType<typeof createProductionApi> | undefined;
 }
 
+/**
+ * Rebuild well-formed PEM from however it was pasted into an env-var field
+ * (real newlines, literal `\n`, or newlines collapsed to spaces).
+ */
+export function normalizePem(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  const blocks = [...raw.matchAll(/-----BEGIN CERTIFICATE-----([\s\S]*?)-----END CERTIFICATE-----/g)];
+  if (blocks.length === 0) return undefined;
+  return blocks
+    .map((m) => {
+      const body = m[1].replace(/\\n|\s+/g, '');
+      const lines = body.match(/.{1,64}/g) ?? [];
+      return `-----BEGIN CERTIFICATE-----\n${lines.join('\n')}\n-----END CERTIFICATE-----\n`;
+    })
+    .join('');
+}
+
 export function pool(): Pool {
   if (!globalThis.__dzPool) {
     const connectionString = process.env.DATABASE_URL;
@@ -25,7 +42,7 @@ export function pool(): Pool {
     // Hosted Postgres (Supabase pooler) is signed by a CA that is not in the Node trust store.
     // Provide it as PEM in DB_SSL_CA (Supabase → Database → SSL) — verification stays ON.
     // `sslmode` is stripped from the URL because pg lets URL params override the `ssl` option.
-    const ca = process.env.DB_SSL_CA?.replace(/\\n/g, '\n');
+    const ca = normalizePem(process.env.DB_SSL_CA);
     let url = connectionString;
     if (ca) {
       const u = new URL(connectionString);
