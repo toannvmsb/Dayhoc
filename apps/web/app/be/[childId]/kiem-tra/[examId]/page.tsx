@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { Screen } from '../../../../components';
 import { getApi, getViewer, parentAuth } from '@/lib/server/api';
-import { RecordResult, ScopeConfirm } from '../client';
+import { ExamPracticeButton, RecordResult, ScopeConfirm } from '../client';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,6 +61,10 @@ export default async function ExamDetail({
           </div>
         ))}
       </div>
+
+      {!diagnosis && map.items.length > 0 && (
+        <ExamPracticeButton childId={params.childId} examId={params.examId} />
+      )}
 
       {diagnosis ? (
         <div className="card" style={{ gap: 8 }}>

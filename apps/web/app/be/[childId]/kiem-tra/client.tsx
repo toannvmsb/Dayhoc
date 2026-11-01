@@ -6,6 +6,7 @@ import { useFormState } from 'react-dom';
 import {
   confirmExamScopeAction,
   createExamAction,
+  createExamPracticeAction,
   recordExamResultAction,
 } from '@/lib/server/actions';
 import { SubmitButton } from '../../../ui';
@@ -168,6 +169,63 @@ export function RecordResult({
       ))}
       <button type="button" className="cta" disabled={pending} onClick={submit}>
         {pending ? 'Đang chẩn đoán…' : 'Xem chẩn đoán'}
+      </button>
+    </div>
+  );
+}
+
+export function ExamPracticeButton({ childId, examId }: { childId: string; examId: string }) {
+  const [minutes, setMinutes] = useState(30);
+  const [pending, start] = useTransition();
+  const [err, setErr] = useState<string | null>(null);
+  const router = useRouter();
+
+  return (
+    <div className="card" style={{ gap: 10 }}>
+      <span className="overline">Đề ôn thử</span>
+      <span style={{ fontSize: 13, color: 'var(--c-text-body)', lineHeight: 1.5 }}>
+        DạyZi ghép một bài ôn đúng phạm vi thi, nhiều câu hơn ở phần con còn yếu. Con làm trong mục Bài tập.
+      </span>
+      <div style={{ display: 'flex', gap: 8 }}>
+        {[15, 30, 45, 60].map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => setMinutes(m)}
+            style={{
+              flex: 1,
+              padding: '10px 0',
+              borderRadius: 'var(--r-control)',
+              border: `1px solid ${m === minutes ? 'var(--c-primary)' : 'var(--c-border)'}`,
+              background: m === minutes ? 'var(--c-primary-tint)' : 'var(--c-surface)',
+              color: 'var(--c-text-heading)',
+              fontWeight: 700,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            {m}′
+          </button>
+        ))}
+      </div>
+      {err && <p style={{ margin: 0, fontSize: 13, color: 'var(--c-attention-text)' }}>{err}</p>}
+      <button
+        type="button"
+        className="cta"
+        disabled={pending}
+        onClick={() =>
+          start(async () => {
+            setErr(null);
+            try {
+              await createExamPracticeAction(childId, examId, minutes);
+              router.push(`/be/${childId}/bai-tap`);
+            } catch {
+              setErr('Không tạo được đề ôn thử. Bố mẹ xác nhận phạm vi thi rồi thử lại.');
+            }
+          })
+        }
+      >
+        {pending ? 'Đang soạn đề…' : `Giao đề ôn thử ${minutes} phút`}
       </button>
     </div>
   );

@@ -1010,7 +1010,7 @@ export function createProductionApi(opts: ProductionApiOptions) {
   //                             fill the day, capped per child per 30 days
   //   AI_FIRST                — legacy behaviour: queue one AI worksheet/day
   type PracticeCtx = Awaited<ReturnType<typeof deriveContext>>;
-  type PracticeInput = { minutes?: number; skillId?: string; gapId?: string };
+  type PracticeInput = { minutes?: number; skillId?: string; gapId?: string; examId?: string };
 
   function practiceSourcePolicy(env: NodeJS.ProcessEnv = process.env): 'LIBRARY_FIRST' | 'AI_TOPUP' | 'AI_FIRST' {
     const v = (env.PRACTICE_SOURCE ?? '').trim().toUpperCase();
@@ -1134,6 +1134,120 @@ export function createProductionApi(opts: ProductionApiOptions) {
     });
     analytics.track({ category: 'practice', action: 'targeted_practice_requested', actorRef: actorRef(ctx.userId), metadata: { skillId: targetSkillId } });
     return { planKind: 'targeted' as const, assignmentIds: [rowId], pickedItems: items.length };
+  }
+
+  // EXAM PREP (backlog B1-04) — "đề ôn thử" for a scheduled exam, built from the library for free.
+  // Spreads items over the exam's scope skills by revision priority (ưu tiên cao > nhắc lại > đã ổn),
+  // one REVISION assignment. No AI: the library already covers every skill.
+  if (input.examId) {
+    const erow = (
+      await pool.query(
+        `SELECT id, exam_date::text AS exam_date, subject, scope_skill_ids, inferred_scope
+           FROM exams WHERE id = $1 AND child_id = $2`,
+        [input.examId, childId],
+      )
+    ).rows[0] as any;
+    if (!erow) throw new NotFoundError('exam');
+    const exam: Exam = {
+      id: erow.id,
+      childId: asChildId(childId),
+      examDate: String(erow.exam_date).slice(0, 10),
+      subject: erow.subject,
+      ...(Array.isArray(erow.scope_skill_ids) ? { scopeSkillIds: erow.scope_skill_ids as never } : {}),
+      ...(erow.inferred_scope ? { inferredScope: erow.inferred_scope } : {}),
+    };
+    const rplan = buildRevisionPlan({
+      childId: asChildId(childId),
+      exam,
+      twin,
+      gaps: scene.gaps,
+      knowledgeBase: kb,
+      asOf: now(),
+    });
+    const lib = loadReferenceLibrary();
+    const hasContent = new Set(lib.map((q) => String(q.skillId)));
+    const picks = rplan.priorityItems.filter((it) => hasContent.has(String(it.skillId))).slice(0, 8);
+    if (picks.length === 0) throw new NotFoundError('chưa có đủ câu hỏi trong phạm vi thi này — thử lại sau');
+
+    const WEIGHT = { 'ưu_tiên_cao': 3, 'nhắc_lại': 2, 'đã_ổn': 1 } as const;
+    const total = Math.min(30, Math.max(picks.length, Math.round((input.minutes ?? 30) / 2.5)));
+    const sumW = picks.reduce((a, it) => a + WEIGHT[it.band], 0);
+    // largest-remainder allocation, at least 1 item per skill in scope
+    const alloc = picks.map((it) => {
+      const exact = (total * WEIGHT[it.band]) / sumW;
+      return { it, n: Math.max(1, Math.floor(exact)), frac: exact - Math.floor(exact) };
+    });
+    let left = total - alloc.reduce((a, x) => a + x.n, 0);
+    for (const x of [...alloc].sort((a, b) => b.frac - a.frac)) {
+      if (left <= 0) break;
+      x.n += 1;
+      left -= 1;
+    }
+
+    const div = makeDiversity(false);
+    const taken = new Set<string>();
+    const examQs: Array<(typeof lib)[number]> = [];
+    const byIdAll = new Map(lib.map((q) => [q.id, q]));
+    for (const { it, n } of alloc) {
+      const action: import('@copilot/domain').PlannedAction = {
+        kind: 'practice_current_skill',
+        mixBucket: 'gapRepair',
+        targetSkillId: asSkillId(it.skillId),
+        estimatedMinutes: n * 2.5,
+        roiPerMinute: 0.5,
+        parentFacingTitle: `Ôn thi — ${it.name}`,
+        childFacingTitle: it.name,
+        rationale: it.reason,
+      };
+      const a = buildAssignment({
+        childId: asChildId(childId),
+        action,
+        twin,
+        planDate: vnDay(now()),
+        at: now().toISOString(),
+        newId: () => `${Date.now()}`,
+        itemsPerSession: n,
+        diversity: { ...div, recentServed: [...div.recentServed, ...[...taken].map((id) => ({ questionId: id, servedAt: div.nowMs }))] },
+        stretch,
+      });
+      for (const qid of a?.questionIds ?? []) {
+        const q = byIdAll.get(qid);
+        if (q && !taken.has(qid)) {
+          taken.add(qid);
+          examQs.push(q);
+        }
+      }
+    }
+    if (examQs.length === 0) throw new NotFoundError('chưa có đủ câu hỏi để ôn thi — thử lại sau');
+    // a mock test ramps easy → hard overall (stable, so the per-skill order is kept within a level)
+    examQs.sort((a, b) => kLevelNum(a.knowledgeLevel) - kLevelNum(b.knowledgeLevel));
+    const items = examQs.map((q, i) => ({
+      orderIndex: i,
+      questionRef: q.id,
+      skillId: q.skillId as string,
+      problemTypeId: (q.problemTypeId as string | undefined) ?? null,
+      knowledgeLevel: kLevelNum(q.knowledgeLevel),
+      thinkingLevel: tLevelNum(q.thinkingLevel),
+      prompt: { text: q.prompt },
+      answerSpec: q.answerSpec,
+      hints: [...q.hints],
+    }));
+    const rowId = await withTransaction(pool, async (client) => {
+      const ls = new PgLearningStateStore(client);
+      const row = await ls.createAssignment({
+        childId,
+        source: 'LEGACY_PRACTICE',
+        assignedByUserId: ctx.userId,
+        assignedByRole: 'PARENT',
+        subjectId: null,
+        mode: 'REVISION',
+        targetSkillIds: [...new Set(examQs.map((q) => String(q.skillId)))] as unknown as string[],
+        items,
+      });
+      return row.id;
+    });
+    analytics.track({ category: 'practice', action: 'exam_practice_requested', actorRef: actorRef(ctx.userId), metadata: { examId: input.examId, items: items.length } });
+    return { planKind: 'exam' as const, assignmentIds: [rowId], pickedItems: items.length };
   }
 
   const plan =
@@ -3308,9 +3422,10 @@ export function createProductionApi(opts: ProductionApiOptions) {
     async createPracticeAssignment(
       auth: CallerAuth,
       childId: string,
-      input: { minutes?: number; skillId?: string; gapId?: string } = {},
+      input: { minutes?: number; skillId?: string; gapId?: string; examId?: string } = {},
     ) {
       const ctx = await deriveContext(auth);
+      if (input.examId && ctx.workspace !== 'PARENT') throw new ForbiddenError('PARENT workspace required');
       if (ctx.workspace === 'STUDENT') {
         // a student may build their own short practice, but only within their own scope
         if (ctx.childScope !== childId) throw new ForbiddenError('student scoped to another child');

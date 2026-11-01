@@ -121,6 +121,20 @@ export async function setPreferencesAction(_prev: FormState, form: FormData): Pr
   redirect(`/be/${childId}/cai-dat`);
 }
 
+/** "Giao bài ôn thi" — a mock test built from the library for one scheduled exam (backlog B1-04). */
+export async function createExamPracticeAction(
+  childId: string,
+  examId: string,
+  minutes: number,
+): Promise<{ assignmentId: string }> {
+  const res = await getApi().createPracticeAssignment(parentAuth(), childId, { examId, minutes });
+  revalidatePath(`/be/${childId}/bai-tap`);
+  revalidatePath(`/be/${childId}`);
+  const assignmentId = res.assignmentIds[0];
+  if (!assignmentId) throw new Error('không tạo được bài ôn thi');
+  return { assignmentId };
+}
+
 export async function createPracticeAction(childId: string, minutes: number): Promise<void> {
   await getApi().createPracticeAssignment(parentAuth(), childId, { minutes });
   revalidatePath(`/be/${childId}/bai-tap`);
