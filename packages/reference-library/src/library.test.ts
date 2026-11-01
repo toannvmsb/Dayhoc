@@ -60,3 +60,19 @@ describe('grounding / calibration API (not delivery)', () => {
     expect(q).toEqual(q2);
   });
 });
+
+describe('childFacingPrompt', () => {
+  it('drops the template version tag and keeps the sentence readable', async () => {
+    const { childFacingPrompt } = await import('./library.js');
+    expect(childFacingPrompt('Tìm x. [Phiên bản 12]')).toBe('Tìm x.');
+    expect(childFacingPrompt('Với bài Tính 2×3. [Phiên bản 28], có khẳng định “Đáp án là 6”.')).toBe('Với bài Tính 2×3, có khẳng định “Đáp án là 6”.');
+    expect(childFacingPrompt('Đường nào ngắn hơn? (Tình huống 1-Thấp)')).toBe('Đường nào ngắn hơn?');
+    expect(childFacingPrompt('Hãy nêu. (Phiên bản 2-Thấp), hãy viết.')).toBe('Hãy nêu, hãy viết.');
+    expect(childFacingPrompt('Không có nhãn.')).toBe('Không có nhãn.');
+  });
+
+  it('no served prompt still carries the tag', async () => {
+    const { loadReferenceLibrary } = await import('./library.js');
+    expect(loadReferenceLibrary().some((q) => /Phiên bản \d+|\((?:Mẫu|Tình huống) \d+/.test(q.prompt))).toBe(false);
+  });
+});

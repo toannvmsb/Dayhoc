@@ -55,6 +55,20 @@ const exampleSchema = z.object({
 
 export class ReferenceLibraryError extends Error {}
 
+/**
+ * Thousands of stored prompts carry a template tag ("[Phiên bản N]", "(Mẫu 1)", "(Tình huống 1-Thấp)") that only existed to keep generated variants
+ * textually distinct. It means nothing to a child, so it is dropped when the library is loaded;
+ * the data file is untouched and questions are still identified by id (never by prompt text).
+ */
+const TEMPLATE_TAG = /\s*(?:\[Phiên bản \d+\]|\((?:Phiên bản|Mẫu|Tình huống) \d+(?:-[^)]*)?\))/g;
+
+export function childFacingPrompt(prompt: string): string {
+  return prompt
+    .replace(TEMPLATE_TAG, '')
+    .replace(/\.([,.;])/g, '$1')
+    .trim();
+}
+
 const raw = [...(authoredRaw as unknown[]), ...(aiDraftRaw as unknown[])];
 let cache: readonly ReferenceExample[] | undefined;
 
@@ -72,8 +86,9 @@ export function loadReferenceLibrary(): readonly ReferenceExample[] {
         .join('\n')}`,
     );
   }
-  cache = parsed.data.map(({ problemTypeId, skillId, ...rest }): ReferenceExample => ({
+  cache = parsed.data.map(({ problemTypeId, skillId, prompt, ...rest }): ReferenceExample => ({
     ...rest,
+    prompt: childFacingPrompt(prompt),
     skillId: asSkillId(skillId),
     ...(problemTypeId ? { problemTypeId: asProblemTypeId(problemTypeId) } : {}),
   }));
