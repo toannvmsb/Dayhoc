@@ -23,7 +23,7 @@ export function normalizePem(raw: string | undefined): string | undefined {
   if (blocks.length === 0) return undefined;
   return blocks
     .map((m) => {
-      const body = m[1].replace(/\\n|\s+/g, '');
+      const body = (m[1] ?? '').replace(/\\n|\s+/g, '');
       const lines = body.match(/.{1,64}/g) ?? [];
       return `-----BEGIN CERTIFICATE-----\n${lines.join('\n')}\n-----END CERTIFICATE-----\n`;
     })
