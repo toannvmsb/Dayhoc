@@ -2,8 +2,8 @@
 
 Sinh bởi `scripts/audit-question-library.mjs` (seed 1). Chỉ đọc thư viện, không sửa gì.
 
-* Tổng số câu: **9433** · số kỹ năng: **94**
-* Tính lại bằng số học chính xác: **VERIFIED 3247** (34.4%) · **FAIL 0** · chưa kiểm được 6186 (65.6%) — cần giáo viên đọc
+* Tổng số câu: **9744** · số kỹ năng: **94**
+* Tính lại bằng số học chính xác: **VERIFIED 3247** (33.3%) · **FAIL 0** · chưa kiểm được 6497 (66.7%) — cần giáo viên đọc
 * Lỗi chắc chắn (ERROR): **0**
 
 ## Phát hiện theo loại
@@ -13,17 +13,17 @@ Sinh bởi `scripts/audit-question-library.mjs` (seed 1). Chỉ đọc thư vi�
 
 ## Phân bố K/T
 
-* K1/T1: 2418
+* K1/T1: 2439
 * K2/T1: 9
 * K2/T2: 3526
-* K2/T3: 1
+* K2/T3: 105
 * K2/T5: 2
 * K3/T3: 3236
-* K3/T4: 98
-* K3/T5: 1
+* K3/T4: 234
+* K3/T5: 51
 * K4/T4: 142
 
-Kỹ năng chưa có câu K1: M7.GEO.EUCLID_PARALLEL, M7.GEO.THEOREM_PROOF, M7.GEO.PARALLEL_CRITERIA, M7.RATIO.MULTIVAR, M7.ALG.SYMMETRIC, M7.ALG.FACTOR, M7.PROOF.ALGEBRA
+Kỹ năng chưa có câu K1: (không)
 
 ## Lỗi chắc chắn (tối đa 60 dòng đầu)
 
